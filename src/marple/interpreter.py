@@ -28,6 +28,18 @@ from marple.functions import (
     residue,
     subtract,
 )
+from marple.structural import (
+    catenate,
+    drop,
+    index_of,
+    iota,
+    ravel,
+    reshape,
+    reverse,
+    rotate,
+    shape,
+    take,
+)
 from marple.parser import (
     Assignment,
     DyadicFunc,
@@ -50,6 +62,10 @@ MONADIC_FUNCTIONS: dict[str, object] = {
     "⍟": natural_log,
     "|": absolute_value,
     "~": logical_not,
+    "⍴": shape,
+    "⍳": iota,
+    ",": ravel,
+    "⌽": reverse,
 }
 
 DYADIC_FUNCTIONS: dict[str, object] = {
@@ -70,6 +86,12 @@ DYADIC_FUNCTIONS: dict[str, object] = {
     "≠": not_equal,
     "∧": logical_and,
     "∨": logical_or,
+    "⍴": reshape,
+    "⍳": index_of,
+    ",": catenate,
+    "↑": take,
+    "↓": drop,
+    "⌽": rotate,
 }
 
 
