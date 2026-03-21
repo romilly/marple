@@ -23,6 +23,9 @@ classifiers = [
 ]
 dependencies = []
 
+[project.scripts]
+marple = "marple.repl:main"
+
 [project.optional-dependencies]
 test = [
     "pytest>=7.0.0",
