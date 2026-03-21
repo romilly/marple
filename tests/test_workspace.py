@@ -44,7 +44,7 @@ class TestSaveWorkspace:
         finally:
             os.unlink(path)
 
-    def test_skips_system_variables(self) -> None:
+    def test_saves_system_variables(self) -> None:
         env: dict[str, object] = {"⎕IO": S(0), "x": S(1)}
         with tempfile.NamedTemporaryFile(mode="w", suffix=".apl", delete=False) as f:
             path = f.name
