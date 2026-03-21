@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from typing import Any
+
 
 class APLArray:
-    def __init__(self, shape: list[int], data: list[object]) -> None:
+    def __init__(self, shape: list[int], data: list[Any]) -> None:
         self.shape = shape
         self.data = data
 
@@ -20,5 +22,5 @@ class APLArray:
         return f"APLArray({self.shape}, {self.data})"
 
 
-def S(value: object) -> APLArray:
+def S(value: Any) -> APLArray:
     return APLArray([], [value])
