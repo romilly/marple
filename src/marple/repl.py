@@ -32,10 +32,20 @@ def format_result(result: APLArray) -> str:
         return " ".join(str(x) for x in result.data)
     if len(result.shape) == 2:
         rows, cols = result.shape
+        # Format each element as a string
+        strs = [str(x) for x in result.data]
+        # Find max width per column
+        col_widths = []
+        for c in range(cols):
+            w = max(len(strs[r * cols + c]) for r in range(rows))
+            col_widths.append(w)
+        # Right-align each column
         lines = []
         for r in range(rows):
-            row_data = result.data[r * cols : (r + 1) * cols]
-            lines.append(" ".join(str(x) for x in row_data))
+            parts = []
+            for c in range(cols):
+                parts.append(strs[r * cols + c].rjust(col_widths[c]))
+            lines.append(" ".join(parts))
         return "\n".join(lines)
     return repr(result)
 
