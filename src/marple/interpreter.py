@@ -329,6 +329,17 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
     raise TypeError(f"Unknown AST node: {type(node)}")
 
 
+def _reduce_vector(
+    func: Callable[[APLArray, APLArray], APLArray],
+    data: list[Any],
+) -> Any:
+    """Reduce a flat list right-to-left, returning a scalar value."""
+    result = S(data[-1])
+    for i in range(len(data) - 2, -1, -1):
+        result = func(S(data[i]), result)
+    return result.data[0]
+
+
 def _reduce(
     func: Callable[[APLArray, APLArray], APLArray],
     omega: APLArray,
@@ -336,25 +347,46 @@ def _reduce(
     data = omega.data
     if len(data) == 0:
         raise ValueError("Cannot reduce empty array")
-    result = S(data[-1])
-    for i in range(len(data) - 2, -1, -1):
-        result = func(S(data[i]), result)
-    return result
+    # Reduce along last axis
+    if len(omega.shape) <= 1:
+        return S(_reduce_vector(func, data))
+    # Higher rank: reduce each row (last-axis slice)
+    last = omega.shape[-1]
+    new_shape = omega.shape[:-1]
+    n_rows = len(data) // last
+    results: list[Any] = []
+    for i in range(n_rows):
+        row = data[i * last : (i + 1) * last]
+        results.append(_reduce_vector(func, row))
+    return APLArray(new_shape, results)
 
 
 def _scan(
     func: Callable[[APLArray, APLArray], APLArray],
     omega: APLArray,
 ) -> APLArray:
-    data = omega.data
-    if len(data) == 0:
-        return APLArray([0], [])
-    results = [data[0]]
-    acc = S(data[0])
-    for i in range(1, len(data)):
-        acc = func(acc, S(data[i]))
-        results.append(acc.data[0])
-    return APLArray([len(results)], results)
+    if len(omega.shape) <= 1:
+        data = omega.data
+        if len(data) == 0:
+            return APLArray([0], [])
+        results = [data[0]]
+        acc = S(data[0])
+        for i in range(1, len(data)):
+            acc = func(acc, S(data[i]))
+            results.append(acc.data[0])
+        return APLArray([len(results)], results)
+    # Higher rank: scan along last axis
+    last = omega.shape[-1]
+    n_rows = len(omega.data) // last
+    results: list[Any] = []
+    for i in range(n_rows):
+        row = omega.data[i * last : (i + 1) * last]
+        acc = S(row[0])
+        results.append(row[0])
+        for j in range(1, last):
+            acc = func(acc, S(row[j]))
+            results.append(acc.data[0])
+    return APLArray(list(omega.shape), results)
 
 
 def _inner_product(

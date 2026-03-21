@@ -23,6 +23,10 @@ class TestReduce:
         # +/5 → 5
         assert interpret("+/5") == S(5)
 
+    def test_reduce_matrix_rows(self) -> None:
+        # +/2 3⍴1 2 3 4 5 6 → 6 15 (sum each row)
+        assert interpret("+/2 3⍴1 2 3 4 5 6") == APLArray([2], [6, 15])
+
 
 class TestScan:
     def test_running_sum(self) -> None:
