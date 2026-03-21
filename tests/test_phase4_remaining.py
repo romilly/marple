@@ -24,6 +24,22 @@ class TestFormat:
         assert result.data == list("1 2 3")
 
 
+    def test_dyadic_format_width(self) -> None:
+        # 6⍕42 → '    42' (right-aligned in field of width 6)
+        result = interpret("6⍕42")
+        assert result.data == list("    42")
+
+    def test_dyadic_format_width_precision(self) -> None:
+        # 8 2⍕3.14159 → '    3.14' (width 8, 2 decimal places)
+        result = interpret("8 2⍕3.14159")
+        assert result.data == list("    3.14")
+
+    def test_dyadic_format_vector(self) -> None:
+        # 6 2⍕1.5 2.75 → two formatted numbers
+        result = interpret("6 2⍕1.5 2.75")
+        assert "".join(result.data) == "  1.50  2.75"
+
+
 class TestReplicate:
     def test_compress(self) -> None:
         # 1 0 1 0 1/1 2 3 4 5 → 1 3 5

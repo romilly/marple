@@ -162,6 +162,26 @@ def _format_array(omega: APLArray) -> APLArray:
     return APLArray([len(chars)], chars)
 
 
+def _dyadic_format(alpha: APLArray, omega: APLArray) -> APLArray:
+    """Dyadic ⍕: format with width (scalar left) or width+precision (2-element left)."""
+    if alpha.is_scalar():
+        width = int(alpha.data[0])
+        precision = None
+    else:
+        width = int(alpha.data[0])
+        precision = int(alpha.data[1]) if len(alpha.data) > 1 else None
+    values = omega.data if not omega.is_scalar() else [omega.data[0]]
+    result_chars: list[str] = []
+    for v in values:
+        if precision is not None:
+            formatted = f"{float(v):.{precision}f}"
+        else:
+            formatted = str(v)
+        formatted = formatted.rjust(width)
+        result_chars.extend(list(formatted))
+    return APLArray([len(result_chars)], result_chars)
+
+
 def _call_dfn(
     closure: _DfnClosure,
     omega: APLArray,
@@ -264,6 +284,10 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         return func(operand)  # type: ignore[operator]
 
     if isinstance(node, DyadicFunc):
+        if node.function == "⍕":
+            left = _evaluate(node.left, env)
+            right = _evaluate(node.right, env)
+            return _dyadic_format(left, right)
         left = _evaluate(node.left, env)
         right = _evaluate(node.right, env)
         func = DYADIC_FUNCTIONS.get(node.function)
