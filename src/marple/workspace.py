@@ -14,12 +14,21 @@ def _format_value(value: object) -> str | None:
         return None
     if value.is_scalar():
         v = value.data[0]
-        if isinstance(v, float) and v < 0:
-            return f"¯{abs(v)}"
-        if isinstance(v, int) and v < 0:
+        if isinstance(v, str):
+            return f"'{v}'"
+        if isinstance(v, (int, float)) and v < 0:
             return f"¯{abs(v)}"
         return str(v)
-    # Vector or matrix
+    # Check if character data
+    is_char = len(value.data) > 0 and all(isinstance(x, str) for x in value.data)
+    if is_char:
+        char_str = "".join(str(x) for x in value.data)
+        quoted = f"'{char_str}'"
+        if len(value.shape) == 1:
+            return quoted
+        shape_str = " ".join(str(s) for s in value.shape)
+        return f"{shape_str}⍴{quoted}"
+    # Numeric data
     def _fmt_num(x: object) -> str:
         if isinstance(x, (int, float)) and x < 0:
             return f"¯{abs(x)}"

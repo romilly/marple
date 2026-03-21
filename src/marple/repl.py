@@ -10,6 +10,35 @@ from marple.terminal import read_line
 from marple.workspace import save_workspace, load_workspace
 
 
+def _is_char_array(arr: APLArray) -> bool:
+    return len(arr.data) > 0 and all(isinstance(x, str) for x in arr.data)
+
+
+def format_result(result: APLArray) -> str:
+    if result.is_scalar():
+        return str(result.data[0])
+    if _is_char_array(result):
+        if len(result.shape) == 1:
+            return "".join(str(x) for x in result.data)
+        if len(result.shape) == 2:
+            rows, cols = result.shape
+            lines = []
+            for r in range(rows):
+                row_data = result.data[r * cols : (r + 1) * cols]
+                lines.append("".join(str(x) for x in row_data))
+            return "\n".join(lines)
+    if len(result.shape) == 1:
+        return " ".join(str(x) for x in result.data)
+    if len(result.shape) == 2:
+        rows, cols = result.shape
+        lines = []
+        for r in range(rows):
+            row_data = result.data[r * cols : (r + 1) * cols]
+            lines.append(" ".join(str(x) for x in row_data))
+        return "\n".join(lines)
+    return repr(result)
+
+
 def _user_names(env: dict[str, Any]) -> list[str]:
     return sorted(
         name for name in env
@@ -70,18 +99,7 @@ def main() -> None:
             continue
         try:
             result = interpret(line, env)
-            # Display result
-            if result.is_scalar():
-                print(result.data[0])
-            elif len(result.shape) == 1:
-                print(" ".join(str(x) for x in result.data))
-            elif len(result.shape) == 2:
-                rows, cols = result.shape
-                for r in range(rows):
-                    row_data = result.data[r * cols : (r + 1) * cols]
-                    print(" ".join(str(x) for x in row_data))
-            else:
-                print(result)
+            print(format_result(result))
         except Exception as e:
             print(f"ERROR: {e}")
 
