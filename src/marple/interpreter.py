@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable
+from typing import Any, Callable
 
 from marple.arraymodel import APLArray, S
 from marple.functions import (
@@ -43,21 +43,45 @@ from marple.structural import (
     take,
 )
 from marple.parser import (
+    Alpha,
+    AlphaDefault,
     Assignment,
     DerivedFunc,
+    Dfn,
+    DyadicDfnCall,
     DyadicFunc,
+    Guard,
+    MonadicDfnCall,
     MonadicFunc,
+    Nabla,
     Num,
+    Omega,
     Program,
     Var,
     Vector,
     parse,
 )
 
+
+class _DfnClosure:
+    """A dfn paired with its defining environment."""
+
+    def __init__(self, dfn: Dfn, env: dict[str, Any]) -> None:
+        self.dfn = dfn
+        self.env = env
+
+
+class _GuardTriggered(Exception):
+    """Raised when a guard condition is true to return its value."""
+
+    def __init__(self, value: APLArray) -> None:
+        self.value = value
+
+
 MONADIC_FUNCTIONS: dict[str, object] = {
-    "+": lambda omega: omega,  # conjugate (identity for reals)
+    "+": lambda omega: omega,
     "-": negate,
-    "×": lambda omega: S((-1 if omega.data[0] < 0 else 1 if omega.data[0] > 0 else 0)),  # signum
+    "×": lambda omega: S((-1 if omega.data[0] < 0 else 1 if omega.data[0] > 0 else 0)),
     "÷": reciprocal,
     "⌈": ceiling,
     "⌊": floor,
@@ -98,7 +122,39 @@ DYADIC_FUNCTIONS: dict[str, object] = {
 }
 
 
-def _evaluate(node: object, env: dict[str, APLArray]) -> APLArray:
+def _call_dfn(
+    closure: _DfnClosure,
+    omega: APLArray,
+    alpha: APLArray | None = None,
+) -> APLArray:
+    """Execute a dfn with the given arguments."""
+    # Lexical scope: start from the defining environment
+    local_env: dict[str, Any] = dict(closure.env)
+    local_env["⍵"] = omega
+    if alpha is not None:
+        local_env["⍺"] = alpha
+    # Store self-reference for ∇
+    local_env["∇"] = closure
+
+    result = S(0)
+    try:
+        for stmt in closure.dfn.body:
+            if isinstance(stmt, AlphaDefault):
+                # ⍺←default: set ⍺ only if not already provided
+                if "⍺" not in local_env:
+                    local_env["⍺"] = _evaluate(stmt.default, local_env)
+            elif isinstance(stmt, Guard):
+                cond = _evaluate(stmt.condition, local_env)
+                if cond.data[0]:
+                    raise _GuardTriggered(_evaluate(stmt.body, local_env))
+            else:
+                result = _evaluate(stmt, local_env)
+    except _GuardTriggered as g:
+        return g.value
+    return result
+
+
+def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
     if isinstance(node, Num):
         return S(node.value)
 
@@ -109,7 +165,30 @@ def _evaluate(node: object, env: dict[str, APLArray]) -> APLArray:
     if isinstance(node, Var):
         if node.name not in env:
             raise NameError(f"Undefined variable: {node.name}")
-        return env[node.name]
+        val = env[node.name]
+        if isinstance(val, APLArray):
+            return val
+        if isinstance(val, _DfnClosure):
+            return val  # type: ignore[return-value]
+        raise TypeError(f"Unexpected value type for {node.name}: {type(val)}")
+
+    if isinstance(node, Omega):
+        if "⍵" not in env:
+            raise NameError("⍵ used outside of dfn")
+        return env["⍵"]
+
+    if isinstance(node, Alpha):
+        if "⍺" not in env:
+            raise NameError("⍺ used outside of dfn")
+        return env["⍺"]
+
+    if isinstance(node, Nabla):
+        if "∇" not in env:
+            raise NameError("∇ used outside of dfn")
+        return env["∇"]  # type: ignore[return-value]
+
+    if isinstance(node, Dfn):
+        return _DfnClosure(node, env)  # type: ignore[return-value]
 
     if isinstance(node, MonadicFunc):
         operand = _evaluate(node.operand, env)
@@ -126,10 +205,25 @@ def _evaluate(node: object, env: dict[str, APLArray]) -> APLArray:
             raise ValueError(f"Unknown dyadic function: {node.function}")
         return func(left, right)  # type: ignore[operator]
 
+    if isinstance(node, MonadicDfnCall):
+        dfn_val = _evaluate(node.dfn, env)
+        operand = _evaluate(node.operand, env)
+        if not isinstance(dfn_val, _DfnClosure):
+            raise TypeError(f"Expected dfn, got {type(dfn_val)}")
+        return _call_dfn(dfn_val, operand)
+
+    if isinstance(node, DyadicDfnCall):
+        dfn_val = _evaluate(node.dfn, env)
+        left = _evaluate(node.left, env)
+        right = _evaluate(node.right, env)
+        if not isinstance(dfn_val, _DfnClosure):
+            raise TypeError(f"Expected dfn, got {type(dfn_val)}")
+        return _call_dfn(dfn_val, right, alpha=left)
+
     if isinstance(node, Assignment):
         value = _evaluate(node.value, env)
         env[node.name] = value
-        return value
+        return value if isinstance(value, APLArray) else S(0)
 
     if isinstance(node, DerivedFunc):
         operand = _evaluate(node.operand, env)
@@ -143,10 +237,12 @@ def _evaluate(node: object, env: dict[str, APLArray]) -> APLArray:
         raise ValueError(f"Unknown operator: {node.operator}")
 
     if isinstance(node, Program):
-        result = S(0)
+        result: APLArray | _DfnClosure = S(0)
         for stmt in node.statements:
             result = _evaluate(stmt, env)
-        return result
+        if isinstance(result, APLArray):
+            return result
+        return S(0)
 
     raise TypeError(f"Unknown AST node: {type(node)}")
 
@@ -179,8 +275,11 @@ def _scan(
     return APLArray([len(results)], results)
 
 
-def interpret(source: str, env: dict[str, APLArray] | None = None) -> APLArray:
+def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
     if env is None:
         env = {}
     tree = parse(source)
-    return _evaluate(tree, env)
+    result = _evaluate(tree, env)
+    if isinstance(result, _DfnClosure):
+        return S(0)
+    return result

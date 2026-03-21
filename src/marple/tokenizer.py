@@ -12,6 +12,12 @@ class TokenType(Enum):
     ASSIGN = auto()
     DIAMOND = auto()
     OPERATOR = auto()
+    LBRACE = auto()
+    RBRACE = auto()
+    OMEGA = auto()
+    ALPHA = auto()
+    NABLA = auto()
+    GUARD = auto()
     ID = auto()
     EOF = auto()
 
@@ -31,6 +37,12 @@ SINGLE_CHAR_TOKENS: dict[str, Token] = {
     "⋄": Token(TokenType.DIAMOND, "⋄"),
     "/": Token(TokenType.OPERATOR, "/"),
     "\\": Token(TokenType.OPERATOR, "\\"),
+    "{": Token(TokenType.LBRACE, "{"),
+    "}": Token(TokenType.RBRACE, "}"),
+    "⍵": Token(TokenType.OMEGA, "⍵"),
+    "⍺": Token(TokenType.ALPHA, "⍺"),
+    "∇": Token(TokenType.NABLA, "∇"),
+    ":": Token(TokenType.GUARD, ":"),
 }
 
 
