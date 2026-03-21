@@ -1,6 +1,6 @@
 # marple
 
-Mini APL implemented in Rust and Python Language Experiment. Data is in JSON format using base64 encoding..
+Mini APL in Python Language Experiment. Uses APL arrays (shape + flat data) as the internal data model.
 
 ## Installation
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**marple** - Mini APL implemented in Rust and Python Language Experiment. Data is in JSON format using base64 encoding.
+**marple** - Mini APL in Python Language Experiment. Uses APL arrays (shape + flat data) as the internal data model, inspired by Rodrigo Girão Serrão's RGSPL.
 
 ## Core Architecture
 

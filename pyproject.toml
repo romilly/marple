@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "marple"
 version = "0.1.0"
-description = "Mini APL implemented in Rust and Python Language Experiment. Data is in JSON format using base64 encoding."
+description = "Mini APL in Python Language Experiment. Uses APL arrays as the internal data model."
 authors = [{name = "Author Name", email = "author@example.com"}]
 license = {text = "MIT"}
 readme = "README.md"
