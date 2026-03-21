@@ -55,6 +55,19 @@ class TestComparison:
         assert interpret("1 2 3<2 2 2") == APLArray([3], [1, 0, 0])
 
 
+class TestCircular:
+    def test_pi_times(self) -> None:
+        # ○1 → π
+        import math
+        result = interpret("○1")
+        assert abs(result.data[0] - math.pi) < 1e-10
+
+    def test_pi_times_two(self) -> None:
+        import math
+        result = interpret("○2")
+        assert abs(result.data[0] - 2 * math.pi) < 1e-10
+
+
 class TestBoolean:
     def test_and(self) -> None:
         assert interpret("1∧1") == S(1)

@@ -19,6 +19,7 @@ from marple.functions import (
     logical_and,
     logical_not,
     logical_or,
+    pi_times,
     maximum,
     minimum,
     multiply,
@@ -111,6 +112,7 @@ MONADIC_FUNCTIONS: dict[str, object] = {
     "⍋": grade_up,
     "⍒": grade_down,
     "⌹": matrix_inverse,
+    "○": pi_times,
 }
 
 DYADIC_FUNCTIONS: dict[str, object] = {

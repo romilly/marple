@@ -96,6 +96,10 @@ def logical_not(omega: APLArray) -> APLArray:
     return _pervade_monadic(lambda x: int(not x), omega)
 
 
+def pi_times(omega: APLArray) -> APLArray:
+    return _pervade_monadic(lambda x: math.pi * x, omega)
+
+
 # Extended dyadic functions
 
 def power(alpha: APLArray, omega: APLArray) -> APLArray:
