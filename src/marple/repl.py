@@ -8,8 +8,7 @@ from marple.workspace import save_workspace, load_workspace
 
 def main() -> None:
     env: dict[str, Any] = {}
-    print("MARPLE - Mini APL in Python")
-    print("Type an APL expression, or 'quit' to exit.\n")
+    print("MARPLE - Mini APL in Python\n")
     while True:
         try:
             line = input("      ")
@@ -19,8 +18,12 @@ def main() -> None:
         line = line.strip()
         if not line:
             continue
-        if line.lower() in ("quit", ")off"):
+        if line == ")off":
             break
+        if line == ")clear":
+            env.clear()
+            print("CLEAR WS")
+            continue
         if line.startswith(")save"):
             parts = line.split(None, 1)
             path = parts[1] if len(parts) > 1 else "workspace.apl"
