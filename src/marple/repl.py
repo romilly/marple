@@ -6,6 +6,7 @@ import sys
 
 from marple.arraymodel import APLArray
 from marple.interpreter import _DfnClosure, interpret
+from marple.parser import Assignment, Program, parse
 from marple.terminal import read_line
 from marple.workspace import save_workspace, load_workspace
 
@@ -37,6 +38,19 @@ def format_result(result: APLArray) -> str:
             lines.append(" ".join(str(x) for x in row_data))
         return "\n".join(lines)
     return repr(result)
+
+
+def _is_silent(line: str) -> bool:
+    """Check if a line is a bare assignment (should not print)."""
+    try:
+        tree = parse(line)
+    except Exception:
+        return False
+    if isinstance(tree, Assignment):
+        return True
+    if isinstance(tree, Program):
+        return len(tree.statements) > 0 and isinstance(tree.statements[-1], Assignment)
+    return False
 
 
 def _user_names(env: dict[str, Any]) -> list[str]:
@@ -99,7 +113,8 @@ def main() -> None:
             continue
         try:
             result = interpret(line, env)
-            print(format_result(result))
+            if not _is_silent(line):
+                print(format_result(result))
         except Exception as e:
             print(f"ERROR: {e}")
 
