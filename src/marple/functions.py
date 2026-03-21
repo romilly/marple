@@ -76,3 +76,67 @@ def maximum(alpha: APLArray, omega: APLArray) -> APLArray:
 
 def minimum(alpha: APLArray, omega: APLArray) -> APLArray:
     return _pervade_dyadic(lambda a, b: min(a, b), alpha, omega)
+
+
+# Extended monadic functions
+
+def exponential(omega: APLArray) -> APLArray:
+    return _pervade_monadic(lambda x: math.exp(x), omega)
+
+
+def natural_log(omega: APLArray) -> APLArray:
+    return _pervade_monadic(lambda x: math.log(x), omega)
+
+
+def absolute_value(omega: APLArray) -> APLArray:
+    return _pervade_monadic(lambda x: abs(x), omega)
+
+
+def logical_not(omega: APLArray) -> APLArray:
+    return _pervade_monadic(lambda x: int(not x), omega)
+
+
+# Extended dyadic functions
+
+def power(alpha: APLArray, omega: APLArray) -> APLArray:
+    return _pervade_dyadic(lambda a, b: a ** b, alpha, omega)
+
+
+def logarithm(alpha: APLArray, omega: APLArray) -> APLArray:
+    return _pervade_dyadic(lambda a, b: math.log(b) / math.log(a), alpha, omega)
+
+
+def residue(alpha: APLArray, omega: APLArray) -> APLArray:
+    return _pervade_dyadic(lambda a, b: b % a, alpha, omega)
+
+
+def less_than(alpha: APLArray, omega: APLArray) -> APLArray:
+    return _pervade_dyadic(lambda a, b: int(a < b), alpha, omega)
+
+
+def less_equal(alpha: APLArray, omega: APLArray) -> APLArray:
+    return _pervade_dyadic(lambda a, b: int(a <= b), alpha, omega)
+
+
+def equal(alpha: APLArray, omega: APLArray) -> APLArray:
+    return _pervade_dyadic(lambda a, b: int(a == b), alpha, omega)
+
+
+def greater_equal(alpha: APLArray, omega: APLArray) -> APLArray:
+    return _pervade_dyadic(lambda a, b: int(a >= b), alpha, omega)
+
+
+def greater_than(alpha: APLArray, omega: APLArray) -> APLArray:
+    return _pervade_dyadic(lambda a, b: int(a > b), alpha, omega)
+
+
+def not_equal(alpha: APLArray, omega: APLArray) -> APLArray:
+    return _pervade_dyadic(lambda a, b: int(a != b), alpha, omega)
+
+
+def logical_and(alpha: APLArray, omega: APLArray) -> APLArray:
+    return _pervade_dyadic(lambda a, b: int(bool(a) and bool(b)), alpha, omega)
+
+
+def logical_or(alpha: APLArray, omega: APLArray) -> APLArray:
+    return _pervade_dyadic(lambda a, b: int(bool(a) or bool(b)), alpha, omega)

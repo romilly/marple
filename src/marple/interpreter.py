@@ -2,15 +2,30 @@ from __future__ import annotations
 
 from marple.arraymodel import APLArray, S
 from marple.functions import (
+    absolute_value,
     add,
     ceiling,
     divide,
+    equal,
+    exponential,
     floor,
+    greater_equal,
+    greater_than,
+    less_equal,
+    less_than,
+    logarithm,
+    logical_and,
+    logical_not,
+    logical_or,
     maximum,
     minimum,
     multiply,
+    natural_log,
     negate,
+    not_equal,
+    power,
     reciprocal,
+    residue,
     subtract,
 )
 from marple.parser import (
@@ -31,6 +46,10 @@ MONADIC_FUNCTIONS: dict[str, object] = {
     "÷": reciprocal,
     "⌈": ceiling,
     "⌊": floor,
+    "*": exponential,
+    "⍟": natural_log,
+    "|": absolute_value,
+    "~": logical_not,
 }
 
 DYADIC_FUNCTIONS: dict[str, object] = {
@@ -40,6 +59,17 @@ DYADIC_FUNCTIONS: dict[str, object] = {
     "÷": divide,
     "⌈": maximum,
     "⌊": minimum,
+    "*": power,
+    "⍟": logarithm,
+    "|": residue,
+    "<": less_than,
+    "≤": less_equal,
+    "=": equal,
+    "≥": greater_equal,
+    ">": greater_than,
+    "≠": not_equal,
+    "∧": logical_and,
+    "∨": logical_or,
 }
 
 

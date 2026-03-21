@@ -21,7 +21,7 @@ class Token:
     value: object
 
 
-FUNCTION_GLYPHS = set("+-×÷⌈⌊")
+FUNCTION_GLYPHS = set("+-×÷⌈⌊*⍟|<≤=≥>≠∧∨~")
 
 SINGLE_CHAR_TOKENS: dict[str, Token] = {
     "(": Token(TokenType.LPAREN, "("),
