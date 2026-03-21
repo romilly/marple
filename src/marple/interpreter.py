@@ -32,7 +32,11 @@ from marple.functions import (
 )
 from marple.structural import (
     catenate,
+    decode,
     drop,
+    encode,
+    grade_down,
+    grade_up,
     index_of,
     iota,
     ravel,
@@ -41,6 +45,7 @@ from marple.structural import (
     rotate,
     shape,
     take,
+    transpose,
 )
 from marple.parser import (
     Alpha,
@@ -93,6 +98,9 @@ MONADIC_FUNCTIONS: dict[str, object] = {
     "⍳": iota,
     ",": ravel,
     "⌽": reverse,
+    "⍉": transpose,
+    "⍋": grade_up,
+    "⍒": grade_down,
 }
 
 DYADIC_FUNCTIONS: dict[str, object] = {
@@ -119,6 +127,8 @@ DYADIC_FUNCTIONS: dict[str, object] = {
     "↑": take,
     "↓": drop,
     "⌽": rotate,
+    "⊤": encode,
+    "⊥": decode,
 }
 
 
