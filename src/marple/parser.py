@@ -41,6 +41,11 @@ class Var:
     name: str
 
 
+@dataclass(frozen=True)
+class Program:
+    statements: list[object]
+
+
 class Parser:
     """Right-to-left recursive descent parser for APL expressions.
 
@@ -135,10 +140,15 @@ class Parser:
         return left
 
     def parse(self) -> object:
-        result = self._parse_statement()
+        statements = [self._parse_statement()]
+        while self._current().type == TokenType.DIAMOND:
+            self._eat(TokenType.DIAMOND)
+            statements.append(self._parse_statement())
         if self._current().type != TokenType.EOF:
             raise SyntaxError(f"Unexpected token after expression: {self._current()}")
-        return result
+        if len(statements) == 1:
+            return statements[0]
+        return Program(statements)
 
 
 def parse(source: str) -> object:

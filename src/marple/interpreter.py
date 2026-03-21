@@ -18,6 +18,7 @@ from marple.parser import (
     DyadicFunc,
     MonadicFunc,
     Num,
+    Program,
     Var,
     Vector,
     parse,
@@ -74,6 +75,12 @@ def _evaluate(node: object, env: dict[str, APLArray]) -> APLArray:
         value = _evaluate(node.value, env)
         env[node.name] = value
         return value
+
+    if isinstance(node, Program):
+        result = S(0)
+        for stmt in node.statements:
+            result = _evaluate(stmt, env)
+        return result
 
     raise TypeError(f"Unknown AST node: {type(node)}")
 
