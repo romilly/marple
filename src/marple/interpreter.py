@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Callable
+
 from marple.arraymodel import APLArray, S
 from marple.functions import (
     absolute_value,
@@ -42,6 +44,7 @@ from marple.structural import (
 )
 from marple.parser import (
     Assignment,
+    DerivedFunc,
     DyadicFunc,
     MonadicFunc,
     Num,
@@ -128,6 +131,17 @@ def _evaluate(node: object, env: dict[str, APLArray]) -> APLArray:
         env[node.name] = value
         return value
 
+    if isinstance(node, DerivedFunc):
+        operand = _evaluate(node.operand, env)
+        func = DYADIC_FUNCTIONS.get(node.function)
+        if func is None:
+            raise ValueError(f"Unknown function for operator: {node.function}")
+        if node.operator == "/":
+            return _reduce(func, operand)  # type: ignore[arg-type]
+        if node.operator == "\\":
+            return _scan(func, operand)  # type: ignore[arg-type]
+        raise ValueError(f"Unknown operator: {node.operator}")
+
     if isinstance(node, Program):
         result = S(0)
         for stmt in node.statements:
@@ -135,6 +149,34 @@ def _evaluate(node: object, env: dict[str, APLArray]) -> APLArray:
         return result
 
     raise TypeError(f"Unknown AST node: {type(node)}")
+
+
+def _reduce(
+    func: Callable[[APLArray, APLArray], APLArray],
+    omega: APLArray,
+) -> APLArray:
+    data = omega.data
+    if len(data) == 0:
+        raise ValueError("Cannot reduce empty array")
+    result = S(data[-1])
+    for i in range(len(data) - 2, -1, -1):
+        result = func(S(data[i]), result)
+    return result
+
+
+def _scan(
+    func: Callable[[APLArray, APLArray], APLArray],
+    omega: APLArray,
+) -> APLArray:
+    data = omega.data
+    if len(data) == 0:
+        return APLArray([0], [])
+    results = [data[0]]
+    acc = S(data[0])
+    for i in range(1, len(data)):
+        acc = func(acc, S(data[i]))
+        results.append(acc.data[0])
+    return APLArray([len(results)], results)
 
 
 def interpret(source: str, env: dict[str, APLArray] | None = None) -> APLArray:

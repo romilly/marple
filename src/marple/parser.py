@@ -42,6 +42,13 @@ class Var:
 
 
 @dataclass(frozen=True)
+class DerivedFunc:
+    operator: str
+    function: str
+    operand: object  # AST node
+
+
+@dataclass(frozen=True)
 class Program:
     statements: list[object]
 
@@ -120,11 +127,17 @@ class Parser:
             assert isinstance(name_token.value, str)
             return Assignment(name_token.value, value)
 
-        # Check for monadic function (function at start of expression)
+        # Check for function (possibly followed by operator)
         if self._current().type == TokenType.FUNCTION:
             func_token = self._eat(TokenType.FUNCTION)
-            operand = self._parse_statement()
             assert isinstance(func_token.value, str)
+            # Check if operator follows (e.g. +/ or +\)
+            if self._current().type == TokenType.OPERATOR:
+                op_token = self._eat(TokenType.OPERATOR)
+                assert isinstance(op_token.value, str)
+                operand = self._parse_statement()
+                return DerivedFunc(op_token.value, func_token.value, operand)
+            operand = self._parse_statement()
             return MonadicFunc(func_token.value, operand)
 
         # Parse left argument (array)

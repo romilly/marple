@@ -11,6 +11,7 @@ class TokenType(Enum):
     RPAREN = auto()
     ASSIGN = auto()
     DIAMOND = auto()
+    OPERATOR = auto()
     ID = auto()
     EOF = auto()
 
@@ -28,6 +29,8 @@ SINGLE_CHAR_TOKENS: dict[str, Token] = {
     ")": Token(TokenType.RPAREN, ")"),
     "←": Token(TokenType.ASSIGN, "←"),
     "⋄": Token(TokenType.DIAMOND, "⋄"),
+    "/": Token(TokenType.OPERATOR, "/"),
+    "\\": Token(TokenType.OPERATOR, "\\"),
 }
 
 
