@@ -73,7 +73,12 @@ def _user_names(env: dict[str, Any]) -> list[str]:
 
 def main() -> None:
     env: dict[str, Any] = {}
-    print("MARPLE - Mini APL in Python\n")
+    from importlib.metadata import version
+    try:
+        ver = version("marple")
+    except Exception:
+        ver = "unknown"
+    print(f"MARPLE v{ver} - Mini APL in Python\n")
     use_terminal = sys.stdin.isatty()
     while True:
         if use_terminal:
