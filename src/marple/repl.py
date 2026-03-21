@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
+import sys
+
 from marple.arraymodel import APLArray
-from marple.glyphs import expand_glyphs
 from marple.interpreter import _DfnClosure, interpret
+from marple.terminal import read_line
 from marple.workspace import save_workspace, load_workspace
 
 
@@ -19,18 +21,21 @@ def _user_names(env: dict[str, Any]) -> list[str]:
 def main() -> None:
     env: dict[str, Any] = {}
     print("MARPLE - Mini APL in Python\n")
+    use_terminal = sys.stdin.isatty()
     while True:
-        try:
-            line = input("      ")
-        except (EOFError, KeyboardInterrupt):
-            print()
+        if use_terminal:
+            line = read_line()
+        else:
+            try:
+                line = input("      ")
+            except (EOFError, KeyboardInterrupt):
+                print()
+                break
+        if line is None:
             break
         line = line.strip()
         if not line:
             continue
-        if "`" in line and not line.startswith(")"):
-            line = expand_glyphs(line)
-            print(f"      {line}")
         if line == ")off":
             break
         if line == ")clear":
