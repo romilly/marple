@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from marple.interpreter import interpret
+from marple.workspace import save_workspace, load_workspace
 
 
 def main() -> None:
@@ -20,6 +21,24 @@ def main() -> None:
             continue
         if line.lower() == "quit":
             break
+        if line.startswith(")save"):
+            parts = line.split(None, 1)
+            path = parts[1] if len(parts) > 1 else "workspace.apl"
+            try:
+                save_workspace(env, path)
+                print(f"Saved: {path}")
+            except Exception as e:
+                print(f"ERROR: {e}")
+            continue
+        if line.startswith(")load"):
+            parts = line.split(None, 1)
+            path = parts[1] if len(parts) > 1 else "workspace.apl"
+            try:
+                load_workspace(env, path)
+                print(f"Loaded: {path}")
+            except Exception as e:
+                print(f"ERROR: {e}")
+            continue
         try:
             result = interpret(line, env)
             # Display result

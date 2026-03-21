@@ -513,6 +513,13 @@ def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
         env["⎕IO"] = S(1)
     tree = parse(source)
     result = _evaluate(tree, env)
+    # Track source for dfn assignments so workspace save can reconstruct them
+    if isinstance(tree, Assignment):
+        value = env.get(tree.name)
+        if isinstance(value, _DfnClosure):
+            if "__sources__" not in env:
+                env["__sources__"] = {}
+            env["__sources__"][tree.name] = source.strip()
     if isinstance(result, _DfnClosure):
         return S(0)
     return result
