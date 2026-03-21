@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from marple.arraymodel import APLArray
+from marple.glyphs import expand_glyphs
 from marple.interpreter import _DfnClosure, interpret
 from marple.workspace import save_workspace, load_workspace
 
@@ -27,6 +28,9 @@ def main() -> None:
         line = line.strip()
         if not line:
             continue
+        if "`" in line and not line.startswith(")"):
+            line = expand_glyphs(line)
+            print(f"      {line}")
         if line == ")off":
             break
         if line == ")clear":
