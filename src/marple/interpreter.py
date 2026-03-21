@@ -17,6 +17,7 @@ from marple.functions import (
     less_than,
     logarithm,
     logical_and,
+    circular,
     logical_not,
     logical_or,
     pi_times,
@@ -144,6 +145,7 @@ DYADIC_FUNCTIONS: dict[str, object] = {
     "/": replicate,
     "\\": expand,
     "⌹": matrix_divide,
+    "○": circular,
 }
 
 

@@ -100,6 +100,34 @@ def pi_times(omega: APLArray) -> APLArray:
     return _pervade_monadic(lambda x: math.pi * x, omega)
 
 
+_CIRCULAR: dict[int, Callable[[float], float]] = {
+    0: lambda x: math.sqrt(1 - x * x),
+    1: math.sin,
+    2: math.cos,
+    3: math.tan,
+    4: lambda x: math.sqrt(1 + x * x),
+    5: math.sinh,
+    6: math.cosh,
+    7: math.tanh,
+    -1: math.asin,
+    -2: math.acos,
+    -3: math.atan,
+    -4: lambda x: math.sqrt(x * x - 1),
+    -5: math.asinh,
+    -6: math.acosh,
+    -7: math.atanh,
+}
+
+
+def circular(alpha: APLArray, omega: APLArray) -> APLArray:
+    def _apply(a: int | float, b: int | float) -> int | float:
+        fn = _CIRCULAR.get(int(a))
+        if fn is None:
+            raise ValueError(f"Unknown circular function selector: {a}")
+        return fn(float(b))
+    return _pervade_dyadic(_apply, alpha, omega)
+
+
 # Extended dyadic functions
 
 def power(alpha: APLArray, omega: APLArray) -> APLArray:

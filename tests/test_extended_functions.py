@@ -68,6 +68,37 @@ class TestCircular:
         assert abs(result.data[0] - 2 * math.pi) < 1e-10
 
 
+    def test_sin(self) -> None:
+        import math
+        result = interpret("1○○0.5")  # sin(π/2) = 1
+        assert abs(result.data[0] - 1.0) < 1e-10
+
+    def test_cos(self) -> None:
+        import math
+        result = interpret("2○○1")  # cos(π) = -1
+        assert abs(result.data[0] - (-1.0)) < 1e-10
+
+    def test_tan(self) -> None:
+        import math
+        result = interpret("3○0")  # tan(0) = 0
+        assert abs(result.data[0]) < 1e-10
+
+    def test_arcsin(self) -> None:
+        import math
+        result = interpret("¯1○1")  # arcsin(1) = π/2
+        assert abs(result.data[0] - math.pi / 2) < 1e-10
+
+    def test_sinh(self) -> None:
+        import math
+        result = interpret("5○1")  # sinh(1)
+        assert abs(result.data[0] - math.sinh(1)) < 1e-10
+
+    def test_sqrt_via_circle(self) -> None:
+        # 0○x → sqrt(1-x²)
+        result = interpret("0○0.6")  # sqrt(1 - 0.36) = sqrt(0.64) = 0.8
+        assert abs(result.data[0] - 0.8) < 1e-10
+
+
 class TestBoolean:
     def test_and(self) -> None:
         assert interpret("1∧1") == S(1)
