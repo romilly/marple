@@ -19,7 +19,7 @@ def main() -> None:
         line = line.strip()
         if not line:
             continue
-        if line.lower() == "quit":
+        if line.lower() in ("quit", ")off"):
             break
         if line.startswith(")save"):
             parts = line.split(None, 1)
