@@ -49,6 +49,21 @@ class DerivedFunc:
 
 
 @dataclass(frozen=True)
+class InnerProduct:
+    left_fn: str
+    right_fn: str
+    left: object  # AST node
+    right: object  # AST node
+
+
+@dataclass(frozen=True)
+class OuterProduct:
+    function: str
+    left: object  # AST node
+    right: object  # AST node
+
+
+@dataclass(frozen=True)
 class Omega:
     pass
 
@@ -244,14 +259,32 @@ class Parser:
         # Parse left argument (array — may include dfn, ⍵, ⍺, ∇)
         left = self._parse_array()
 
-        # Check for dyadic primitive function
+        # Check for dyadic primitive function or inner/outer product
         if self._current().type == TokenType.FUNCTION:
             func_glyph, op_glyph = self._parse_function_expr()
+            if op_glyph == ".":
+                # Inner product: left f.g right
+                right_fn_token = self._eat(TokenType.FUNCTION)
+                assert isinstance(right_fn_token.value, str)
+                right = self._parse_statement()
+                return InnerProduct(func_glyph, right_fn_token.value, left, right)
             if op_glyph is not None:
                 operand = self._parse_statement()
                 return DerivedFunc(op_glyph, func_glyph, operand)
             right = self._parse_statement()
             return DyadicFunc(func_glyph, left, right)
+
+        # Check for outer product: left ∘.f right
+        if (
+            self._current().type == TokenType.OPERATOR
+            and self._current().value == "∘"
+        ):
+            self._eat(TokenType.OPERATOR)  # ∘
+            self._eat(TokenType.OPERATOR)  # .
+            func_token = self._eat(TokenType.FUNCTION)
+            assert isinstance(func_token.value, str)
+            right = self._parse_statement()
+            return OuterProduct(func_token.value, left, right)
 
         # Check for dfn/var in dyadic position: left {body} right  or  left name right
         if self._current().type == TokenType.LBRACE:

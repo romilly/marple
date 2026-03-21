@@ -37,6 +37,8 @@ SINGLE_CHAR_TOKENS: dict[str, Token] = {
     "⋄": Token(TokenType.DIAMOND, "⋄"),
     "/": Token(TokenType.OPERATOR, "/"),
     "\\": Token(TokenType.OPERATOR, "\\"),
+    ".": Token(TokenType.OPERATOR, "."),
+    "∘": Token(TokenType.OPERATOR, "∘"),
     "{": Token(TokenType.LBRACE, "{"),
     "}": Token(TokenType.RBRACE, "}"),
     "⍵": Token(TokenType.OMEGA, "⍵"),

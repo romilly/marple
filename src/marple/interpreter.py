@@ -56,11 +56,13 @@ from marple.parser import (
     DyadicDfnCall,
     DyadicFunc,
     Guard,
+    InnerProduct,
     MonadicDfnCall,
     MonadicFunc,
     Nabla,
     Num,
     Omega,
+    OuterProduct,
     Program,
     Var,
     Vector,
@@ -235,6 +237,26 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         env[node.name] = value
         return value if isinstance(value, APLArray) else S(0)
 
+    if isinstance(node, InnerProduct):
+        left = _evaluate(node.left, env)
+        right = _evaluate(node.right, env)
+        left_fn = DYADIC_FUNCTIONS.get(node.left_fn)
+        right_fn = DYADIC_FUNCTIONS.get(node.right_fn)
+        if left_fn is None or right_fn is None:
+            raise ValueError(f"Unknown function in inner product")
+        reduce_fn: Callable[[APLArray, APLArray], APLArray] = left_fn  # type: ignore[assignment]
+        apply_fn: Callable[[APLArray, APLArray], APLArray] = right_fn  # type: ignore[assignment]
+        return _inner_product(reduce_fn, apply_fn, left, right)
+
+    if isinstance(node, OuterProduct):
+        left = _evaluate(node.left, env)
+        right = _evaluate(node.right, env)
+        func = DYADIC_FUNCTIONS.get(node.function)
+        if func is None:
+            raise ValueError(f"Unknown function in outer product: {node.function}")
+        apply_fn_: Callable[[APLArray, APLArray], APLArray] = func  # type: ignore[assignment]
+        return _outer_product(apply_fn_, left, right)
+
     if isinstance(node, DerivedFunc):
         operand = _evaluate(node.operand, env)
         func = DYADIC_FUNCTIONS.get(node.function)
@@ -283,6 +305,69 @@ def _scan(
         acc = func(acc, S(data[i]))
         results.append(acc.data[0])
     return APLArray([len(results)], results)
+
+
+def _inner_product(
+    reduce_fn: Callable[[APLArray, APLArray], APLArray],
+    apply_fn: Callable[[APLArray, APLArray], APLArray],
+    alpha: APLArray,
+    omega: APLArray,
+) -> APLArray:
+    # Vector inner product: reduce(apply(a, b))
+    if len(alpha.shape) <= 1 and len(omega.shape) <= 1:
+        paired = [apply_fn(S(a), S(b)) for a, b in zip(alpha.data, omega.data)]
+        result = paired[-1]
+        for i in range(len(paired) - 2, -1, -1):
+            result = reduce_fn(paired[i], result)
+        return result
+    # Matrix inner product
+    if len(alpha.shape) == 2 and len(omega.shape) == 2:
+        m, k1 = alpha.shape
+        k2, n = omega.shape
+        if k1 != k2:
+            raise ValueError(f"Inner product shape mismatch: {alpha.shape} vs {omega.shape}")
+        result_data: list[object] = []
+        for i in range(m):
+            for j in range(n):
+                row = [alpha.data[i * k1 + p] for p in range(k1)]
+                col = [omega.data[p * n + j] for p in range(k2)]
+                paired = [apply_fn(S(a), S(b)) for a, b in zip(row, col)]
+                val = paired[-1]
+                for idx in range(len(paired) - 2, -1, -1):
+                    val = reduce_fn(paired[idx], val)
+                result_data.append(val.data[0])
+        return APLArray([m, n], result_data)
+    # Vector × matrix or matrix × vector
+    if len(alpha.shape) == 1 and len(omega.shape) == 2:
+        k, n = omega.shape
+        if len(alpha.data) != k:
+            raise ValueError(f"Inner product shape mismatch")
+        result_data = []
+        for j in range(n):
+            col = [omega.data[p * n + j] for p in range(k)]
+            paired = [apply_fn(S(a), S(b)) for a, b in zip(alpha.data, col)]
+            val = paired[-1]
+            for idx in range(len(paired) - 2, -1, -1):
+                val = reduce_fn(paired[idx], val)
+            result_data.append(val.data[0])
+        return APLArray([n], result_data)
+    raise ValueError(f"Inner product not supported for shapes {alpha.shape} and {omega.shape}")
+
+
+def _outer_product(
+    func: Callable[[APLArray, APLArray], APLArray],
+    alpha: APLArray,
+    omega: APLArray,
+) -> APLArray:
+    a_data = alpha.data if not alpha.is_scalar() else [alpha.data[0]]
+    b_data = omega.data if not omega.is_scalar() else [omega.data[0]]
+    a_shape = alpha.shape if not alpha.is_scalar() else [1]
+    b_shape = omega.shape if not omega.is_scalar() else [1]
+    result_data: list[object] = []
+    for a in a_data:
+        for b in b_data:
+            result_data.append(func(S(a), S(b)).data[0])
+    return APLArray(a_shape + b_shape, result_data)
 
 
 def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
