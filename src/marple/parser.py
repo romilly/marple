@@ -13,6 +13,11 @@ class Num:
 
 
 @dataclass(frozen=True)
+class Str:
+    value: str
+
+
+@dataclass(frozen=True)
 class Vector:
     elements: list[Num]
 
@@ -183,6 +188,10 @@ class Parser:
             self._eat(TokenType.NUMBER)
             assert isinstance(token.value, (int, float))
             return Num(token.value)
+        if token.type == TokenType.STRING:
+            self._eat(TokenType.STRING)
+            assert isinstance(token.value, str)
+            return Str(token.value)
         if token.type == TokenType.ID:
             self._eat(TokenType.ID)
             assert isinstance(token.value, str)
@@ -273,6 +282,16 @@ class Parser:
                 return DerivedFunc(op_glyph, func_glyph, operand)
             right = self._parse_statement()
             return DyadicFunc(func_glyph, left, right)
+
+        # Check for dyadic operator as function: left / right or left \ right
+        if (
+            self._current().type == TokenType.OPERATOR
+            and self._current().value in ("/", "\\")
+        ):
+            op_token = self._eat(TokenType.OPERATOR)
+            assert isinstance(op_token.value, str)
+            right = self._parse_statement()
+            return DyadicFunc(op_token.value, left, right)
 
         # Check for outer product: left ∘.f right
         if (

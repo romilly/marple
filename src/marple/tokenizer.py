@@ -11,6 +11,7 @@ class TokenType(Enum):
     RPAREN = auto()
     ASSIGN = auto()
     DIAMOND = auto()
+    STRING = auto()
     OPERATOR = auto()
     LBRACE = auto()
     RBRACE = auto()
@@ -78,6 +79,16 @@ class Tokenizer:
         value: int | float = float(result) if has_dot else int(result)
         return Token(TokenType.NUMBER, value)
 
+    def _read_string(self) -> Token:
+        self._advance()  # skip opening quote
+        result = ""
+        while self._current() is not None and self._current() != "'":
+            result += self._current()  # type: ignore[operator]
+            self._advance()
+        if self._current() == "'":
+            self._advance()  # skip closing quote
+        return Token(TokenType.STRING, result)
+
     def _read_id(self) -> Token:
         result = ""
         while self._current() is not None and (self._current().isalnum() or self._current() == "_"):  # type: ignore[union-attr]
@@ -94,7 +105,9 @@ class Tokenizer:
                 break
             if ch == "⍝":
                 break
-            if ch == "¯":
+            if ch == "'":
+                tokens.append(self._read_string())
+            elif ch == "¯":
                 self._advance()
                 num_token = self._read_number()
                 value = num_token.value

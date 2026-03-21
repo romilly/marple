@@ -164,3 +164,35 @@ def decode(alpha: APLArray, omega: APLArray) -> APLArray:
     for b, v in zip(bases, values):
         result = result * int(b) + int(v)  # type: ignore[arg-type]
     return S(result)
+
+
+def replicate(alpha: APLArray, omega: APLArray) -> APLArray:
+    """Dyadic /: replicate/compress. Each element of alpha says how many
+    times to repeat the corresponding element of omega."""
+    counts = [int(x) for x in alpha.data]
+    data = list(omega.data)
+    if len(counts) != len(data):
+        raise ValueError(f"Length mismatch: {len(counts)} vs {len(data)}")
+    result: list[object] = []
+    for count, val in zip(counts, data):
+        for _ in range(count):
+            result.append(val)
+    return APLArray([len(result)], result)
+
+
+def expand(alpha: APLArray, omega: APLArray) -> APLArray:
+    """Dyadic \\: expand. Insert fill elements (0) where alpha is 0."""
+    mask = [int(x) for x in alpha.data]
+    data = list(omega.data)
+    result: list[object] = []
+    data_idx = 0
+    for m in mask:
+        if m:
+            if data_idx < len(data):
+                result.append(data[data_idx])
+                data_idx += 1
+            else:
+                result.append(0)
+        else:
+            result.append(0)
+    return APLArray([len(result)], result)

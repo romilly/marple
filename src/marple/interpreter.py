@@ -35,11 +35,13 @@ from marple.structural import (
     decode,
     drop,
     encode,
+    expand,
     grade_down,
     grade_up,
     index_of,
     iota,
     ravel,
+    replicate,
     reshape,
     reverse,
     rotate,
@@ -64,6 +66,7 @@ from marple.parser import (
     Omega,
     OuterProduct,
     Program,
+    Str,
     Var,
     Vector,
     parse,
@@ -131,7 +134,22 @@ DYADIC_FUNCTIONS: dict[str, object] = {
     "⌽": rotate,
     "⊤": encode,
     "⊥": decode,
+    "/": replicate,
+    "\\": expand,
 }
+
+
+def _format_array(omega: APLArray) -> APLArray:
+    """Monadic ⍕: format an array as a character vector."""
+    if omega.is_scalar():
+        s = str(omega.data[0])
+    else:
+        parts = []
+        for val in omega.data:
+            parts.append(str(val))
+        s = " ".join(parts)
+    chars = list(s)
+    return APLArray([len(chars)], chars)
 
 
 def _call_dfn(
@@ -170,6 +188,10 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
     if isinstance(node, Num):
         return S(node.value)
 
+    if isinstance(node, Str):
+        chars = list(node.value)
+        return APLArray([len(chars)], chars)
+
     if isinstance(node, Vector):
         values = [el.value for el in node.elements]
         return APLArray([len(values)], list(values))
@@ -203,6 +225,13 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         return _DfnClosure(node, env)  # type: ignore[return-value]
 
     if isinstance(node, MonadicFunc):
+        if node.function == "⍎":
+            operand = _evaluate(node.operand, env)
+            source = "".join(str(c) for c in operand.data)
+            return _evaluate(parse(source), env)
+        if node.function == "⍕":
+            operand = _evaluate(node.operand, env)
+            return _format_array(operand)
         operand = _evaluate(node.operand, env)
         func = MONADIC_FUNCTIONS.get(node.function)
         if func is None:
