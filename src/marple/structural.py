@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from __future__ import annotations
+
 from marple.arraymodel import APLArray, S
 
 
@@ -196,3 +198,52 @@ def expand(alpha: APLArray, omega: APLArray) -> APLArray:
         else:
             result.append(0)
     return APLArray([len(result)], result)
+
+
+def matrix_inverse(omega: APLArray) -> APLArray:
+    """Monadic ⌹: matrix inverse using Gauss-Jordan elimination."""
+    if len(omega.shape) != 2 or omega.shape[0] != omega.shape[1]:
+        raise ValueError("Matrix inverse requires a square matrix")
+    n = omega.shape[0]
+    # Build augmented matrix [A|I]
+    aug: list[list[float]] = []
+    for i in range(n):
+        row = [float(omega.data[i * n + j]) for j in range(n)]
+        ident = [1.0 if j == i else 0.0 for j in range(n)]
+        aug.append(row + ident)
+    # Gauss-Jordan elimination
+    for col in range(n):
+        max_row = col
+        for row in range(col + 1, n):
+            if abs(aug[row][col]) > abs(aug[max_row][col]):
+                max_row = row
+        aug[col], aug[max_row] = aug[max_row], aug[col]
+        pivot = aug[col][col]
+        if abs(pivot) < 1e-15:
+            raise ValueError("Singular matrix")
+        for j in range(2 * n):
+            aug[col][j] /= pivot
+        for row in range(n):
+            if row != col:
+                factor = aug[row][col]
+                for j in range(2 * n):
+                    aug[row][j] -= factor * aug[col][j]
+    result: list[object] = []
+    for i in range(n):
+        for j in range(n):
+            result.append(aug[i][n + j])
+    return APLArray([n, n], result)
+
+
+def matrix_divide(alpha: APLArray, omega: APLArray) -> APLArray:
+    """Dyadic ⌹: solve linear system b⌹A (find x where Ax=b)."""
+    inv = matrix_inverse(omega)
+    n = inv.shape[0]
+    b = list(alpha.data)
+    result: list[object] = []
+    for i in range(n):
+        val = 0.0
+        for j in range(n):
+            val += float(inv.data[i * n + j]) * float(b[j])
+        result.append(val)
+    return APLArray([n], result)

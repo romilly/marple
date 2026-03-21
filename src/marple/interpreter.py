@@ -40,6 +40,8 @@ from marple.structural import (
     grade_up,
     index_of,
     iota,
+    matrix_divide,
+    matrix_inverse,
     ravel,
     replicate,
     reshape,
@@ -108,6 +110,7 @@ MONADIC_FUNCTIONS: dict[str, object] = {
     "⍉": transpose,
     "⍋": grade_up,
     "⍒": grade_down,
+    "⌹": matrix_inverse,
 }
 
 DYADIC_FUNCTIONS: dict[str, object] = {
@@ -138,6 +141,7 @@ DYADIC_FUNCTIONS: dict[str, object] = {
     "⊥": decode,
     "/": replicate,
     "\\": expand,
+    "⌹": matrix_divide,
 }
 
 
