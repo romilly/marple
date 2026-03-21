@@ -365,6 +365,8 @@ def _inner_product(
 ) -> APLArray:
     # Vector inner product: reduce(apply(a, b))
     if len(alpha.shape) <= 1 and len(omega.shape) <= 1:
+        if len(alpha.data) != len(omega.data):
+            raise ValueError(f"Inner product length error: {len(alpha.data)} vs {len(omega.data)}")
         paired = [apply_fn(S(a), S(b)) for a, b in zip(alpha.data, omega.data)]
         result = paired[-1]
         for i in range(len(paired) - 2, -1, -1):

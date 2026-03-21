@@ -18,6 +18,13 @@ class TestInnerProduct:
         assert result == APLArray([2, 2], [19, 22, 43, 50])
 
 
+    def test_length_error(self) -> None:
+        # 2 3+.×3 4 5 → length error (2 vs 3)
+        import pytest
+        with pytest.raises(ValueError, match="length"):
+            interpret("2 3+.×3 4 5")
+
+
 class TestOuterProduct:
     def test_multiplication_table(self) -> None:
         # (⍳3)∘.×(⍳4) → 3×4 multiplication table
