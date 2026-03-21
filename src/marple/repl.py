@@ -2,8 +2,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from marple.interpreter import interpret
+from marple.arraymodel import APLArray
+from marple.interpreter import _DfnClosure, interpret
 from marple.workspace import save_workspace, load_workspace
+
+
+def _user_names(env: dict[str, Any]) -> list[str]:
+    return sorted(
+        name for name in env
+        if not name.startswith("⎕") and not name.startswith("__")
+        and name not in ("⍵", "⍺", "∇")
+    )
 
 
 def main() -> None:
@@ -23,6 +32,14 @@ def main() -> None:
         if line == ")clear":
             env.clear()
             print("CLEAR WS")
+            continue
+        if line == ")fns":
+            fns = [n for n in _user_names(env) if isinstance(env[n], _DfnClosure)]
+            print("  ".join(fns) if fns else "")
+            continue
+        if line == ")vars":
+            vars_ = [n for n in _user_names(env) if isinstance(env[n], APLArray)]
+            print("  ".join(vars_) if vars_ else "")
             continue
         if line.startswith(")save"):
             parts = line.split(None, 1)
