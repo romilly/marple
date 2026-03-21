@@ -33,9 +33,11 @@ MARPLE v0.1.0 - Mini APL in Python
 3 6 9 12
 ```
 
-### Backtick input
+### APL character input
 
-Type APL glyphs using backtick prefixes — they appear immediately as you type:
+If you have a Dyalog APL keyboard layout installed (e.g. via `setxkbmap` with `grp:win_switch`), you can use the Win key to type APL glyphs directly.
+
+Alternatively, type APL glyphs using backtick prefixes — they appear immediately as you type:
 
 | Key | Glyph | Key | Glyph | Key | Glyph | Key | Glyph |
 |-----|-------|-----|-------|-----|-------|-----|-------|
