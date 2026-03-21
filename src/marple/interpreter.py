@@ -58,6 +58,7 @@ from marple.parser import (
     DyadicDfnCall,
     DyadicFunc,
     Guard,
+    Index,
     InnerProduct,
     MonadicDfnCall,
     MonadicFunc,
@@ -67,6 +68,7 @@ from marple.parser import (
     OuterProduct,
     Program,
     Str,
+    SysVar,
     Var,
     Vector,
     parse,
@@ -206,6 +208,16 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
             return val  # type: ignore[return-value]
         raise TypeError(f"Unexpected value type for {node.name}: {type(val)}")
 
+    if isinstance(node, SysVar):
+        if node.name not in env:
+            raise NameError(f"Undefined system variable: {node.name}")
+        return env[node.name]
+
+    if isinstance(node, Index):
+        array = _evaluate(node.array, env)
+        io = int(env.get("⎕IO", S(1)).data[0])
+        return _bracket_index(array, node.indices, env, io)
+
     if isinstance(node, Omega):
         if "⍵" not in env:
             raise NameError("⍵ used outside of dfn")
@@ -232,6 +244,11 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         if node.function == "⍕":
             operand = _evaluate(node.operand, env)
             return _format_array(operand)
+        if node.function == "⍳":
+            operand = _evaluate(node.operand, env)
+            io = int(env.get("⎕IO", S(1)).data[0])
+            n = int(operand.data[0])
+            return APLArray([n], list(range(io, n + io)))
         operand = _evaluate(node.operand, env)
         func = MONADIC_FUNCTIONS.get(node.function)
         if func is None:
@@ -399,9 +416,59 @@ def _outer_product(
     return APLArray(a_shape + b_shape, result_data)
 
 
+def _bracket_index(
+    array: APLArray,
+    indices: list[object | None],
+    env: dict[str, Any],
+    io: int,
+) -> APLArray:
+    if len(array.shape) <= 1:
+        # Vector indexing: v[idx]
+        idx_node = indices[0]
+        if idx_node is None:
+            return APLArray(list(array.shape), list(array.data))
+        idx = _evaluate(idx_node, env)
+        if idx.is_scalar():
+            i = int(idx.data[0]) - io
+            return S(array.data[i])
+        result = [array.data[int(i) - io] for i in idx.data]
+        return APLArray([len(result)], result)
+    if len(array.shape) == 2:
+        rows, cols = array.shape
+        row_idx = indices[0] if len(indices) > 0 else None
+        col_idx = indices[1] if len(indices) > 1 else None
+        # Evaluate indices
+        row_vals: list[int] | None = None
+        col_vals: list[int] | None = None
+        if row_idx is not None:
+            r = _evaluate(row_idx, env)
+            row_vals = [int(x) - io for x in (r.data if not r.is_scalar() else [r.data[0]])]
+        if col_idx is not None:
+            c = _evaluate(col_idx, env)
+            col_vals = [int(x) - io for x in (c.data if not c.is_scalar() else [c.data[0]])]
+        if row_vals is None:
+            row_vals = list(range(rows))
+        if col_vals is None:
+            col_vals = list(range(cols))
+        result: list[object] = []
+        for r in row_vals:
+            for c in col_vals:
+                result.append(array.data[r * cols + c])
+        if len(row_vals) == 1 and len(col_vals) == 1:
+            return S(result[0])
+        if len(row_vals) == 1:
+            return APLArray([len(col_vals)], result)
+        if len(col_vals) == 1:
+            return APLArray([len(row_vals)], result)
+        return APLArray([len(row_vals), len(col_vals)], result)
+    raise ValueError(f"Bracket indexing not supported for rank {len(array.shape)}")
+
+
 def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
     if env is None:
         env = {}
+    if "⎕IO" not in env:
+        env["⎕IO"] = S(1)
     tree = parse(source)
     result = _evaluate(tree, env)
     if isinstance(result, _DfnClosure):

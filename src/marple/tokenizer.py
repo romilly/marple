@@ -19,6 +19,10 @@ class TokenType(Enum):
     ALPHA = auto()
     NABLA = auto()
     GUARD = auto()
+    LBRACKET = auto()
+    RBRACKET = auto()
+    SEMICOLON = auto()
+    SYSVAR = auto()
     ID = auto()
     EOF = auto()
 
@@ -46,6 +50,9 @@ SINGLE_CHAR_TOKENS: dict[str, Token] = {
     "⍺": Token(TokenType.ALPHA, "⍺"),
     "∇": Token(TokenType.NABLA, "∇"),
     ":": Token(TokenType.GUARD, ":"),
+    "[": Token(TokenType.LBRACKET, "["),
+    "]": Token(TokenType.RBRACKET, "]"),
+    ";": Token(TokenType.SEMICOLON, ";"),
 }
 
 
@@ -107,6 +114,13 @@ class Tokenizer:
                 break
             if ch == "'":
                 tokens.append(self._read_string())
+            elif ch == "⎕":
+                self._advance()
+                name = ""
+                while self._current() is not None and self._current().isalpha():  # type: ignore[union-attr]
+                    name += self._current()  # type: ignore[operator]
+                    self._advance()
+                tokens.append(Token(TokenType.SYSVAR, "⎕" + name))
             elif ch == "¯":
                 self._advance()
                 num_token = self._read_number()

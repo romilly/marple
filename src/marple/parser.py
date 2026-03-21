@@ -69,6 +69,17 @@ class OuterProduct:
 
 
 @dataclass(frozen=True)
+class SysVar:
+    name: str
+
+
+@dataclass(frozen=True)
+class Index:
+    array: object  # AST node
+    indices: list[object | None]  # None means "all along this axis"
+
+
+@dataclass(frozen=True)
 class Omega:
     pass
 
@@ -205,9 +216,41 @@ class Parser:
         if token.type == TokenType.NABLA:
             self._eat(TokenType.NABLA)
             return Nabla()
+        if token.type == TokenType.SYSVAR:
+            self._eat(TokenType.SYSVAR)
+            assert isinstance(token.value, str)
+            return SysVar(token.value)
         if token.type == TokenType.LBRACE:
             return self._parse_dfn()
         raise SyntaxError(f"Unexpected token: {token}")
+
+    def _parse_atom_with_index(self) -> object:
+        """Parse an atom, then check for bracket indexing."""
+        atom = self._parse_atom()
+        if self._current().type == TokenType.LBRACKET:
+            return self._parse_bracket_index(atom)
+        return atom
+
+    def _parse_bracket_index(self, array: object) -> Index:
+        """Parse [idx] or [row;col] bracket indexing."""
+        self._eat(TokenType.LBRACKET)
+        indices: list[object | None] = []
+        # First index (may be empty for [;col])
+        if self._current().type == TokenType.SEMICOLON:
+            indices.append(None)
+        elif self._current().type == TokenType.RBRACKET:
+            indices.append(None)
+        else:
+            indices.append(self._parse_statement())
+        # Additional indices separated by ;
+        while self._current().type == TokenType.SEMICOLON:
+            self._eat(TokenType.SEMICOLON)
+            if self._current().type in (TokenType.SEMICOLON, TokenType.RBRACKET):
+                indices.append(None)
+            else:
+                indices.append(self._parse_statement())
+        self._eat(TokenType.RBRACKET)
+        return Index(array, indices)
 
     def _is_array_start(self) -> bool:
         return self._current().type in (
@@ -219,7 +262,7 @@ class Parser:
     def _parse_array(self) -> object:
         """Parse one or more adjacent numeric atoms as a vector,
         or a single non-numeric atom."""
-        first = self._parse_atom()
+        first = self._parse_atom_with_index()
         if not isinstance(first, Num):
             return first
         elements: list[Num] = [first]
@@ -244,13 +287,13 @@ class Parser:
 
     def _parse_statement(self) -> object:
         """Parse a statement: assignment or expression."""
-        # Check for assignment: ID ←
+        # Check for assignment: ID ← or ⎕SYSVAR ←
         if (
-            self._current().type == TokenType.ID
+            self._current().type in (TokenType.ID, TokenType.SYSVAR)
             and self._peek() is not None
             and self._peek().type == TokenType.ASSIGN  # type: ignore[union-attr]
         ):
-            name_token = self._eat(TokenType.ID)
+            name_token = self._eat(self._current().type)
             self._eat(TokenType.ASSIGN)
             value = self._parse_statement()
             assert isinstance(name_token.value, str)
