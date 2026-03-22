@@ -12,7 +12,11 @@ class TestRunScript:
             path = f.name
         try:
             output = run_script(path)
-            assert output == ["5"]
+            assert output == [
+                "      x←5",
+                "      +x",
+                "5",
+            ]
         finally:
             os.unlink(path)
 
@@ -23,7 +27,11 @@ class TestRunScript:
             path = f.name
         try:
             output = run_script(path)
-            assert output == ["5"]
+            assert output == [
+                "      ⍝ this is a comment",
+                "      2+3",
+                "5",
+            ]
         finally:
             os.unlink(path)
 
@@ -35,9 +43,10 @@ class TestRunScript:
             path = f.name
         try:
             output = run_script(path)
-            # Should have error message, not reach line 3
-            assert any("ERROR" in line for line in output)
-            assert any("2" in line for line in output)  # line number
+            assert output[0] == "      x←5"
+            assert output[1] == "      y←x+unknown"
+            # Should have error, not reach line 3
+            assert any("ERROR" in line or "VALUE ERROR" in line for line in output)
         finally:
             os.unlink(path)
 
@@ -49,7 +58,11 @@ class TestRunScript:
             path = f.name
         try:
             output = run_script(path)
-            assert output == ["4"]
+            assert output == [
+                "      x←3",
+                "      x+1",
+                "4",
+            ]
         finally:
             os.unlink(path)
 
@@ -61,6 +74,11 @@ class TestRunScript:
             path = f.name
         try:
             output = run_script(path)
-            assert output == ["3"]
+            assert output == [
+                "      x←1",
+                "      y←2",
+                "      x+y",
+                "3",
+            ]
         finally:
             os.unlink(path)
