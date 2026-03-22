@@ -2,13 +2,16 @@ from __future__ import annotations
 
 from typing import Any
 
+import os
 import sys
 
 from marple.arraymodel import APLArray
 from marple.interpreter import _DfnClosure, interpret
 from marple.parser import Assignment, Program, parse
 from marple.terminal import read_line
-from marple.workspace import save_workspace, load_workspace
+from marple.workspace import save_workspace, load_workspace, list_workspaces
+
+WORKSPACES_ROOT = os.environ.get("MARPLE_WORKSPACES", "workspaces")
 
 
 def _is_char_array(arr: APLArray) -> bool:
@@ -32,14 +35,11 @@ def format_result(result: APLArray) -> str:
         return " ".join(str(x) for x in result.data)
     if len(result.shape) == 2:
         rows, cols = result.shape
-        # Format each element as a string
         strs = [str(x) for x in result.data]
-        # Find max width per column
         col_widths = []
         for c in range(cols):
             w = max(len(strs[r * cols + c]) for r in range(rows))
             col_widths.append(w)
-        # Right-align each column
         lines = []
         for r in range(rows):
             parts = []
@@ -72,13 +72,14 @@ def _user_names(env: dict[str, Any]) -> list[str]:
 
 
 def main() -> None:
-    env: dict[str, Any] = {}
+    env: dict[str, Any] = {"__wsid__": "CLEAR WS"}
     from importlib.metadata import version
     try:
         ver = version("marple")
     except Exception:
         ver = "unknown"
-    print(f"MARPLE v{ver} - Mini APL in Python\n")
+    print(f"MARPLE v{ver} - Mini APL in Python")
+    print("CLEAR WS\n")
     use_terminal = sys.stdin.isatty()
     while True:
         if use_terminal:
@@ -97,8 +98,18 @@ def main() -> None:
         if line == ")off":
             break
         if line == ")clear":
+            wsid = env.get("__wsid__", "CLEAR WS")
             env.clear()
+            env["__wsid__"] = "CLEAR WS"
             print("CLEAR WS")
+            continue
+        if line == ")wsid" or line == ")WSID":
+            print(env.get("__wsid__", "CLEAR WS"))
+            continue
+        if line.startswith(")wsid ") or line.startswith(")WSID "):
+            new_wsid = line.split(None, 1)[1].strip()
+            env["__wsid__"] = new_wsid
+            print(f"WAS {env.get('__wsid__', 'CLEAR WS')}" if False else new_wsid)
             continue
         if line == ")fns":
             fns = [n for n in _user_names(env) if isinstance(env[n], _DfnClosure)]
@@ -108,21 +119,42 @@ def main() -> None:
             vars_ = [n for n in _user_names(env) if isinstance(env[n], APLArray)]
             print("  ".join(vars_) if vars_ else "")
             continue
-        if line.startswith(")save"):
+        if line == ")lib" or line == ")LIB":
+            workspaces = list_workspaces(WORKSPACES_ROOT)
+            if workspaces:
+                print("  ".join(workspaces))
+            else:
+                print("(none)")
+            continue
+        if line.startswith(")save") or line.startswith(")SAVE"):
             parts = line.split(None, 1)
-            path = parts[1] if len(parts) > 1 else "workspace.apl"
+            if len(parts) > 1:
+                env["__wsid__"] = parts[1].strip()
+            wsid = env.get("__wsid__", "CLEAR WS")
+            if wsid == "CLEAR WS":
+                print("ERROR: No workspace ID set. Use )WSID name first.")
+                continue
+            ws_dir = os.path.join(WORKSPACES_ROOT, wsid)
             try:
-                save_workspace(env, path)
-                print(f"Saved: {path}")
+                save_workspace(env, ws_dir)
+                print(f"{wsid} SAVED")
             except Exception as e:
                 print(f"ERROR: {e}")
             continue
-        if line.startswith(")load"):
+        if line.startswith(")load") or line.startswith(")LOAD"):
             parts = line.split(None, 1)
-            path = parts[1] if len(parts) > 1 else "workspace.apl"
+            if len(parts) < 2:
+                print("ERROR: )LOAD requires a workspace name")
+                continue
+            name = parts[1].strip()
+            ws_dir = os.path.join(WORKSPACES_ROOT, name)
+            if not os.path.isdir(ws_dir):
+                print(f"ERROR: Workspace not found: {name}")
+                continue
+            env.clear()
             try:
-                load_workspace(env, path)
-                print(f"Loaded: {path}")
+                load_workspace(env, ws_dir)
+                print(env.get("__wsid__", name))
             except Exception as e:
                 print(f"ERROR: {e}")
             continue

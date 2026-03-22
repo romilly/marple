@@ -8,27 +8,21 @@ from marple.workspace import save_workspace, load_workspace
 
 class TestWorkspaceCharacterData:
     def test_save_and_load_char_vector(self) -> None:
-        env: dict[str, object] = {}
-        interpret("x←'HELLO'", env)
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".apl", delete=False) as f:
-            path = f.name
-        try:
-            save_workspace(env, path)
+        with tempfile.TemporaryDirectory() as root:
+            ws_dir = os.path.join(root, "test_ws")
+            env: dict[str, object] = {"__wsid__": "test_ws"}
+            interpret("x←'HELLO'", env)
+            save_workspace(env, ws_dir)
             new_env: dict[str, object] = {}
-            load_workspace(new_env, path)
+            load_workspace(new_env, ws_dir)
             assert new_env["x"] == APLArray([5], list("HELLO"))
-        finally:
-            os.unlink(path)
 
     def test_save_and_load_char_matrix(self) -> None:
-        env: dict[str, object] = {}
-        interpret("x←2 3⍴'CATDOG'", env)
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".apl", delete=False) as f:
-            path = f.name
-        try:
-            save_workspace(env, path)
+        with tempfile.TemporaryDirectory() as root:
+            ws_dir = os.path.join(root, "test_ws")
+            env: dict[str, object] = {"__wsid__": "test_ws"}
+            interpret("x←2 3⍴'CATDOG'", env)
+            save_workspace(env, ws_dir)
             new_env: dict[str, object] = {}
-            load_workspace(new_env, path)
+            load_workspace(new_env, ws_dir)
             assert new_env["x"] == APLArray([2, 3], list("CATDOG"))
-        finally:
-            os.unlink(path)
