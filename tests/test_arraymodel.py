@@ -28,7 +28,7 @@ class TestAPLArrayVector:
 
     def test_vector_data(self) -> None:
         a = APLArray([3], [1, 2, 3])
-        assert a.data == [1, 2, 3]
+        assert list(a.data) == [1, 2, 3]
 
     def test_vector_is_not_scalar(self) -> None:
         a = APLArray([3], [1, 2, 3])

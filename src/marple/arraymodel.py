@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from marple.backend import is_numeric_array, np, to_array, to_list
+
 
 class APLArray:
-    def __init__(self, shape: list[int], data: list[Any]) -> None:
+    def __init__(self, shape: list[int], data: Any) -> None:
         self.shape = shape
-        self.data = data
+        self.data = to_array(data) if isinstance(data, list) else data
 
     def is_scalar(self) -> bool:
         return self.shape == []
@@ -14,12 +16,17 @@ class APLArray:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, APLArray):
             return NotImplemented
-        return self.shape == other.shape and self.data == other.data
+        if self.shape != other.shape:
+            return False
+        if is_numeric_array(self.data) and is_numeric_array(other.data):
+            return bool(np.array_equal(self.data, other.data))
+        return to_list(self.data) == to_list(other.data)
 
     def __repr__(self) -> str:
         if self.is_scalar():
             return f"S({self.data[0]})"
-        return f"APLArray({self.shape}, {self.data})"
+        data_list = to_list(self.data) if is_numeric_array(self.data) else self.data
+        return f"APLArray({self.shape}, {data_list})"
 
 
 def S(value: Any) -> APLArray:
