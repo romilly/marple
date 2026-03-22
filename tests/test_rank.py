@@ -1,6 +1,7 @@
 import pytest
 
 from marple.arraymodel import APLArray, S
+from marple.errors import LengthError
 from marple.interpreter import interpret
 
 
@@ -79,7 +80,7 @@ class TestRankDyadic:
     def test_frame_mismatch_error(self) -> None:
         env: dict[str, APLArray] = {}
         interpret("M←3 4⍴⍳12", env)
-        with pytest.raises(ValueError, match="[Ff]rame"):
+        with pytest.raises(LengthError):
             interpret("1 2 (+⍤0 1) M", env)
 
 

@@ -6,6 +6,7 @@ from typing import Any, Callable
 from marple.arraymodel import APLArray, S
 from marple.backend import is_numeric_array, np, to_list
 from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
+from marple.errors import DomainError, LengthError, RankError, SecurityError, ValueError_
 from marple.functions import (
     absolute_value,
     add,
@@ -233,17 +234,17 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
 
     if isinstance(node, Var):
         if node.name not in env:
-            raise NameError(f"Undefined variable: {node.name}")
+            raise ValueError_(f"Undefined variable: {node.name}")
         val = env[node.name]
         if isinstance(val, APLArray):
             return val
         if isinstance(val, (_DfnClosure, IBeamDerived)):
             return val  # type: ignore[return-value]
-        raise TypeError(f"Unexpected value type for {node.name}: {type(val)}")
+        raise DomainError(f"Unexpected value type for {node.name}: {type(val)}")
 
     if isinstance(node, SysVar):
         if node.name not in env:
-            raise NameError(f"Undefined system variable: {node.name}")
+            raise ValueError_(f"Undefined system variable: {node.name}")
         return env[node.name]
 
     if isinstance(node, Index):
@@ -253,17 +254,17 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
 
     if isinstance(node, Omega):
         if "⍵" not in env:
-            raise NameError("⍵ used outside of dfn")
+            raise ValueError_("⍵ used outside of dfn")
         return env["⍵"]
 
     if isinstance(node, Alpha):
         if "⍺" not in env:
-            raise NameError("⍺ used outside of dfn")
+            raise ValueError_("⍺ used outside of dfn")
         return env["⍺"]
 
     if isinstance(node, Nabla):
         if "∇" not in env:
-            raise NameError("∇ used outside of dfn")
+            raise ValueError_("∇ used outside of dfn")
         return env["∇"]  # type: ignore[return-value]
 
     if isinstance(node, Dfn):
@@ -299,7 +300,7 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         operand = _evaluate(node.operand, env)
         func = MONADIC_FUNCTIONS.get(node.function)
         if func is None:
-            raise ValueError(f"Unknown monadic function: {node.function}")
+            raise DomainError(f"Unknown monadic function: {node.function}")
         return func(operand)  # type: ignore[operator]
 
     if isinstance(node, DyadicFunc):
@@ -329,7 +330,7 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         right = _evaluate(node.right, env)
         func = DYADIC_FUNCTIONS.get(node.function)
         if func is None:
-            raise ValueError(f"Unknown dyadic function: {node.function}")
+            raise DomainError(f"Unknown dyadic function: {node.function}")
         return func(left, right)  # type: ignore[operator]
 
     if isinstance(node, MonadicDfnCall):
@@ -345,7 +346,7 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
             fn = _resolve_ibeam(dfn_val.path)
             return _call_ibeam(fn, operand)
         if not isinstance(dfn_val, _DfnClosure):
-            raise TypeError(f"Expected dfn, got {type(dfn_val)}")
+            raise DomainError(f"Expected dfn, got {type(dfn_val)}")
         return _call_dfn(dfn_val, operand)
 
     if isinstance(node, DyadicDfnCall):
@@ -363,7 +364,7 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
             fn = _resolve_ibeam(dfn_val.path)
             return _call_ibeam_dyadic(fn, left, right)
         if not isinstance(dfn_val, _DfnClosure):
-            raise TypeError(f"Expected dfn, got {type(dfn_val)}")
+            raise DomainError(f"Expected dfn, got {type(dfn_val)}")
         return _call_dfn(dfn_val, right, alpha=left)
 
     if isinstance(node, Assignment):
@@ -377,7 +378,7 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         left_fn = DYADIC_FUNCTIONS.get(node.left_fn)
         right_fn = DYADIC_FUNCTIONS.get(node.right_fn)
         if left_fn is None or right_fn is None:
-            raise ValueError(f"Unknown function in inner product")
+            raise DomainError(f"Unknown function in inner product")
         reduce_fn: Callable[[APLArray, APLArray], APLArray] = left_fn  # type: ignore[assignment]
         apply_fn: Callable[[APLArray, APLArray], APLArray] = right_fn  # type: ignore[assignment]
         return _inner_product(reduce_fn, apply_fn, left, right)
@@ -387,7 +388,7 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         right = _evaluate(node.right, env)
         func = DYADIC_FUNCTIONS.get(node.function)
         if func is None:
-            raise ValueError(f"Unknown function in outer product: {node.function}")
+            raise DomainError(f"Unknown function in outer product: {node.function}")
         apply_fn_: Callable[[APLArray, APLArray], APLArray] = func  # type: ignore[assignment]
         return _outer_product(apply_fn_, left, right)
 
@@ -395,12 +396,12 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         operand = _evaluate(node.operand, env)
         func = DYADIC_FUNCTIONS.get(node.function)
         if func is None:
-            raise ValueError(f"Unknown function for operator: {node.function}")
+            raise DomainError(f"Unknown function for operator: {node.function}")
         if node.operator == "/":
             return _reduce(func, operand)  # type: ignore[arg-type]
         if node.operator == "\\":
             return _scan(func, operand)  # type: ignore[arg-type]
-        raise ValueError(f"Unknown operator: {node.operator}")
+        raise DomainError(f"Unknown operator: {node.operator}")
 
     if isinstance(node, Program):
         result: APLArray | _DfnClosure = S(0)
@@ -410,7 +411,7 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
             return result
         return S(0)
 
-    raise TypeError(f"Unknown AST node: {type(node)}")
+    raise DomainError(f"Unknown AST node: {type(node)}")
 
 
 # Map function objects to numpy ufunc names for fast reduce/scan
@@ -445,7 +446,7 @@ def _reduce(
 ) -> APLArray:
     data = omega.data
     if len(data) == 0:
-        raise ValueError("Cannot reduce empty array")
+        raise DomainError("Cannot reduce empty array")
 
     # Fast path: use numpy ufunc.reduce (commutative ops only)
     if func in _COMMUTATIVE:
@@ -519,7 +520,7 @@ def _inner_product(
         # Check compatible dimensions
         if len(alpha.shape) <= 1 and len(omega.shape) <= 1:
             if len(alpha.data) != len(omega.data):
-                raise ValueError(f"Inner product length error: {len(alpha.data)} vs {len(omega.data)}")
+                raise LengthError(f"Inner product length error: {len(alpha.data)} vs {len(omega.data)}")
         a = np.reshape(alpha.data, alpha.shape) if len(alpha.shape) > 1 else alpha.data
         b = np.reshape(omega.data, omega.shape) if len(omega.shape) > 1 else omega.data
         result = np.dot(a, b)
@@ -532,7 +533,7 @@ def _inner_product(
     # Vector inner product: reduce(apply(a, b))
     if len(alpha.shape) <= 1 and len(omega.shape) <= 1:
         if len(alpha.data) != len(omega.data):
-            raise ValueError(f"Inner product length error: {len(alpha.data)} vs {len(omega.data)}")
+            raise LengthError(f"Inner product length error: {len(alpha.data)} vs {len(omega.data)}")
         paired = [apply_fn(S(a), S(b)) for a, b in zip(alpha.data, omega.data)]
         result = paired[-1]
         for i in range(len(paired) - 2, -1, -1):
@@ -543,7 +544,7 @@ def _inner_product(
         m, k1 = alpha.shape
         k2, n = omega.shape
         if k1 != k2:
-            raise ValueError(f"Inner product shape mismatch: {alpha.shape} vs {omega.shape}")
+            raise LengthError(f"Inner product shape mismatch: {alpha.shape} vs {omega.shape}")
         result_data: list[object] = []
         for i in range(m):
             for j in range(n):
@@ -559,7 +560,7 @@ def _inner_product(
     if len(alpha.shape) == 1 and len(omega.shape) == 2:
         k, n = omega.shape
         if len(alpha.data) != k:
-            raise ValueError(f"Inner product shape mismatch")
+            raise LengthError(f"Inner product shape mismatch")
         result_data = []
         for j in range(n):
             col = [omega.data[p * n + j] for p in range(k)]
@@ -569,7 +570,7 @@ def _inner_product(
                 val = reduce_fn(paired[idx], val)
             result_data.append(val.data[0])
         return APLArray([n], result_data)
-    raise ValueError(f"Inner product not supported for shapes {alpha.shape} and {omega.shape}")
+    raise RankError(f"Inner product not supported for shapes {alpha.shape} and {omega.shape}")
 
 
 def _outer_product(
@@ -600,18 +601,18 @@ def _resolve_ibeam(path: str) -> Any:
     if allowed is not None:
         prefixes = [p.strip() for p in allowed.split(",")]
         if not any(path.startswith(p) for p in prefixes):
-            raise ValueError(f"SECURITY ERROR: i-beam path not allowed: {path}")
+            raise SecurityError(f"i-beam path not allowed: {path}")
     # Resolve
     parts = path.rsplit(".", 1)
     if len(parts) != 2:
-        raise ValueError(f"DOMAIN ERROR: invalid i-beam path: {path}")
+        raise DomainError(f"invalid i-beam path: {path}")
     module_path, func_name = parts
     try:
         import importlib
         module = importlib.import_module(module_path)
         fn = getattr(module, func_name)
     except (ImportError, AttributeError) as e:
-        raise ValueError(f"DOMAIN ERROR: {e}") from e
+        raise DomainError(f"{e}") from e
     _ibeam_cache[path] = fn
     return fn
 
@@ -621,9 +622,9 @@ def _call_ibeam(fn: Any, right: APLArray) -> APLArray:
     try:
         result = fn(right)
     except Exception as e:
-        raise ValueError(f"DOMAIN ERROR: {e}") from e
+        raise DomainError(f"{e}") from e
     if not isinstance(result, APLArray):
-        raise ValueError(f"DOMAIN ERROR: i-beam function must return APLArray, got {type(result)}")
+        raise DomainError(f"i-beam function must return APLArray, got {type(result)}")
     return result
 
 
@@ -632,9 +633,9 @@ def _call_ibeam_dyadic(fn: Any, left: APLArray, right: APLArray) -> APLArray:
     try:
         result = fn(left, right)
     except Exception as e:
-        raise ValueError(f"DOMAIN ERROR: {e}") from e
+        raise DomainError(f"{e}") from e
     if not isinstance(result, APLArray):
-        raise ValueError(f"DOMAIN ERROR: i-beam function must return APLArray, got {type(result)}")
+        raise DomainError(f"i-beam function must return APLArray, got {type(result)}")
     return result
 
 
@@ -662,23 +663,23 @@ def _apply_func_monadic(
         f = MONADIC_FUNCTIONS.get(func)
         if f is not None:
             return f(omega)  # type: ignore[operator]
-        raise ValueError(f"Unknown monadic function: {func}")
+        raise DomainError(f"Unknown monadic function: {func}")
     if isinstance(func, ReduceOp):
         f = DYADIC_FUNCTIONS.get(func.function)
         if f is None:
-            raise ValueError(f"Unknown function for reduce: {func.function}")
+            raise DomainError(f"Unknown function for reduce: {func.function}")
         return _reduce(f, omega)  # type: ignore[arg-type]
     if isinstance(func, ScanOp):
         f = DYADIC_FUNCTIONS.get(func.function)
         if f is None:
-            raise ValueError(f"Unknown function for scan: {func.function}")
+            raise DomainError(f"Unknown function for scan: {func.function}")
         return _scan(f, omega)  # type: ignore[arg-type]
     if isinstance(func, (Dfn, Var)):
         val = _evaluate(func, env)
         if isinstance(val, _DfnClosure):
             return _call_dfn(val, omega)
-        raise TypeError(f"Expected dfn, got {type(val)}")
-    raise TypeError(f"Cannot apply as monadic function: {type(func)}")
+        raise DomainError(f"Expected dfn, got {type(val)}")
+    raise DomainError(f"Cannot apply as monadic function: {type(func)}")
 
 
 def _apply_func_dyadic(
@@ -695,13 +696,13 @@ def _apply_func_dyadic(
         f = DYADIC_FUNCTIONS.get(func)
         if f is not None:
             return f(alpha, omega)  # type: ignore[operator]
-        raise ValueError(f"Unknown dyadic function: {func}")
+        raise DomainError(f"Unknown dyadic function: {func}")
     if isinstance(func, (Dfn, Var)):
         val = _evaluate(func, env)
         if isinstance(val, _DfnClosure):
             return _call_dfn(val, omega, alpha=alpha)
-        raise TypeError(f"Expected dfn, got {type(val)}")
-    raise TypeError(f"Cannot apply as dyadic function: {type(func)}")
+        raise DomainError(f"Expected dfn, got {type(val)}")
+    raise DomainError(f"Cannot apply as dyadic function: {type(func)}")
 
 
 def _apply_rank_monadic(
@@ -743,7 +744,7 @@ def _apply_rank_dyadic(
         pairs = [(lc, right_cells[0]) for lc in left_cells]
         frame = left_frame
     else:
-        raise ValueError(f"Frame mismatch: {left_frame} vs {right_frame}")
+        raise LengthError(f"Frame mismatch: {left_frame} vs {right_frame}")
     results = [_apply_func_dyadic(rank_node.function, lc, rc, env) for lc, rc in pairs]
     return reassemble(frame, results)
 
@@ -793,7 +794,7 @@ def _bracket_index(
         if len(col_vals) == 1:
             return APLArray([len(row_vals)], result)
         return APLArray([len(row_vals), len(col_vals)], result)
-    raise ValueError(f"Bracket indexing not supported for rank {len(array.shape)}")
+    raise RankError(f"Bracket indexing not supported for rank {len(array.shape)}")
 
 
 def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:

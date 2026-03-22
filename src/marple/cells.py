@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from marple.arraymodel import APLArray, S
 from marple.backend import to_list
+from marple.errors import LengthError
 
 
 def resolve_rank_spec(spec: APLArray) -> tuple[int, int, int]:
@@ -21,7 +22,7 @@ def resolve_rank_spec(spec: APLArray) -> tuple[int, int, int]:
     if len(data) == 3:
         a, b, c = int(data[0]), int(data[1]), int(data[2])
         return (a, b, c)
-    raise ValueError(f"Rank spec must be 1, 2, or 3 elements, got {len(data)}")
+    raise LengthError(f"Rank spec must be 1, 2, or 3 elements, got {len(data)}")
 
 
 def clamp_rank(k: int, r: int) -> int:

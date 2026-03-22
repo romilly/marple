@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from marple.errors import APLError
 from marple.interpreter import interpret
 from marple.repl import format_result, _is_silent
 
@@ -23,6 +24,9 @@ def run_script(path: str) -> list[str]:
                 result = interpret(line, env)
                 if not _is_silent(line):
                     output.append(format_result(result))
+            except APLError as e:
+                output.append(f"{e} at line {lineno}")
+                output.append(f"  {line}")
             except Exception as e:
                 output.append(f"ERROR at line {lineno}: {e}")
                 output.append(f"  {line}")

@@ -6,6 +6,7 @@ import os
 import sys
 
 from marple.arraymodel import APLArray
+from marple.errors import APLError
 from marple.interpreter import _DfnClosure, interpret
 from marple.parser import Assignment, Program, parse
 from marple.terminal import read_line
@@ -170,6 +171,8 @@ def main() -> None:
             result = interpret(line, env)
             if not _is_silent(line):
                 print(format_result(result))
+        except APLError as e:
+            print(e)
         except Exception as e:
             print(f"ERROR: {e}")
 

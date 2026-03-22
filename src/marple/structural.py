@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from marple.arraymodel import APLArray, S
 from marple.backend import to_list
+from marple.errors import DomainError, IndexError_, LengthError, RankError
 
 
 # Monadic structural functions
@@ -12,7 +13,7 @@ def shape(omega: APLArray) -> APLArray:
 
 def iota(omega: APLArray) -> APLArray:
     if not omega.is_scalar():
-        raise ValueError("Monadic ⍳ requires a scalar argument")
+        raise RankError("Monadic ⍳ requires a scalar argument")
     n = int(omega.data[0])
     return APLArray([n], list(range(1, n + 1)))
 
@@ -37,7 +38,7 @@ def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
         total *= s
     data = list(omega.data)
     if len(data) == 0:
-        raise ValueError("Cannot reshape empty array")
+        raise DomainError("Cannot reshape empty array")
     # Cycle data to fill
     result: list[object] = []
     for i in range(total):
@@ -107,7 +108,7 @@ def transpose(omega: APLArray) -> APLArray:
     if len(omega.shape) <= 1:
         return APLArray(list(omega.shape), list(omega.data))
     if len(omega.shape) != 2:
-        raise ValueError("Transpose currently supports only rank-2 arrays")
+        raise RankError("Transpose currently supports only rank-2 arrays")
     rows, cols = omega.shape
     new_data: list[object] = []
     for c in range(cols):
@@ -131,7 +132,7 @@ def grade_down(omega: APLArray, io: int = 1) -> APLArray:
 def encode(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⊤: represent omega in the radix system given by alpha."""
     if not omega.is_scalar():
-        raise ValueError("Encode currently supports only scalar right argument")
+        raise RankError("Encode currently supports only scalar right argument")
     radices = list(alpha.data)
     n = int(omega.data[0])
     result: list[object] = []
@@ -159,7 +160,7 @@ def decode(alpha: APLArray, omega: APLArray) -> APLArray:
         return S(result)
     bases = list(alpha.data)
     if len(bases) != len(values):
-        raise ValueError(f"Length mismatch: {len(bases)} bases vs {len(values)} values")
+        raise LengthError(f"Length mismatch: {len(bases)} bases vs {len(values)} values")
     result = 0
     for b, v in zip(bases, values):
         result = result * int(b) + int(v)  # type: ignore[arg-type]
@@ -172,7 +173,7 @@ def replicate(alpha: APLArray, omega: APLArray) -> APLArray:
     counts = [int(x) for x in alpha.data]
     data = list(omega.data)
     if len(counts) != len(data):
-        raise ValueError(f"Length mismatch: {len(counts)} vs {len(data)}")
+        raise LengthError(f"Length mismatch: {len(counts)} vs {len(data)}")
     result: list[object] = []
     for count, val in zip(counts, data):
         for _ in range(count):
@@ -201,7 +202,7 @@ def expand(alpha: APLArray, omega: APLArray) -> APLArray:
 def matrix_inverse(omega: APLArray) -> APLArray:
     """Monadic ⌹: matrix inverse using Gauss-Jordan elimination."""
     if len(omega.shape) != 2 or omega.shape[0] != omega.shape[1]:
-        raise ValueError("Matrix inverse requires a square matrix")
+        raise RankError("Matrix inverse requires a square matrix")
     n = omega.shape[0]
     # Build augmented matrix [A|I]
     aug: list[list[float]] = []
@@ -218,7 +219,7 @@ def matrix_inverse(omega: APLArray) -> APLArray:
         aug[col], aug[max_row] = aug[max_row], aug[col]
         pivot = aug[col][col]
         if abs(pivot) < 1e-15:
-            raise ValueError("Singular matrix")
+            raise DomainError("Singular matrix")
         for j in range(2 * n):
             aug[col][j] /= pivot
         for row in range(n):
@@ -250,7 +251,7 @@ def matrix_divide(alpha: APLArray, omega: APLArray) -> APLArray:
 def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
     """Dyadic ⌷: select major cells of omega at indices in alpha."""
     if omega.is_scalar():
-        raise ValueError("RANK ERROR: From requires non-scalar right argument")
+        raise RankError("requires non-scalar right argument")
     data = to_list(omega.data)
     cell_shape = omega.shape[1:]
     cell_size = 1
@@ -264,7 +265,7 @@ def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
     for idx in indices:
         i = int(idx) - io
         if i < 0 or i >= n_major:
-            raise ValueError(f"INDEX ERROR: {idx} out of range")
+            raise IndexError_(f"{idx} out of range")
         result.extend(data[i * cell_size : (i + 1) * cell_size])
     if alpha.is_scalar():
         return APLArray(cell_shape, result)

@@ -5,6 +5,7 @@ from typing import Callable
 
 from marple.arraymodel import APLArray
 from marple.backend import is_numeric_array, np, to_list
+from marple.errors import DomainError, LengthError
 
 
 def _pervade_monadic(
@@ -47,7 +48,7 @@ def _pervade_dyadic(
         b = b_data[0]
         return APLArray(list(alpha.shape), [f(x, b) for x in a_data])
     if alpha.shape != omega.shape:
-        raise ValueError(f"Shape mismatch: {alpha.shape} vs {omega.shape}")
+        raise LengthError(f"Shape mismatch: {alpha.shape} vs {omega.shape}")
     return APLArray(
         list(alpha.shape),
         [f(a, b) for a, b in zip(a_data, b_data)],
@@ -143,7 +144,7 @@ def circular(alpha: APLArray, omega: APLArray) -> APLArray:
     def _apply(a: int | float, b: int | float) -> int | float:
         fn = _CIRCULAR.get(int(a))
         if fn is None:
-            raise ValueError(f"Unknown circular function selector: {a}")
+            raise DomainError(f"Unknown circular function selector: {a}")
         return fn(float(b))
     return _pervade_dyadic(_apply, alpha, omega)
 

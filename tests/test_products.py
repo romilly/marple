@@ -21,7 +21,8 @@ class TestInnerProduct:
     def test_length_error(self) -> None:
         # 2 3+.×3 4 5 → length error (2 vs 3)
         import pytest
-        with pytest.raises(ValueError, match="length"):
+        from marple.errors import LengthError
+        with pytest.raises(LengthError):
             interpret("2 3+.×3 4 5")
 
 

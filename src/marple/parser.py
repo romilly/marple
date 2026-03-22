@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from marple.errors import SyntaxError_
 from marple.tokenizer import Token, TokenType, Tokenizer
 
 
@@ -176,7 +177,7 @@ class Parser:
     def _eat(self, token_type: TokenType) -> Token:
         token = self._current()
         if token.type != token_type:
-            raise SyntaxError(f"Expected {token_type}, got {token.type}")
+            raise SyntaxError_(f"Expected {token_type}, got {token.type}")
         self._pos += 1
         return token
 
@@ -247,7 +248,7 @@ class Parser:
             return SysVar(token.value)
         if token.type == TokenType.LBRACE:
             return self._parse_dfn()
-        raise SyntaxError(f"Unexpected token: {token}")
+        raise SyntaxError_(f"Unexpected token: {token}")
 
     def _parse_atom_with_index(self) -> object:
         """Parse an atom, then check for bracket indexing."""
@@ -455,7 +456,7 @@ class Parser:
             self._eat(TokenType.DIAMOND)
             statements.append(self._parse_statement())
         if self._current().type != TokenType.EOF:
-            raise SyntaxError(f"Unexpected token after expression: {self._current()}")
+            raise SyntaxError_(f"Unexpected token after expression: {self._current()}")
         if len(statements) == 1:
             return statements[0]
         return Program(statements)
