@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from marple.arraymodel import APLArray, S
-from marple.backend import is_numeric_array, np
+from marple.backend import is_numeric_array, np, to_list
 from marple.functions import (
     absolute_value,
     add,
@@ -358,6 +358,21 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
     raise TypeError(f"Unknown AST node: {type(node)}")
 
 
+# Map function objects to numpy ufunc names for fast reduce/scan
+_UFUNC_MAP: dict[object, str] = {
+    add: "add",
+    subtract: "subtract",
+    multiply: "multiply",
+    divide: "divide",
+    maximum: "maximum",
+    minimum: "minimum",
+    power: "power",
+}
+
+# Commutative ops where right-to-left = left-to-right
+_COMMUTATIVE = {add, multiply, maximum, minimum}
+
+
 def _reduce_vector(
     func: Callable[[APLArray, APLArray], APLArray],
     data: list[Any],
@@ -376,16 +391,31 @@ def _reduce(
     data = omega.data
     if len(data) == 0:
         raise ValueError("Cannot reduce empty array")
+
+    # Fast path: use numpy ufunc.reduce (commutative ops only)
+    if func in _COMMUTATIVE:
+        ufunc_name = _UFUNC_MAP.get(func)
+        if ufunc_name and is_numeric_array(data):
+            ufunc = getattr(np, ufunc_name, None)
+            if ufunc is not None and hasattr(ufunc, "reduce"):
+                if len(omega.shape) <= 1:
+                    return S(ufunc.reduce(data).item())
+                shaped = np.reshape(data, omega.shape)
+                result = ufunc.reduce(shaped, axis=-1)
+                return APLArray(list(result.shape), result.ravel())
+
+    # Fallback: Python loop
     # Reduce along last axis
     if len(omega.shape) <= 1:
-        return S(_reduce_vector(func, data))
+        return S(_reduce_vector(func, to_list(data)))
     # Higher rank: reduce each row (last-axis slice)
     last = omega.shape[-1]
     new_shape = omega.shape[:-1]
-    n_rows = len(data) // last
+    data_list = to_list(data)
+    n_rows = len(data_list) // last
     results: list[Any] = []
     for i in range(n_rows):
-        row = data[i * last : (i + 1) * last]
+        row = data_list[i * last : (i + 1) * last]
         results.append(_reduce_vector(func, row))
     return APLArray(new_shape, results)
 

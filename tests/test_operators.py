@@ -27,6 +27,14 @@ class TestReduce:
         # +/2 3⍴1 2 3 4 5 6 → 6 15 (sum each row)
         assert interpret("+/2 3⍴1 2 3 4 5 6") == APLArray([2], [6, 15])
 
+    def test_reduce_large_sum(self) -> None:
+        # +/⍳10000 → 50005000
+        assert interpret("+/⍳10000") == S(50005000)
+
+    def test_reduce_subtract_right_to_left(self) -> None:
+        # -/1 2 3 4 → 1-(2-(3-4)) → 1-(2-(-1)) → 1-3 → ¯2
+        assert interpret("-/1 2 3 4") == S(-2)
+
 
 class TestScan:
     def test_running_sum(self) -> None:
