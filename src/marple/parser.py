@@ -73,6 +73,12 @@ class ScanOp:
 
 
 @dataclass(frozen=True)
+class IBeamDerived:
+    """I-beam derived function: ⌶'module.function'"""
+    path: str
+
+
+@dataclass(frozen=True)
 class InnerProduct:
     left_fn: str
     right_fn: str
@@ -275,7 +281,7 @@ class Parser:
         return self._current().type in (
             TokenType.NUMBER, TokenType.LPAREN, TokenType.ID,
             TokenType.OMEGA, TokenType.ALPHA, TokenType.NABLA,
-            TokenType.LBRACE,
+            TokenType.LBRACE, TokenType.STRING,
         )
 
     def _parse_array(self) -> object:
@@ -317,6 +323,16 @@ class Parser:
             value = self._parse_statement()
             assert isinstance(name_token.value, str)
             return Assignment(name_token.value, value)
+
+        # Check for i-beam operator: ⌶'path'
+        if (
+            self._current().type == TokenType.OPERATOR
+            and self._current().value == "⌶"
+        ):
+            self._eat(TokenType.OPERATOR)
+            path_token = self._eat(TokenType.STRING)
+            assert isinstance(path_token.value, str)
+            return IBeamDerived(path_token.value)
 
         # Check for primitive function (possibly followed by operator)
         if self._current().type == TokenType.FUNCTION:
@@ -400,13 +416,13 @@ class Parser:
             return DyadicDfnCall(dfn, left, right)
 
         # Check for parenthesized function in dyadic position: left (f⍤k) right
-        if self._current().type == TokenType.LPAREN and isinstance(left, (Num, Vector)):
+        if self._current().type == TokenType.LPAREN:
             saved_pos = self._pos
             self._eat(TokenType.LPAREN)
             inner = self._parse_statement()
             if self._current().type == TokenType.RPAREN:
                 self._eat(TokenType.RPAREN)
-                if isinstance(inner, RankDerived) and self._is_array_start():
+                if isinstance(inner, (RankDerived, IBeamDerived)) and self._is_array_start():
                     right = self._parse_statement()
                     return DyadicDfnCall(inner, left, right)
             self._pos = saved_pos
@@ -427,7 +443,7 @@ class Parser:
             self._pos = saved_pos
 
         # Check if left is a dfn/var/rank-derived being applied as a monadic function
-        if isinstance(left, (Dfn, Var, Nabla, RankDerived)) and self._is_array_start():
+        if isinstance(left, (Dfn, Var, Nabla, RankDerived, IBeamDerived)) and self._is_array_start():
             right = self._parse_statement()
             return MonadicDfnCall(left, right)
 

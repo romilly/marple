@@ -49,6 +49,7 @@ GLYPH_MAP: dict[str, str] = {
     "j": "∘",
     "J": "⍤",
     "I": "⌷",
+    "B": "⌶",
     # High minus
     "2": "¯",
     # Comment

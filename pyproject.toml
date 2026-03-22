@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "marple"
-version = "0.2.2"
+version = "0.2.3"
 description = "Mini APL in Python Language Experiment. Uses APL arrays as the internal data model."
 authors = [{name = "Author Name", email = "author@example.com"}]
 license = {text = "MIT"}

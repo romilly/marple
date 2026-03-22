@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Any, Callable
 
 from marple.arraymodel import APLArray, S
@@ -65,6 +66,7 @@ from marple.parser import (
     DyadicDfnCall,
     DyadicFunc,
     Guard,
+    IBeamDerived,
     Index,
     InnerProduct,
     MonadicDfnCall,
@@ -235,7 +237,7 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         val = env[node.name]
         if isinstance(val, APLArray):
             return val
-        if isinstance(val, _DfnClosure):
+        if isinstance(val, (_DfnClosure, IBeamDerived)):
             return val  # type: ignore[return-value]
         raise TypeError(f"Unexpected value type for {node.name}: {type(val)}")
 
@@ -266,6 +268,9 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
 
     if isinstance(node, Dfn):
         return _DfnClosure(node, env)  # type: ignore[return-value]
+
+    if isinstance(node, IBeamDerived):
+        return node  # type: ignore[return-value]
 
     if isinstance(node, MonadicFunc):
         if node.function == "⍎":
@@ -328,20 +333,35 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         return func(left, right)  # type: ignore[operator]
 
     if isinstance(node, MonadicDfnCall):
+        if isinstance(node.dfn, IBeamDerived):
+            operand = _evaluate(node.operand, env)
+            fn = _resolve_ibeam(node.dfn.path)
+            return _call_ibeam(fn, operand)
         if isinstance(node.dfn, RankDerived):
             return _apply_rank_monadic(node.dfn, node.operand, env)
         dfn_val = _evaluate(node.dfn, env)
         operand = _evaluate(node.operand, env)
+        if isinstance(dfn_val, IBeamDerived):
+            fn = _resolve_ibeam(dfn_val.path)
+            return _call_ibeam(fn, operand)
         if not isinstance(dfn_val, _DfnClosure):
             raise TypeError(f"Expected dfn, got {type(dfn_val)}")
         return _call_dfn(dfn_val, operand)
 
     if isinstance(node, DyadicDfnCall):
+        if isinstance(node.dfn, IBeamDerived):
+            left = _evaluate(node.left, env)
+            right = _evaluate(node.right, env)
+            fn = _resolve_ibeam(node.dfn.path)
+            return _call_ibeam_dyadic(fn, left, right)
         if isinstance(node.dfn, RankDerived):
             return _apply_rank_dyadic(node.dfn, node.left, node.right, env)
         dfn_val = _evaluate(node.dfn, env)
         left = _evaluate(node.left, env)
         right = _evaluate(node.right, env)
+        if isinstance(dfn_val, IBeamDerived):
+            fn = _resolve_ibeam(dfn_val.path)
+            return _call_ibeam_dyadic(fn, left, right)
         if not isinstance(dfn_val, _DfnClosure):
             raise TypeError(f"Expected dfn, got {type(dfn_val)}")
         return _call_dfn(dfn_val, right, alpha=left)
@@ -566,6 +586,56 @@ def _outer_product(
         for b in b_data:
             result_data.append(func(S(a), S(b)).data[0])
     return APLArray(a_shape + b_shape, result_data)
+
+
+_ibeam_cache: dict[str, Any] = {}
+
+
+def _resolve_ibeam(path: str) -> Any:
+    """Resolve an i-beam path string to a Python callable."""
+    if path in _ibeam_cache:
+        return _ibeam_cache[path]
+    # Check allowlist
+    allowed = os.environ.get("MARPLE_IBEAM_ALLOW")
+    if allowed is not None:
+        prefixes = [p.strip() for p in allowed.split(",")]
+        if not any(path.startswith(p) for p in prefixes):
+            raise ValueError(f"SECURITY ERROR: i-beam path not allowed: {path}")
+    # Resolve
+    parts = path.rsplit(".", 1)
+    if len(parts) != 2:
+        raise ValueError(f"DOMAIN ERROR: invalid i-beam path: {path}")
+    module_path, func_name = parts
+    try:
+        import importlib
+        module = importlib.import_module(module_path)
+        fn = getattr(module, func_name)
+    except (ImportError, AttributeError) as e:
+        raise ValueError(f"DOMAIN ERROR: {e}") from e
+    _ibeam_cache[path] = fn
+    return fn
+
+
+def _call_ibeam(fn: Any, right: APLArray) -> APLArray:
+    """Call a Python function monadically via i-beam."""
+    try:
+        result = fn(right)
+    except Exception as e:
+        raise ValueError(f"DOMAIN ERROR: {e}") from e
+    if not isinstance(result, APLArray):
+        raise ValueError(f"DOMAIN ERROR: i-beam function must return APLArray, got {type(result)}")
+    return result
+
+
+def _call_ibeam_dyadic(fn: Any, left: APLArray, right: APLArray) -> APLArray:
+    """Call a Python function dyadically via i-beam."""
+    try:
+        result = fn(left, right)
+    except Exception as e:
+        raise ValueError(f"DOMAIN ERROR: {e}") from e
+    if not isinstance(result, APLArray):
+        raise ValueError(f"DOMAIN ERROR: i-beam function must return APLArray, got {type(result)}")
+    return result
 
 
 def _apply_func_monadic(
