@@ -46,24 +46,24 @@ def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
     return APLArray(new_shape, result)
 
 
-def index_of(alpha: APLArray, omega: APLArray) -> APLArray:
+def index_of(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
     if omega.is_scalar():
         target = omega.data[0]
         for i, val in enumerate(alpha.data):
             if val == target:
-                return S(i + 1)  # APL index origin 1
-        return S(len(alpha.data) + 1)  # not found
+                return S(i + io)
+        return S(len(alpha.data) + io)  # not found
     targets = omega.data
     results = []
     for target in targets:
         found = False
         for i, val in enumerate(alpha.data):
             if val == target:
-                results.append(i + 1)
+                results.append(i + io)
                 found = True
                 break
         if not found:
-            results.append(len(alpha.data) + 1)
+            results.append(len(alpha.data) + io)
     return APLArray(list(omega.shape), results)
 
 
@@ -117,17 +117,16 @@ def transpose(omega: APLArray) -> APLArray:
     return APLArray([cols, rows], new_data)
 
 
-def grade_up(omega: APLArray) -> APLArray:
-    # Return 1-based indices that would sort the array ascending
+def grade_up(omega: APLArray, io: int = 1) -> APLArray:
     indexed = list(enumerate(omega.data))
     indexed.sort(key=lambda pair: pair[1])  # type: ignore[arg-type]
-    return APLArray([len(omega.data)], [i + 1 for i, _ in indexed])
+    return APLArray([len(omega.data)], [i + io for i, _ in indexed])
 
 
-def grade_down(omega: APLArray) -> APLArray:
+def grade_down(omega: APLArray, io: int = 1) -> APLArray:
     indexed = list(enumerate(omega.data))
     indexed.sort(key=lambda pair: pair[1], reverse=True)  # type: ignore[arg-type]
-    return APLArray([len(omega.data)], [i + 1 for i, _ in indexed])
+    return APLArray([len(omega.data)], [i + io for i, _ in indexed])
 
 
 def encode(alpha: APLArray, omega: APLArray) -> APLArray:

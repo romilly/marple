@@ -111,8 +111,6 @@ MONADIC_FUNCTIONS: dict[str, object] = {
     ",": ravel,
     "⌽": reverse,
     "⍉": transpose,
-    "⍋": grade_up,
-    "⍒": grade_down,
     "⌹": matrix_inverse,
     "○": pi_times,
 }
@@ -136,7 +134,6 @@ DYADIC_FUNCTIONS: dict[str, object] = {
     "∧": logical_and,
     "∨": logical_or,
     "⍴": reshape,
-    "⍳": index_of,
     ",": catenate,
     "↑": take,
     "↓": drop,
@@ -278,6 +275,12 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
             io = int(env.get("⎕IO", S(1)).data[0])
             n = int(operand.data[0])
             return APLArray([n], list(range(io, n + io)))
+        if node.function in ("⍋", "⍒"):
+            operand = _evaluate(node.operand, env)
+            io = int(env.get("⎕IO", S(1)).data[0])
+            if node.function == "⍋":
+                return grade_up(operand, io)
+            return grade_down(operand, io)
         operand = _evaluate(node.operand, env)
         func = MONADIC_FUNCTIONS.get(node.function)
         if func is None:
@@ -289,6 +292,11 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
             left = _evaluate(node.left, env)
             right = _evaluate(node.right, env)
             return _dyadic_format(left, right)
+        if node.function == "⍳":
+            left = _evaluate(node.left, env)
+            right = _evaluate(node.right, env)
+            io = int(env.get("⎕IO", S(1)).data[0])
+            return index_of(left, right, io)
         left = _evaluate(node.left, env)
         right = _evaluate(node.right, env)
         func = DYADIC_FUNCTIONS.get(node.function)
