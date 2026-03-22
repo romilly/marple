@@ -1,0 +1,33 @@
+⍝ ═══════════════════════════════════════════════════
+⍝ MARPLE Demo 3: Namespaces and Standard Library
+⍝ ═══════════════════════════════════════════════════
+
+⍝ ── Qualified names: call system library directly ──
+$::str::upper 'hello world'
+$::str::lower 'MARPLE'
+$::str::trim '   padded   '
+
+⍝ ── Import for convenience ──
+#import $::str::upper
+#import $::str::trim
+
+upper 'imported and working'
+trim '  no more padding  '
+
+⍝ ── Import with alias ──
+#import $::str::lower as lc
+lc 'SHOUTY'
+
+⍝ ── File I/O: read a data file ──
+#import $::io::nread
+raw ← nread 'examples/data.txt'
+⍝ Show shape — it's a character vector
+⍴ raw
+
+⍝ ── The i-beam operator: call Python directly ──
+⍝ This is what the stdlib wrappers use internally
+up ← ⌶'marple.stdlib.str_impl.upper'
+up 'direct i-beam call'
+
+⍝ ── List available functions in the str namespace ──
+⍝ (This would be done in the REPL with )fns $::str)

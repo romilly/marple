@@ -1,0 +1,85 @@
+⍝ ═══════════════════════════════════════════════════
+⍝ MARPLE Demo 1: Primitive Functions and Operators
+⍝ ═══════════════════════════════════════════════════
+
+⍝ ── Basic arithmetic ──
+2 + 3
+10 - 4
+3 × 7
+15 ÷ 4
+
+⍝ ── High minus for negative numbers ──
+¯3 + 5
+
+⍝ ── Right-to-left evaluation (no precedence rules) ──
+⍝ 1 + 2 × 3  →  1 + (2 × 3)  →  7
+1 + 2 × 3
+
+⍝ ── Parentheses override scope ──
+(1 + 2) × 3
+
+⍝ ── Monadic functions ──
+- 5
+÷ 4
+⌈ 3.7
+⌊ 3.7
+| ¯42
+
+⍝ ── Vectors ──
+⍳ 6
+1 2 3 + 10 20 30
+
+⍝ ── Scalar extension ──
+10 × ⍳5
+
+⍝ ── Reduce: insert function between elements ──
++/ ⍳100
+×/ ⍳6
+
+⍝ ── Scan: running reduce ──
++\ 1 2 3 4 5
+
+⍝ ── Structural functions ──
+⍴ 1 2 3 4 5
+5 ⍴ 42
+7 ⍴ 1 2 3
+⌽ 1 2 3 4 5
+3 ↑ 1 2 3 4 5
+¯2 ↓ 1 2 3 4 5
+1 0 1 0 1 / 10 20 30 40 50
+
+⍝ ── Matrices ──
+M ← 3 4 ⍴ ⍳12
+M
+⍴ M
+⍉ M
+
+⍝ ── Matrix arithmetic with scalar extension ──
+100 + M
+
+⍝ ── Reduce along last axis of a matrix ──
++/ M
+
+⍝ ── Inner product (matrix multiply) ──
+1 2 3 +.× 4 5 6
+
+⍝ ── Outer product (multiplication table) ──
+(⍳5) ∘.× ⍳5
+
+⍝ ── Grade and indexing ──
+v ← 30 10 50 20 40
+⍋ v
+v[⍋v]
+
+⍝ ── Comparison and boolean ──
+3 < 5
+1 2 3 4 5 ≥ 3
+∧/ 1 1 1 0
+
+⍝ ── Encode and decode ──
+2 2 2 2 ⊤ 13
+2 ⊥ 1 1 0 1
+
+⍝ ── Pi and trig ──
+○ 1
+1 ○ ○ 0.5

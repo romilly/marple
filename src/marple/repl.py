@@ -28,9 +28,14 @@ def _format_num(x: object, pp: int = 10) -> str:
         return str(int(x))
     if isinstance(x, float):
         if x == int(x) and abs(x) < 1e15:
-            return str(int(x))
+            n = int(x)
+            return f"¯{abs(n)}" if n < 0 else str(n)
         s = f"{x:.{pp}g}"
+        if s.startswith("-"):
+            s = "¯" + s[1:]
         return s
+    if isinstance(x, int) and x < 0:
+        return f"¯{abs(x)}"
     return str(x)
 
 
@@ -67,7 +72,9 @@ def format_result(result: APLArray, pp: int = 10) -> str:
 
 
 def _is_silent(line: str) -> bool:
-    """Check if a line is a bare assignment (should not print)."""
+    """Check if a line is a bare assignment or directive (should not print)."""
+    if line.strip().startswith("#"):
+        return True
     try:
         tree = parse(line)
     except Exception:
