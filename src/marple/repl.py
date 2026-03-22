@@ -21,6 +21,11 @@ def _is_char_array(arr: APLArray) -> bool:
 
 def _format_num(x: object, pp: int = 10) -> str:
     """Format a number for display, using pp significant digits for floats."""
+    # Convert numpy scalars to Python types
+    if hasattr(x, "item"):
+        x = x.item()  # type: ignore[union-attr]
+    if isinstance(x, bool):
+        return str(int(x))
     if isinstance(x, float):
         if x == int(x) and abs(x) < 1e15:
             return str(int(x))

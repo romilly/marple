@@ -6,7 +6,13 @@ from typing import Any, Callable
 from marple.arraymodel import APLArray, S
 from marple.backend import is_numeric_array, np, to_list
 from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
-from marple.errors import DomainError, LengthError, RankError, SecurityError, ValueError_
+from marple.errors import ClassError, DomainError, LengthError, RankError, SecurityError, ValueError_
+
+# Name classes (following Dyalog ⎕NC convention)
+NC_UNKNOWN = 0
+NC_ARRAY = 2
+NC_FUNCTION = 3
+NC_OPERATOR = 4
 from marple.functions import (
     absolute_value,
     add,
@@ -277,7 +283,7 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         if node.function == "⍎":
             operand = _evaluate(node.operand, env)
             source = "".join(str(c) for c in operand.data)
-            return _evaluate(parse(source), env)
+            return _evaluate(parse(source, env.get("__name_table__")), env)
         if node.function == "⍕":
             operand = _evaluate(node.operand, env)
             return _format_array(operand)
@@ -380,6 +386,18 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
 
     if isinstance(node, Assignment):
         value = _evaluate(node.value, env)
+        # Classify and check name class
+        if isinstance(value, (_DfnClosure, IBeamDerived)):
+            new_class = NC_FUNCTION
+        elif isinstance(value, APLArray):
+            new_class = NC_ARRAY
+        else:
+            new_class = NC_UNKNOWN
+        name_table = env.get("__name_table__", {})
+        if node.name in name_table and name_table[node.name] != new_class:
+            raise ClassError(f"Cannot change class of '{node.name}' from {name_table[node.name]} to {new_class}")
+        name_table[node.name] = new_class
+        env["__name_table__"] = name_table
         env[node.name] = value
         return value if isinstance(value, APLArray) else S(0)
 
@@ -880,9 +898,15 @@ def _handle_import(source: str, env: dict[str, Any]) -> APLArray:
             raise ValueError_(f"Undefined: {qualified}")
     else:
         raise ValueError_(f"Import from non-system namespace not yet supported: {qualified}")
-    # Bind in env
+    # Bind in env and classify
     bind_name = alias if alias else name_parts[-1]
     env[bind_name] = result
+    name_table = env.get("__name_table__", {})
+    if isinstance(result, (_DfnClosure, IBeamDerived)):
+        name_table[bind_name] = NC_FUNCTION
+    elif isinstance(result, APLArray):
+        name_table[bind_name] = NC_ARRAY
+    env["__name_table__"] = name_table
     return S(0)
 
 
@@ -899,7 +923,8 @@ def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
     # Handle #import directives
     if source.strip().startswith("#import"):
         return _handle_import(source.strip(), env)
-    tree = parse(source)
+    name_table = env.get("__name_table__", {})
+    tree = parse(source, name_table)
     result = _evaluate(tree, env)
     # Track source for dfn assignments so workspace save can reconstruct them
     if isinstance(tree, Assignment):

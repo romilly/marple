@@ -1,0 +1,72 @@
+⍝ ═══════════════════════════════════════════════════
+⍝ MARPLE Demo 2: Direct Functions (Dfns) and Rank
+⍝ ═══════════════════════════════════════════════════
+
+⍝ ── A simple dfn: double a number ──
+{⍵ + ⍵} 21
+
+⍝ ── Named dfns via assignment ──
+double ← {⍵ + ⍵}
+double 7
+double ⍳5
+
+⍝ ── Dyadic dfns: ⍺ is the left argument ──
+avg ← {(⍺ + ⍵) ÷ 2}
+3 avg 7
+
+⍝ ── Guards: conditional expressions ──
+sign ← {⍵>0 : 1 ⋄ ⍵<0 : ¯1 ⋄ 0}
+sign 42
+sign ¯7
+sign 0
+
+⍝ ── Recursion via ∇ (self-reference) ──
+fact ← {⍵≤1 : 1 ⋄ ⍵ × ∇ ⍵-1}
+fact 1
+fact 5
+fact 10
+
+⍝ ── Fibonacci ──
+fib ← {⍵=0 : 0 ⋄ ⍵=1 : 1 ⋄ (∇ ⍵-1) + ∇ ⍵-2}
+fib 10
+
+⍝ ── Default left argument with ⍺← ──
+pad ← {⍺←0 ⋄ ⍺,⍵}
+pad 1 2 3
+99 pad 1 2 3
+
+⍝ ── Chained assignment ──
+y ← 1 + x ← ⍳5
+x
+y
+
+⍝ ═══════════════════════════════════════════════════
+⍝ The Rank Operator ⍤
+⍝ ═══════════════════════════════════════════════════
+
+M ← 3 4 ⍴ ⍳12
+M
+
+⍝ ── Reverse each row (apply ⌽ at rank 1) ──
+(⌽⍤1) M
+
+⍝ ── Sum each row ──
+(+/⍤1) M
+
+⍝ ── Running sum along each row ──
+(+\⍤1) M
+
+⍝ ── Apply a dfn to each row ──
+first_last ← {(1↑⍵),(¯1↑⍵)}
+(first_last⍤1) M
+
+⍝ ── Dyadic rank: add a different scalar to each row ──
+100 200 300 (+⍤0 1) M
+
+⍝ ── From (⌷) with rank for column selection ──
+⍝ Select column 2 from each row
+2 (⌷⍤0 1) M
+
+⍝ ── 3D arrays work too ──
+A ← 2 3 4 ⍴ ⍳24
+(+/⍤1) A

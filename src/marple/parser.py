@@ -167,9 +167,14 @@ class Parser:
     APL's right-to-left semantics.
     """
 
-    def __init__(self, tokens: list[Token]) -> None:
+    def __init__(self, tokens: list[Token], name_table: dict[str, int] | None = None) -> None:
         self._tokens = tokens
         self._pos = 0
+        self._name_table = name_table or {}
+
+    def _is_function_name(self, name: str) -> bool:
+        """Check if a name is classified as a function in the name table."""
+        return self._name_table.get(name) == 3  # NC_FUNCTION
 
     def _current(self) -> Token:
         return self._tokens[self._pos]
@@ -372,6 +377,18 @@ class Parser:
         # Parse left argument (array — may include dfn, ⍵, ⍺, ∇)
         left = self._parse_array()
 
+        # If left is a known function name, it has long right scope
+        if (
+            isinstance(left, Var)
+            and self._is_function_name(left.name)
+            and (self._is_array_start()
+                 or self._current().type == TokenType.FUNCTION
+                 or (self._current().type == TokenType.OPERATOR
+                     and self._current().value == "⌶"))
+        ):
+            right = self._parse_statement()
+            return MonadicDfnCall(left, right)
+
         # Check for dyadic primitive function or inner/outer product
         if self._current().type == TokenType.FUNCTION:
             func_glyph, op_glyph = self._parse_function_expr()
@@ -471,6 +488,6 @@ class Parser:
         return Program(statements)
 
 
-def parse(source: str) -> object:
+def parse(source: str, name_table: dict[str, int] | None = None) -> object:
     tokens = Tokenizer(source).tokenize()
-    return Parser(tokens).parse()
+    return Parser(tokens, name_table).parse()

@@ -59,3 +59,8 @@ class SecurityError(APLError):
 class DependencyError(APLError):
     code = 10
     name = "DEPENDENCY ERROR"
+
+
+class ClassError(APLError):
+    code = 11
+    name = "CLASS ERROR"
