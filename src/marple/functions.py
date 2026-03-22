@@ -33,7 +33,10 @@ def _pervade_dyadic(
     ):
         ufunc = getattr(np, ufunc_name, None)
         if ufunc is not None:
-            result = ufunc(alpha.data, omega.data)
+            try:
+                result = ufunc(alpha.data, omega.data)
+            except ValueError:
+                raise LengthError(f"Shape mismatch: {alpha.shape} vs {omega.shape}")
             shape = list(omega.shape) if not omega.is_scalar() else list(alpha.shape)
             return APLArray(shape, result)
     # Fallback: element-wise Python
@@ -62,7 +65,11 @@ def negate(omega: APLArray) -> APLArray:
 
 
 def reciprocal(omega: APLArray) -> APLArray:
-    return _pervade_monadic(lambda x: 1 / x, omega)
+    def _recip(x: int | float) -> int | float:
+        if x == 0:
+            raise DomainError("Division by zero")
+        return 1 / x
+    return _pervade_monadic(_recip, omega)
 
 
 def ceiling(omega: APLArray) -> APLArray:
@@ -88,7 +95,11 @@ def multiply(alpha: APLArray, omega: APLArray) -> APLArray:
 
 
 def divide(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: a / b, alpha, omega, "divide")
+    def _div(a: int | float, b: int | float) -> int | float:
+        if b == 0:
+            raise DomainError("Division by zero")
+        return a / b
+    return _pervade_dyadic(_div, alpha, omega)
 
 
 def maximum(alpha: APLArray, omega: APLArray) -> APLArray:

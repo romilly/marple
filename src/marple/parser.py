@@ -439,7 +439,7 @@ class Parser:
 
         if (
             self._current().type == TokenType.ID
-            and isinstance(left, (Num, Vector))
+            and isinstance(left, (Num, Vector, Str))
         ):
             # Could be: left name right (dyadic named dfn call)
             # But only if the name is followed by an array

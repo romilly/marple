@@ -893,6 +893,9 @@ def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
         env["⎕IO"] = S(1)
     if "⎕CT" not in env:
         env["⎕CT"] = S(1e-14)
+    # Set env for error handling (ea/en)
+    from marple.stdlib.error_impl import set_env as _set_error_env
+    _set_error_env(env)
     # Handle #import directives
     if source.strip().startswith("#import"):
         return _handle_import(source.strip(), env)
