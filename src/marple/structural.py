@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from __future__ import annotations
-
 from marple.arraymodel import APLArray, S
+from marple.backend import to_list
 
 
 # Monadic structural functions
@@ -246,3 +245,27 @@ def matrix_divide(alpha: APLArray, omega: APLArray) -> APLArray:
             val += float(inv.data[i * n + j]) * float(b[j])
         result.append(val)
     return APLArray([n], result)
+
+
+def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
+    """Dyadic ⌷: select major cells of omega at indices in alpha."""
+    if omega.is_scalar():
+        raise ValueError("RANK ERROR: From requires non-scalar right argument")
+    data = to_list(omega.data)
+    cell_shape = omega.shape[1:]
+    cell_size = 1
+    for s in cell_shape:
+        cell_size *= s
+    if cell_size == 0:
+        cell_size = 1
+    n_major = omega.shape[0]
+    indices = to_list(alpha.data) if not alpha.is_scalar() else [alpha.data[0]]
+    result: list[object] = []
+    for idx in indices:
+        i = int(idx) - io
+        if i < 0 or i >= n_major:
+            raise ValueError(f"INDEX ERROR: {idx} out of range")
+        result.extend(data[i * cell_size : (i + 1) * cell_size])
+    if alpha.is_scalar():
+        return APLArray(cell_shape, result)
+    return APLArray(list(alpha.shape) + cell_shape, result)

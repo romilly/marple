@@ -39,6 +39,7 @@ from marple.structural import (
     drop,
     encode,
     expand,
+    from_array,
     grade_down,
     grade_up,
     index_of,
@@ -297,6 +298,11 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
             right = _evaluate(node.right, env)
             io = int(env.get("⎕IO", S(1)).data[0])
             return index_of(left, right, io)
+        if node.function == "⌷":
+            left = _evaluate(node.left, env)
+            right = _evaluate(node.right, env)
+            io = int(env.get("⎕IO", S(1)).data[0])
+            return from_array(left, right, io)
         left = _evaluate(node.left, env)
         right = _evaluate(node.right, env)
         func = DYADIC_FUNCTIONS.get(node.function)
