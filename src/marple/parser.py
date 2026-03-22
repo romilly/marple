@@ -48,6 +48,11 @@ class Var:
 
 
 @dataclass(frozen=True)
+class QualifiedVar:
+    parts: list[str]
+
+
+@dataclass(frozen=True)
 class DerivedFunc:
     operator: str
     function: str
@@ -233,6 +238,10 @@ class Parser:
             self._eat(TokenType.ID)
             assert isinstance(token.value, str)
             return Var(token.value)
+        if token.type == TokenType.QUALIFIED_NAME:
+            self._eat(TokenType.QUALIFIED_NAME)
+            assert isinstance(token.value, str)
+            return QualifiedVar(token.value.split("::"))
         if token.type == TokenType.OMEGA:
             self._eat(TokenType.OMEGA)
             return Omega()
@@ -282,7 +291,7 @@ class Parser:
         return self._current().type in (
             TokenType.NUMBER, TokenType.LPAREN, TokenType.ID,
             TokenType.OMEGA, TokenType.ALPHA, TokenType.NABLA,
-            TokenType.LBRACE, TokenType.STRING,
+            TokenType.LBRACE, TokenType.STRING, TokenType.QUALIFIED_NAME,
         )
 
     def _parse_array(self) -> object:
@@ -444,7 +453,7 @@ class Parser:
             self._pos = saved_pos
 
         # Check if left is a dfn/var/rank-derived being applied as a monadic function
-        if isinstance(left, (Dfn, Var, Nabla, RankDerived, IBeamDerived)) and self._is_array_start():
+        if isinstance(left, (Dfn, Var, QualifiedVar, Nabla, RankDerived, IBeamDerived)) and self._is_array_start():
             right = self._parse_statement()
             return MonadicDfnCall(left, right)
 

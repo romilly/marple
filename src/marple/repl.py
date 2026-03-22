@@ -120,9 +120,25 @@ def main() -> None:
             env["__wsid__"] = new_wsid
             print(f"WAS {env.get('__wsid__', 'CLEAR WS')}" if False else new_wsid)
             continue
-        if line == ")fns":
-            fns = [n for n in _user_names(env) if isinstance(env[n], _DfnClosure)]
-            print("  ".join(fns) if fns else "")
+        if line.startswith(")fns"):
+            parts = line.split(None, 1)
+            if len(parts) > 1:
+                # )fns $::str or )fns utils
+                ns_name = parts[1].strip()
+                from marple.interpreter import _get_sys_workspace
+                if ns_name.startswith("$"):
+                    ns_parts = ns_name.split("::")[1:] if "::" in ns_name else []
+                    sys_ws = _get_sys_workspace()
+                    ns = sys_ws.resolve(ns_parts) if ns_parts else sys_ws
+                    if ns is not None and hasattr(ns, "list_names"):
+                        print("  ".join(ns.list_names()))
+                    else:
+                        print(f"Namespace not found: {ns_name}")
+                else:
+                    print(f"Namespace not found: {ns_name}")
+            else:
+                fns = [n for n in _user_names(env) if isinstance(env[n], _DfnClosure)]
+                print("  ".join(fns) if fns else "")
             continue
         if line == ")vars":
             vars_ = [n for n in _user_names(env) if isinstance(env[n], APLArray)]

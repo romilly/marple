@@ -23,6 +23,7 @@ class TokenType(Enum):
     RBRACKET = auto()
     SEMICOLON = auto()
     SYSVAR = auto()
+    QUALIFIED_NAME = auto()
     ID = auto()
     EOF = auto()
 
@@ -103,6 +104,19 @@ class Tokenizer:
         while self._current() is not None and (self._current().isalnum() or self._current() == "_"):  # type: ignore[union-attr]
             result += self._current()  # type: ignore[operator]
             self._advance()
+        # Check for :: (qualified name)
+        if (
+            self._current() == ":"
+            and self._pos + 1 < len(self._source)
+            and self._source[self._pos + 1] == ":"
+            and self._pos + 2 < len(self._source)
+            and (self._source[self._pos + 2].isalpha() or self._source[self._pos + 2] == "_")
+        ):
+            result += "::"
+            self._advance()  # skip first :
+            self._advance()  # skip second :
+            rest = self._read_id()
+            return Token(TokenType.QUALIFIED_NAME, result + str(rest.value))
         return Token(TokenType.ID, result)
 
     def tokenize(self) -> list[Token]:
@@ -137,6 +151,12 @@ class Tokenizer:
             elif ch in SINGLE_CHAR_TOKENS:
                 tokens.append(SINGLE_CHAR_TOKENS[ch])
                 self._advance()
+            elif ch == "$" and self._pos + 2 < len(self._source) and self._source[self._pos + 1] == ":" and self._source[self._pos + 2] == ":":
+                self._advance()  # skip $
+                self._advance()  # skip first :
+                self._advance()  # skip second :
+                rest = self._read_id()
+                tokens.append(Token(TokenType.QUALIFIED_NAME, "$::" + str(rest.value)))
             elif ch.isalpha() or ch == "_":
                 tokens.append(self._read_id())
             else:

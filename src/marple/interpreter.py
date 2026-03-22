@@ -58,6 +58,7 @@ from marple.structural import (
     take,
     transpose,
 )
+from marple.namespace import Namespace, load_system_workspace
 from marple.parser import (
     Alpha,
     AlphaDefault,
@@ -77,6 +78,7 @@ from marple.parser import (
     Omega,
     OuterProduct,
     Program,
+    QualifiedVar,
     RankDerived,
     ReduceOp,
     ScanOp,
@@ -241,6 +243,9 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         if isinstance(val, (_DfnClosure, IBeamDerived)):
             return val  # type: ignore[return-value]
         raise DomainError(f"Unexpected value type for {node.name}: {type(val)}")
+
+    if isinstance(node, QualifiedVar):
+        return _resolve_qualified(node.parts, env)
 
     if isinstance(node, SysVar):
         if node.name not in env:
@@ -589,6 +594,36 @@ def _outer_product(
     return APLArray(a_shape + b_shape, result_data)
 
 
+_sys_workspace: Namespace | None = None
+
+
+def _get_sys_workspace() -> Namespace:
+    global _sys_workspace
+    if _sys_workspace is None:
+        import marple.stdlib
+        stdlib_path = os.path.dirname(marple.stdlib.__file__)
+        _sys_workspace = load_system_workspace(stdlib_path)
+    return _sys_workspace
+
+
+def _resolve_qualified(parts: list[str], env: dict[str, Any]) -> Any:
+    """Resolve a qualified name like ['$', 'str', 'upper']."""
+    if parts[0] == "$":
+        sys_ws = _get_sys_workspace()
+        result = sys_ws.resolve(parts[1:])
+        if result is None:
+            raise ValueError_(f"Undefined: {'::'.join(parts)}")
+        return result  # type: ignore[return-value]
+    # User namespace — look in env namespaces
+    ns = env.get("__namespaces__", {})
+    if parts[0] in ns:
+        result = ns[parts[0]].resolve(parts[1:])
+        if result is None:
+            raise ValueError_(f"Undefined: {'::'.join(parts)}")
+        return result  # type: ignore[return-value]
+    raise ValueError_(f"Undefined namespace: {parts[0]}")
+
+
 _ibeam_cache: dict[str, Any] = {}
 
 
@@ -797,11 +832,39 @@ def _bracket_index(
     raise RankError(f"Bracket indexing not supported for rank {len(array.shape)}")
 
 
+def _handle_import(source: str, env: dict[str, Any]) -> APLArray:
+    """Handle #import directive."""
+    parts = source.split()
+    # #import qualified::name [as alias]
+    if len(parts) < 2:
+        raise DomainError("Invalid #import directive")
+    qualified = parts[1]
+    alias = None
+    if len(parts) >= 4 and parts[2] == "as":
+        alias = parts[3]
+    name_parts = qualified.split("::")
+    # Resolve the value
+    if name_parts[0] == "$":
+        sys_ws = _get_sys_workspace()
+        result = sys_ws.resolve(name_parts[1:])
+        if result is None:
+            raise ValueError_(f"Undefined: {qualified}")
+    else:
+        raise ValueError_(f"Import from non-system namespace not yet supported: {qualified}")
+    # Bind in env
+    bind_name = alias if alias else name_parts[-1]
+    env[bind_name] = result
+    return S(0)
+
+
 def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
     if env is None:
         env = {}
     if "⎕IO" not in env:
         env["⎕IO"] = S(1)
+    # Handle #import directives
+    if source.strip().startswith("#import"):
+        return _handle_import(source.strip(), env)
     tree = parse(source)
     result = _evaluate(tree, env)
     # Track source for dfn assignments so workspace save can reconstruct them
