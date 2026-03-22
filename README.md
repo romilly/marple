@@ -1,18 +1,24 @@
 # marple
 
-Mini APL in Python Language Experiment. A first-generation APL interpreter with the rank operator, using APL arrays (shape + flat data) as the internal data model. Inspired by Rodrigo Girão Serrão's [RGSPL](https://github.com/rodrigogiraoserrano/RGSPL) and Iverson's [Dictionary of APL](https://www.jsoftware.com/papers/APLDictionary.htm).
+Mini APL in Python Language Experiment. A first-generation APL interpreter with the rank operator, namespaces, and Python FFI. Uses APL arrays (shape + flat data) as the internal data model. Inspired by Rodrigo Girão Serrão's [RGSPL](https://github.com/rodrigogiraoserrano/RGSPL) and Iverson's [Dictionary of APL](https://www.jsoftware.com/papers/APLDictionary.htm).
 
 ## Features
 
-- **40+ primitive functions** — arithmetic, comparison, boolean, structural, circular/trig
+- **40+ primitive functions** — arithmetic, comparison, boolean, structural, circular/trig, match/tally, membership
 - **Operators** — reduce (`/`), scan (`\`), inner product (`f.g`), outer product (`∘.f`), **rank** (`⍤`)
 - **Rank operator** — `(f⍤k)` applies any function along any axis: `(⌽⍤1) M` reverses rows, `(+/⍤1) M` sums rows
-- **From function** (`⌷`) — leading-axis selection that composes with rank: `3(⌷⍤0 1) M` selects column 3
+- **From function** (`⌷`) — leading-axis selection that composes with rank
 - **Direct functions (dfns)** — `{⍵}` syntax with guards, recursion via `∇`, default `⍺`
+- **Symbol table-aware parser** — named functions work without parens: `double ⍳5`
+- **Namespaces** — `$::str::upper 'hello'`, `#import` directives, `::` separator
+- **I-beam operator** (`⌶`) — Python FFI for extending MARPLE with Python code
+- **Error handling** — `ea` (execute alternate) and `en` (error number) for APL-level error trapping
 - **Matrices** — reshape, transpose, bracket indexing (`M[r;c]`), matrix inverse (`⌹`)
 - **Numpy backend** — automatic vectorization (73x faster for large arrays), with pure-Python fallback
+- **System variables** — `⎕IO` (index origin), `⎕CT` (comparison tolerance)
 - **Interactive REPL** — live backtick→glyph input, workspace save/load, APL-style formatting
-- **290 tests**, pyright strict, no external runtime dependencies
+- **Script runner** — `marple script.marple` with session transcript output
+- **379 tests**, pyright strict, no external runtime dependencies
 
 ## Quick start
 
@@ -22,7 +28,7 @@ marple
 ```
 
 ```
-MARPLE v0.1.0 - Mini APL in Python
+MARPLE v0.2.11 - Mini APL in Python
 CLEAR WS
 
       ⍳5
@@ -32,14 +38,30 @@ CLEAR WS
       fact←{⍵≤1:1⋄⍵×∇ ⍵-1}
       fact 10
 3628800
+      double←{⍵+⍵}
+      double ⍳5
+2 4 6 8 10
       M←3 4⍴⍳12
       (⌽⍤1) M
  4  3  2  1
  8  7  6  5
 12 11 10  9
-      (+/⍤1) M
-10 26 42
+      $::str::upper 'hello'
+HELLO
 ```
+
+### Running scripts
+
+```bash
+marple examples/01_primitives.marple          # run and display
+marple examples/01_primitives.marple > out.txt  # capture session transcript
+```
+
+Four demo scripts are included in `examples/`:
+- `01_primitives.marple` — arithmetic, vectors, matrices, reduce, products
+- `02_dfns.marple` — user functions, guards, recursion, rank operator
+- `03_namespaces.marple` — system library, imports, file I/O, i-beams
+- `04_errors.marple` — ea/en error handling, error codes
 
 ### APL character input
 
@@ -56,6 +78,7 @@ Alternatively, type APL glyphs using backtick prefixes — they appear immediate
 | `` `q `` | ⌽ | `` `Q `` | ⍉ | `` `g `` | ⍋ | `` `G `` | ⍒ |
 | `` `t `` | ↑ | `` `y `` | ↓ | `` `n `` | ⊤ | `` `N `` | ⊥ |
 | `` `J `` | ⍤ | `` `I `` | ⌷ | `` `j `` | ∘ | `` `D `` | ⌹ |
+| `` `B `` | ⌶ | | | | | | |
 
 ### System commands
 
@@ -67,7 +90,7 @@ Alternatively, type APL glyphs using backtick prefixes — they appear immediate
 | `)save [name]` | Save workspace (sets WSID if name given) |
 | `)load name` | Load workspace |
 | `)lib` | List saved workspaces |
-| `)fns` | List defined functions |
+| `)fns [ns]` | List defined functions (optionally in namespace) |
 | `)vars` | List defined variables |
 
 ## Development
@@ -89,16 +112,20 @@ MARPLE_BACKEND=none pytest
 |--------|---------|
 | `arraymodel.py` | `APLArray(shape, data)` — the core data structure |
 | `backend.py` | Numpy/CuPy/ulab detection with pure-Python fallback |
-| `tokenizer.py` | Lexer for APL glyphs, numbers, strings, identifiers |
-| `parser.py` | Right-to-left recursive descent parser |
+| `tokenizer.py` | Lexer for APL glyphs, numbers, strings, qualified names |
+| `parser.py` | Right-to-left recursive descent with symbol table |
 | `interpreter.py` | Tree-walking evaluator with dfn closures |
 | `functions.py` | Scalar functions with pervasion (numpy-accelerated) |
 | `structural.py` | Shape-manipulating and indexing functions |
 | `cells.py` | Cell decomposition and reassembly for the rank operator |
+| `namespace.py` | Hierarchical namespace resolution and system workspace |
+| `errors.py` | APL error classes with numeric codes |
 | `repl.py` | Interactive read-eval-print loop |
+| `script.py` | Script runner with session transcript output |
 | `terminal.py` | Raw terminal input with live glyph translation |
 | `glyphs.py` | Backtick → APL character mapping |
 | `workspace.py` | Directory-based workspace persistence |
+| `stdlib/` | Standard library: string, I/O, and error handling |
 
 ## References
 
@@ -108,3 +135,4 @@ MARPLE_BACKEND=none pytest
 - [Language spec](docs/MARPLE_Language_Reference.md) — full first-generation APL reference and roadmap
 - [Rank operator spec](docs/MARPLE_Rank_Operator.md) — detailed rank operator design
 - [Indexing spec](docs/MARPLE_Indexing.md) — From function and indexing approach
+- [Namespaces spec](docs/MARPLE_Namespaces_And_IBeams.md) — namespaces, i-beams, and standard library
