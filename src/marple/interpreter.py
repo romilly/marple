@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from marple.arraymodel import APLArray, S
+from marple.backend import is_numeric_array, np
 from marple.functions import (
     absolute_value,
     add,
@@ -423,6 +424,26 @@ def _inner_product(
     alpha: APLArray,
     omega: APLArray,
 ) -> APLArray:
+    # Fast path: +.× is matrix multiply — use np.dot
+    if (
+        reduce_fn is add
+        and apply_fn is multiply
+        and is_numeric_array(alpha.data)
+        and is_numeric_array(omega.data)
+    ):
+        # Check compatible dimensions
+        if len(alpha.shape) <= 1 and len(omega.shape) <= 1:
+            if len(alpha.data) != len(omega.data):
+                raise ValueError(f"Inner product length error: {len(alpha.data)} vs {len(omega.data)}")
+        a = np.reshape(alpha.data, alpha.shape) if len(alpha.shape) > 1 else alpha.data
+        b = np.reshape(omega.data, omega.shape) if len(omega.shape) > 1 else omega.data
+        result = np.dot(a, b)
+        if hasattr(result, "shape") and len(result.shape) == 0:
+            return S(result.item())
+        result_flat = result.ravel() if hasattr(result, "ravel") else result
+        result_shape = list(result.shape) if hasattr(result, "shape") else [len(result_flat)]
+        return APLArray(result_shape, result_flat)
+
     # Vector inner product: reduce(apply(a, b))
     if len(alpha.shape) <= 1 and len(omega.shape) <= 1:
         if len(alpha.data) != len(omega.data):

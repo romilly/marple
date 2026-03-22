@@ -4,40 +4,60 @@ import math
 from typing import Callable
 
 from marple.arraymodel import APLArray
+from marple.backend import is_numeric_array, np, to_list
 
 
 def _pervade_monadic(
     f: Callable[[int | float], int | float],
     omega: APLArray,
+    ufunc_name: str | None = None,
 ) -> APLArray:
-    return APLArray(list(omega.shape), [f(x) for x in omega.data])
+    if ufunc_name and is_numeric_array(omega.data):
+        ufunc = getattr(np, ufunc_name, None)
+        if ufunc is not None:
+            return APLArray(list(omega.shape), ufunc(omega.data))
+    return APLArray(list(omega.shape), [f(x) for x in to_list(omega.data)])
 
 
 def _pervade_dyadic(
     f: Callable[[int | float, int | float], int | float],
     alpha: APLArray,
     omega: APLArray,
+    ufunc_name: str | None = None,
 ) -> APLArray:
+    if (
+        ufunc_name
+        and is_numeric_array(alpha.data)
+        and is_numeric_array(omega.data)
+    ):
+        ufunc = getattr(np, ufunc_name, None)
+        if ufunc is not None:
+            result = ufunc(alpha.data, omega.data)
+            shape = list(omega.shape) if not omega.is_scalar() else list(alpha.shape)
+            return APLArray(shape, result)
+    # Fallback: element-wise Python
+    a_data = to_list(alpha.data)
+    b_data = to_list(omega.data)
     if alpha.is_scalar() and omega.is_scalar():
-        return APLArray([], [f(alpha.data[0], omega.data[0])])
+        return APLArray([], [f(a_data[0], b_data[0])])
     if alpha.is_scalar():
-        a = alpha.data[0]
-        return APLArray(list(omega.shape), [f(a, x) for x in omega.data])
+        a = a_data[0]
+        return APLArray(list(omega.shape), [f(a, x) for x in b_data])
     if omega.is_scalar():
-        b = omega.data[0]
-        return APLArray(list(alpha.shape), [f(x, b) for x in alpha.data])
+        b = b_data[0]
+        return APLArray(list(alpha.shape), [f(x, b) for x in a_data])
     if alpha.shape != omega.shape:
         raise ValueError(f"Shape mismatch: {alpha.shape} vs {omega.shape}")
     return APLArray(
         list(alpha.shape),
-        [f(a, b) for a, b in zip(alpha.data, omega.data)],
+        [f(a, b) for a, b in zip(a_data, b_data)],
     )
 
 
 # Monadic functions
 
 def negate(omega: APLArray) -> APLArray:
-    return _pervade_monadic(lambda x: -x, omega)
+    return _pervade_monadic(lambda x: -x, omega, "negative")
 
 
 def reciprocal(omega: APLArray) -> APLArray:
@@ -45,55 +65,55 @@ def reciprocal(omega: APLArray) -> APLArray:
 
 
 def ceiling(omega: APLArray) -> APLArray:
-    return _pervade_monadic(lambda x: math.ceil(x), omega)
+    return _pervade_monadic(lambda x: math.ceil(x), omega, "ceil")
 
 
 def floor(omega: APLArray) -> APLArray:
-    return _pervade_monadic(lambda x: math.floor(x), omega)
+    return _pervade_monadic(lambda x: math.floor(x), omega, "floor")
 
 
 # Dyadic functions
 
 def add(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: a + b, alpha, omega)
+    return _pervade_dyadic(lambda a, b: a + b, alpha, omega, "add")
 
 
 def subtract(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: a - b, alpha, omega)
+    return _pervade_dyadic(lambda a, b: a - b, alpha, omega, "subtract")
 
 
 def multiply(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: a * b, alpha, omega)
+    return _pervade_dyadic(lambda a, b: a * b, alpha, omega, "multiply")
 
 
 def divide(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: a / b, alpha, omega)
+    return _pervade_dyadic(lambda a, b: a / b, alpha, omega, "divide")
 
 
 def maximum(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: max(a, b), alpha, omega)
+    return _pervade_dyadic(lambda a, b: max(a, b), alpha, omega, "maximum")
 
 
 def minimum(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: min(a, b), alpha, omega)
+    return _pervade_dyadic(lambda a, b: min(a, b), alpha, omega, "minimum")
 
 
 # Extended monadic functions
 
 def exponential(omega: APLArray) -> APLArray:
-    return _pervade_monadic(lambda x: math.exp(x), omega)
+    return _pervade_monadic(lambda x: math.exp(x), omega, "exp")
 
 
 def natural_log(omega: APLArray) -> APLArray:
-    return _pervade_monadic(lambda x: math.log(x), omega)
+    return _pervade_monadic(lambda x: math.log(x), omega, "log")
 
 
 def absolute_value(omega: APLArray) -> APLArray:
-    return _pervade_monadic(lambda x: abs(x), omega)
+    return _pervade_monadic(lambda x: abs(x), omega, "absolute")
 
 
 def logical_not(omega: APLArray) -> APLArray:
-    return _pervade_monadic(lambda x: int(not x), omega)
+    return _pervade_monadic(lambda x: int(not x), omega, "logical_not")
 
 
 def pi_times(omega: APLArray) -> APLArray:
@@ -131,7 +151,7 @@ def circular(alpha: APLArray, omega: APLArray) -> APLArray:
 # Extended dyadic functions
 
 def power(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: a ** b, alpha, omega)
+    return _pervade_dyadic(lambda a, b: a ** b, alpha, omega, "power")
 
 
 def logarithm(alpha: APLArray, omega: APLArray) -> APLArray:
@@ -143,32 +163,32 @@ def residue(alpha: APLArray, omega: APLArray) -> APLArray:
 
 
 def less_than(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a < b), alpha, omega)
+    return _pervade_dyadic(lambda a, b: int(a < b), alpha, omega, "less")
 
 
 def less_equal(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a <= b), alpha, omega)
+    return _pervade_dyadic(lambda a, b: int(a <= b), alpha, omega, "less_equal")
 
 
 def equal(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a == b), alpha, omega)
+    return _pervade_dyadic(lambda a, b: int(a == b), alpha, omega, "equal")
 
 
 def greater_equal(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a >= b), alpha, omega)
+    return _pervade_dyadic(lambda a, b: int(a >= b), alpha, omega, "greater_equal")
 
 
 def greater_than(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a > b), alpha, omega)
+    return _pervade_dyadic(lambda a, b: int(a > b), alpha, omega, "greater")
 
 
 def not_equal(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a != b), alpha, omega)
+    return _pervade_dyadic(lambda a, b: int(a != b), alpha, omega, "not_equal")
 
 
 def logical_and(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(bool(a) and bool(b)), alpha, omega)
+    return _pervade_dyadic(lambda a, b: int(bool(a) and bool(b)), alpha, omega, "logical_and")
 
 
 def logical_or(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(bool(a) or bool(b)), alpha, omega)
+    return _pervade_dyadic(lambda a, b: int(bool(a) or bool(b)), alpha, omega, "logical_or")
