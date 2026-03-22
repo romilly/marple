@@ -1,0 +1,205 @@
+site_name: MARPLE Documentation
+site_description: Documentation for MARPLE — a Mini APL Language Experiment in Python
+site_url: https://romilly.github.io/marple/
+repo_url: https://github.com/romilly/marple
+repo_name: romilly/marple
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - def_list
+  - pymdownx.keys
+
+nav:
+  - Home: index.md
+
+  - Getting Started:
+    - getting-started/index.md
+    - Installation: getting-started/installation.md
+    - The REPL: getting-started/repl.md
+    - Your First Session: getting-started/first-session.md
+
+  - Tutorials:
+    - tutorials/index.md
+    - For Beginners:
+      - tutorials/beginners/index.md
+      - Arrays — Scalars, Vectors, Matrices: tutorials/beginners/arrays.md
+      - Scalar Functions and Scalar Extension: tutorials/beginners/scalar-functions.md
+      - Reduce and Scan: tutorials/beginners/reduce-and-scan.md
+      - Reshape and Iota — Building Arrays: tutorials/beginners/reshape-and-iota.md
+      - Reading APL Right to Left: tutorials/beginners/right-to-left.md
+      - Writing Your First Dfn: tutorials/beginners/first-dfn.md
+    - For APL Programmers:
+      - tutorials/for-aplers/index.md
+      - MARPLE for Dyalog Users: tutorials/for-aplers/from-dyalog.md
+      - MARPLE for J Users: tutorials/for-aplers/from-j.md
+      - MARPLE for GNU APL Users: tutorials/for-aplers/from-gnu-apl.md
+    - Intermediate Topics:
+      - tutorials/intermediate/index.md
+      - The Rank Operator Step by Step: tutorials/intermediate/rank-operator.md
+      - Indexing with From: tutorials/intermediate/from-indexing.md
+      - Direct Functions in Depth: tutorials/intermediate/dfns-in-depth.md
+      - Direct Operators: tutorials/intermediate/dops.md
+      - Workspaces and Namespaces: tutorials/intermediate/workspaces-and-namespaces.md
+    - Worked Examples:
+      - tutorials/worked-examples/index.md
+      - Data Processing — CSV Pipeline: tutorials/worked-examples/csv-pipeline.md
+      - Statistics: tutorials/worked-examples/statistics.md
+      - Text Processing: tutorials/worked-examples/text-processing.md
+      - Matrix Maths: tutorials/worked-examples/matrix-maths.md
+      - Game of Life: tutorials/worked-examples/game-of-life.md
+
+  - How-To Guides:
+    - how-to/index.md
+    - Working with Arrays:
+      - how-to/arrays/select-rows-columns-elements.md
+      - how-to/arrays/reshape-and-ravel.md
+      - how-to/arrays/transpose.md
+      - how-to/arrays/sort.md
+      - how-to/arrays/concatenate.md
+      - how-to/arrays/filter.md
+    - Using the Rank Operator:
+      - how-to/rank-operator/apply-to-rows.md
+      - how-to/rank-operator/apply-to-columns.md
+      - how-to/rank-operator/apply-to-matrices.md
+      - how-to/rank-operator/pair-cells.md
+      - how-to/rank-operator/replace-bracket-axis.md
+    - Strings and Text:
+      - how-to/strings-and-text/character-arrays.md
+      - how-to/strings-and-text/split-and-join.md
+      - how-to/strings-and-text/trim.md
+      - how-to/strings-and-text/escape-sequences.md
+    - File I/O:
+      - how-to/file-io/read-text-file.md
+      - how-to/file-io/write-text-file.md
+      - how-to/file-io/file-to-matrix.md
+    - Error Handling:
+      - how-to/error-handling/catch-errors.md
+      - how-to/error-handling/check-error-codes.md
+      - how-to/error-handling/test-for-errors.md
+    - Namespaces and Imports:
+      - how-to/namespaces/organise-code.md
+      - how-to/namespaces/import-stdlib.md
+      - how-to/namespaces/create-library.md
+    - Calling Python from APL:
+      - how-to/python-ffi/using-ibeam.md
+      - how-to/python-ffi/write-python-function.md
+      - how-to/python-ffi/wrap-python-library.md
+    - Performance:
+      - how-to/performance/numpy-backend.md
+      - how-to/performance/check-backend.md
+      - how-to/performance/writing-fast-code.md
+
+  - Reference:
+    - reference/index.md
+    - Primitive Functions:
+      - reference/primitives/index.md
+      - Arithmetic: reference/primitives/arithmetic.md
+      - Comparison: reference/primitives/comparison.md
+      - Boolean: reference/primitives/boolean.md
+      - Structural: reference/primitives/structural.md
+      - Mixed: reference/primitives/mixed.md
+      - Scalar Extension: reference/primitives/scalar-extension.md
+    - Operators:
+      - reference/operators/index.md
+      - Reduce: reference/operators/reduce.md
+      - Scan: reference/operators/scan.md
+      - First-Axis Reduce and Scan: reference/operators/first-axis.md
+      - Outer Product: reference/operators/outer-product.md
+      - Inner Product: reference/operators/inner-product.md
+      - Rank: reference/operators/rank.md
+      - I-Beam: reference/operators/ibeam.md
+    - Direct Definition:
+      - reference/direct-definition/index.md
+      - Dfns: reference/direct-definition/dfns.md
+      - Dops: reference/direct-definition/dops.md
+      - Guards: reference/direct-definition/guards.md
+      - Recursion: reference/direct-definition/recursion.md
+    - Array Model:
+      - reference/array-model/index.md
+      - Shape, Rank, and Depth: reference/array-model/shape-rank-depth.md
+      - Index Origin: reference/array-model/index-origin.md
+      - Empty Arrays: reference/array-model/empty-arrays.md
+      - Fill Elements: reference/array-model/fill-elements.md
+    - Indexing:
+      - reference/indexing/index.md
+      - From: reference/indexing/from.md
+      - Bracket Indexing: reference/indexing/bracket-indexing.md
+      - Indexed Assignment: reference/indexing/indexed-assignment.md
+    - System Features:
+      - reference/system/index.md
+      - System Variables: reference/system/system-variables.md
+      - System Commands: reference/system/system-commands.md
+    - Standard Library:
+      - reference/standard-library/index.md
+      - "$:io — File I/O": reference/standard-library/io.md
+      - "$:str — Strings": reference/standard-library/str.md
+      - "$:sys — System": reference/standard-library/sys.md
+      - "$:error — Error Handling": reference/standard-library/error.md
+    - Glyph Input: reference/glyph-input.md
+    - Error Messages: reference/error-messages.md
+    - Grammar: reference/grammar.md
+
+  - Explanation:
+    - explanation/index.md
+    - Why MARPLE Exists: explanation/why-marple.md
+    - How MARPLE Differs from Other APLs: explanation/comparison.md
+    - The Rank Operator — History and Significance: explanation/rank-history.md
+    - Leading-Axis Theory: explanation/leading-axis.md
+    - Direct Definition — Why Not Tradfns: explanation/dfns-vs-tradfns.md
+    - The Python Connection: explanation/python-connection.md
+
+  - Troubleshooting:
+    - troubleshooting/index.md
+    - Common Errors: troubleshooting/common-errors.md
+    - Common Mistakes: troubleshooting/common-mistakes.md
+    - REPL Issues: troubleshooting/repl-issues.md
+    - Performance Issues: troubleshooting/performance-issues.md
+    - FAQ: troubleshooting/faq.md
+
+  - Appendices:
+    - appendices/index.md
+    - Glossary: appendices/glossary.md
+    - Further Reading: appendices/further-reading.md
+    - Changelog: appendices/changelog.md
+    - Contributing: appendices/contributing.md

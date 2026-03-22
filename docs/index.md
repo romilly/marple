@@ -2,16 +2,30 @@
 
 **Mini APL Language Experiment — a first-generation APL interpreter in Python**
 
-<!-- TODO: Romilly — write a paragraph or two in your own voice about what MARPLE is
-     and why you built it. The tone should be welcoming but honest: this is a working
-     interpreter, not a toy, but it's also a personal project with a point of view. -->
+I started work on MARPLE for fun. I've wanted to write an APL interpreter, ever since I came across the language in the late 1960s.
 
-MARPLE is an APL interpreter that implements flat arrays, direct definition (dfns and dops), the rank operator, and From indexing. It follows Iverson's *Dictionary of APL* philosophy rather than APL2's nested model. It runs on desktop Python (with optional NumPy acceleration) and is designed to be portable to CircuitPython on a Raspberry Pi Pico.
+For many years now I have used Dyalog APL for personal projects, and I love it. It's fast, solid and well-supported. It's also allowed me to learnfrom some very smart people. But for me, it has two disadvantages: I can't extend it, and it uses *floating* nested arrays.
+
+Ken Iverson preferred the *grounded* approach, and so do I. While I have not implemented nested arrays in MARPLE yet, I plan to do so and I will follow the approach described by Iverson in his **Dictionary of APL**.
+
+I've also made MARPLE easy to extend. It is implemented in Python, and there is a simple mechanism that allows you to add new language features in Python and then use i-beams to turn them into functions available to the APL developer.
+
+MARPLE scratches that itch. It runs on desktop Python (with optional NumPy acceleration) and is designed to be portable to CircuitPython on a Raspberry Pi Pico.
+
+Claude and Claude code have done all the hard work. Getting to this point has taken a day and a half. I have much more I want to implement, and I expect to do so in days rather than months.
+
+MARPLE is not, and never will be, a commercial product, and it lacks many of the features that make Dyalog APL a compelling proposition for serious APL developers. But it's been fun and I hope it's useful. Do let me know what you think of it!
 
 ## Quick start
 
+MARPLE is not yet on PyPI, so you install it from the GitHub repository:
+
 ```bash
-pip install marple
+git clone https://github.com/romilly/marple.git
+cd marple
+python -m venv venv
+source venv/bin/activate      # on Windows: venv\Scripts\activate
+pip install -e .
 marple
 ```
 
