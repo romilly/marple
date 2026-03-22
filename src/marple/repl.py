@@ -72,6 +72,14 @@ def _user_names(env: dict[str, Any]) -> list[str]:
 
 
 def main() -> None:
+    # Check for script mode: marple script.marple
+    if len(sys.argv) > 1:
+        from marple.script import run_script
+        path = sys.argv[1]
+        for line in run_script(path):
+            print(line)
+        return
+
     env: dict[str, Any] = {"__wsid__": "CLEAR WS"}
     from importlib.metadata import version
     try:
