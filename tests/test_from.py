@@ -40,3 +40,19 @@ class TestFromIndexOrigin:
     def test_index_error(self) -> None:
         with pytest.raises(Exception):
             interpret("6⌷10 20 30 40 50")
+
+
+class TestFromWithRank:
+    def test_column_select(self) -> None:
+        env: dict[str, APLArray] = {}
+        interpret("M←3 4⍴⍳12", env)
+        # 3(⌷⍤0 1)M → column 3: 3 7 11
+        result = interpret("3(⌷⍤0 1)M", env)
+        assert result == APLArray([3], [3, 7, 11])
+
+    def test_multi_column_select(self) -> None:
+        env: dict[str, APLArray] = {}
+        interpret("M←3 4⍴⍳12", env)
+        # 1 3(⌷⍤1)M → columns 1 and 3: 3×2 matrix
+        result = interpret("1 3(⌷⍤1)M", env)
+        assert result == APLArray([3, 2], [1, 3, 5, 7, 9, 11])

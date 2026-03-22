@@ -45,8 +45,10 @@ GLYPH_MAP: dict[str, str] = {
     "x": "⋄",
     "z": "⍎",
     "Z": "⍕",
-    # Jot and compose
+    # Jot, compose, rank, from
     "j": "∘",
+    "J": "⍤",
+    "I": "⌷",
     # High minus
     "2": "¯",
     # Comment

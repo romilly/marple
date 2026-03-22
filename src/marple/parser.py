@@ -54,6 +54,25 @@ class DerivedFunc:
 
 
 @dataclass(frozen=True)
+class RankDerived:
+    """Unapplied rank-derived function: f⍤k"""
+    function: object  # str (glyph), ReduceOp, ScanOp, Dfn, or Var
+    rank_spec: object  # AST node (Num or Vector)
+
+
+@dataclass(frozen=True)
+class ReduceOp:
+    """Unapplied reduce: f/ as a function value"""
+    function: str
+
+
+@dataclass(frozen=True)
+class ScanOp:
+    """Unapplied scan: f\\ as a function value"""
+    function: str
+
+
+@dataclass(frozen=True)
 class InnerProduct:
     left_fn: str
     right_fn: str
@@ -302,6 +321,22 @@ class Parser:
         # Check for primitive function (possibly followed by operator)
         if self._current().type == TokenType.FUNCTION:
             func_glyph, op_glyph = self._parse_function_expr()
+            if op_glyph == "⍤":
+                # Rank operator: f⍤k
+                rank_spec = self._parse_array()
+                return RankDerived(func_glyph, rank_spec)
+            if op_glyph in ("/", "\\"):
+                # Check if followed by ⍤ (e.g., +/⍤1)
+                if (
+                    self._current().type == TokenType.OPERATOR
+                    and self._current().value == "⍤"
+                ):
+                    self._eat(TokenType.OPERATOR)
+                    rank_spec = self._parse_array()
+                    inner = ReduceOp(func_glyph) if op_glyph == "/" else ScanOp(func_glyph)
+                    return RankDerived(inner, rank_spec)
+                operand = self._parse_statement()
+                return DerivedFunc(op_glyph, func_glyph, operand)
             if op_glyph is not None:
                 operand = self._parse_statement()
                 return DerivedFunc(op_glyph, func_glyph, operand)
@@ -348,11 +383,33 @@ class Parser:
             right = self._parse_statement()
             return OuterProduct(func_token.value, left, right)
 
+        # Check for ⍤ after Dfn or Var: {dfn}⍤k or name⍤k
+        if (
+            isinstance(left, (Dfn, Var))
+            and self._current().type == TokenType.OPERATOR
+            and self._current().value == "⍤"
+        ):
+            self._eat(TokenType.OPERATOR)
+            rank_spec = self._parse_array()
+            left = RankDerived(left, rank_spec)
+
         # Check for dfn/var in dyadic position: left {body} right  or  left name right
         if self._current().type == TokenType.LBRACE:
             dfn = self._parse_dfn()
             right = self._parse_statement()
             return DyadicDfnCall(dfn, left, right)
+
+        # Check for parenthesized function in dyadic position: left (f⍤k) right
+        if self._current().type == TokenType.LPAREN and isinstance(left, (Num, Vector)):
+            saved_pos = self._pos
+            self._eat(TokenType.LPAREN)
+            inner = self._parse_statement()
+            if self._current().type == TokenType.RPAREN:
+                self._eat(TokenType.RPAREN)
+                if isinstance(inner, RankDerived) and self._is_array_start():
+                    right = self._parse_statement()
+                    return DyadicDfnCall(inner, left, right)
+            self._pos = saved_pos
 
         if (
             self._current().type == TokenType.ID
@@ -369,8 +426,8 @@ class Parser:
             # Not a dyadic call — backtrack
             self._pos = saved_pos
 
-        # Check if left is a dfn/var being applied as a monadic function
-        if isinstance(left, (Dfn, Var, Nabla)) and self._is_array_start():
+        # Check if left is a dfn/var/rank-derived being applied as a monadic function
+        if isinstance(left, (Dfn, Var, Nabla, RankDerived)) and self._is_array_start():
             right = self._parse_statement()
             return MonadicDfnCall(left, right)
 

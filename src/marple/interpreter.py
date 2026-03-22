@@ -4,6 +4,7 @@ from typing import Any, Callable
 
 from marple.arraymodel import APLArray, S
 from marple.backend import is_numeric_array, np, to_list
+from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
 from marple.functions import (
     absolute_value,
     add,
@@ -73,6 +74,9 @@ from marple.parser import (
     Omega,
     OuterProduct,
     Program,
+    RankDerived,
+    ReduceOp,
+    ScanOp,
     Str,
     SysVar,
     Var,
@@ -311,6 +315,8 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         return func(left, right)  # type: ignore[operator]
 
     if isinstance(node, MonadicDfnCall):
+        if isinstance(node.dfn, RankDerived):
+            return _apply_rank_monadic(node.dfn, node.operand, env)
         dfn_val = _evaluate(node.dfn, env)
         operand = _evaluate(node.operand, env)
         if not isinstance(dfn_val, _DfnClosure):
@@ -318,6 +324,8 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         return _call_dfn(dfn_val, operand)
 
     if isinstance(node, DyadicDfnCall):
+        if isinstance(node.dfn, RankDerived):
+            return _apply_rank_dyadic(node.dfn, node.left, node.right, env)
         dfn_val = _evaluate(node.dfn, env)
         left = _evaluate(node.left, env)
         right = _evaluate(node.right, env)
@@ -545,6 +553,116 @@ def _outer_product(
         for b in b_data:
             result_data.append(func(S(a), S(b)).data[0])
     return APLArray(a_shape + b_shape, result_data)
+
+
+def _apply_func_monadic(
+    func: object,
+    omega: APLArray,
+    env: dict[str, Any],
+) -> APLArray:
+    """Apply a function monadically. Used by rank operator."""
+    if isinstance(func, str):
+        # Primitive glyph — build a MonadicFunc node and evaluate
+        from marple.parser import MonadicFunc as MF, Num as N
+        # Create a dummy AST and evaluate
+        node = MF(func, N(0))  # dummy operand, won't be used
+        # Instead, directly look up and apply
+        if func == "⍳":
+            io = int(env.get("⎕IO", S(1)).data[0])
+            n = int(omega.data[0])
+            return APLArray([n], list(range(io, n + io)))
+        if func in ("⍋", "⍒"):
+            io = int(env.get("⎕IO", S(1)).data[0])
+            if func == "⍋":
+                return grade_up(omega, io)
+            return grade_down(omega, io)
+        f = MONADIC_FUNCTIONS.get(func)
+        if f is not None:
+            return f(omega)  # type: ignore[operator]
+        raise ValueError(f"Unknown monadic function: {func}")
+    if isinstance(func, ReduceOp):
+        f = DYADIC_FUNCTIONS.get(func.function)
+        if f is None:
+            raise ValueError(f"Unknown function for reduce: {func.function}")
+        return _reduce(f, omega)  # type: ignore[arg-type]
+    if isinstance(func, ScanOp):
+        f = DYADIC_FUNCTIONS.get(func.function)
+        if f is None:
+            raise ValueError(f"Unknown function for scan: {func.function}")
+        return _scan(f, omega)  # type: ignore[arg-type]
+    if isinstance(func, (Dfn, Var)):
+        val = _evaluate(func, env)
+        if isinstance(val, _DfnClosure):
+            return _call_dfn(val, omega)
+        raise TypeError(f"Expected dfn, got {type(val)}")
+    raise TypeError(f"Cannot apply as monadic function: {type(func)}")
+
+
+def _apply_func_dyadic(
+    func: object,
+    alpha: APLArray,
+    omega: APLArray,
+    env: dict[str, Any],
+) -> APLArray:
+    """Apply a function dyadically. Used by rank operator."""
+    if isinstance(func, str):
+        if func == "⌷":
+            io = int(env.get("⎕IO", S(1)).data[0])
+            return from_array(alpha, omega, io)
+        f = DYADIC_FUNCTIONS.get(func)
+        if f is not None:
+            return f(alpha, omega)  # type: ignore[operator]
+        raise ValueError(f"Unknown dyadic function: {func}")
+    if isinstance(func, (Dfn, Var)):
+        val = _evaluate(func, env)
+        if isinstance(val, _DfnClosure):
+            return _call_dfn(val, omega, alpha=alpha)
+        raise TypeError(f"Expected dfn, got {type(val)}")
+    raise TypeError(f"Cannot apply as dyadic function: {type(func)}")
+
+
+def _apply_rank_monadic(
+    rank_node: RankDerived,
+    operand_node: object,
+    env: dict[str, Any],
+) -> APLArray:
+    omega = _evaluate(operand_node, env)
+    rank_spec_val = _evaluate(rank_node.rank_spec, env)
+    a, _, _ = resolve_rank_spec(rank_spec_val)
+    k = clamp_rank(a, len(omega.shape))
+    frame_shape, cells = decompose(omega, k)
+    results = [_apply_func_monadic(rank_node.function, cell, env) for cell in cells]
+    return reassemble(frame_shape, results)
+
+
+def _apply_rank_dyadic(
+    rank_node: RankDerived,
+    left_node: object,
+    right_node: object,
+    env: dict[str, Any],
+) -> APLArray:
+    alpha = _evaluate(left_node, env)
+    omega = _evaluate(right_node, env)
+    rank_spec_val = _evaluate(rank_node.rank_spec, env)
+    _, b_rank, c_rank = resolve_rank_spec(rank_spec_val)
+    b = clamp_rank(b_rank, len(alpha.shape))
+    c = clamp_rank(c_rank, len(omega.shape))
+    left_frame, left_cells = decompose(alpha, b)
+    right_frame, right_cells = decompose(omega, c)
+    # Frame agreement
+    if left_frame == right_frame:
+        pairs = list(zip(left_cells, right_cells))
+        frame = left_frame
+    elif left_frame == []:
+        pairs = [(left_cells[0], rc) for rc in right_cells]
+        frame = right_frame
+    elif right_frame == []:
+        pairs = [(lc, right_cells[0]) for lc in left_cells]
+        frame = left_frame
+    else:
+        raise ValueError(f"Frame mismatch: {left_frame} vs {right_frame}")
+    results = [_apply_func_dyadic(rank_node.function, lc, rc, env) for lc, rc in pairs]
+    return reassemble(frame, results)
 
 
 def _bracket_index(
