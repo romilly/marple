@@ -280,6 +280,11 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
             io = int(env.get("⎕IO", S(1)).data[0])
             n = int(operand.data[0])
             return APLArray([n], list(range(io, n + io)))
+        if node.function == "≢":
+            operand = _evaluate(node.operand, env)
+            if operand.is_scalar():
+                return S(1)
+            return S(operand.shape[0])
         if node.function in ("⍋", "⍒"):
             operand = _evaluate(node.operand, env)
             io = int(env.get("⎕IO", S(1)).data[0])
@@ -307,6 +312,14 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
             right = _evaluate(node.right, env)
             io = int(env.get("⎕IO", S(1)).data[0])
             return from_array(left, right, io)
+        if node.function == "≡":
+            left = _evaluate(node.left, env)
+            right = _evaluate(node.right, env)
+            return S(1 if left == right else 0)
+        if node.function == "≢":
+            left = _evaluate(node.left, env)
+            right = _evaluate(node.right, env)
+            return S(0 if left == right else 1)
         left = _evaluate(node.left, env)
         right = _evaluate(node.right, env)
         func = DYADIC_FUNCTIONS.get(node.function)
