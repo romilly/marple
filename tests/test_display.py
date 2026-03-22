@@ -37,3 +37,18 @@ class TestNumericMatrixDisplay:
         lines = format_result(result).split("\n")
         assert lines[0] == "1 20 300"
         assert lines[1] == "4 50 600"
+
+    def test_float_matrix_truncated(self) -> None:
+        from marple.repl import format_result
+        result = interpret("÷ 2 3⍴⍳5")
+        lines = format_result(result).split("\n")
+        # Should not have 16-digit floats
+        assert len(lines[0]) < 30
+        # 0.3333333333 (10 sig digits) not 0.3333333333333333
+        assert "0.3333333333" in lines[0]
+        assert "0.33333333333" not in lines[0]
+
+    def test_float_whole_number_no_decimal(self) -> None:
+        from marple.repl import format_result
+        result = interpret("÷1")
+        assert format_result(result) == "1"

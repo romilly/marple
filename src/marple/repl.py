@@ -19,9 +19,19 @@ def _is_char_array(arr: APLArray) -> bool:
     return len(arr.data) > 0 and all(isinstance(x, str) for x in arr.data)
 
 
-def format_result(result: APLArray) -> str:
+def _format_num(x: object, pp: int = 10) -> str:
+    """Format a number for display, using pp significant digits for floats."""
+    if isinstance(x, float):
+        if x == int(x) and abs(x) < 1e15:
+            return str(int(x))
+        s = f"{x:.{pp}g}"
+        return s
+    return str(x)
+
+
+def format_result(result: APLArray, pp: int = 10) -> str:
     if result.is_scalar():
-        return str(result.data[0])
+        return _format_num(result.data[0], pp)
     if _is_char_array(result):
         if len(result.shape) == 1:
             return "".join(str(x) for x in result.data)
@@ -33,10 +43,10 @@ def format_result(result: APLArray) -> str:
                 lines.append("".join(str(x) for x in row_data))
             return "\n".join(lines)
     if len(result.shape) == 1:
-        return " ".join(str(x) for x in result.data)
+        return " ".join(_format_num(x, pp) for x in result.data)
     if len(result.shape) == 2:
         rows, cols = result.shape
-        strs = [str(x) for x in result.data]
+        strs = [_format_num(result.data[r * cols + c], pp) for r in range(rows) for c in range(cols)]
         col_widths = []
         for c in range(cols):
             w = max(len(strs[r * cols + c]) for r in range(rows))
