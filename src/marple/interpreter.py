@@ -49,6 +49,7 @@ from marple.structural import (
     iota,
     matrix_divide,
     matrix_inverse,
+    membership,
     ravel,
     replicate,
     reshape,
@@ -135,12 +136,6 @@ DYADIC_FUNCTIONS: dict[str, object] = {
     "*": power,
     "⍟": logarithm,
     "|": residue,
-    "<": less_than,
-    "≤": less_equal,
-    "=": equal,
-    "≥": greater_equal,
-    ">": greater_than,
-    "≠": not_equal,
     "∧": logical_and,
     "∨": logical_or,
     "⍴": reshape,
@@ -317,7 +312,18 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
             left = _evaluate(node.left, env)
             right = _evaluate(node.right, env)
             io = int(env.get("⎕IO", S(1)).data[0])
-            return index_of(left, right, io)
+            ct = float(env.get("⎕CT", S(1e-14)).data[0])
+            return index_of(left, right, io, ct)
+        if node.function in _CT_COMPARISONS:
+            left = _evaluate(node.left, env)
+            right = _evaluate(node.right, env)
+            ct = float(env.get("⎕CT", S(1e-14)).data[0])
+            return _CT_COMPARISONS[node.function](left, right, ct)  # type: ignore[operator]
+        if node.function == "∈":
+            left = _evaluate(node.left, env)
+            right = _evaluate(node.right, env)
+            ct = float(env.get("⎕CT", S(1e-14)).data[0])
+            return membership(left, right, ct)
         if node.function == "⌷":
             left = _evaluate(node.left, env)
             right = _evaluate(node.right, env)
@@ -380,8 +386,8 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
     if isinstance(node, InnerProduct):
         left = _evaluate(node.left, env)
         right = _evaluate(node.right, env)
-        left_fn = DYADIC_FUNCTIONS.get(node.left_fn)
-        right_fn = DYADIC_FUNCTIONS.get(node.right_fn)
+        left_fn = _lookup_dyadic(node.left_fn)
+        right_fn = _lookup_dyadic(node.right_fn)
         if left_fn is None or right_fn is None:
             raise DomainError(f"Unknown function in inner product")
         reduce_fn: Callable[[APLArray, APLArray], APLArray] = left_fn  # type: ignore[assignment]
@@ -391,7 +397,7 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
     if isinstance(node, OuterProduct):
         left = _evaluate(node.left, env)
         right = _evaluate(node.right, env)
-        func = DYADIC_FUNCTIONS.get(node.function)
+        func = _lookup_dyadic(node.function)
         if func is None:
             raise DomainError(f"Unknown function in outer product: {node.function}")
         apply_fn_: Callable[[APLArray, APLArray], APLArray] = func  # type: ignore[assignment]
@@ -399,7 +405,7 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
 
     if isinstance(node, DerivedFunc):
         operand = _evaluate(node.operand, env)
-        func = DYADIC_FUNCTIONS.get(node.function)
+        func = _lookup_dyadic(node.function)
         if func is None:
             raise DomainError(f"Unknown function for operator: {node.function}")
         if node.operator == "/":
@@ -594,6 +600,23 @@ def _outer_product(
     return APLArray(a_shape + b_shape, result_data)
 
 
+_CT_COMPARISONS: dict[str, object] = {
+    "<": less_than,
+    "≤": less_equal,
+    "=": equal,
+    "≥": greater_equal,
+    ">": greater_than,
+    "≠": not_equal,
+}
+
+def _lookup_dyadic(name: str) -> object | None:
+    """Look up a dyadic function by glyph, including CT comparisons."""
+    f = DYADIC_FUNCTIONS.get(name)
+    if f is not None:
+        return f
+    return _CT_COMPARISONS.get(name)
+
+
 _sys_workspace: Namespace | None = None
 
 
@@ -700,12 +723,12 @@ def _apply_func_monadic(
             return f(omega)  # type: ignore[operator]
         raise DomainError(f"Unknown monadic function: {func}")
     if isinstance(func, ReduceOp):
-        f = DYADIC_FUNCTIONS.get(func.function)
+        f = _lookup_dyadic(func.function)
         if f is None:
             raise DomainError(f"Unknown function for reduce: {func.function}")
         return _reduce(f, omega)  # type: ignore[arg-type]
     if isinstance(func, ScanOp):
-        f = DYADIC_FUNCTIONS.get(func.function)
+        f = _lookup_dyadic(func.function)
         if f is None:
             raise DomainError(f"Unknown function for scan: {func.function}")
         return _scan(f, omega)  # type: ignore[arg-type]
@@ -728,6 +751,12 @@ def _apply_func_dyadic(
         if func == "⌷":
             io = int(env.get("⎕IO", S(1)).data[0])
             return from_array(alpha, omega, io)
+        if func in _CT_COMPARISONS:
+            ct = float(env.get("⎕CT", S(1e-14)).data[0])
+            return _CT_COMPARISONS[func](alpha, omega, ct)  # type: ignore[operator]
+        if func == "∈":
+            ct = float(env.get("⎕CT", S(1e-14)).data[0])
+            return membership(alpha, omega, ct)
         f = DYADIC_FUNCTIONS.get(func)
         if f is not None:
             return f(alpha, omega)  # type: ignore[operator]
@@ -862,6 +891,8 @@ def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
         env = {}
     if "⎕IO" not in env:
         env["⎕IO"] = S(1)
+    if "⎕CT" not in env:
+        env["⎕CT"] = S(1e-14)
     # Handle #import directives
     if source.strip().startswith("#import"):
         return _handle_import(source.strip(), env)

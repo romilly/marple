@@ -46,25 +46,56 @@ def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
     return APLArray(new_shape, result)
 
 
-def index_of(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
+def _tolerant_match(a: object, b: object, ct: float) -> bool:
+    """Compare two values with tolerance for floats."""
+    if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+        if ct == 0:
+            return a == b
+        return abs(float(a) - float(b)) <= ct * max(abs(float(a)), abs(float(b)))
+    return a == b
+
+
+def index_of(alpha: APLArray, omega: APLArray, io: int = 1, ct: float = 0) -> APLArray:
+    data = to_list(alpha.data)
     if omega.is_scalar():
         target = omega.data[0]
-        for i, val in enumerate(alpha.data):
-            if val == target:
+        for i, val in enumerate(data):
+            if _tolerant_match(val, target, ct):
                 return S(i + io)
-        return S(len(alpha.data) + io)  # not found
-    targets = omega.data
+        return S(len(data) + io)
+    targets = to_list(omega.data)
     results = []
     for target in targets:
         found = False
-        for i, val in enumerate(alpha.data):
-            if val == target:
+        for i, val in enumerate(data):
+            if _tolerant_match(val, target, ct):
                 results.append(i + io)
                 found = True
                 break
         if not found:
-            results.append(len(alpha.data) + io)
+            results.append(len(data) + io)
     return APLArray(list(omega.shape), results)
+
+
+def membership(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
+    """Dyadic ∈: for each element of alpha, 1 if found in omega, else 0."""
+    right_data = to_list(omega.data)
+    if alpha.is_scalar():
+        val = alpha.data[0]
+        for r in right_data:
+            if _tolerant_match(val, r, ct):
+                return S(1)
+        return S(0)
+    left_data = to_list(alpha.data)
+    results: list[object] = []
+    for val in left_data:
+        found = 0
+        for r in right_data:
+            if _tolerant_match(val, r, ct):
+                found = 1
+                break
+        results.append(found)
+    return APLArray(list(alpha.shape), results)
 
 
 def catenate(alpha: APLArray, omega: APLArray) -> APLArray:

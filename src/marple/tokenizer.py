@@ -34,7 +34,7 @@ class Token:
     value: object
 
 
-FUNCTION_GLYPHS = set("+-×÷⌈⌊*⍟|<≤=≥>≠∧∨~⍴⍳,↑↓⌽⍉⍋⍒⊤⊥⍎⍕⌹○⌷≡≢")
+FUNCTION_GLYPHS = set("+-×÷⌈⌊*⍟|<≤=≥>≠∧∨~⍴⍳,↑↓⌽⍉⍋⍒⊤⊥⍎⍕⌹○⌷≡≢∈")
 
 SINGLE_CHAR_TOKENS: dict[str, Token] = {
     "(": Token(TokenType.LPAREN, "("),
@@ -86,6 +86,17 @@ class Tokenizer:
                 has_dot = True
             result += self._current()  # type: ignore[operator]
             self._advance()
+        # Handle scientific notation: 1e10, 1E-14, 1.5e3
+        if self._current() is not None and self._current() in ("e", "E"):
+            result += self._current()  # type: ignore[operator]
+            self._advance()
+            if self._current() is not None and self._current() in ("-", "+"):
+                result += self._current()  # type: ignore[operator]
+                self._advance()
+            while self._current() is not None and self._current().isdigit():  # type: ignore[union-attr]
+                result += self._current()  # type: ignore[operator]
+                self._advance()
+            return Token(TokenType.NUMBER, float(result))
         value: int | float = float(result) if has_dot else int(result)
         return Token(TokenType.NUMBER, value)
 

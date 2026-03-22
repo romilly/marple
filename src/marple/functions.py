@@ -163,28 +163,35 @@ def residue(alpha: APLArray, omega: APLArray) -> APLArray:
     return _pervade_dyadic(lambda a, b: b % a, alpha, omega)
 
 
-def less_than(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a < b), alpha, omega, "less")
+def _tolerant_eq(a: int | float, b: int | float, ct: float) -> bool:
+    """APL tolerant equality: |a-b| ≤ ct × (|a| ⌈ |b|)"""
+    if ct == 0:
+        return a == b
+    return abs(a - b) <= ct * max(abs(a), abs(b))
 
 
-def less_equal(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a <= b), alpha, omega, "less_equal")
+def less_than(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
+    return _pervade_dyadic(lambda a, b: int(a < b and not _tolerant_eq(a, b, ct)), alpha, omega)
 
 
-def equal(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a == b), alpha, omega, "equal")
+def less_equal(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
+    return _pervade_dyadic(lambda a, b: int(a <= b or _tolerant_eq(a, b, ct)), alpha, omega)
 
 
-def greater_equal(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a >= b), alpha, omega, "greater_equal")
+def equal(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
+    return _pervade_dyadic(lambda a, b: int(_tolerant_eq(a, b, ct)), alpha, omega)
 
 
-def greater_than(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a > b), alpha, omega, "greater")
+def greater_equal(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
+    return _pervade_dyadic(lambda a, b: int(a >= b or _tolerant_eq(a, b, ct)), alpha, omega)
 
 
-def not_equal(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a != b), alpha, omega, "not_equal")
+def greater_than(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
+    return _pervade_dyadic(lambda a, b: int(a > b and not _tolerant_eq(a, b, ct)), alpha, omega)
+
+
+def not_equal(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
+    return _pervade_dyadic(lambda a, b: int(not _tolerant_eq(a, b, ct)), alpha, omega)
 
 
 def logical_and(alpha: APLArray, omega: APLArray) -> APLArray:
