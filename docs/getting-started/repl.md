@@ -1,11 +1,11 @@
 # The REPL
 
-MARPLE's interactive environment is a read-eval-print loop (REPL) with live glyph input. You type ASCII shortcuts and they're converted to APL characters as you type.
+MARPLE provides two interactive environments: a **terminal REPL** and a **web REPL**.
 
-## Launching and exiting
+## Terminal REPL
 
 ```bash
-marple          # launch the REPL
+marple          # launch the terminal REPL
 ```
 
 ```apl
@@ -14,34 +14,44 @@ marple          # launch the REPL
 
 You can also exit with ++ctrl+d++ (Unix/macOS) or ++ctrl+z++ then ++enter++ (Windows).
 
-## Typing APL glyphs
+### Typing APL glyphs in the terminal
 
-APL uses special characters like `⍴`, `⍳`, `⌽`, and `⍤`. In MARPLE, you type these using **backtick sequences**: press the backtick key (`` ` ``) followed by a letter or symbol.
-
-For example:
+In the terminal REPL, type APL characters using **backtick sequences**: press `` ` `` followed by a letter or symbol.
 
 | You type | You get | Name |
 |----------|---------|------|
 | `` `r `` | `⍴` | Rho (shape/reshape) |
 | `` `i `` | `⍳` | Iota (index generator) |
-| `` `+ `` | `⌽` | Circle-stile (reverse) |
-| `` `R `` | `⍤` | Jot-diaeresis (rank) |
-| `` `# `` | `⌷` | Squad (from) |
+| `` `l `` | `←` | Assignment |
+| `` `J `` | `⍤` | Rank operator |
+| `` `I `` | `⌷` | From (squad) |
 
-The translation happens live — you'll see the APL character appear immediately after you type the second key.
+The translation happens live — the APL character appears immediately.
 
 !!! tip
     A complete glyph reference card is available at [Glyph Input](../reference/glyph-input.md).
 
+Alternatively, if you have a Dyalog APL keyboard layout installed (e.g. via `setxkbmap` with `grp:win_switch`), you can use the Win key to type APL glyphs directly.
+
+## Web REPL
+
+```bash
+python -m marple.web.server          # start on port 8888
+python -m marple.web.server --port 9000  # custom port
+```
+
+Open `http://localhost:8888/` in your browser. The web REPL provides:
+
+- **Language bar** — clickable APL glyphs above the input area. Click a glyph to insert it. Hover for name and description.
+- **Workspace panel** — sidebar showing defined variables (with shapes) and functions. Click a name to insert it into the input.
+- **Session history** — up/down arrow keys cycle through previously entered expressions.
+- **Multi-line input** — Shift+Enter adds a newline; Enter submits. Newlines are converted to `⋄` (diamond) for execution.
+
+The web REPL is accessible from other machines on the same network — useful for running MARPLE on a Raspberry Pi and programming it from your workstation.
+
 ## The prompt
 
 The MARPLE prompt is six spaces, following APL tradition:
-
-```
-      _
-```
-
-Expressions are typed at the prompt. Results appear left-aligned on the next line:
 
 ```apl
       2 + 3
@@ -52,7 +62,7 @@ Expressions are typed at the prompt. Results appear left-aligned on the next lin
 
 ## Comments
 
-Everything after `⍝` (lamp, typed `` `; ``) on a line is a comment:
+Everything after `⍝` (lamp) on a line is a comment:
 
 ```apl
       2 + 3  ⍝ this is a comment
@@ -61,12 +71,12 @@ Everything after `⍝` (lamp, typed `` `; ``) on a line is a comment:
 
 ## System commands
 
-System commands start with `)` and are entered at the REPL prompt. They manage the workspace and session.
+System commands start with `)` and work in both the terminal and web REPLs.
 
 | Command | Description |
 |---------|-------------|
-| `)off` | Exit the REPL |
-| `)clear` | Clear the workspace (remove all names) |
+| `)off` | Exit the REPL (terminal only) |
+| `)clear` | Clear the workspace |
 | `)fns` | List defined functions |
 | `)vars` | List defined variables |
 | `)save` | Save the current workspace |
@@ -76,23 +86,3 @@ System commands start with `)` and are entered at the REPL prompt. They manage t
 | `)wsid name` | Set the workspace name |
 
 See [System Commands](../reference/system/system-commands.md) for full details.
-
-## Multi-line input
-
-Dfns (direct functions) that span multiple lines are entered by opening a brace `{` and continuing on subsequent lines until the closing `}`:
-
-<!-- TODO: confirm multi-line REPL behaviour — does MARPLE use a continuation prompt? -->
-
-```apl
-      avg ← {
-          (+/⍵) ÷ ⍴⍵
-      }
-      avg 3 5 7 9
-6
-```
-
-## Terminal compatibility
-
-MARPLE's glyph input uses raw terminal mode. It works in most modern terminals on macOS, Linux, and Windows (Windows Terminal, WSL). If glyph input isn't working, see [REPL Issues](../troubleshooting/repl-issues.md).
-
-<!-- TODO: Romilly — confirm which terminals are tested/supported -->

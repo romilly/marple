@@ -1,20 +1,17 @@
 # Changelog
 
-## Unreleased
+The full changelog is maintained in [CHANGELOG.md](https://github.com/romilly/marple/blob/main/CHANGELOG.md) at the project root.
 
-### Added
+## Current version: 0.3.6
 
-- APL array model with scalar and vector support
-- Scalar functions: arithmetic (`+`, `-`, `×`, `÷`), comparison (`<`, `≤`, `=`, `≥`, `>`, `≠`), boolean (`∧`, `∨`, `~`), extended (`*`, `⍟`, `|`, `○`)
-- Structural functions: `⍴` (shape/reshape), `⍳` (iota/index-of), `,` (ravel/catenate), `⌽` (reverse/rotate), `⍉` (transpose), `↑` (take), `↓` (drop), `⍋` (grade up), `⍒` (grade down), `⊤` (encode), `⊥` (decode), `/` (replicate), `\` (expand), `⌹` (matrix inverse/divide), `⌷` (From), `∈` (membership), `⍕` (format), `⍎` (execute), `≢` (tally/not-match), `≡` (match)
-- Operators: `/` (reduce), `\` (scan), `⍤` (rank), `∘.f` (outer product), `f.g` (inner product), `⌶` (I-Beam)
-- Direct functions (dfns) with guards, alpha defaults, and recursion via `∇`
-- Direct operators (dops)
-- Bracket indexing for vectors and matrices
-- Auto-detecting backend: CuPy, NumPy, ulab, or pure Python
-- REPL with backtick glyph input
-- Workspace save/load system
-- Standard library: `$::str` (trim, upper, lower), `$::io` (nread, nwrite), `$::error` (ea, en)
-- `#import` directive with optional aliasing
-- Script execution mode
-- Initial documentation site
+### Highlights
+
+- **Web REPL** — browser-based REPL with Bootstrap layout, language bar, workspace panel, session history, and multi-line input
+- **Published to PyPI** as `marple-lang` — install with `uv pip install marple-lang`
+- **12 system variables and functions** — `⎕PP`, `⎕A`, `⎕D`, `⎕TS`, `⎕WSID`, `⎕RL`, `⎕EN`, `⎕DM`, `⎕EA`, `⎕UCS`, `⎕NC`, `⎕EX`, `⎕SIGNAL`
+- **Roll and deal** (`?`) with `⎕RL` for deterministic random
+- **Numpy optimisations** — outer product 380x faster, inner product correct for any rank
+- **Symbol table-aware parser** — named functions work without parentheses
+- **448 tests** (412 interpreter + 36 Playwright)
+
+See the [full changelog](https://github.com/romilly/marple/blob/main/CHANGELOG.md) for complete version history.

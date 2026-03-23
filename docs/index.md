@@ -73,6 +73,7 @@ marple
 - **From indexing** (`⌷`) — select major cells along the leading axis. Composes with the rank operator for arbitrary-axis selection.
 - **Direct definition** — dfns (`{⍺+⍵}`) and dops (`{⍺⍺/⍵}`) with guards, recursion, and lexical scope. No tradfns.
 - **Python-powered** — NumPy backend when available (~73× faster for large arrays), pure-Python fallback for portability.
+- **Web REPL** — browser-based REPL with language bar, workspace panel, session history, and multi-line input. Accessible from other machines on the network.
 - **40+ primitives** — arithmetic, comparison, boolean, structural, and mixed functions, all with scalar extension.
 
 ## Who is this for?
