@@ -56,9 +56,7 @@ def main():
                 continue
             response_lines.append(line)
 
-        # Suppress output for bare assignments (contains ← but doesn't start with +)
-        is_assignment = "←" in expr and not expr.lstrip().startswith("+")
-        if response_lines and not is_assignment:
+        if response_lines:
             print("\n".join(response_lines))
 
     ser.close()

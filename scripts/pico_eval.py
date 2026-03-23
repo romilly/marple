@@ -8,7 +8,7 @@ import sys
 sys.path.insert(0, "")
 
 from marple.interpreter import interpret, default_env
-from marple.repl import format_result
+from marple.repl import format_result, _is_silent
 from marple.errors import APLError
 
 SENTINEL = "\x00"
@@ -23,7 +23,6 @@ while True:
     raw = raw.strip()
     if not raw:
         print(SENTINEL)
-        sys.stdout.write("")  # flush
         continue
     # Decode hex-encoded UTF-8 from workstation
     try:
@@ -32,10 +31,14 @@ while True:
         line = raw  # fallback: treat as plain ASCII
     try:
         result = interpret(line, env)
-        output = format_result(result)
-        print(output)
+        if _is_silent(line):
+            print(SENTINEL)
+        else:
+            print(format_result(result))
+            print(SENTINEL)
     except APLError as e:
         print("ERROR: " + str(e))
+        print(SENTINEL)
     except Exception as e:
         print("ERROR: " + str(e))
-    print(SENTINEL)
+        print(SENTINEL)
