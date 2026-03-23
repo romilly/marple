@@ -676,53 +676,33 @@ def _get_ct(env: dict[str, Any]) -> float:
     return float(env["⎕CT"].data[0])
 
 
-def _dispatch_monadic(glyph: str, operand: APLArray, env: dict[str, Any]) -> APLArray:
-    """Dispatch a monadic primitive function."""
-    if glyph == "⍎":
-        source = "".join(str(c) for c in operand.data)
-        return _evaluate(parse(source, env.get("__name_table__")), env)
-    if glyph == "⍕":
-        return _format_array(operand)
-    if glyph == "⍳":
-        io = _get_io(env)
-        n = int(operand.data[0])
-        return APLArray([n], list(range(io, n + io)))
-    if glyph == "≢":
-        return S(1) if operand.is_scalar() else S(operand.shape[0])
-    if glyph == "⍋":
-        return grade_up(operand, _get_io(env))
-    if glyph == "⍒":
-        return grade_down(operand, _get_io(env))
-    if glyph == "?":
-        return _roll(operand, env)
-    func = MONADIC_FUNCTIONS.get(glyph)
-    if func is not None:
-        return func(operand)  # type: ignore[operator]
-    raise DomainError(f"Unknown monadic function: {glyph}")
+# ── Monadic handlers: (operand, env) → APLArray ──
+
+def _m_execute(operand: APLArray, env: dict[str, Any]) -> APLArray:
+    source = "".join(str(c) for c in operand.data)
+    return _evaluate(parse(source, env.get("__name_table__")), env)
 
 
-def _dispatch_dyadic(glyph: str, left: APLArray, right: APLArray, env: dict[str, Any]) -> APLArray:
-    """Dispatch a dyadic primitive function."""
-    if glyph == "⍕":
-        return _dyadic_format(left, right)
-    if glyph == "⍳":
-        return index_of(left, right, _get_io(env), _get_ct(env))
-    if glyph in _CT_COMPARISONS:
-        return _CT_COMPARISONS[glyph](left, right, _get_ct(env))  # type: ignore[operator]
-    if glyph == "∈":
-        return membership(left, right, _get_ct(env))
-    if glyph == "?":
-        return _deal(left, right, env)
-    if glyph == "⌷":
-        return from_array(left, right, _get_io(env))
-    if glyph == "≡":
-        return S(1 if left == right else 0)
-    if glyph == "≢":
-        return S(0 if left == right else 1)
-    func = _lookup_dyadic(glyph)
-    if func is not None:
-        return func(left, right)  # type: ignore[operator]
-    raise DomainError(f"Unknown dyadic function: {glyph}")
+def _m_format(operand: APLArray, env: dict[str, Any]) -> APLArray:
+    return _format_array(operand)
+
+
+def _m_iota(operand: APLArray, env: dict[str, Any]) -> APLArray:
+    io = _get_io(env)
+    n = int(operand.data[0])
+    return APLArray([n], list(range(io, n + io)))
+
+
+def _m_tally(operand: APLArray, env: dict[str, Any]) -> APLArray:
+    return S(1) if operand.is_scalar() else S(operand.shape[0])
+
+
+def _m_grade_up(operand: APLArray, env: dict[str, Any]) -> APLArray:
+    return grade_up(operand, _get_io(env))
+
+
+def _m_grade_down(operand: APLArray, env: dict[str, Any]) -> APLArray:
+    return grade_down(operand, _get_io(env))
 
 
 def _seed_random(env: dict[str, Any]) -> None:
@@ -749,16 +729,92 @@ def _roll(omega: APLArray, env: dict[str, Any]) -> APLArray:
     return APLArray(list(omega.shape), results)
 
 
-def _deal(alpha: APLArray, omega: APLArray, env: dict[str, Any]) -> APLArray:
+def _deal(left: APLArray, right: APLArray, env: dict[str, Any]) -> APLArray:
     """Dyadic ?: deal. N?M → N distinct random integers from ⎕IO..M."""
     _seed_random(env)
     io = _get_io(env)
-    n = int(alpha.data[0])
-    m = int(omega.data[0])
+    n = int(left.data[0])
+    m = int(right.data[0])
     if n > m:
         raise LengthError(f"Deal: cannot choose {n} from {m}")
     result = _random.sample(range(io, m + io), n)
     return APLArray([n], result)
+
+
+_MONADIC_DISPATCH: dict[str, Callable[[APLArray, dict[str, Any]], APLArray]] = {
+    "⍎": _m_execute,
+    "⍕": _m_format,
+    "⍳": _m_iota,
+    "≢": _m_tally,
+    "⍋": _m_grade_up,
+    "⍒": _m_grade_down,
+    "?": _roll,
+}
+
+
+# ── Dyadic handlers: (left, right, env) → APLArray ──
+
+def _d_format(left: APLArray, right: APLArray, env: dict[str, Any]) -> APLArray:
+    return _dyadic_format(left, right)
+
+
+def _d_index_of(left: APLArray, right: APLArray, env: dict[str, Any]) -> APLArray:
+    return index_of(left, right, _get_io(env), _get_ct(env))
+
+
+def _d_membership(left: APLArray, right: APLArray, env: dict[str, Any]) -> APLArray:
+    return membership(left, right, _get_ct(env))
+
+
+def _d_from(left: APLArray, right: APLArray, env: dict[str, Any]) -> APLArray:
+    return from_array(left, right, _get_io(env))
+
+
+def _d_match(left: APLArray, right: APLArray, env: dict[str, Any]) -> APLArray:
+    return S(1 if left == right else 0)
+
+
+def _d_not_match(left: APLArray, right: APLArray, env: dict[str, Any]) -> APLArray:
+    return S(0 if left == right else 1)
+
+
+def _d_ct_compare(left: APLArray, right: APLArray, env: dict[str, Any], glyph: str) -> APLArray:
+    return _CT_COMPARISONS[glyph](left, right, _get_ct(env))  # type: ignore[operator]
+
+
+_DYADIC_DISPATCH: dict[str, Callable[[APLArray, APLArray, dict[str, Any]], APLArray]] = {
+    "⍕": _d_format,
+    "⍳": _d_index_of,
+    "∈": _d_membership,
+    "?": _deal,
+    "⌷": _d_from,
+    "≡": _d_match,
+    "≢": _d_not_match,
+}
+
+
+def _dispatch_monadic(glyph: str, operand: APLArray, env: dict[str, Any]) -> APLArray:
+    """Dispatch a monadic primitive function."""
+    handler = _MONADIC_DISPATCH.get(glyph)
+    if handler is not None:
+        return handler(operand, env)
+    func = MONADIC_FUNCTIONS.get(glyph)
+    if func is not None:
+        return func(operand)  # type: ignore[operator]
+    raise DomainError(f"Unknown monadic function: {glyph}")
+
+
+def _dispatch_dyadic(glyph: str, left: APLArray, right: APLArray, env: dict[str, Any]) -> APLArray:
+    """Dispatch a dyadic primitive function."""
+    handler = _DYADIC_DISPATCH.get(glyph)
+    if handler is not None:
+        return handler(left, right, env)
+    if glyph in _CT_COMPARISONS:
+        return _d_ct_compare(left, right, env, glyph)
+    func = _lookup_dyadic(glyph)
+    if func is not None:
+        return func(left, right)  # type: ignore[operator]
+    raise DomainError(f"Unknown dyadic function: {glyph}")
 
 
 def _call_sys_function_monadic(name: str, operand_node: object, env: dict[str, Any]) -> APLArray:
