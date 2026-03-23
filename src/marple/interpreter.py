@@ -259,14 +259,9 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
                                   now.hour, now.minute, now.second,
                                   now.microsecond // 1000])
         if node.name == "⎕VER":
-            try:
-                from importlib.metadata import version
-                ver = version("marple-lang")
-            except Exception:
-                ver = "pico"
+            from marple import __version__
             import sys
-            plat = sys.platform
-            s = "MARPLE v" + ver + " on " + plat
+            s = "MARPLE v" + __version__ + " on " + sys.platform
             return APLArray([len(s)], list(s))
         if node.name not in env:
             raise ValueError_(f"Undefined system variable: {node.name}")

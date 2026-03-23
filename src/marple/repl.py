@@ -121,11 +121,7 @@ def main() -> None:
         return
 
     env: dict[str, Any] = default_env()
-    try:
-        from importlib.metadata import version
-        ver = version("marple-lang")
-    except Exception:
-        ver = "pico"
+    from marple import __version__ as ver
     print(f"MARPLE v{ver} - Mini APL in Python")
     print("CLEAR WS\n")
     use_terminal = read_line is not None and sys.stdin.isatty()
