@@ -17,13 +17,18 @@ env = default_env()
 
 while True:
     try:
-        line = input()
+        raw = input()
     except EOFError:
         break
-    line = line.strip()
-    if not line:
+    raw = raw.strip()
+    if not raw:
         print(SENTINEL)
         continue
+    # Decode hex-encoded UTF-8 from workstation
+    try:
+        line = bytes.fromhex(raw).decode("utf-8")
+    except (ValueError, UnicodeDecodeError):
+        line = raw  # fallback: treat as plain ASCII
     try:
         result = interpret(line, env)
         if _is_silent(line):

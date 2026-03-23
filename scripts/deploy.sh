@@ -39,6 +39,7 @@ mpremote \
     cp src/marple/stdlib/str/lower.apl :marple/stdlib/str/lower.apl + \
     cp src/marple/stdlib/str/trim.apl :marple/stdlib/str/trim.apl + \
     cp src/marple/stdlib/str/upper.apl :marple/stdlib/str/upper.apl + \
-    cp scripts/pico_eval.py :main.py
+    cp scripts/pico_eval.py :main.py + \
+    reset
 echo "Deployed. Pico will run eval loop on restart."
 echo "Connect with: python scripts/pico_client.py"

@@ -36,16 +36,24 @@ def main():
         if not expr:
             continue
 
-        # Send expression to Pico
-        ser.write((expr + "\n").encode("utf-8"))
+        # Send expression as hex-encoded UTF-8 (MicroPython drops non-ASCII)
+        encoded = expr.encode("utf-8").hex()
+        ser.write((encoded + "\r\n").encode("ascii"))
         ser.flush()
 
         # Read response until sentinel
         response_lines = []
         while True:
-            line = ser.readline().decode("utf-8", errors="replace").rstrip("\r\n")
+            raw = ser.readline()
+            if not raw:
+                print("(timeout)")
+                break
+            line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
             if line == SENTINEL:
                 break
+            # Skip echo of our input
+            if line == expr:
+                continue
             response_lines.append(line)
 
         if response_lines:
