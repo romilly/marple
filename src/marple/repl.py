@@ -26,6 +26,12 @@ except AttributeError:
     WORKSPACES_ROOT = "workspaces"
 
 
+def _rjust(s, width):
+    if len(s) >= width:
+        return s
+    return " " * (width - len(s)) + s
+
+
 def _is_char_array(arr: APLArray) -> bool:
     return len(arr.data) > 0 and all(isinstance(x, str) for x in arr.data)
 
@@ -76,7 +82,7 @@ def format_result(result: APLArray, pp: int = 10) -> str:
         for r in range(rows):
             parts = []
             for c in range(cols):
-                parts.append(strs[r * cols + c].rjust(col_widths[c]))
+                parts.append(_rjust(strs[r * cols + c], col_widths[c]))
             lines.append(" ".join(parts))
         return "\n".join(lines)
     return repr(result)
