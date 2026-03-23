@@ -1,28 +1,25 @@
-from enum import Enum, auto
-
-
-class TokenType(Enum):
-    NUMBER = auto()
-    FUNCTION = auto()
-    LPAREN = auto()
-    RPAREN = auto()
-    ASSIGN = auto()
-    DIAMOND = auto()
-    STRING = auto()
-    OPERATOR = auto()
-    LBRACE = auto()
-    RBRACE = auto()
-    OMEGA = auto()
-    ALPHA = auto()
-    NABLA = auto()
-    GUARD = auto()
-    LBRACKET = auto()
-    RBRACKET = auto()
-    SEMICOLON = auto()
-    SYSVAR = auto()
-    QUALIFIED_NAME = auto()
-    ID = auto()
-    EOF = auto()
+class TokenType:
+    NUMBER = "NUMBER"
+    FUNCTION = "FUNCTION"
+    LPAREN = "LPAREN"
+    RPAREN = "RPAREN"
+    ASSIGN = "ASSIGN"
+    DIAMOND = "DIAMOND"
+    STRING = "STRING"
+    OPERATOR = "OPERATOR"
+    LBRACE = "LBRACE"
+    RBRACE = "RBRACE"
+    OMEGA = "OMEGA"
+    ALPHA = "ALPHA"
+    NABLA = "NABLA"
+    GUARD = "GUARD"
+    LBRACKET = "LBRACKET"
+    RBRACKET = "RBRACKET"
+    SEMICOLON = "SEMICOLON"
+    SYSVAR = "SYSVAR"
+    QUALIFIED_NAME = "QUALIFIED_NAME"
+    ID = "ID"
+    EOF = "EOF"
 
 
 class Token:
