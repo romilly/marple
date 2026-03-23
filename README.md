@@ -4,7 +4,11 @@ Mini APL in Python Language Experiment. A first-generation APL interpreter with 
 
 ## Documentation
 
-More extensive documentation is available [here](https://romilly.github.io/marple/) 
+More extensive documentation is available [here](https://romilly.github.io/marple/)
+
+## MARPLE on the Raspberry Pi Pico 2
+
+MARPLE runs on the Raspberry Pi Pico 2 via MicroPython. See [DEMOS.md](DEMOS.md) for videos of MARPLE evaluating APL expressions on the Pico — primitives, dfns, the rank operator, namespaces, and file I/O.
 
 ## Features
 
