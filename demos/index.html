@@ -10,31 +10,31 @@
       
       
       
-        <link rel="canonical" href="https://romilly.github.io/marple/how-to/namespaces/import-stdlib/">
+        <link rel="canonical" href="https://romilly.github.io/marple/demos/">
       
       
-        <link rel="prev" href="../organise-code/">
+        <link rel="prev" href="..">
       
       
-        <link rel="next" href="../create-library/">
+        <link rel="next" href="../getting-started/">
       
       
         
       
       
-      <link rel="icon" href="../../../assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>How to import standard library functions - MARPLE Documentation</title>
+        <title>Demos - MARPLE Documentation</title>
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -53,7 +53,7 @@
       
     
     
-    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#how-to-import-standard-library-functions" class="md-skip">
+        <a href="#marple-on-the-raspberry-pi-pico-2" class="md-skip">
           Skip to content
         </a>
       
@@ -94,7 +94,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../.." title="MARPLE Documentation" class="md-header__button md-logo" aria-label="MARPLE Documentation" data-md-component="logo">
+    <a href=".." title="MARPLE Documentation" class="md-header__button md-logo" aria-label="MARPLE Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              How to import standard library functions
+              Demos
             
           </span>
         </div>
@@ -232,7 +232,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../.." title="MARPLE Documentation" class="md-nav__button md-logo" aria-label="MARPLE Documentation" data-md-component="logo">
+    <a href=".." title="MARPLE Documentation" class="md-nav__button md-logo" aria-label="MARPLE Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -262,7 +262,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../.." class="md-nav__link">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -286,10 +286,37 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../../demos/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demos
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -305,6 +332,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#demo-1-primitive-functions-and-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Demo 1: Primitive Functions and Operators
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#demo-2-direct-functions-dfns-and-the-rank-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Demo 2: Direct Functions (Dfns) and the Rank Operator
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#demo-3-namespaces-and-standard-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Demo 3: Namespaces and Standard Library
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -347,7 +427,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../getting-started/" class="md-nav__link ">
+            <a href="../getting-started/" class="md-nav__link ">
               
   
   
@@ -391,7 +471,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../getting-started/installation/" class="md-nav__link">
+      <a href="../getting-started/installation/" class="md-nav__link">
         
   
   
@@ -419,7 +499,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../getting-started/repl/" class="md-nav__link">
+      <a href="../getting-started/repl/" class="md-nav__link">
         
   
   
@@ -447,7 +527,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../getting-started/first-session/" class="md-nav__link">
+      <a href="../getting-started/first-session/" class="md-nav__link">
         
   
   
@@ -515,7 +595,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../tutorials/" class="md-nav__link ">
+            <a href="../tutorials/" class="md-nav__link ">
               
   
   
@@ -593,7 +673,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../tutorials/beginners/" class="md-nav__link ">
+            <a href="../tutorials/beginners/" class="md-nav__link ">
               
   
   
@@ -637,7 +717,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/beginners/arrays/" class="md-nav__link">
+      <a href="../tutorials/beginners/arrays/" class="md-nav__link">
         
   
   
@@ -665,7 +745,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/beginners/scalar-functions/" class="md-nav__link">
+      <a href="../tutorials/beginners/scalar-functions/" class="md-nav__link">
         
   
   
@@ -693,7 +773,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/beginners/reduce-and-scan/" class="md-nav__link">
+      <a href="../tutorials/beginners/reduce-and-scan/" class="md-nav__link">
         
   
   
@@ -721,7 +801,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/beginners/reshape-and-iota/" class="md-nav__link">
+      <a href="../tutorials/beginners/reshape-and-iota/" class="md-nav__link">
         
   
   
@@ -749,7 +829,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/beginners/right-to-left/" class="md-nav__link">
+      <a href="../tutorials/beginners/right-to-left/" class="md-nav__link">
         
   
   
@@ -777,7 +857,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/beginners/first-dfn/" class="md-nav__link">
+      <a href="../tutorials/beginners/first-dfn/" class="md-nav__link">
         
   
   
@@ -841,7 +921,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../tutorials/for-aplers/" class="md-nav__link ">
+            <a href="../tutorials/for-aplers/" class="md-nav__link ">
               
   
   
@@ -885,7 +965,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/for-aplers/from-dyalog/" class="md-nav__link">
+      <a href="../tutorials/for-aplers/from-dyalog/" class="md-nav__link">
         
   
   
@@ -913,7 +993,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/for-aplers/from-j/" class="md-nav__link">
+      <a href="../tutorials/for-aplers/from-j/" class="md-nav__link">
         
   
   
@@ -941,7 +1021,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/for-aplers/from-gnu-apl/" class="md-nav__link">
+      <a href="../tutorials/for-aplers/from-gnu-apl/" class="md-nav__link">
         
   
   
@@ -1009,7 +1089,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../tutorials/intermediate/" class="md-nav__link ">
+            <a href="../tutorials/intermediate/" class="md-nav__link ">
               
   
   
@@ -1053,7 +1133,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/intermediate/rank-operator/" class="md-nav__link">
+      <a href="../tutorials/intermediate/rank-operator/" class="md-nav__link">
         
   
   
@@ -1081,7 +1161,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/intermediate/from-indexing/" class="md-nav__link">
+      <a href="../tutorials/intermediate/from-indexing/" class="md-nav__link">
         
   
   
@@ -1109,7 +1189,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/intermediate/dfns-in-depth/" class="md-nav__link">
+      <a href="../tutorials/intermediate/dfns-in-depth/" class="md-nav__link">
         
   
   
@@ -1137,7 +1217,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/intermediate/dops/" class="md-nav__link">
+      <a href="../tutorials/intermediate/dops/" class="md-nav__link">
         
   
   
@@ -1165,7 +1245,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/intermediate/workspaces-and-namespaces/" class="md-nav__link">
+      <a href="../tutorials/intermediate/workspaces-and-namespaces/" class="md-nav__link">
         
   
   
@@ -1233,7 +1313,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../tutorials/worked-examples/" class="md-nav__link ">
+            <a href="../tutorials/worked-examples/" class="md-nav__link ">
               
   
   
@@ -1277,7 +1357,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/worked-examples/csv-pipeline/" class="md-nav__link">
+      <a href="../tutorials/worked-examples/csv-pipeline/" class="md-nav__link">
         
   
   
@@ -1305,7 +1385,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/worked-examples/statistics/" class="md-nav__link">
+      <a href="../tutorials/worked-examples/statistics/" class="md-nav__link">
         
   
   
@@ -1333,7 +1413,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/worked-examples/text-processing/" class="md-nav__link">
+      <a href="../tutorials/worked-examples/text-processing/" class="md-nav__link">
         
   
   
@@ -1361,7 +1441,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/worked-examples/matrix-maths/" class="md-nav__link">
+      <a href="../tutorials/worked-examples/matrix-maths/" class="md-nav__link">
         
   
   
@@ -1389,7 +1469,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/worked-examples/game-of-life/" class="md-nav__link">
+      <a href="../tutorials/worked-examples/game-of-life/" class="md-nav__link">
         
   
   
@@ -1429,8 +1509,6 @@
       
   
   
-    
-  
   
   
     
@@ -1465,15 +1543,17 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../" class="md-nav__link ">
+            <a href="../how-to/" class="md-nav__link ">
               
   
   
@@ -1497,7 +1577,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1582,7 +1662,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arrays/select-rows-columns-elements/" class="md-nav__link">
+      <a href="../how-to/arrays/select-rows-columns-elements/" class="md-nav__link">
         
   
   
@@ -1610,7 +1690,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arrays/reshape-and-ravel/" class="md-nav__link">
+      <a href="../how-to/arrays/reshape-and-ravel/" class="md-nav__link">
         
   
   
@@ -1638,7 +1718,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arrays/transpose/" class="md-nav__link">
+      <a href="../how-to/arrays/transpose/" class="md-nav__link">
         
   
   
@@ -1666,7 +1746,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arrays/sort/" class="md-nav__link">
+      <a href="../how-to/arrays/sort/" class="md-nav__link">
         
   
   
@@ -1694,7 +1774,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arrays/concatenate/" class="md-nav__link">
+      <a href="../how-to/arrays/concatenate/" class="md-nav__link">
         
   
   
@@ -1722,7 +1802,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arrays/filter/" class="md-nav__link">
+      <a href="../how-to/arrays/filter/" class="md-nav__link">
         
   
   
@@ -1821,7 +1901,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../rank-operator/apply-to-rows/" class="md-nav__link">
+      <a href="../how-to/rank-operator/apply-to-rows/" class="md-nav__link">
         
   
   
@@ -1849,7 +1929,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../rank-operator/apply-to-columns/" class="md-nav__link">
+      <a href="../how-to/rank-operator/apply-to-columns/" class="md-nav__link">
         
   
   
@@ -1877,7 +1957,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../rank-operator/apply-to-matrices/" class="md-nav__link">
+      <a href="../how-to/rank-operator/apply-to-matrices/" class="md-nav__link">
         
   
   
@@ -1905,7 +1985,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../rank-operator/pair-cells/" class="md-nav__link">
+      <a href="../how-to/rank-operator/pair-cells/" class="md-nav__link">
         
   
   
@@ -1933,7 +2013,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../rank-operator/replace-bracket-axis/" class="md-nav__link">
+      <a href="../how-to/rank-operator/replace-bracket-axis/" class="md-nav__link">
         
   
   
@@ -2030,7 +2110,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../strings-and-text/character-arrays/" class="md-nav__link">
+      <a href="../how-to/strings-and-text/character-arrays/" class="md-nav__link">
         
   
   
@@ -2058,7 +2138,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../strings-and-text/split-and-join/" class="md-nav__link">
+      <a href="../how-to/strings-and-text/split-and-join/" class="md-nav__link">
         
   
   
@@ -2086,7 +2166,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../strings-and-text/trim/" class="md-nav__link">
+      <a href="../how-to/strings-and-text/trim/" class="md-nav__link">
         
   
   
@@ -2114,7 +2194,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../strings-and-text/escape-sequences/" class="md-nav__link">
+      <a href="../how-to/strings-and-text/escape-sequences/" class="md-nav__link">
         
   
   
@@ -2209,7 +2289,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../file-io/read-text-file/" class="md-nav__link">
+      <a href="../how-to/file-io/read-text-file/" class="md-nav__link">
         
   
   
@@ -2237,7 +2317,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../file-io/write-text-file/" class="md-nav__link">
+      <a href="../how-to/file-io/write-text-file/" class="md-nav__link">
         
   
   
@@ -2265,7 +2345,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../file-io/file-to-matrix/" class="md-nav__link">
+      <a href="../how-to/file-io/file-to-matrix/" class="md-nav__link">
         
   
   
@@ -2360,7 +2440,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../error-handling/catch-errors/" class="md-nav__link">
+      <a href="../how-to/error-handling/catch-errors/" class="md-nav__link">
         
   
   
@@ -2388,7 +2468,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../error-handling/check-error-codes/" class="md-nav__link">
+      <a href="../how-to/error-handling/check-error-codes/" class="md-nav__link">
         
   
   
@@ -2416,7 +2496,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../error-handling/test-for-errors/" class="md-nav__link">
+      <a href="../how-to/error-handling/test-for-errors/" class="md-nav__link">
         
   
   
@@ -2449,10 +2529,8 @@
                 
   
   
-    
   
   
-  
     
     
       
@@ -2468,11 +2546,13 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_7" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_7" >
         
           
           <label class="md-nav__link" for="__nav_5_7" id="__nav_5_7_label" tabindex="0">
@@ -2493,7 +2573,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_7_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2511,7 +2591,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../organise-code/" class="md-nav__link">
+      <a href="../how-to/namespaces/organise-code/" class="md-nav__link">
         
   
   
@@ -2536,37 +2616,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    How to import standard library functions
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../how-to/namespaces/import-stdlib/" class="md-nav__link">
         
   
   
@@ -2582,81 +2635,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#fully-qualified-access" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fully qualified access
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#import-by-name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Import by name
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#import-with-an-alias" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Import with an alias
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#list-functions-in-a-namespace" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        List functions in a namespace
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#available-namespaces" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Available namespaces
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2669,7 +2647,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../create-library/" class="md-nav__link">
+      <a href="../how-to/namespaces/create-library/" class="md-nav__link">
         
   
   
@@ -2764,7 +2742,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../python-ffi/using-ibeam/" class="md-nav__link">
+      <a href="../how-to/python-ffi/using-ibeam/" class="md-nav__link">
         
   
   
@@ -2792,7 +2770,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../python-ffi/write-python-function/" class="md-nav__link">
+      <a href="../how-to/python-ffi/write-python-function/" class="md-nav__link">
         
   
   
@@ -2820,7 +2798,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../python-ffi/wrap-python-library/" class="md-nav__link">
+      <a href="../how-to/python-ffi/wrap-python-library/" class="md-nav__link">
         
   
   
@@ -2915,7 +2893,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../performance/numpy-backend/" class="md-nav__link">
+      <a href="../how-to/performance/numpy-backend/" class="md-nav__link">
         
   
   
@@ -2943,7 +2921,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../performance/check-backend/" class="md-nav__link">
+      <a href="../how-to/performance/check-backend/" class="md-nav__link">
         
   
   
@@ -2971,7 +2949,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../performance/writing-fast-code/" class="md-nav__link">
+      <a href="../how-to/performance/writing-fast-code/" class="md-nav__link">
         
   
   
@@ -3059,7 +3037,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../reference/" class="md-nav__link ">
+            <a href="../reference/" class="md-nav__link ">
               
   
   
@@ -3137,7 +3115,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../reference/primitives/" class="md-nav__link ">
+            <a href="../reference/primitives/" class="md-nav__link ">
               
   
   
@@ -3181,7 +3159,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/primitives/arithmetic/" class="md-nav__link">
+      <a href="../reference/primitives/arithmetic/" class="md-nav__link">
         
   
   
@@ -3209,7 +3187,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/primitives/comparison/" class="md-nav__link">
+      <a href="../reference/primitives/comparison/" class="md-nav__link">
         
   
   
@@ -3237,7 +3215,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/primitives/boolean/" class="md-nav__link">
+      <a href="../reference/primitives/boolean/" class="md-nav__link">
         
   
   
@@ -3265,7 +3243,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/primitives/structural/" class="md-nav__link">
+      <a href="../reference/primitives/structural/" class="md-nav__link">
         
   
   
@@ -3293,7 +3271,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/primitives/mixed/" class="md-nav__link">
+      <a href="../reference/primitives/mixed/" class="md-nav__link">
         
   
   
@@ -3321,7 +3299,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/primitives/scalar-extension/" class="md-nav__link">
+      <a href="../reference/primitives/scalar-extension/" class="md-nav__link">
         
   
   
@@ -3393,7 +3371,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../reference/operators/" class="md-nav__link ">
+            <a href="../reference/operators/" class="md-nav__link ">
               
   
   
@@ -3437,7 +3415,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/operators/reduce/" class="md-nav__link">
+      <a href="../reference/operators/reduce/" class="md-nav__link">
         
   
   
@@ -3465,7 +3443,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/operators/scan/" class="md-nav__link">
+      <a href="../reference/operators/scan/" class="md-nav__link">
         
   
   
@@ -3493,7 +3471,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/operators/first-axis/" class="md-nav__link">
+      <a href="../reference/operators/first-axis/" class="md-nav__link">
         
   
   
@@ -3521,7 +3499,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/operators/outer-product/" class="md-nav__link">
+      <a href="../reference/operators/outer-product/" class="md-nav__link">
         
   
   
@@ -3549,7 +3527,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/operators/inner-product/" class="md-nav__link">
+      <a href="../reference/operators/inner-product/" class="md-nav__link">
         
   
   
@@ -3577,7 +3555,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/operators/rank/" class="md-nav__link">
+      <a href="../reference/operators/rank/" class="md-nav__link">
         
   
   
@@ -3605,7 +3583,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/operators/ibeam/" class="md-nav__link">
+      <a href="../reference/operators/ibeam/" class="md-nav__link">
         
   
   
@@ -3671,7 +3649,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../reference/direct-definition/" class="md-nav__link ">
+            <a href="../reference/direct-definition/" class="md-nav__link ">
               
   
   
@@ -3715,7 +3693,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/direct-definition/dfns/" class="md-nav__link">
+      <a href="../reference/direct-definition/dfns/" class="md-nav__link">
         
   
   
@@ -3743,7 +3721,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/direct-definition/dops/" class="md-nav__link">
+      <a href="../reference/direct-definition/dops/" class="md-nav__link">
         
   
   
@@ -3771,7 +3749,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/direct-definition/guards/" class="md-nav__link">
+      <a href="../reference/direct-definition/guards/" class="md-nav__link">
         
   
   
@@ -3799,7 +3777,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/direct-definition/recursion/" class="md-nav__link">
+      <a href="../reference/direct-definition/recursion/" class="md-nav__link">
         
   
   
@@ -3865,7 +3843,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../reference/array-model/" class="md-nav__link ">
+            <a href="../reference/array-model/" class="md-nav__link ">
               
   
   
@@ -3909,7 +3887,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/array-model/shape-rank-depth/" class="md-nav__link">
+      <a href="../reference/array-model/shape-rank-depth/" class="md-nav__link">
         
   
   
@@ -3937,7 +3915,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/array-model/index-origin/" class="md-nav__link">
+      <a href="../reference/array-model/index-origin/" class="md-nav__link">
         
   
   
@@ -3965,7 +3943,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/array-model/empty-arrays/" class="md-nav__link">
+      <a href="../reference/array-model/empty-arrays/" class="md-nav__link">
         
   
   
@@ -3993,7 +3971,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/array-model/fill-elements/" class="md-nav__link">
+      <a href="../reference/array-model/fill-elements/" class="md-nav__link">
         
   
   
@@ -4057,7 +4035,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../reference/indexing/" class="md-nav__link ">
+            <a href="../reference/indexing/" class="md-nav__link ">
               
   
   
@@ -4101,7 +4079,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/indexing/from/" class="md-nav__link">
+      <a href="../reference/indexing/from/" class="md-nav__link">
         
   
   
@@ -4129,7 +4107,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/indexing/bracket-indexing/" class="md-nav__link">
+      <a href="../reference/indexing/bracket-indexing/" class="md-nav__link">
         
   
   
@@ -4157,7 +4135,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/indexing/indexed-assignment/" class="md-nav__link">
+      <a href="../reference/indexing/indexed-assignment/" class="md-nav__link">
         
   
   
@@ -4219,7 +4197,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../reference/system/" class="md-nav__link ">
+            <a href="../reference/system/" class="md-nav__link ">
               
   
   
@@ -4263,7 +4241,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/system/system-variables/" class="md-nav__link">
+      <a href="../reference/system/system-variables/" class="md-nav__link">
         
   
   
@@ -4291,7 +4269,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/system/system-commands/" class="md-nav__link">
+      <a href="../reference/system/system-commands/" class="md-nav__link">
         
   
   
@@ -4357,7 +4335,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../reference/standard-library/" class="md-nav__link ">
+            <a href="../reference/standard-library/" class="md-nav__link ">
               
   
   
@@ -4401,7 +4379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/standard-library/io/" class="md-nav__link">
+      <a href="../reference/standard-library/io/" class="md-nav__link">
         
   
   
@@ -4429,7 +4407,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/standard-library/str/" class="md-nav__link">
+      <a href="../reference/standard-library/str/" class="md-nav__link">
         
   
   
@@ -4457,7 +4435,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/standard-library/sys/" class="md-nav__link">
+      <a href="../reference/standard-library/sys/" class="md-nav__link">
         
   
   
@@ -4485,7 +4463,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/standard-library/error/" class="md-nav__link">
+      <a href="../reference/standard-library/error/" class="md-nav__link">
         
   
   
@@ -4521,7 +4499,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/glyph-input/" class="md-nav__link">
+      <a href="../reference/glyph-input/" class="md-nav__link">
         
   
   
@@ -4549,7 +4527,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/error-messages/" class="md-nav__link">
+      <a href="../reference/error-messages/" class="md-nav__link">
         
   
   
@@ -4577,7 +4555,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/grammar/" class="md-nav__link">
+      <a href="../reference/grammar/" class="md-nav__link">
         
   
   
@@ -4649,7 +4627,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../explanation/" class="md-nav__link ">
+            <a href="../explanation/" class="md-nav__link ">
               
   
   
@@ -4693,7 +4671,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../explanation/why-marple/" class="md-nav__link">
+      <a href="../explanation/why-marple/" class="md-nav__link">
         
   
   
@@ -4721,7 +4699,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../explanation/comparison/" class="md-nav__link">
+      <a href="../explanation/comparison/" class="md-nav__link">
         
   
   
@@ -4749,7 +4727,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../explanation/rank-history/" class="md-nav__link">
+      <a href="../explanation/rank-history/" class="md-nav__link">
         
   
   
@@ -4777,7 +4755,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../explanation/leading-axis/" class="md-nav__link">
+      <a href="../explanation/leading-axis/" class="md-nav__link">
         
   
   
@@ -4805,7 +4783,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../explanation/dfns-vs-tradfns/" class="md-nav__link">
+      <a href="../explanation/dfns-vs-tradfns/" class="md-nav__link">
         
   
   
@@ -4833,7 +4811,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../explanation/python-connection/" class="md-nav__link">
+      <a href="../explanation/python-connection/" class="md-nav__link">
         
   
   
@@ -4903,7 +4881,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../troubleshooting/" class="md-nav__link ">
+            <a href="../troubleshooting/" class="md-nav__link ">
               
   
   
@@ -4947,7 +4925,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting/common-errors/" class="md-nav__link">
+      <a href="../troubleshooting/common-errors/" class="md-nav__link">
         
   
   
@@ -4975,7 +4953,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting/common-mistakes/" class="md-nav__link">
+      <a href="../troubleshooting/common-mistakes/" class="md-nav__link">
         
   
   
@@ -5003,7 +4981,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting/repl-issues/" class="md-nav__link">
+      <a href="../troubleshooting/repl-issues/" class="md-nav__link">
         
   
   
@@ -5031,7 +5009,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting/performance-issues/" class="md-nav__link">
+      <a href="../troubleshooting/performance-issues/" class="md-nav__link">
         
   
   
@@ -5059,7 +5037,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting/faq/" class="md-nav__link">
+      <a href="../troubleshooting/faq/" class="md-nav__link">
         
   
   
@@ -5127,7 +5105,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../appendices/" class="md-nav__link ">
+            <a href="../appendices/" class="md-nav__link ">
               
   
   
@@ -5171,7 +5149,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../appendices/glossary/" class="md-nav__link">
+      <a href="../appendices/glossary/" class="md-nav__link">
         
   
   
@@ -5199,7 +5177,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../appendices/further-reading/" class="md-nav__link">
+      <a href="../appendices/further-reading/" class="md-nav__link">
         
   
   
@@ -5227,7 +5205,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../appendices/changelog/" class="md-nav__link">
+      <a href="../appendices/changelog/" class="md-nav__link">
         
   
   
@@ -5255,7 +5233,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../appendices/contributing/" class="md-nav__link">
+      <a href="../appendices/contributing/" class="md-nav__link">
         
   
   
@@ -5310,10 +5288,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fully-qualified-access" class="md-nav__link">
+  <a href="#demo-1-primitive-functions-and-operators" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fully qualified access
+        Demo 1: Primitive Functions and Operators
       
     </span>
   </a>
@@ -5321,10 +5299,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#import-by-name" class="md-nav__link">
+  <a href="#demo-2-direct-functions-dfns-and-the-rank-operator" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Import by name
+        Demo 2: Direct Functions (Dfns) and the Rank Operator
       
     </span>
   </a>
@@ -5332,32 +5310,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#import-with-an-alias" class="md-nav__link">
+  <a href="#demo-3-namespaces-and-standard-library" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Import with an alias
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#list-functions-in-a-namespace" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        List functions in a namespace
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#available-namespaces" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Available namespaces
+        Demo 3: Namespaces and Standard Library
       
     </span>
   </a>
@@ -5384,34 +5340,24 @@
   
 
 
-<h1 id="how-to-import-standard-library-functions">How to import standard library functions<a class="headerlink" href="#how-to-import-standard-library-functions" title="Permanent link">&para;</a></h1>
-<h2 id="fully-qualified-access">Fully qualified access<a class="headerlink" href="#fully-qualified-access" title="Permanent link">&para;</a></h2>
-<p>Call any standard library function directly using its full path:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="w">      </span><span class="err">$</span><span class="bp">::</span><span class="nv">str</span><span class="bp">::</span><span class="nv">trim</span><span class="w"> </span><span class="s1">&#39;  hello  &#39;</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nv">hello</span>
-</code></pre></div>
-<h2 id="import-by-name">Import by name<a class="headerlink" href="#import-by-name" title="Permanent link">&para;</a></h2>
-<p>Use <code>#import</code> to bind a function to a local name:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="w">      </span><span class="c1">#import $::str::trim</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">      </span><span class="nv">trim</span><span class="w"> </span><span class="s1">&#39;  hello  &#39;</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nv">hello</span>
-</code></pre></div>
-<h2 id="import-with-an-alias">Import with an alias<a class="headerlink" href="#import-with-an-alias" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="w">      </span><span class="c1">#import $::str::trim as strip</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">      </span><span class="nv">strip</span><span class="w"> </span><span class="s1">&#39;  hello  &#39;</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nv">hello</span>
-</code></pre></div>
-<h2 id="list-functions-in-a-namespace">List functions in a namespace<a class="headerlink" href="#list-functions-in-a-namespace" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="w">      </span><span class="p">)</span><span class="nv">fns</span><span class="w"> </span><span class="err">$</span><span class="bp">::</span><span class="nv">str</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nv">lower</span><span class="w">  </span><span class="nv">trim</span><span class="w">  </span><span class="nv">upper</span>
-</code></pre></div>
-<h2 id="available-namespaces">Available namespaces<a class="headerlink" href="#available-namespaces" title="Permanent link">&para;</a></h2>
-<ul>
-<li><code>$::str</code> -- string utilities (trim, upper, lower)</li>
-<li><code>$::io</code> -- file I/O (nread, nwrite)</li>
-<li><code>$::error</code> -- error handling (ea, en)</li>
-</ul>
-<p>See also: <a href="../../../reference/standard-library/">Standard library reference</a></p>
+<h1 id="marple-on-the-raspberry-pi-pico-2">MARPLE on the Raspberry Pi Pico 2<a class="headerlink" href="#marple-on-the-raspberry-pi-pico-2" title="Permanent link">&para;</a></h1>
+<p>These videos show MARPLE running on a Raspberry Pi Pico 2 via MicroPython.
+The workstation sends APL expressions over USB serial; the Pico evaluates
+them and returns results.</p>
+<h2 id="demo-1-primitive-functions-and-operators">Demo 1: Primitive Functions and Operators<a class="headerlink" href="#demo-1-primitive-functions-and-operators" title="Permanent link">&para;</a></h2>
+<p>Arithmetic, vectors, matrices, reduce, scan, outer product, grade, encode/decode,
+and trig — all running on the Pico.</p>
+<video src="picoapl-2026-03-23_16.35.35.mp4" controls width="600"></video>
+
+<h2 id="demo-2-direct-functions-dfns-and-the-rank-operator">Demo 2: Direct Functions (Dfns) and the Rank Operator<a class="headerlink" href="#demo-2-direct-functions-dfns-and-the-rank-operator" title="Permanent link">&para;</a></h2>
+<p>Named dfns, guards, recursion (factorial, Fibonacci), default left arguments,
+and the rank operator applied to matrices and 3D arrays.</p>
+<video src="picoapl-2026-03-23_16.46.54.mp4" controls width="600"></video>
+
+<h2 id="demo-3-namespaces-and-standard-library">Demo 3: Namespaces and Standard Library<a class="headerlink" href="#demo-3-namespaces-and-standard-library" title="Permanent link">&para;</a></h2>
+<p>Qualified names (<code>$::str::upper</code>), <code>#import</code> directives, aliases, file I/O
+(<code>nwrite</code>/<code>nread</code>), and the i-beam operator for direct Python FFI.</p>
+<video src="picoapl-2026-03-23_17.25.09.mp4" controls width="600"></video>
 
 
 
@@ -5467,10 +5413,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>
