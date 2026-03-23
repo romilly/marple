@@ -990,8 +990,16 @@ def _bracket_index(
     env: dict[str, Any],
     io: int,
 ) -> APLArray:
-    from itertools import product
     data = to_list(array.data)
+
+    def product(*lists):
+        """Simple replacement for itertools.product."""
+        if not lists:
+            yield ()
+            return
+        for item in lists[0]:
+            for rest in product(*lists[1:]):
+                yield (item,) + rest
     # Build 0-based index lists for each axis
     axis_indices: list[list[int]] = []
     for axis, idx_node in enumerate(indices):
