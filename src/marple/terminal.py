@@ -73,7 +73,8 @@ def read_line() -> str | None:
             if ch == "\x7f" or ch == "\x08":  # Backspace
                 if buf:
                     buf.pop()
-                    sys.stdout.write(f"\r{PROMPT}{''.join(buf)} \r{PROMPT}{''.join(buf)}")
+                    line = "".join(buf)
+                    sys.stdout.write("\r" + PROMPT + line + " \r" + PROMPT + line)
                     sys.stdout.flush()
                 continue
             if backtick:

@@ -350,7 +350,7 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
             new_class = NC_UNKNOWN
         name_table = env.get("__name_table__", {})
         if node.name in name_table and name_table[node.name] != new_class:
-            raise ClassError(f"Cannot change class of '{node.name}' from {name_table[node.name]} to {new_class}")
+            raise ClassError("Cannot change class of " + node.name + " from " + str(name_table[node.name]) + " to " + str(new_class))
         name_table[node.name] = new_class
         env["__name_table__"] = name_table
         env[node.name] = value
@@ -640,14 +640,14 @@ def _resolve_qualified(parts: list[str], env: dict[str, Any]) -> Any:
         sys_ws = _get_sys_workspace()
         result = sys_ws.resolve(parts[1:])
         if result is None:
-            raise ValueError_(f"Undefined: {'::'.join(parts)}")
+            raise ValueError_("Undefined: " + "::".join(parts))
         return result  # type: ignore[return-value]
     # User namespace — look in env namespaces
     ns = env.get("__namespaces__", {})
     if parts[0] in ns:
         result = ns[parts[0]].resolve(parts[1:])
         if result is None:
-            raise ValueError_(f"Undefined: {'::'.join(parts)}")
+            raise ValueError_("Undefined: " + "::".join(parts))
         return result  # type: ignore[return-value]
     raise ValueError_(f"Undefined namespace: {parts[0]}")
 

@@ -142,7 +142,7 @@ def main() -> None:
         if line.startswith(")wsid ") or line.startswith(")WSID "):
             new_wsid = line.split(None, 1)[1].strip()
             env["__wsid__"] = new_wsid
-            print(f"WAS {env.get('__wsid__', 'CLEAR WS')}" if False else new_wsid)
+            print(new_wsid)
             continue
         if line.startswith(")fns"):
             parts = line.split(None, 1)
