@@ -7,7 +7,7 @@ import sys
 
 from marple.arraymodel import APLArray
 from marple.errors import APLError
-from marple.interpreter import _DfnClosure, interpret
+from marple.interpreter import _DfnClosure, default_env, interpret
 from marple.parser import Assignment, Program, parse
 from marple.terminal import read_line
 from marple.workspace import save_workspace, load_workspace, list_workspaces
@@ -103,10 +103,10 @@ def main() -> None:
             print(line)
         return
 
-    env: dict[str, Any] = {"__wsid__": "CLEAR WS"}
+    env: dict[str, Any] = default_env()
     from importlib.metadata import version
     try:
-        ver = version("marple")
+        ver = version("marple-lang")
     except Exception:
         ver = "unknown"
     print(f"MARPLE v{ver} - Mini APL in Python")
