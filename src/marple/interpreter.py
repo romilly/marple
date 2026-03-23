@@ -370,6 +370,21 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
     if isinstance(node, OuterProduct):
         left = _evaluate(node.left, env)
         right = _evaluate(node.right, env)
+        # Fast path: numpy ufunc.outer
+        ufunc_name = _GLYPH_UFUNC.get(node.function)
+        if (
+            ufunc_name
+            and is_numeric_array(left.data)
+            and is_numeric_array(right.data)
+        ):
+            ufunc = getattr(np, ufunc_name, None)
+            if ufunc is not None and hasattr(ufunc, "outer"):
+                a = np.reshape(left.data, left.shape) if len(left.shape) > 1 else left.data
+                b = np.reshape(right.data, right.shape) if len(right.shape) > 1 else right.data
+                result = ufunc.outer(a, b)
+                if hasattr(result, "shape") and len(result.shape) == 0:
+                    return S(result.item())
+                return APLArray(list(result.shape), result.ravel())
         func = _lookup_dyadic(node.function)
         if func is None:
             raise DomainError(f"Unknown function in outer product: {node.function}")
@@ -397,6 +412,14 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
 
     raise DomainError(f"Unknown AST node: {type(node)}")
 
+
+# Map glyphs to numpy ufunc names for fast outer product
+_GLYPH_UFUNC: dict[str, str] = {
+    "+": "add", "-": "subtract", "×": "multiply", "÷": "divide",
+    "⌈": "maximum", "⌊": "minimum", "*": "power",
+    "<": "less", "≤": "less_equal", "=": "equal",
+    "≥": "greater_equal", ">": "greater", "≠": "not_equal",
+}
 
 # Map function objects to numpy ufunc names for fast reduce/scan
 _UFUNC_MAP: dict[object, str] = {
