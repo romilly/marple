@@ -53,10 +53,29 @@
         }
         #input:focus { border-color: #6b8afd; }
         #input.backtick { border-color: #ff9f43; background: #1a2a4a; }
+        #langbar {
+            padding: 0.3em 0.5em;
+            background: #16213e;
+            border-bottom: 1px solid #333;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+        }
+        #langbar button {
+            background: #0f3460;
+            color: #e0e0e0;
+            border: 1px solid #333;
+            padding: 0.2em 0.5em;
+            font-family: inherit;
+            font-size: 1em;
+            cursor: pointer;
+        }
+        #langbar button:hover { background: #1a4a8a; border-color: #6b8afd; }
     </style>
 </head>
 <body>
     <h1>MARPLE</h1>
+    <div id="langbar"></div>
     <div id="session"></div>
     <div id="input-bar">
         <input type="text" id="input"
@@ -120,6 +139,38 @@
         el.value = val.slice(0, start) + text + val.slice(end);
         el.selectionStart = el.selectionEnd = start + text.length;
     }
+
+    // Language bar
+    const GLYPH_INFO = [
+        ['+','Add','`+'],['−','Subtract'],['×','Multiply','`-'],['÷','Divide','`='],
+        ['⌈','Ceiling/Max','`!'],['⌊','Floor/Min','`d'],['*','Power'],['⍟','Log','`*'],
+        ['|','Magnitude/Residue'],['○','Pi/Trig','`o'],['?','Roll/Deal'],
+        ['<','Less'],['≤','Less or equal','`<'],['=','Equal'],['≥','Greater or equal','`>'],
+        ['>','Greater'],['≠','Not equal','`/'],
+        ['∧','And','`^'],['∨','Or','`v'],['~','Not'],
+        ['⍴','Rho','`r'],['⍳','Iota','`i'],[',','Catenate'],['⌽','Reverse','`q'],
+        ['⍉','Transpose','`Q'],['↑','Take','`t'],['↓','Drop','`y'],
+        ['∈','Member','`e'],['⍋','Grade up','`g'],['⍒','Grade down','`G'],
+        ['⊤','Encode','`n'],['⊥','Decode','`N'],['⌹','Domino','`D'],
+        ['⍎','Execute','`z'],['⍕','Format','`Z'],['⌷','From','`I'],
+        ['≡','Match'],['≢','Tally/Not match'],
+        ['←','Assign','`l'],['⍵','Omega','`w'],['⍺','Alpha','`a'],
+        ['∇','Del','`V'],['⋄','Diamond','`x'],['⍝','Comment','`c'],
+        ['¯','High minus','`2'],
+        ['∘','Jot','`j'],['⍤','Rank','`J'],['⌶','I-beam','`B'],
+        ['{','Left brace','`['],['}','Right brace','`]'],
+    ];
+    const langbar = document.getElementById('langbar');
+    GLYPH_INFO.forEach(function(g) {
+        const btn = document.createElement('button');
+        btn.textContent = g[0];
+        btn.title = g[0] + ' — ' + g[1] + (g[2] ? ' — ' + g[2] : '');
+        btn.addEventListener('click', function() {
+            insertAtCursor(input, g[0]);
+            input.focus();
+        });
+        langbar.appendChild(btn);
+    });
 
     input.addEventListener('keydown', async function(e) {
         if (e.key !== 'Enter') return;

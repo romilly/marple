@@ -52,10 +52,29 @@
         }
         #input:focus { border-color: #6b8afd; }
         #input.backtick { border-color: #ff9f43; background: #1a2a4a; }
+        #langbar {
+            padding: 0.3em 0.5em;
+            background: #16213e;
+            border-bottom: 1px solid #333;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+        }
+        #langbar button {
+            background: #0f3460;
+            color: #e0e0e0;
+            border: 1px solid #333;
+            padding: 0.2em 0.5em;
+            font-family: inherit;
+            font-size: 1em;
+            cursor: pointer;
+        }
+        #langbar button:hover { background: #1a4a8a; border-color: #6b8afd; }
     </style>
 </head>
 <body>
     <h1>MARPLE</h1>
+    <div id="langbar"></div>
     <div id="session"></div>
     <div id="input-bar">
         <input type="text" id="input"
@@ -118,6 +137,38 @@
             return;
         }
     });
+
+    // Language bar
+    var GLYPH_INFO = [
+        ['+','Add'],['−','Subtract'],['×','Multiply'],['÷','Divide'],
+        ['⌈','Ceiling/Max'],['⌊','Floor/Min'],['*','Power'],['⍟','Log'],
+        ['|','Magnitude'],['○','Pi/Trig'],['?','Roll/Deal'],
+        ['<','Less'],['≤','Less or equal'],['=','Equal'],['≥','Greater or equal'],
+        ['>','Greater'],['≠','Not equal'],
+        ['∧','And'],['∨','Or'],['~','Not'],
+        ['⍴','Rho'],['⍳','Iota'],[',','Catenate'],['⌽','Reverse'],
+        ['⍉','Transpose'],['↑','Take'],['↓','Drop'],
+        ['∈','Member'],['⍋','Grade up'],['⍒','Grade down'],
+        ['⊤','Encode'],['⊥','Decode'],['⌹','Domino'],
+        ['⍎','Execute'],['⍕','Format'],['⌷','From'],
+        ['≡','Match'],['≢','Tally'],
+        ['←','Assign'],['⍵','Omega'],['⍺','Alpha'],
+        ['∇','Del'],['⋄','Diamond'],['⍝','Comment'],['¯','High minus'],
+        ['∘','Jot'],['⍤','Rank'],['⌶','I-beam'],
+        ['{','Left brace'],['}','Right brace']
+    ];
+    var langbar = document.getElementById('langbar');
+    for (var gi = 0; gi < GLYPH_INFO.length; gi++) {
+        var btn = document.createElement('button');
+        btn.textContent = GLYPH_INFO[gi][0];
+        btn.title = GLYPH_INFO[gi][0] + ' — ' + GLYPH_INFO[gi][1];
+        btn.setAttribute('data-g', GLYPH_INFO[gi][0]);
+        btn.addEventListener('click', function() {
+            insertAtCursor(input, this.getAttribute('data-g'));
+            input.focus();
+        });
+        langbar.appendChild(btn);
+    }
 
     input.addEventListener('keydown', function(e) {
         if (e.key !== 'Enter') return;
