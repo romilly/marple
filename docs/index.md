@@ -25,7 +25,12 @@ But it's been fun and I hope it's useful. Do let me know what you think of it!
 
 ## Quick start
 
-MARPLE is not yet on PyPI, so you install it from the GitHub repository:
+```bash
+pip install marple-lang
+marple
+```
+
+Or install from source:
 
 ```bash
 git clone https://github.com/romilly/marple.git

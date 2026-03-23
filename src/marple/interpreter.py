@@ -463,9 +463,14 @@ def _reduce(
         if ufunc_name and is_numeric_array(data):
             ufunc = getattr(np, ufunc_name, None)
             if ufunc is not None and hasattr(ufunc, "reduce"):
+                # Use float64 for multiply to avoid int64 overflow
+                if func is multiply:
+                    work_data = np.array(to_list(data), dtype=np.float64)
+                else:
+                    work_data = data
                 if len(omega.shape) <= 1:
-                    return S(ufunc.reduce(data).item())
-                shaped = np.reshape(data, omega.shape)
+                    return S(ufunc.reduce(work_data).item())
+                shaped = np.reshape(work_data, omega.shape)
                 result = ufunc.reduce(shaped, axis=-1)
                 return APLArray(list(result.shape), result.ravel())
 

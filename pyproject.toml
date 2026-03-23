@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "marple"
-version = "0.2.22"
+name = "marple-lang"
+version = "0.3.0"
 description = "Mini APL in Python Language Experiment. Uses APL arrays as the internal data model."
 authors = [{name = "Romilly Cocking", email = "romilly.cocking@gmail.com"}]
 license = {text = "MIT"}
@@ -35,9 +35,9 @@ test = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/{author_name}/marple"
-Repository = "https://github.com/{author_name}/marple.git"
-Issues = "https://github.com/{author_name}/marple/issues"
+Homepage = "https://github.com/romilly/marple"
+Repository = "https://github.com/romilly/marple.git"
+Issues = "https://github.com/romilly/marple/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

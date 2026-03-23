@@ -16,13 +16,14 @@ More extensive documentation is available [here](https://romilly.github.io/marpl
 - **Symbol table-aware parser** — named functions work without parens: `double ⍳5`
 - **Namespaces** — `$::str::upper 'hello'`, `#import` directives, `::` separator
 - **I-beam operator** (`⌶`) — Python FFI for extending MARPLE with Python code
-- **Error handling** — `ea` (execute alternate) and `en` (error number) for APL-level error trapping
-- **Matrices** — reshape, transpose, bracket indexing (`M[r;c]`), matrix inverse (`⌹`)
-- **Numpy backend** — automatic vectorization (73x faster for large arrays), with pure-Python fallback
-- **System variables** — `⎕IO` (index origin), `⎕CT` (comparison tolerance)
-- **Interactive REPL** — live backtick→glyph input, workspace save/load, APL-style formatting
+- **Error handling** — `⎕EA` (execute alternate), `⎕EN` (error number), `⎕DM` (diagnostic message), `⎕SIGNAL`
+- **System variables** — `⎕IO`, `⎕CT`, `⎕PP`, `⎕RL`, `⎕A`, `⎕D`, `⎕TS`, `⎕WSID`, `⎕UCS`, `⎕NC`, `⎕EX`
+- **Matrices** — reshape, transpose, bracket indexing (`M[r;c]` any rank), matrix inverse (`⌹`)
+- **Numpy backend** — automatic vectorization (73x faster for element-wise, 380x for outer product), with pure-Python fallback
+- **Web REPL** — browser-based REPL at `http://localhost:8888/`, Pico W-ready
+- **Terminal REPL** — live backtick→glyph input, workspace save/load, APL-style formatting
 - **Script runner** — `marple script.marple` with session transcript output
-- **379 tests**, pyright strict, no external runtime dependencies
+- **426 tests**, pyright strict, no external runtime dependencies
 
 ## Quick start
 

@@ -4,9 +4,15 @@
 
 MARPLE requires Python 3.10 or later. It has no mandatory external dependencies — NumPy is optional but recommended for performance on large arrays.
 
+## Install from PyPI
+
+```bash
+pip install marple-lang
+```
+
 ## Install from source
 
-MARPLE is not yet published on PyPI. Install it from GitHub:
+Alternatively, install from GitHub for the latest development version:
 
 ```bash
 git clone https://github.com/romilly/marple.git
