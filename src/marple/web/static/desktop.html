@@ -51,7 +51,6 @@
             overflow: hidden;
         }
         #input:focus { border-color: #6b8afd; }
-        #input.backtick { border-color: #ff9f43; background: #1a2a4a; }
         #langbar {
             padding: 0.3em 0.5em;
             background: #16213e;
@@ -120,71 +119,9 @@
     const session = document.getElementById('session');
     const workspace = document.getElementById('workspace');
 
-    // Session history
+    // State
     const history = [];
     let historyPos = -1;
-
-    input.addEventListener('keydown', function(e) {
-        if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            if (history.length === 0) return;
-            if (historyPos < history.length - 1) historyPos++;
-            input.value = history[history.length - 1 - historyPos];
-        } else if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            if (historyPos > 0) {
-                historyPos--;
-                input.value = history[history.length - 1 - historyPos];
-            } else {
-                historyPos = -1;
-                input.value = '';
-            }
-        }
-    });
-
-    // Backtick glyph input
-    const GLYPHS = {
-        '-':'×','=':'÷','<':'≤','>':'≥','/':'≠',
-        'r':'⍴','i':'⍳','e':'∈','t':'↑','y':'↓',
-        'q':'⌽','Q':'⍉','g':'⍋','G':'⍒',
-        '^':'∧','v':'∨','~':'⍲','T':'⍱',
-        '*':'⍟','o':'○','!':'⌈','d':'⌊','D':'⌹',
-        'p':'⌈','b':'⌊',
-        'n':'⊤','N':'⊥',
-        'w':'⍵','a':'⍺','V':'∇',
-        'l':'←','x':'⋄','z':'⍎','Z':'⍕',
-        'j':'∘','J':'⍤','I':'⌷','B':'⌶',
-        '2':'¯','c':'⍝','[':'{',']':'}'
-    };
-    let backtickMode = false;
-
-    input.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && backtickMode) {
-            backtickMode = false;
-            input.classList.remove('backtick');
-            e.preventDefault();
-            return;
-        }
-        if (backtickMode) {
-            e.preventDefault();
-            backtickMode = false;
-            input.classList.remove('backtick');
-            if (e.key === '`') {
-                insertAtCursor(input, '`');
-            } else if (GLYPHS[e.key]) {
-                insertAtCursor(input, GLYPHS[e.key]);
-            } else {
-                insertAtCursor(input, '`' + e.key);
-            }
-            return;
-        }
-        if (e.key === '`') {
-            e.preventDefault();
-            backtickMode = true;
-            input.classList.add('backtick');
-            return;
-        }
-    });
 
     function insertAtCursor(el, text) {
         const start = el.selectionStart;
@@ -246,7 +183,27 @@
         } catch(e) {}
     }
 
-    input.addEventListener('keydown', async function(e) {
+    input.addEventListener('keydown', function(e) {
+        // History
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (history.length === 0) return;
+            if (historyPos < history.length - 1) historyPos++;
+            input.value = history[history.length - 1 - historyPos];
+            return;
+        }
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (historyPos > 0) {
+                historyPos--;
+                input.value = history[history.length - 1 - historyPos];
+            } else {
+                historyPos = -1;
+                input.value = '';
+            }
+            return;
+        }
+        // Submit
         if (e.key !== 'Enter') return;
         if (e.shiftKey) return;
         e.preventDefault();
@@ -264,25 +221,26 @@
         const body = new URLSearchParams();
         body.set(param, text);
 
-        try {
-            const resp = await fetch(url, {
-                method: 'POST',
-                headers: {'Content-Type':
-                    'application/x-www-form-urlencoded'},
-                body: body.toString()
-            });
-            const fragment = await resp.text();
-            session.insertAdjacentHTML('beforeend', fragment);
-            session.scrollTop = session.scrollHeight;
-        } catch (err) {
-            session.insertAdjacentHTML('beforeend',
-                '<div class="entry">' +
-                '<pre class="error">Connection error</pre>' +
-                '</div>');
-        }
-
-        await refreshWorkspace();
-        input.focus();
+        (async function() {
+            try {
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: {'Content-Type':
+                        'application/x-www-form-urlencoded'},
+                    body: body.toString()
+                });
+                const fragment = await resp.text();
+                session.insertAdjacentHTML('beforeend', fragment);
+                session.scrollTop = session.scrollHeight;
+            } catch (err) {
+                session.insertAdjacentHTML('beforeend',
+                    '<div class="entry">' +
+                    '<pre class="error">Connection error</pre>' +
+                    '</div>');
+            }
+            await refreshWorkspace();
+            input.focus();
+        })();
     });
 
     input.focus();
