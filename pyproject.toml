@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "marple-lang"
 version = "0.3.6"
-description = "Mini APL in Python Language Experiment. Uses APL arrays as the internal data model."
+description = "Mini APL in Python Language Experiment. Uses numpy arrays with Python list fallback."
 authors = [{name = "Romilly Cocking", email = "romilly.cocking@gmail.com"}]
 license = {text = "MIT"}
 readme = "README.md"
