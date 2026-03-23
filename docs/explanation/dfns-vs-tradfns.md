@@ -14,7 +14,8 @@ This style dates from the 1960s when APL ran on line-oriented terminals. It reli
 
 ## Dfns: the modern alternative
 
-Dfns (direct functions), introduced by John Scholes for Dyalog APL in 1996, replace all of that:
+Dfns (direct functions), were first proposed by Ken Iverson. John Scholes introduced them in Dyalog APL in 1996.
+Here's the mean declares as a dfn.
 
 ```apl
       mean ← {(+/⍵)÷⍴⍵}

@@ -1,6 +1,6 @@
 # Why MARPLE Exists
 
-For many years now I have used Dyalog APL for personal projects, and I love it. It's fast, solid and well-supported. It's also allowed me to learn from some very smart people. But for me, it has three disadvantages: I can't extend it, it does not yet use an available GPU and it uses *floating* nested arrays.
+For many years now I have used Dyalog APL for personal projects, and I love it. It's fast, functional, solid and well-supported. It's also allowed me to learn from some very smart people. But for me, it has three disadvantages: I can't extend it, it does not yet use an available GPU, and it uses *floating* nested arrays.
 
 Ken Iverson preferred the *grounded* approach for nested arrays, and so do I. While I have not implemented nested arrays in MARPLE yet, I plan to do so and I will follow the approach described by Iverson in his **Dictionary of APL**.
 

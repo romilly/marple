@@ -2,6 +2,10 @@
 
 Mini APL in Python Language Experiment. A first-generation APL interpreter with the rank operator, namespaces, and Python FFI. Uses APL arrays (shape + flat data) as the internal data model. Inspired by Rodrigo Girão Serrão's [RGSPL](https://github.com/rodrigogiraoserrano/RGSPL) and Iverson's [Dictionary of APL](https://www.jsoftware.com/papers/APLDictionary.htm).
 
+## Documentation
+
+More extensive documentation is available [here](https://romilly.github.io/marple/) 
+
 ## Features
 
 - **40+ primitive functions** — arithmetic, comparison, boolean, structural, circular/trig, match/tally, membership

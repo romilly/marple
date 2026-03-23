@@ -3,18 +3,25 @@
 **Mini APL Language Experiment — a first-generation APL interpreter in Python**
 
 I started work on MARPLE for fun. I've wanted to write an APL interpreter, ever since I came across the language in the late 1960s.
+MARPLE scratches that itch. It runs on a desktop computer and is designed to be portable to a Raspberry Pi Pico.
 
-For many years now I have used Dyalog APL for personal projects, and I love it. It's fast, solid and well-supported. It's also allowed me to learnfrom some very smart people. But for me, it has two disadvantages: I can't extend it, and it uses *floating* nested arrays.
+MARPLE is incomplete but it's already usable.
 
-Ken Iverson preferred the *grounded* approach, and so do I. While I have not implemented nested arrays in MARPLE yet, I plan to do so and I will follow the approach described by Iverson in his **Dictionary of APL**.
+It is implemented in Python. Performance is better than you might expect, as it uses numpy arrays under the hood.
 
-I've also made MARPLE easy to extend. It is implemented in Python, and there is a simple mechanism that allows you to add new language features in Python and then use i-beams to turn them into functions available to the APL developer.
-
-MARPLE scratches that itch. It runs on desktop Python (with optional NumPy acceleration) and is designed to be portable to CircuitPython on a Raspberry Pi Pico.
+It has a simple mechanism that allows you to add new language features in Python and then use i-beams to turn them into functions available to the APL developer.
 
 Claude and Claude code have done all the hard work. Getting to this point has taken a day and a half. I have much more I want to implement, and I expect to do so in days rather than months.
 
-MARPLE is not, and never will be, a commercial product, and it lacks many of the features that make Dyalog APL a compelling proposition for serious APL developers. But it's been fun and I hope it's useful. Do let me know what you think of it!
+## MARPLE is Alpha code
+
+MARPLE is incomplete; some basic system functions and variables are still missing.
+
+It probably has lots of bugs. Claude code and I have developed it using TDD (Test-Driven Development) but I am certain that bugs will emerge with use.
+
+MARPLE is not, and never will be, a commercial product. It lacks many of the features that make Dyalog APL a compelling proposition for serious APL developers. The size of the development and support team lies somewhere between 0 and 1.
+
+But it's been fun and I hope it's useful. Do let me know what you think of it!
 
 ## Quick start
 
@@ -64,6 +71,6 @@ marple
 - **APL programmers** curious about a clean-sheet flat-array APL with rank and leading-axis indexing
 - **Programmers from other languages** who want to learn array thinking without the complexity of a full commercial APL
 - **Educators** looking for a small, self-contained APL that runs anywhere Python does
-- **Tinkerers** who want APL on a microcontroller
-
-<!-- TODO: Romilly — add anything else about the intended audience or non-goals -->
+- **Tinkerers** who want APL on a micro-controller
+- **Students** who want to see how to build a simple interpreter and language eco-system
+- **AI skeptics** who want to evaluate a substantial body of code build using AI code generation 

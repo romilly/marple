@@ -14,4 +14,4 @@ The `⌶` operator calls Python functions from APL. This keeps the interpreter c
 
 MARPLE is designed to run on a Raspberry Pi Pico under CircuitPython with ulab. The flat-array model, pure-Python fallback, and backend abstraction all support this goal.
 
-<!-- TODO: Romilly — add status of Pico work and what's been tested -->
+
