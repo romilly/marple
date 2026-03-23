@@ -15,9 +15,15 @@ try:
     from marple.terminal import read_line
 except ImportError:
     read_line = None  # type: ignore[assignment]
-from marple.workspace import save_workspace, load_workspace, list_workspaces
+try:
+    from marple.workspace import save_workspace, load_workspace, list_workspaces
+except ImportError:
+    save_workspace = load_workspace = list_workspaces = None  # type: ignore[assignment]
 
-WORKSPACES_ROOT = os.environ.get("MARPLE_WORKSPACES", "workspaces")
+try:
+    WORKSPACES_ROOT = os.environ.get("MARPLE_WORKSPACES", "workspaces")
+except AttributeError:
+    WORKSPACES_ROOT = "workspaces"
 
 
 def _is_char_array(arr: APLArray) -> bool:
