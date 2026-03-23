@@ -494,20 +494,21 @@ def _inner_product(
     alpha: APLArray,
     omega: APLArray,
 ) -> APLArray:
-    # Fast path: +.× is matrix multiply — use np.dot
+    # Fast path: +.× is matrix multiply — use np.tensordot
+    # (np.dot uses wrong axis pairing for rank > 2)
     if (
         reduce_fn is add
         and apply_fn is multiply
         and is_numeric_array(alpha.data)
         and is_numeric_array(omega.data)
     ):
-        # Check compatible dimensions
+        # Check compatible dimensions: last axis of A must match first axis of B
         if len(alpha.shape) <= 1 and len(omega.shape) <= 1:
             if len(alpha.data) != len(omega.data):
                 raise LengthError(f"Inner product length error: {len(alpha.data)} vs {len(omega.data)}")
         a = np.reshape(alpha.data, alpha.shape) if len(alpha.shape) > 1 else alpha.data
         b = np.reshape(omega.data, omega.shape) if len(omega.shape) > 1 else omega.data
-        result = np.dot(a, b)
+        result = np.tensordot(a, b, axes=([-1], [0]))
         if hasattr(result, "shape") and len(result.shape) == 0:
             return S(result.item())
         result_flat = result.ravel() if hasattr(result, "ravel") else result
