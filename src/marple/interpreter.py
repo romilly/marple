@@ -293,8 +293,8 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         return _dispatch_monadic(node.function, operand, env)
 
     if isinstance(node, DyadicFunc):
-        left = _evaluate(node.left, env)
         right = _evaluate(node.right, env)
+        left = _evaluate(node.left, env)
         return _dispatch_dyadic(node.function, left, right, env)
 
     if isinstance(node, MonadicDfnCall):
@@ -319,15 +319,15 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         if isinstance(node.dfn, SysVar):
             return _call_sys_function_dyadic(node.dfn.name, node.left, node.right, env)
         if isinstance(node.dfn, IBeamDerived):
-            left = _evaluate(node.left, env)
             right = _evaluate(node.right, env)
+            left = _evaluate(node.left, env)
             fn = _resolve_ibeam(node.dfn.path)
             return _call_ibeam_dyadic(fn, left, right)
         if isinstance(node.dfn, RankDerived):
             return _apply_rank_dyadic(node.dfn, node.left, node.right, env)
         dfn_val = _evaluate(node.dfn, env)
-        left = _evaluate(node.left, env)
         right = _evaluate(node.right, env)
+        left = _evaluate(node.left, env)
         if isinstance(dfn_val, IBeamDerived):
             fn = _resolve_ibeam(dfn_val.path)
             return _call_ibeam_dyadic(fn, left, right)
@@ -359,8 +359,8 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         return value if isinstance(value, APLArray) else S(0)
 
     if isinstance(node, InnerProduct):
-        left = _evaluate(node.left, env)
         right = _evaluate(node.right, env)
+        left = _evaluate(node.left, env)
         left_fn = _lookup_dyadic(node.left_fn)
         right_fn = _lookup_dyadic(node.right_fn)
         if left_fn is None or right_fn is None:
@@ -370,8 +370,8 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         return _inner_product(reduce_fn, apply_fn, left, right)
 
     if isinstance(node, OuterProduct):
-        left = _evaluate(node.left, env)
         right = _evaluate(node.right, env)
+        left = _evaluate(node.left, env)
         # Fast path: numpy ufunc.outer
         ufunc_name = _GLYPH_UFUNC.get(node.function)
         if (
@@ -884,8 +884,8 @@ def _call_sys_function_monadic(name: str, operand_node: object, env: dict[str, A
 def _call_sys_function_dyadic(name: str, left_node: object, right_node: object, env: dict[str, Any]) -> APLArray:
     """Dispatch a dyadic system function call."""
     if name == "⎕EA":
-        left = _evaluate(left_node, env)
         right = _evaluate(right_node, env)
+        left = _evaluate(left_node, env)
         right_str = "".join(str(c) for c in right.data)
         try:
             return interpret(right_str, env)
