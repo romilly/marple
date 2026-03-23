@@ -682,11 +682,13 @@ def _resolve_ibeam(path: str) -> Any:
         raise DomainError(f"invalid i-beam path: {path}")
     module_path, func_name = parts
     try:
-        import importlib
-        module = importlib.import_module(module_path)
+        module = __import__(module_path)
+        # __import__ returns the top-level module; traverse to the leaf
+        for part in module_path.split(".")[1:]:
+            module = getattr(module, part)
         fn = getattr(module, func_name)
     except (ImportError, AttributeError) as e:
-        raise DomainError(f"{e}") from e
+        raise DomainError(str(e)) from e
     _ibeam_cache[path] = fn
     return fn
 
