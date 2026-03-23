@@ -1,5 +1,3 @@
-
-from dataclasses import dataclass
 from enum import Enum, auto
 
 
@@ -27,10 +25,16 @@ class TokenType(Enum):
     EOF = auto()
 
 
-@dataclass(frozen=True)
 class Token:
-    type: TokenType
-    value: object
+    def __init__(self, type: TokenType, value: object) -> None:
+        self.type = type
+        self.value = value
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Token):
+            return NotImplemented
+        return self.type == other.type and self.value == other.value
+    def __repr__(self) -> str:
+        return f"Token(type={self.type}, value={self.value!r})"
 
 
 FUNCTION_GLYPHS = set("+-×÷⌈⌊*⍟|<≤=≥>≠∧∨~⍴⍳,↑↓⌽⍉⍋⍒⊤⊥⍎⍕⌹○⌷≡≢∈?")

@@ -1,161 +1,247 @@
-
-from dataclasses import dataclass
-
 from marple.errors import SyntaxError_
 from marple.tokenizer import Token, TokenType, Tokenizer
 
 
 # AST nodes
 
-@dataclass(frozen=True)
 class Num:
-    value: int | float
+    def __init__(self, value: int | float) -> None:
+        self.value = value
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Num):
+            return NotImplemented
+        return self.value == other.value
 
 
-@dataclass(frozen=True)
 class Str:
-    value: str
+    def __init__(self, value: str) -> None:
+        self.value = value
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Str):
+            return NotImplemented
+        return self.value == other.value
 
 
-@dataclass(frozen=True)
 class Vector:
-    elements: list[Num]
+    def __init__(self, elements: list[Num]) -> None:
+        self.elements = elements
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Vector):
+            return NotImplemented
+        return self.elements == other.elements
 
 
-@dataclass(frozen=True)
 class MonadicFunc:
-    function: str
-    operand: object  # AST node
+    def __init__(self, function: str, operand: object) -> None:
+        self.function = function
+        self.operand = operand
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, MonadicFunc):
+            return NotImplemented
+        return self.function == other.function and self.operand == other.operand
 
 
-@dataclass(frozen=True)
 class DyadicFunc:
-    function: str
-    left: object  # AST node
-    right: object  # AST node
+    def __init__(self, function: str, left: object, right: object) -> None:
+        self.function = function
+        self.left = left
+        self.right = right
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, DyadicFunc):
+            return NotImplemented
+        return self.function == other.function and self.left == other.left and self.right == other.right
 
 
-@dataclass(frozen=True)
 class Assignment:
-    name: str
-    value: object  # AST node
+    def __init__(self, name: str, value: object) -> None:
+        self.name = name
+        self.value = value
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Assignment):
+            return NotImplemented
+        return self.name == other.name and self.value == other.value
 
 
-@dataclass(frozen=True)
 class Var:
-    name: str
+    def __init__(self, name: str) -> None:
+        self.name = name
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Var):
+            return NotImplemented
+        return self.name == other.name
 
 
-@dataclass(frozen=True)
 class QualifiedVar:
-    parts: list[str]
+    def __init__(self, parts: list[str]) -> None:
+        self.parts = parts
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, QualifiedVar):
+            return NotImplemented
+        return self.parts == other.parts
 
 
-@dataclass(frozen=True)
 class DerivedFunc:
-    operator: str
-    function: str
-    operand: object  # AST node
+    def __init__(self, operator: str, function: str, operand: object) -> None:
+        self.operator = operator
+        self.function = function
+        self.operand = operand
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, DerivedFunc):
+            return NotImplemented
+        return self.operator == other.operator and self.function == other.function and self.operand == other.operand
 
 
-@dataclass(frozen=True)
 class RankDerived:
     """Unapplied rank-derived function: f⍤k"""
-    function: object  # str (glyph), ReduceOp, ScanOp, Dfn, or Var
-    rank_spec: object  # AST node (Num or Vector)
+    def __init__(self, function: object, rank_spec: object) -> None:
+        self.function = function
+        self.rank_spec = rank_spec
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, RankDerived):
+            return NotImplemented
+        return self.function == other.function and self.rank_spec == other.rank_spec
 
 
-@dataclass(frozen=True)
 class ReduceOp:
     """Unapplied reduce: f/ as a function value"""
-    function: str
+    def __init__(self, function: str) -> None:
+        self.function = function
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ReduceOp):
+            return NotImplemented
+        return self.function == other.function
 
 
-@dataclass(frozen=True)
 class ScanOp:
     """Unapplied scan: f\\ as a function value"""
-    function: str
+    def __init__(self, function: str) -> None:
+        self.function = function
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ScanOp):
+            return NotImplemented
+        return self.function == other.function
 
 
-@dataclass(frozen=True)
 class IBeamDerived:
     """I-beam derived function: ⌶'module.function'"""
-    path: str
+    def __init__(self, path: str) -> None:
+        self.path = path
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, IBeamDerived):
+            return NotImplemented
+        return self.path == other.path
 
 
-@dataclass(frozen=True)
 class InnerProduct:
-    left_fn: str
-    right_fn: str
-    left: object  # AST node
-    right: object  # AST node
+    def __init__(self, left_fn: str, right_fn: str, left: object, right: object) -> None:
+        self.left_fn = left_fn
+        self.right_fn = right_fn
+        self.left = left
+        self.right = right
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, InnerProduct):
+            return NotImplemented
+        return self.left_fn == other.left_fn and self.right_fn == other.right_fn and self.left == other.left and self.right == other.right
 
 
-@dataclass(frozen=True)
 class OuterProduct:
-    function: str
-    left: object  # AST node
-    right: object  # AST node
+    def __init__(self, function: str, left: object, right: object) -> None:
+        self.function = function
+        self.left = left
+        self.right = right
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, OuterProduct):
+            return NotImplemented
+        return self.function == other.function and self.left == other.left and self.right == other.right
 
 
-@dataclass(frozen=True)
 class SysVar:
-    name: str
+    def __init__(self, name: str) -> None:
+        self.name = name
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SysVar):
+            return NotImplemented
+        return self.name == other.name
 
 
-@dataclass(frozen=True)
 class Index:
-    array: object  # AST node
-    indices: list[object | None]  # None means "all along this axis"
+    def __init__(self, array: object, indices: list[object | None]) -> None:
+        self.array = array
+        self.indices = indices
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Index):
+            return NotImplemented
+        return self.array == other.array and self.indices == other.indices
 
 
-@dataclass(frozen=True)
 class Omega:
     pass
 
 
-@dataclass(frozen=True)
 class Alpha:
     pass
 
 
-@dataclass(frozen=True)
 class Nabla:
     pass
 
 
-@dataclass(frozen=True)
 class Guard:
-    condition: object  # AST node
-    body: object  # AST node
+    def __init__(self, condition: object, body: object) -> None:
+        self.condition = condition
+        self.body = body
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Guard):
+            return NotImplemented
+        return self.condition == other.condition and self.body == other.body
 
 
-@dataclass(frozen=True)
 class AlphaDefault:
-    default: object  # AST node
+    def __init__(self, default: object) -> None:
+        self.default = default
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, AlphaDefault):
+            return NotImplemented
+        return self.default == other.default
 
 
-@dataclass(frozen=True)
 class Dfn:
-    body: list[object]  # list of statements (may include Guards and AlphaDefault)
+    def __init__(self, body: list[object]) -> None:
+        self.body = body
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Dfn):
+            return NotImplemented
+        return self.body == other.body
 
 
-@dataclass(frozen=True)
 class MonadicDfnCall:
-    dfn: object  # Dfn or Var
-    operand: object  # AST node
+    def __init__(self, dfn: object, operand: object) -> None:
+        self.dfn = dfn
+        self.operand = operand
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, MonadicDfnCall):
+            return NotImplemented
+        return self.dfn == other.dfn and self.operand == other.operand
 
 
-@dataclass(frozen=True)
 class DyadicDfnCall:
-    dfn: object  # Dfn or Var
-    left: object  # AST node
-    right: object  # AST node
+    def __init__(self, dfn: object, left: object, right: object) -> None:
+        self.dfn = dfn
+        self.left = left
+        self.right = right
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, DyadicDfnCall):
+            return NotImplemented
+        return self.dfn == other.dfn and self.left == other.left and self.right == other.right
 
 
-@dataclass(frozen=True)
 class Program:
-    statements: list[object]
+    def __init__(self, statements: list[object]) -> None:
+        self.statements = statements
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Program):
+            return NotImplemented
+        return self.statements == other.statements
 
 
 class Parser:
