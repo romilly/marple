@@ -20,10 +20,10 @@ More extensive documentation is available [here](https://romilly.github.io/marpl
 - **System variables** — `⎕IO`, `⎕CT`, `⎕PP`, `⎕RL`, `⎕A`, `⎕D`, `⎕TS`, `⎕WSID`, `⎕UCS`, `⎕NC`, `⎕EX`
 - **Matrices** — reshape, transpose, bracket indexing (`M[r;c]` any rank), matrix inverse (`⌹`)
 - **Numpy backend** — automatic vectorization (73x faster for element-wise, 380x for outer product), with pure-Python fallback
-- **Web REPL** — browser-based REPL at `http://localhost:8888/`, Pico W-ready
+- **Web REPL** — browser-based REPL with language bar, workspace panel, session history, multi-line input
 - **Terminal REPL** — live backtick→glyph input, workspace save/load, APL-style formatting
 - **Script runner** — `marple script.marple` with session transcript output
-- **426 tests**, pyright strict, no external runtime dependencies
+- **448 tests** (412 interpreter + 36 Playwright), pyright strict
 
 ## Quick start
 
@@ -58,6 +58,14 @@ CLEAR WS
       $::str::upper 'hello'
 HELLO
 ```
+
+### Web REPL
+
+```bash
+python -m marple.web.server
+```
+
+Open `http://localhost:8888/` in your browser. Features: clickable language bar, workspace panel, session history (up/down arrows), multi-line input (Shift+Enter).
 
 ### Running scripts
 

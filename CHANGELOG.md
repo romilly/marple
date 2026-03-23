@@ -2,13 +2,20 @@
 
 All notable changes to MARPLE are documented here.
 
-## [0.3.0] — 2026-03-23
+## [0.3.6] — 2026-03-23
 
 ### Added
 - **Web REPL** — browser-based REPL at `http://localhost:8888/`
-  - `POST /eval` and `POST /system` endpoints returning HTML fragments
-  - Two frontends: `desktop.html` (HTMX-ready) and `index.html` (Pico-ready, 2.9KB)
-  - 14 Playwright tests
+  - Bootstrap layout with session area + workspace sidebar panel
+  - Clickable language bar with tooltips for all APL glyphs
+  - Session history with up/down arrow keys
+  - Multi-line input with Shift+Enter (newlines converted to `⋄`)
+  - Workspace panel: shows variables (with shapes) and functions, click to insert
+  - `POST /eval`, `POST /system`, `GET /workspace`, `GET /health` endpoints
+  - Server returns HTML fragments, form-encoded requests
+  - Two frontends: `desktop.html` (Bootstrap + HTMX) and `index.html` (self-contained)
+  - 36 Playwright tests
+- Published to PyPI as `marple-lang`
 - Numpy fast path for outer product using `ufunc.outer()` (~380x faster)
 - `CHANGELOG.md`
 
@@ -16,13 +23,17 @@ All notable changes to MARPLE are documented here.
 - Inner product uses `np.tensordot` (correct for rank > 2, was using `np.dot`)
 - Outer product: scalar args produce scalar result (not 1×1 matrix)
 - Numpy multiply reduce uses float64 to avoid int64 overflow (`×/⍳30`)
+- REPL uses `default_env()` (was missing system variables)
+- Version display uses `marple-lang` package name
 
 ### Changed
 - Package renamed to `marple-lang` for PyPI
+- Desktop frontend uses Bootstrap 5 for layout
 - Dispatch tables for monadic/dyadic functions (replacing if/elif chains)
 - `default_env()` replaces per-variable initialization
 - Bracket indexing generalised to any rank (was limited to rank 2)
 - Random seeding: seed once at startup, re-seed only on `⎕RL←`
+- Install instructions use `uv` with virtual environments
 
 ## [0.2.16] — 2026-03-23
 
