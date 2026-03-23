@@ -9,18 +9,18 @@ them and returns results.
 Arithmetic, vectors, matrices, reduce, scan, outer product, grade, encode/decode,
 and trig — all running on the Pico.
 
-https://github.com/romilly/marple/raw/main/examples/videos/picoapl-2026-03-23_16.35.35.mp4
+<video src="https://github.com/romilly/marple/raw/main/examples/videos/picoapl-2026-03-23_16.35.35.mp4" controls width="600"></video>
 
 ## Demo 2: Direct Functions (Dfns) and the Rank Operator
 
 Named dfns, guards, recursion (factorial, Fibonacci), default left arguments,
 and the rank operator applied to matrices and 3D arrays.
 
-https://github.com/romilly/marple/raw/main/examples/videos/picoapl-2026-03-23_16.46.54.mp4
+<video src="https://github.com/romilly/marple/raw/main/examples/videos/picoapl-2026-03-23_16.46.54.mp4" controls width="600"></video>
 
 ## Demo 3: Namespaces and Standard Library
 
 Qualified names (`$::str::upper`), `#import` directives, aliases, file I/O
 (`nwrite`/`nread`), and the i-beam operator for direct Python FFI.
 
-https://github.com/romilly/marple/raw/main/examples/videos/picoapl-2026-03-23_17.25.09.mp4
+<video src="https://github.com/romilly/marple/raw/main/examples/videos/picoapl-2026-03-23_17.25.09.mp4" controls width="600"></video>
