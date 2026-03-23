@@ -908,46 +908,34 @@ def _bracket_index(
     env: dict[str, Any],
     io: int,
 ) -> APLArray:
-    if len(array.shape) <= 1:
-        # Vector indexing: v[idx]
-        idx_node = indices[0]
+    from itertools import product
+    data = to_list(array.data)
+    # Build 0-based index lists for each axis
+    axis_indices: list[list[int]] = []
+    for axis, idx_node in enumerate(indices):
         if idx_node is None:
-            return APLArray(list(array.shape), list(array.data))
-        idx = _evaluate(idx_node, env)
-        if idx.is_scalar():
-            i = int(idx.data[0]) - io
-            return S(array.data[i])
-        result = [array.data[int(i) - io] for i in idx.data]
-        return APLArray([len(result)], result)
-    if len(array.shape) == 2:
-        rows, cols = array.shape
-        row_idx = indices[0] if len(indices) > 0 else None
-        col_idx = indices[1] if len(indices) > 1 else None
-        # Evaluate indices
-        row_vals: list[int] | None = None
-        col_vals: list[int] | None = None
-        if row_idx is not None:
-            r = _evaluate(row_idx, env)
-            row_vals = [int(x) - io for x in (r.data if not r.is_scalar() else [r.data[0]])]
-        if col_idx is not None:
-            c = _evaluate(col_idx, env)
-            col_vals = [int(x) - io for x in (c.data if not c.is_scalar() else [c.data[0]])]
-        if row_vals is None:
-            row_vals = list(range(rows))
-        if col_vals is None:
-            col_vals = list(range(cols))
-        result: list[object] = []
-        for r in row_vals:
-            for c in col_vals:
-                result.append(array.data[r * cols + c])
-        if len(row_vals) == 1 and len(col_vals) == 1:
-            return S(result[0])
-        if len(row_vals) == 1:
-            return APLArray([len(col_vals)], result)
-        if len(col_vals) == 1:
-            return APLArray([len(row_vals)], result)
-        return APLArray([len(row_vals), len(col_vals)], result)
-    raise RankError(f"Bracket indexing not supported for rank {len(array.shape)}")
+            axis_indices.append(list(range(array.shape[axis])))
+        else:
+            idx = _evaluate(idx_node, env)
+            vals = to_list(idx.data) if not idx.is_scalar() else [idx.data[0]]
+            axis_indices.append([int(v) - io for v in vals])
+    # Pad missing axes with full range
+    for axis in range(len(indices), len(array.shape)):
+        axis_indices.append(list(range(array.shape[axis])))
+    # Compute strides
+    strides = [1] * len(array.shape)
+    for i in range(len(array.shape) - 2, -1, -1):
+        strides[i] = strides[i + 1] * array.shape[i + 1]
+    # Gather results
+    result: list[object] = []
+    for combo in product(*axis_indices):
+        flat = sum(i * s for i, s in zip(combo, strides))
+        result.append(data[flat])
+    # Result shape: drop singleton axes
+    result_shape = [len(ai) for ai in axis_indices if len(ai) > 1]
+    if not result_shape:
+        return S(result[0])
+    return APLArray(result_shape, result)
 
 
 def _handle_import(source: str, env: dict[str, Any]) -> APLArray:
