@@ -6,6 +6,21 @@ except ImportError:
     pass
 
 
+def _isdir(path):
+    """Check if path is a directory (works on MicroPython)."""
+    try:
+        return (os.stat(path)[0] & 0x4000) != 0
+    except OSError:
+        return False
+
+
+def _join(base, name):
+    """Join path components (works on MicroPython)."""
+    if base.endswith("/"):
+        return base + name
+    return base + "/" + name
+
+
 class Namespace:
     """A hierarchical namespace mapping names to values or child namespaces."""
 
@@ -42,24 +57,22 @@ def load_system_workspace(stdlib_path: str) -> Namespace:
     from marple.interpreter import default_env, interpret
 
     root = Namespace("$")
-    if not os.path.isdir(stdlib_path):
+    if not _isdir(stdlib_path):
         return root
 
     for entry in sorted(os.listdir(stdlib_path)):
-        subdir = os.path.join(stdlib_path, entry)
-        if os.path.isdir(subdir) and not entry.startswith("_"):
+        subdir = _join(stdlib_path, entry)
+        if _isdir(subdir) and not entry.startswith("_"):
             ns = Namespace(entry)
             for fname in sorted(os.listdir(subdir)):
                 if fname.endswith(".apl"):
                     func_name = fname[:-4]
-                    filepath = os.path.join(subdir, fname)
+                    filepath = _join(subdir, fname)
                     with open(filepath) as f:
                         source = f.read().strip()
                     if source:
                         env = default_env()
                         result = interpret(source, env)
-                        # The .apl file should define a function via assignment
-                        # or be a bare dfn expression
                         if func_name in env:
                             ns.register(func_name, env[func_name])
                         else:

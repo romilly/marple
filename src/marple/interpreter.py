@@ -635,7 +635,9 @@ def _get_sys_workspace() -> Namespace:
     global _sys_workspace
     if _sys_workspace is None:
         import marple.stdlib
-        stdlib_path = os.path.dirname(marple.stdlib.__file__)
+        f = marple.stdlib.__file__
+        # Get directory: strip filename from path
+        stdlib_path = f[:f.rfind("/")]  if "/" in f else f[:f.rfind("\\")]
         _sys_workspace = load_system_workspace(stdlib_path)
     return _sys_workspace
 
