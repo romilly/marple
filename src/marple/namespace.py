@@ -37,7 +37,7 @@ def load_system_workspace(stdlib_path: str) -> Namespace:
 
     Walks subdirectories, loading each .apl file as a function definition.
     """
-    from marple.interpreter import interpret
+    from marple.interpreter import default_env, interpret
 
     root = Namespace("$")
     if not os.path.isdir(stdlib_path):
@@ -54,7 +54,7 @@ def load_system_workspace(stdlib_path: str) -> Namespace:
                     with open(filepath) as f:
                         source = f.read().strip()
                     if source:
-                        env: dict[str, Any] = {}
+                        env = default_env()
                         result = interpret(source, env)
                         # The .apl file should define a function via assignment
                         # or be a bare dfn expression

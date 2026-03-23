@@ -1000,8 +1000,7 @@ def default_env() -> dict[str, Any]:
 
 
 def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
-    if env is None:
-        env = default_env()
+    env = env or default_env()
     # Handle #import directives
     if source.strip().startswith("#import"):
         return _handle_import(source.strip(), env)

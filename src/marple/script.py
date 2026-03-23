@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from marple.errors import APLError
-from marple.interpreter import interpret
+from marple.interpreter import default_env, interpret
 from marple.repl import format_result, _is_silent
 
 
@@ -16,7 +16,7 @@ def run_script(path: str) -> list[str]:
     Echoes each input line with the REPL prompt, followed by output.
     Stops on first error with an error message including line number.
     """
-    env: dict[str, Any] = {}
+    env = default_env()
     output: list[str] = []
     with open(path) as f:
         for lineno, line in enumerate(f, 1):
