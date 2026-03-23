@@ -352,6 +352,8 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         name_table[node.name] = new_class
         env["__name_table__"] = name_table
         env[node.name] = value
+        if node.name == "⎕RL" and isinstance(value, APLArray):
+            _random.seed(int(value.data[0]))
         return value if isinstance(value, APLArray) else S(0)
 
     if isinstance(node, InnerProduct):
@@ -705,16 +707,8 @@ def _m_grade_down(operand: APLArray, env: dict[str, Any]) -> APLArray:
     return grade_down(operand, _get_io(env))
 
 
-def _seed_random(env: dict[str, Any]) -> None:
-    """Seed the random module from ⎕RL if set."""
-    rl = int(env["⎕RL"].data[0])
-    if rl > 0:
-        _random.seed(rl)
-
-
 def _roll(omega: APLArray, env: dict[str, Any]) -> APLArray:
     """Monadic ?: roll. ?N → random int ⎕IO..N, ?0 → random float [0,1)."""
-    _seed_random(env)
     io = _get_io(env)
     data = to_list(omega.data)
     results: list[object] = []
@@ -731,7 +725,6 @@ def _roll(omega: APLArray, env: dict[str, Any]) -> APLArray:
 
 def _deal(left: APLArray, right: APLArray, env: dict[str, Any]) -> APLArray:
     """Dyadic ?: deal. N?M → N distinct random integers from ⎕IO..M."""
-    _seed_random(env)
     io = _get_io(env)
     n = int(left.data[0])
     m = int(right.data[0])
@@ -1040,7 +1033,9 @@ _SYSTEM_DEFAULTS: dict[str, Any] = {
 
 def default_env() -> dict[str, Any]:
     """Create a fresh environment with all system variable defaults."""
-    return dict(_SYSTEM_DEFAULTS)
+    env = dict(_SYSTEM_DEFAULTS)
+    _random.seed(1)
+    return env
 
 
 def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
