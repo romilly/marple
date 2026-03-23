@@ -49,6 +49,8 @@
             font-family: inherit;
             font-size: 1em;
             outline: none;
+            resize: none;
+            overflow: hidden;
         }
         #input:focus { border-color: #6b8afd; }
         #input.backtick { border-color: #ff9f43; background: #1a2a4a; }
@@ -77,10 +79,10 @@
     <div id="langbar"></div>
     <div id="session"></div>
     <div id="input-bar">
-        <input type="text" id="input"
+        <textarea id="input" rows="1"
                autocomplete="off" autocorrect="off"
                autocapitalize="off" spellcheck="false"
-               placeholder="APL expression">
+               placeholder="APL expression"></textarea>
     </div>
 
     <script>
@@ -192,14 +194,23 @@
         langbar.appendChild(btn);
     }
 
+    // Auto-resize textarea
+    input.addEventListener('input', function() {
+        input.style.height = 'auto';
+        input.style.height = input.scrollHeight + 'px';
+    });
+
     input.addEventListener('keydown', function(e) {
         if (e.key !== 'Enter') return;
+        if (e.shiftKey) return;
         e.preventDefault();
 
-        var text = input.value.trim();
-        if (!text) return;
+        var raw = input.value.trim();
+        if (!raw) return;
+        var text = raw.replace(/\n/g, '⋄');
         input.value = '';
-        historyList.push(text);
+        input.style.height = 'auto';
+        historyList.push(raw);
         historyPos = -1;
 
         var url = text.charAt(0) === ')' ? '/system' : '/eval';
