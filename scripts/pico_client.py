@@ -51,8 +51,8 @@ def main():
             line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
             if line == SENTINEL:
                 break
-            # Skip echo of our input
-            if line == expr:
+            # Skip echo of our input (hex-encoded)
+            if line == encoded:
                 continue
             response_lines.append(line)
 
