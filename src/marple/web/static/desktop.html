@@ -52,6 +52,7 @@
             outline: none;
         }
         #input:focus { border-color: #6b8afd; }
+        #input.backtick { border-color: #ff9f43; background: #1a2a4a; }
     </style>
 </head>
 <body>
@@ -67,6 +68,58 @@
     <script>
     const input = document.getElementById('input');
     const session = document.getElementById('session');
+
+    // Backtick glyph input
+    const GLYPHS = {
+        '-':'×','=':'÷','<':'≤','>':'≥','/':'≠',
+        'r':'⍴','i':'⍳','e':'∈','t':'↑','y':'↓',
+        'q':'⌽','Q':'⍉','g':'⍋','G':'⍒',
+        '^':'∧','v':'∨','~':'⍲','T':'⍱',
+        '*':'⍟','o':'○','!':'⌈','d':'⌊','D':'⌹',
+        'p':'⌈','b':'⌊',
+        'n':'⊤','N':'⊥',
+        'w':'⍵','a':'⍺','V':'∇',
+        'l':'←','x':'⋄','z':'⍎','Z':'⍕',
+        'j':'∘','J':'⍤','I':'⌷','B':'⌶',
+        '2':'¯','c':'⍝','[':'{',']':'}'
+    };
+    let backtickMode = false;
+
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && backtickMode) {
+            backtickMode = false;
+            input.classList.remove('backtick');
+            e.preventDefault();
+            return;
+        }
+        if (backtickMode) {
+            e.preventDefault();
+            backtickMode = false;
+            input.classList.remove('backtick');
+            if (e.key === '`') {
+                insertAtCursor(input, '`');
+            } else if (GLYPHS[e.key]) {
+                insertAtCursor(input, GLYPHS[e.key]);
+            } else {
+                insertAtCursor(input, '`' + e.key);
+            }
+            return;
+        }
+        if (e.key === '`') {
+            e.preventDefault();
+            backtickMode = true;
+            input.classList.add('backtick');
+            return;
+        }
+    });
+
+    function insertAtCursor(el, text) {
+        const start = el.selectionStart;
+        const end = el.selectionEnd;
+        const val = el.value;
+        el.value = val.slice(0, start) + text + val.slice(end);
+        el.selectionStart = el.selectionEnd = start + text.length;
+    }
 
     input.addEventListener('keydown', async function(e) {
         if (e.key !== 'Enter') return;
