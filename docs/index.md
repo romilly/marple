@@ -19,7 +19,7 @@ MARPLE is incomplete; some basic system functions and variables are still missin
 
 It probably has lots of bugs. Claude code and I have developed it using TDD (Test-Driven Development) but I am certain that bugs will emerge with use.
 
-MARPLE is not, and never will be, a commercial product. It lacks many of the features that make Dyalog APL a compelling proposition for serious APL developers. The size of the development and support team lies somewhere between 0 and 1.
+MARPLE is not, and never will be, a commercial product. It lacks many of the features that make Dyalog APL a compelling proposition for serious APL developers. The size of MARPLE's development and support team lies somewhere between 0 and 1.
 
 But it's been fun and I hope it's useful. Do let me know what you think of it!
 
