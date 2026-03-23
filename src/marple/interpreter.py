@@ -262,7 +262,7 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
 
     if isinstance(node, Index):
         array = _evaluate(node.array, env)
-        io = int(env.get("⎕IO", S(1)).data[0])
+        io = _get_io(env)
         return _bracket_index(array, node.indices, env, io)
 
     if isinstance(node, Omega):
@@ -669,11 +669,11 @@ def _call_ibeam_dyadic(fn: Any, left: APLArray, right: APLArray) -> APLArray:
 
 
 def _get_io(env: dict[str, Any]) -> int:
-    return int(env.get("⎕IO", S(1)).data[0])
+    return int(env["⎕IO"].data[0])
 
 
 def _get_ct(env: dict[str, Any]) -> float:
-    return float(env.get("⎕CT", S(1e-14)).data[0])
+    return float(env["⎕CT"].data[0])
 
 
 def _dispatch_monadic(glyph: str, operand: APLArray, env: dict[str, Any]) -> APLArray:
@@ -727,7 +727,7 @@ def _dispatch_dyadic(glyph: str, left: APLArray, right: APLArray, env: dict[str,
 
 def _seed_random(env: dict[str, Any]) -> None:
     """Seed the random module from ⎕RL if set."""
-    rl = int(env.get("⎕RL", S(0)).data[0])
+    rl = int(env["⎕RL"].data[0])
     if rl > 0:
         _random.seed(rl)
 
@@ -735,7 +735,7 @@ def _seed_random(env: dict[str, Any]) -> None:
 def _roll(omega: APLArray, env: dict[str, Any]) -> APLArray:
     """Monadic ?: roll. ?N → random int ⎕IO..N, ?0 → random float [0,1)."""
     _seed_random(env)
-    io = int(env.get("⎕IO", S(1)).data[0])
+    io = _get_io(env)
     data = to_list(omega.data)
     results: list[object] = []
     for x in data:
@@ -752,7 +752,7 @@ def _roll(omega: APLArray, env: dict[str, Any]) -> APLArray:
 def _deal(alpha: APLArray, omega: APLArray, env: dict[str, Any]) -> APLArray:
     """Dyadic ?: deal. N?M → N distinct random integers from ⎕IO..M."""
     _seed_random(env)
-    io = int(env.get("⎕IO", S(1)).data[0])
+    io = _get_io(env)
     n = int(alpha.data[0])
     m = int(omega.data[0])
     if n > m:
