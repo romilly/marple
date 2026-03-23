@@ -668,7 +668,10 @@ def _resolve_ibeam(path: str) -> Any:
     if path in _ibeam_cache:
         return _ibeam_cache[path]
     # Check allowlist
-    allowed = os.environ.get("MARPLE_IBEAM_ALLOW")
+    try:
+        allowed = os.environ.get("MARPLE_IBEAM_ALLOW")
+    except AttributeError:
+        allowed = None
     if allowed is not None:
         prefixes = [p.strip() for p in allowed.split(",")]
         if not any(path.startswith(p) for p in prefixes):
