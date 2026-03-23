@@ -978,7 +978,7 @@ _SYSTEM_DEFAULTS: dict[str, Any] = {
     "⎕A": APLArray([26], list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
     "⎕D": APLArray([10], list("0123456789")),
     "⎕WSID": APLArray([8], list("CLEAR WS")),
-    "⎕RL": S(0),
+    "⎕RL": S(1),
 }
 
 

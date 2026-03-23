@@ -92,7 +92,7 @@ class TestDeal:
 
 class TestQuadRL:
     def test_default_rl(self) -> None:
-        assert interpret("⎕RL") == S(0)
+        assert interpret("⎕RL") == S(1)
 
     def test_set_rl(self) -> None:
         env = default_env()
