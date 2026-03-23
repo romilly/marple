@@ -563,15 +563,14 @@ def _outer_product(
     alpha: APLArray,
     omega: APLArray,
 ) -> APLArray:
-    a_data = alpha.data if not alpha.is_scalar() else [alpha.data[0]]
-    b_data = omega.data if not omega.is_scalar() else [omega.data[0]]
-    a_shape = alpha.shape if not alpha.is_scalar() else [1]
-    b_shape = omega.shape if not omega.is_scalar() else [1]
     result_data: list[object] = []
-    for a in a_data:
-        for b in b_data:
+    for a in alpha.data:
+        for b in omega.data:
             result_data.append(func(S(a), S(b)).data[0])
-    return APLArray(a_shape + b_shape, result_data)
+    result_shape = alpha.shape + omega.shape
+    if not result_shape:
+        return S(result_data[0])
+    return APLArray(result_shape, result_data)
 
 
 _CT_COMPARISONS: dict[str, object] = {
