@@ -11,7 +11,10 @@ from marple.arraymodel import APLArray
 from marple.errors import APLError
 from marple.interpreter import _DfnClosure, default_env, interpret
 from marple.parser import Assignment, Program, parse
-from marple.terminal import read_line
+try:
+    from marple.terminal import read_line
+except ImportError:
+    read_line = None  # type: ignore[assignment]
 from marple.workspace import save_workspace, load_workspace, list_workspaces
 
 WORKSPACES_ROOT = os.environ.get("MARPLE_WORKSPACES", "workspaces")
@@ -113,7 +116,7 @@ def main() -> None:
         ver = "unknown"
     print(f"MARPLE v{ver} - Mini APL in Python")
     print("CLEAR WS\n")
-    use_terminal = sys.stdin.isatty()
+    use_terminal = read_line is not None and sys.stdin.isatty()
     while True:
         if use_terminal:
             line = read_line()
