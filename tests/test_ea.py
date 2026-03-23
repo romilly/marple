@@ -1,6 +1,6 @@
 from marple.arraymodel import APLArray, S
 from marple.errors import DomainError
-from marple.interpreter import interpret
+from marple.interpreter import interpret, default_env
 import pytest
 
 
@@ -23,31 +23,31 @@ class TestQuadEA:
 
 class TestQuadEN:
     def test_fresh_session(self) -> None:
-        env: dict[str, object] = {}
+        env = default_env()
         assert interpret("⎕EN", env) == S(0)
 
     def test_after_error(self) -> None:
-        env: dict[str, object] = {}
+        env = default_env()
         interpret("'0' ⎕EA '1÷0'", env)
         assert interpret("⎕EN", env) == S(3)  # DomainError
 
     def test_not_reset_by_success(self) -> None:
-        env: dict[str, object] = {}
+        env = default_env()
         interpret("'0' ⎕EA '1÷0'", env)
         interpret("'0' ⎕EA '2+3'", env)
         assert interpret("⎕EN", env) == S(3)
 
     def test_index_error_code(self) -> None:
-        env: dict[str, object] = {}
+        env = default_env()
         interpret("'0' ⎕EA '10⌷⍳5'", env)
         assert interpret("⎕EN", env) == S(6)  # IndexError_
 
     def test_length_error_code(self) -> None:
-        env: dict[str, object] = {}
+        env = default_env()
         interpret("'0' ⎕EA '1 2+1 2 3'", env)
         assert interpret("⎕EN", env) == S(4)  # LengthError
 
     def test_en_via_ea(self) -> None:
-        env: dict[str, object] = {}
+        env = default_env()
         result = interpret("'⎕EN' ⎕EA '1÷0'", env)
         assert result == S(3)

@@ -2,7 +2,7 @@ import os
 import tempfile
 
 from marple.arraymodel import APLArray, S
-from marple.interpreter import interpret
+from marple.interpreter import interpret, default_env
 from marple.workspace import save_workspace, load_workspace
 
 
@@ -13,7 +13,7 @@ class TestWorkspaceCharacterData:
             env: dict[str, object] = {"__wsid__": "test_ws"}
             interpret("x←'HELLO'", env)
             save_workspace(env, ws_dir)
-            new_env: dict[str, object] = {}
+            new_env = default_env()
             load_workspace(new_env, ws_dir)
             assert new_env["x"] == APLArray([5], list("HELLO"))
 
@@ -23,6 +23,6 @@ class TestWorkspaceCharacterData:
             env: dict[str, object] = {"__wsid__": "test_ws"}
             interpret("x←2 3⍴'CATDOG'", env)
             save_workspace(env, ws_dir)
-            new_env: dict[str, object] = {}
+            new_env = default_env()
             load_workspace(new_env, ws_dir)
             assert new_env["x"] == APLArray([2, 3], list("CATDOG"))

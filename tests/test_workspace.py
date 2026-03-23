@@ -2,7 +2,7 @@ import os
 import tempfile
 
 from marple.arraymodel import APLArray, S
-from marple.interpreter import interpret
+from marple.interpreter import interpret, default_env
 from marple.workspace import save_workspace, load_workspace, list_workspaces
 
 
@@ -36,7 +36,7 @@ class TestLoadWorkspace:
             ws_dir = os.path.join(root, "test_ws")
             env: dict[str, object] = {"__wsid__": "test_ws", "⎕IO": S(1), "x": S(42)}
             save_workspace(env, ws_dir)
-            new_env: dict[str, object] = {}
+            new_env = default_env()
             load_workspace(new_env, ws_dir)
             assert new_env["x"] == S(42)
 
@@ -45,7 +45,7 @@ class TestLoadWorkspace:
             ws_dir = os.path.join(root, "test_ws")
             env: dict[str, object] = {"__wsid__": "test_ws", "⎕IO": S(1)}
             save_workspace(env, ws_dir)
-            new_env: dict[str, object] = {}
+            new_env = default_env()
             load_workspace(new_env, ws_dir)
             assert new_env["__wsid__"] == "test_ws"
 
@@ -54,7 +54,7 @@ class TestLoadWorkspace:
             ws_dir = os.path.join(root, "test_ws")
             env: dict[str, object] = {"__wsid__": "test_ws", "⎕IO": S(1), "v": APLArray([3], [1, 2, 3])}
             save_workspace(env, ws_dir)
-            new_env: dict[str, object] = {}
+            new_env = default_env()
             load_workspace(new_env, ws_dir)
             assert new_env["v"] == APLArray([3], [1, 2, 3])
 
@@ -64,7 +64,7 @@ class TestLoadWorkspace:
             env: dict[str, object] = {"__wsid__": "test_ws"}
             interpret("double←{⍵+⍵}", env)
             save_workspace(env, ws_dir)
-            new_env: dict[str, object] = {}
+            new_env = default_env()
             load_workspace(new_env, ws_dir)
             assert interpret("double 5", new_env) == S(10)
 
@@ -75,7 +75,7 @@ class TestLoadWorkspace:
             interpret("⎕IO←0", env)
             interpret("x←⍳3", env)
             save_workspace(env, ws_dir)
-            new_env: dict[str, object] = {}
+            new_env = default_env()
             load_workspace(new_env, ws_dir)
             # ⎕IO should be 0, so ⍳3 gives 0 1 2
             assert new_env["x"] == APLArray([3], [0, 1, 2])

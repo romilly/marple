@@ -1,5 +1,5 @@
 from marple.arraymodel import APLArray, S
-from marple.interpreter import interpret
+from marple.interpreter import interpret, default_env
 
 
 class TestInnerProduct:
@@ -11,7 +11,7 @@ class TestInnerProduct:
         # (2 2⍴1 2 3 4)+.×(2 2⍴5 6 7 8) → 2×2 matrix
         # [1 2] × [5 6] = [1×5+2×7  1×6+2×8] = [19 22]
         # [3 4]   [7 8]   [3×5+4×7  3×6+4×8]   [43 50]
-        env: dict[str, APLArray] = {}
+        env = default_env()
         interpret("A←2 2⍴1 2 3 4", env)
         interpret("B←2 2⍴5 6 7 8", env)
         result = interpret("A+.×B", env)

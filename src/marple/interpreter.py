@@ -981,27 +981,27 @@ def _handle_import(source: str, env: dict[str, Any]) -> APLArray:
     return S(0)
 
 
+_SYSTEM_DEFAULTS: dict[str, Any] = {
+    "⎕IO": S(1),
+    "⎕CT": S(1e-14),
+    "⎕PP": S(10),
+    "⎕EN": S(0),
+    "⎕DM": APLArray([0], []),
+    "⎕A": APLArray([26], list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
+    "⎕D": APLArray([10], list("0123456789")),
+    "⎕WSID": APLArray([8], list("CLEAR WS")),
+    "⎕RL": S(0),
+}
+
+
+def default_env() -> dict[str, Any]:
+    """Create a fresh environment with all system variable defaults."""
+    return dict(_SYSTEM_DEFAULTS)
+
+
 def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
     if env is None:
-        env = {}
-    if "⎕IO" not in env:
-        env["⎕IO"] = S(1)
-    if "⎕CT" not in env:
-        env["⎕CT"] = S(1e-14)
-    if "⎕PP" not in env:
-        env["⎕PP"] = S(10)
-    if "⎕EN" not in env:
-        env["⎕EN"] = S(0)
-    if "⎕DM" not in env:
-        env["⎕DM"] = APLArray([0], [])
-    if "⎕A" not in env:
-        env["⎕A"] = APLArray([26], list("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
-    if "⎕D" not in env:
-        env["⎕D"] = APLArray([10], list("0123456789"))
-    if "⎕WSID" not in env:
-        env["⎕WSID"] = APLArray([8], list("CLEAR WS"))
-    if "⎕RL" not in env:
-        env["⎕RL"] = S(0)
+        env = default_env()
     # Handle #import directives
     if source.strip().startswith("#import"):
         return _handle_import(source.strip(), env)

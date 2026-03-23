@@ -1,5 +1,5 @@
 from marple.arraymodel import APLArray, S
-from marple.interpreter import interpret
+from marple.interpreter import interpret, default_env
 import pytest
 
 
@@ -8,7 +8,7 @@ class TestQuadPP:
         assert interpret("⎕PP") == S(10)
 
     def test_set_pp(self) -> None:
-        env: dict[str, object] = {}
+        env = default_env()
         interpret("⎕PP←5", env)
         assert interpret("⎕PP", env) == S(5)
 
@@ -58,7 +58,7 @@ class TestQuadWSID:
         assert result.data == list("CLEAR WS")
 
     def test_set_wsid(self) -> None:
-        env: dict[str, object] = {}
+        env = default_env()
         interpret("⎕WSID←'mywork'", env)
         result = interpret("⎕WSID", env)
         assert result.data == list("mywork")
@@ -80,12 +80,12 @@ class TestQuadEN:
         assert interpret("⎕EN") == S(0)
 
     def test_after_caught_error(self) -> None:
-        env: dict[str, object] = {}
+        env = default_env()
         interpret("'0' ⎕EA '1÷0'", env)
         assert interpret("⎕EN", env) == S(3)
 
     def test_not_reset_by_success(self) -> None:
-        env: dict[str, object] = {}
+        env = default_env()
         interpret("'0' ⎕EA '1÷0'", env)
         interpret("'0' ⎕EA '2+3'", env)
         assert interpret("⎕EN", env) == S(3)
@@ -102,7 +102,7 @@ class TestQuadDM:
         assert result.shape == [0]
 
     def test_after_caught_error(self) -> None:
-        env: dict[str, object] = {}
+        env = default_env()
         interpret("'0' ⎕EA '1÷0'", env)
         result = interpret("⎕DM", env)
         # Should contain "DOMAIN ERROR"

@@ -1,5 +1,5 @@
 from marple.arraymodel import APLArray, S
-from marple.interpreter import interpret
+from marple.interpreter import interpret, default_env
 from marple.tokenizer import Token, TokenType, Tokenizer
 
 
@@ -44,13 +44,13 @@ class TestNamespaceExecution:
 
 class TestImport:
     def test_import_function(self) -> None:
-        env: dict[str, object] = {}
+        env = default_env()
         interpret("#import $::str::upper", env)
         result = interpret("upper 'hello'", env)
         assert result == APLArray([5], list("HELLO"))
 
     def test_import_with_alias(self) -> None:
-        env: dict[str, object] = {}
+        env = default_env()
         interpret("#import $::str::upper as up", env)
         result = interpret("up 'hello'", env)
         assert result == APLArray([5], list("HELLO"))

@@ -4,7 +4,7 @@ import tempfile
 import pytest
 
 from marple.arraymodel import APLArray, S
-from marple.interpreter import interpret
+from marple.interpreter import interpret, default_env
 
 
 class TestIBeamBasic:
@@ -21,7 +21,7 @@ class TestIBeamBasic:
         assert result == APLArray([5], list("hello"))
 
     def test_ibeam_assigned(self) -> None:
-        env: dict[str, APLArray] = {}
+        env = default_env()
         interpret("up←⌶'marple.stdlib.str_impl.upper'", env)
         result = interpret("up 'world'", env)
         assert result == APLArray([5], list("WORLD"))

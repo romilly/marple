@@ -1,5 +1,5 @@
 from marple.arraymodel import APLArray, S
-from marple.interpreter import interpret
+from marple.interpreter import interpret, default_env
 
 
 class TestSpecExamples:
@@ -30,13 +30,13 @@ class TestVectorArithmetic:
 
 class TestVariables:
     def test_use_variable_in_expression(self) -> None:
-        env: dict[str, APLArray] = {}
+        env = default_env()
         interpret("x←10", env)
         interpret("y←20", env)
         assert interpret("x+y", env) == S(30)
 
     def test_reassignment(self) -> None:
-        env: dict[str, APLArray] = {}
+        env = default_env()
         interpret("x←5", env)
         interpret("x←x+1", env)
         assert interpret("x", env) == S(6)

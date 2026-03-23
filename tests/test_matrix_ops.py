@@ -1,5 +1,5 @@
 from marple.arraymodel import APLArray, S
-from marple.interpreter import interpret
+from marple.interpreter import interpret, default_env
 
 
 class TestMatrixInverse:
@@ -20,7 +20,7 @@ class TestMatrixDivide:
     def test_solve_linear_system(self) -> None:
         # Solve Ax=b: b⌹A
         # A = 2 2⍴1 0 0 1, b = 3 4 → x = 3 4
-        env: dict[str, APLArray] = {}
+        env = default_env()
         interpret("A←2 2⍴1 0 0 1", env)
         result = interpret("3 4⌹A", env)
         assert _approx(result.data, [3, 4])

@@ -1,5 +1,5 @@
 from marple.arraymodel import APLArray, S
-from marple.interpreter import interpret
+from marple.interpreter import interpret, default_env
 
 
 class TestInterpreterScalars:
@@ -79,7 +79,7 @@ class TestInterpreterVectors:
 
 class TestInterpreterAssignment:
     def test_assign_and_use(self) -> None:
-        env: dict[str, APLArray] = {}
+        env = default_env()
         interpret("x←5", env)
         assert interpret("x+3", env) == S(8)
 

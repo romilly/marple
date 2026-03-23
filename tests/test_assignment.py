@@ -1,17 +1,17 @@
 from marple.arraymodel import APLArray, S
-from marple.interpreter import interpret
+from marple.interpreter import interpret, default_env
 from marple.parser import Assignment, parse
 
 
 class TestChainedAssignment:
     def test_chained_assign(self) -> None:
-        env: dict[str, object] = {}
+        env = default_env()
         interpret("y←1+x←⍳4", env)
         assert env["x"] == APLArray([4], [1, 2, 3, 4])
         assert env["y"] == APLArray([4], [2, 3, 4, 5])
 
     def test_assignment_returns_value(self) -> None:
-        env: dict[str, object] = {}
+        env = default_env()
         result = interpret("x←5", env)
         assert result == S(5)
 

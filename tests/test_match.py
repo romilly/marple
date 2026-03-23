@@ -1,5 +1,5 @@
 from marple.arraymodel import APLArray, S
-from marple.interpreter import interpret
+from marple.interpreter import interpret, default_env
 
 
 class TestMatch:
@@ -21,7 +21,7 @@ class TestMatch:
 
     def test_exact_comparison(self) -> None:
         # Should NOT use tolerant comparison
-        env: dict[str, APLArray] = {}
+        env = default_env()
         interpret("x←÷3", env)
         # x is 0.333..., not exactly 1÷3 reconstructed
         # But ÷3 ≡ ÷3 should be 1 (same computation)

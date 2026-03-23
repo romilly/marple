@@ -1,5 +1,5 @@
 from marple.arraymodel import APLArray, S
-from marple.interpreter import interpret
+from marple.interpreter import interpret, default_env
 
 
 class TestExecute:
@@ -8,7 +8,7 @@ class TestExecute:
         assert interpret("⍎'2+3'") == S(5)
 
     def test_execute_with_variable(self) -> None:
-        env: dict[str, APLArray] = {}
+        env = default_env()
         interpret("x←10", env)
         assert interpret("⍎'x+5'", env) == S(15)
 
