@@ -6,7 +6,10 @@ except ImportError:
     pass
 
 # Backend selection: environment variable overrides auto-detection
-_backend_name = os.environ.get("MARPLE_BACKEND", "auto")
+try:
+    _backend_name = os.environ.get("MARPLE_BACKEND", "auto")
+except AttributeError:
+    _backend_name = "auto"  # MicroPython has no os.environ
 
 np: Any = None
 
