@@ -3,7 +3,6 @@
 Usage:
     python -m marple.web.server [--port PORT]
 """
-from __future__ import annotations
 
 import html
 import json

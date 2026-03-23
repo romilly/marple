@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 # Backtick prefix map: `x → APL glyph
 # Layout follows Dyalog's backtick keyboard where possible
