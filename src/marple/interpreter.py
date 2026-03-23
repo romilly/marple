@@ -6,7 +6,7 @@ from typing import Any, Callable
 from marple.arraymodel import APLArray, S
 from marple.backend import is_numeric_array, np, to_list
 from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
-from marple.errors import ClassError, DomainError, LengthError, RankError, SecurityError, ValueError_
+from marple.errors import APLError, ClassError, DomainError, IndexError_, LengthError, LimitError, RankError, SecurityError, SyntaxError_, ValueError_
 
 # Name classes (following Dyalog ⎕NC convention)
 NC_UNKNOWN = 0
@@ -249,6 +249,12 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         return _resolve_qualified(node.parts, env)
 
     if isinstance(node, SysVar):
+        if node.name == "⎕TS":
+            from datetime import datetime
+            now = datetime.now()
+            return APLArray([7], [now.year, now.month, now.day,
+                                  now.hour, now.minute, now.second,
+                                  now.microsecond // 1000])
         if node.name not in env:
             raise ValueError_(f"Undefined system variable: {node.name}")
         return env[node.name]
@@ -351,6 +357,8 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         return func(left, right)  # type: ignore[operator]
 
     if isinstance(node, MonadicDfnCall):
+        if isinstance(node.dfn, SysVar):
+            return _call_sys_function_monadic(node.dfn.name, node.operand, env)
         if isinstance(node.dfn, IBeamDerived):
             operand = _evaluate(node.operand, env)
             fn = _resolve_ibeam(node.dfn.path)
@@ -367,6 +375,8 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         return _call_dfn(dfn_val, operand)
 
     if isinstance(node, DyadicDfnCall):
+        if isinstance(node.dfn, SysVar):
+            return _call_sys_function_dyadic(node.dfn.name, node.left, node.right, env)
         if isinstance(node.dfn, IBeamDerived):
             left = _evaluate(node.left, env)
             right = _evaluate(node.right, env)
@@ -385,6 +395,10 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         return _call_dfn(dfn_val, right, alpha=left)
 
     if isinstance(node, Assignment):
+        # Protect read-only quad-names
+        _READONLY_QUADS = {"⎕A", "⎕D", "⎕TS", "⎕EN", "⎕DM"}
+        if node.name in _READONLY_QUADS:
+            raise DomainError(f"Cannot assign to read-only system variable {node.name}")
         value = _evaluate(node.value, env)
         # Classify and check name class
         if isinstance(value, (_DfnClosure, IBeamDerived)):
@@ -715,6 +729,60 @@ def _call_ibeam_dyadic(fn: Any, left: APLArray, right: APLArray) -> APLArray:
     return result
 
 
+def _call_sys_function_monadic(name: str, operand_node: object, env: dict[str, Any]) -> APLArray:
+    """Dispatch a monadic system function call."""
+    operand = _evaluate(operand_node, env)
+    if name == "⎕UCS":
+        if all(isinstance(x, str) for x in operand.data):
+            # Chars to codepoints
+            return APLArray(list(operand.shape), [ord(c) for c in operand.data])
+        else:
+            # Codepoints to chars
+            data = to_list(operand.data)
+            if operand.is_scalar():
+                return APLArray([], [chr(int(data[0]))])
+            return APLArray(list(operand.shape), [chr(int(x)) for x in data])
+    if name == "⎕NC":
+        # Expect a character vector (name)
+        nc_name = "".join(str(c) for c in operand.data)
+        name_table = env.get("__name_table__", {})
+        return S(name_table.get(nc_name, 0))
+    if name == "⎕EX":
+        ex_name = "".join(str(c) for c in operand.data)
+        name_table = env.get("__name_table__", {})
+        if ex_name in env:
+            del env[ex_name]
+            if ex_name in name_table:
+                del name_table[ex_name]
+            return S(1)
+        return S(0)
+    if name == "⎕SIGNAL":
+        code = int(operand.data[0])
+        _ERROR_MAP = {
+            1: SyntaxError_, 2: ValueError_, 3: DomainError, 4: LengthError,
+            5: RankError, 6: IndexError_, 7: LimitError, 9: SecurityError,
+        }
+        err_class = _ERROR_MAP.get(code, DomainError)
+        raise err_class(f"Signalled by ⎕SIGNAL {code}")
+    raise DomainError(f"Unknown system function: {name}")
+
+
+def _call_sys_function_dyadic(name: str, left_node: object, right_node: object, env: dict[str, Any]) -> APLArray:
+    """Dispatch a dyadic system function call."""
+    if name == "⎕EA":
+        left = _evaluate(left_node, env)
+        right = _evaluate(right_node, env)
+        right_str = "".join(str(c) for c in right.data)
+        try:
+            return interpret(right_str, env)
+        except APLError as e:
+            env["⎕EN"] = S(e.code)
+            env["⎕DM"] = APLArray([len(str(e))], list(str(e)))
+            left_str = "".join(str(c) for c in left.data)
+            return interpret(left_str, env)
+    raise DomainError(f"Unknown dyadic system function: {name}")
+
+
 def _apply_func_monadic(
     func: object,
     omega: APLArray,
@@ -917,13 +985,26 @@ def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
         env["⎕IO"] = S(1)
     if "⎕CT" not in env:
         env["⎕CT"] = S(1e-14)
-    # Set env for error handling (ea/en)
-    from marple.stdlib.error_impl import set_env as _set_error_env
-    _set_error_env(env)
+    if "⎕PP" not in env:
+        env["⎕PP"] = S(10)
+    if "⎕EN" not in env:
+        env["⎕EN"] = S(0)
+    if "⎕DM" not in env:
+        env["⎕DM"] = APLArray([0], [])
+    if "⎕A" not in env:
+        env["⎕A"] = APLArray([26], list("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+    if "⎕D" not in env:
+        env["⎕D"] = APLArray([10], list("0123456789"))
+    if "⎕WSID" not in env:
+        env["⎕WSID"] = APLArray([8], list("CLEAR WS"))
     # Handle #import directives
     if source.strip().startswith("#import"):
         return _handle_import(source.strip(), env)
     name_table = env.get("__name_table__", {})
+    # System functions are always classified as functions
+    for qfn in ("⎕EA", "⎕UCS", "⎕NC", "⎕EX", "⎕SIGNAL"):
+        name_table[qfn] = NC_FUNCTION
+    env["__name_table__"] = name_table
     tree = parse(source, name_table)
     result = _evaluate(tree, env)
     # Track source for dfn assignments so workspace save can reconstruct them

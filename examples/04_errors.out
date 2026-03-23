@@ -1,33 +1,32 @@
       ⍝ ═══════════════════════════════════════════════════
-      ⍝ MARPLE Demo 4: Error Handling with ea and en
+      ⍝ MARPLE Demo 4: Error Handling with ⎕EA and ⎕EN
       ⍝ ═══════════════════════════════════════════════════
-      ⍝ ── Import the error handling functions ──
-      #import $::error::ea as ea
-      #import $::error::en as en
-      ⍝ ── ea: Execute Alternate ──
+      ⍝ ── ⎕EA: Execute Alternate ──
       ⍝ Right expression succeeds — return its result
-      '0' ea '2+3'
+      '0' ⎕EA '2+3'
 5
       ⍝ Right expression fails — evaluate left instead
-      '¯1' ea '1÷0'
+      '¯1' ⎕EA '1÷0'
 ¯1
-      ⍝ ── en: Error Number ──
-      ⍝ After a caught error, en returns the error code
-      en 0
+      ⍝ ── ⎕EN: Error Number ──
+      ⍝ After a caught error, ⎕EN returns the error code
+      ⎕EN
 3
+      ⍝ ── ⎕DM: Diagnostic Message ──
+      ⎕DM
+DOMAIN ERROR: Division by zero
       ⍝ ── Error codes correspond to APL error types ──
       ⍝ 3 = DOMAIN ERROR (e.g., division by zero)
-      'en 0' ea '1÷0'
+      '⎕EN' ⎕EA '1÷0'
 3
       ⍝ 6 = INDEX ERROR (e.g., index out of bounds)
-      'en 0' ea '10⌷⍳5'
+      '⎕EN' ⎕EA '10⌷⍳5'
 6
       ⍝ 4 = LENGTH ERROR (e.g., mismatched shapes)
-      'en 0' ea '1 2+1 2 3'
+      '⎕EN' ⎕EA '1 2+1 2 3'
 4
       ⍝ ── A test helper ──
-      ⍝ expect returns the error code, or the result if no error
-      expect ← {'en 0' ea ⍵}
+      expect ← {'⎕EN' ⎕EA ⍵}
       ⍝ Test that specific errors are produced
       expect '1÷0'
 3
@@ -38,12 +37,16 @@
       ⍝ Test that a valid expression returns its result
       expect '2+3'
 5
-      ⍝ ── Successful ea does NOT reset en ──
-      '0' ea '1÷0'
-0
-      en 0
-3
-      '0' ea '2+3'
-5
-      en 0
-3
+      ⍝ ── System variables ──
+      ⎕A
+ABCDEFGHIJKLMNOPQRSTUVWXYZ
+      ⎕D
+0123456789
+      ⍴⎕TS
+7
+      ⎕PP
+10
+      ⎕UCS 65
+A
+      ⎕UCS 'Hello'
+72 101 108 108 111

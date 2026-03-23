@@ -62,7 +62,11 @@ def save_workspace(env: dict[str, Any], ws_dir: str) -> None:
     os.makedirs(ws_dir, exist_ok=True)
 
     # Write .ws marker
-    wsid = env.get("__wsid__", "CLEAR WS")
+    wsid_val = env.get("⎕WSID", env.get("__wsid__", "CLEAR WS"))
+    if isinstance(wsid_val, APLArray):
+        wsid = "".join(str(c) for c in wsid_val.data)
+    else:
+        wsid = str(wsid_val)
     with open(os.path.join(ws_dir, ".ws"), "w") as f:
         f.write(f"{wsid}\n{datetime.now().isoformat()}\n")
 
@@ -70,9 +74,14 @@ def save_workspace(env: dict[str, Any], ws_dir: str) -> None:
     written_files: set[str] = {".ws"}
     sources: dict[str, str] = env.get("__sources__", {})
 
+    # System variables that should not be saved (constants or managed separately)
+    _SKIP_QUADS = {"⎕A", "⎕D", "⎕TS", "⎕EN", "⎕DM", "⎕WSID"}
+
     # Save system variables first
     for name in sorted(env):
         if name.startswith("⎕"):
+            if name in _SKIP_QUADS:
+                continue
             value = env[name]
             if isinstance(value, APLArray):
                 formatted = _format_value(value)
@@ -115,6 +124,7 @@ def load_workspace(env: dict[str, Any], ws_dir: str) -> None:
         with open(ws_file) as f:
             wsid = f.readline().strip()
             env["__wsid__"] = wsid
+            env["⎕WSID"] = APLArray([len(wsid)], list(wsid))
 
     # Collect .apl files, system vars first
     files = sorted(os.listdir(ws_dir))

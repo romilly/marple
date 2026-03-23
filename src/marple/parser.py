@@ -297,6 +297,7 @@ class Parser:
             TokenType.NUMBER, TokenType.LPAREN, TokenType.ID,
             TokenType.OMEGA, TokenType.ALPHA, TokenType.NABLA,
             TokenType.LBRACE, TokenType.STRING, TokenType.QUALIFIED_NAME,
+            TokenType.SYSVAR,
         )
 
     def _parse_array(self) -> object:
@@ -378,11 +379,17 @@ class Parser:
         left = self._parse_array()
 
         # If left is a known function name, it has long right scope
+        _fn_name = None
+        if isinstance(left, Var):
+            _fn_name = left.name
+        elif isinstance(left, SysVar):
+            _fn_name = left.name
         if (
-            isinstance(left, Var)
-            and self._is_function_name(left.name)
+            _fn_name is not None
+            and self._is_function_name(_fn_name)
             and (self._is_array_start()
                  or self._current().type == TokenType.FUNCTION
+                 or self._current().type == TokenType.SYSVAR
                  or (self._current().type == TokenType.OPERATOR
                      and self._current().value == "⌶"))
         ):
@@ -455,17 +462,19 @@ class Parser:
             self._pos = saved_pos
 
         if (
-            self._current().type == TokenType.ID
+            self._current().type in (TokenType.ID, TokenType.SYSVAR)
             and isinstance(left, (Num, Vector, Str))
         ):
-            # Could be: left name right (dyadic named dfn call)
+            # Could be: left name right (dyadic named dfn/sys call)
             # But only if the name is followed by an array
             saved_pos = self._pos
-            name_token = self._eat(TokenType.ID)
+            tok_type = self._current().type
+            name_token = self._eat(tok_type)
             assert isinstance(name_token.value, str)
-            if self._is_array_start():
+            if self._is_array_start() or self._current().type == TokenType.FUNCTION:
                 right = self._parse_statement()
-                return DyadicDfnCall(Var(name_token.value), left, right)
+                node_fn = Var(name_token.value) if tok_type == TokenType.ID else SysVar(name_token.value)
+                return DyadicDfnCall(node_fn, left, right)
             # Not a dyadic call — backtrack
             self._pos = saved_pos
 
