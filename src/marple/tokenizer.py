@@ -1,3 +1,13 @@
+def _isdigit(ch):
+    return "0" <= ch <= "9"
+
+def _isalpha(ch):
+    return ("a" <= ch <= "z") or ("A" <= ch <= "Z")
+
+def _isalnum(ch):
+    return _isdigit(ch) or _isalpha(ch)
+
+
 class TokenType:
     NUMBER = "NUMBER"
     FUNCTION = "FUNCTION"
@@ -79,7 +89,7 @@ class Tokenizer:
     def _read_number(self) -> Token:
         result = ""
         has_dot = False
-        while self._current() is not None and (self._current().isdigit() or self._current() == "."):  # type: ignore[union-attr]
+        while self._current() is not None and (_isdigit(self._current()) or self._current() == "."):  # type: ignore[union-attr]
             if self._current() == ".":
                 if has_dot:
                     break
@@ -93,7 +103,7 @@ class Tokenizer:
             if self._current() is not None and self._current() in ("-", "+"):
                 result += self._current()  # type: ignore[operator]
                 self._advance()
-            while self._current() is not None and self._current().isdigit():  # type: ignore[union-attr]
+            while self._current() is not None and _isdigit(self._current()):  # type: ignore[union-attr]
                 result += self._current()  # type: ignore[operator]
                 self._advance()
             return Token(TokenType.NUMBER, float(result))
@@ -112,7 +122,7 @@ class Tokenizer:
 
     def _read_id(self) -> Token:
         result = ""
-        while self._current() is not None and (self._current().isalnum() or self._current() == "_"):  # type: ignore[union-attr]
+        while self._current() is not None and (_isalnum(self._current()) or self._current() == "_"):  # type: ignore[union-attr]
             result += self._current()  # type: ignore[operator]
             self._advance()
         # Check for :: (qualified name)
@@ -121,7 +131,7 @@ class Tokenizer:
             and self._pos + 1 < len(self._source)
             and self._source[self._pos + 1] == ":"
             and self._pos + 2 < len(self._source)
-            and (self._source[self._pos + 2].isalpha() or self._source[self._pos + 2] == "_")
+            and (_isalpha(self._source[self._pos + 2]) or self._source[self._pos + 2] == "_")
         ):
             result += "::"
             self._advance()  # skip first :
@@ -144,7 +154,7 @@ class Tokenizer:
             elif ch == "⎕":
                 self._advance()
                 name = ""
-                while self._current() is not None and self._current().isalpha():  # type: ignore[union-attr]
+                while self._current() is not None and _isalpha(self._current()):  # type: ignore[union-attr]
                     name += self._current()  # type: ignore[operator]
                     self._advance()
                 tokens.append(Token(TokenType.SYSVAR, "⎕" + name))
@@ -154,7 +164,7 @@ class Tokenizer:
                 value = num_token.value
                 assert isinstance(value, (int, float))
                 tokens.append(Token(TokenType.NUMBER, -value))
-            elif ch.isdigit():
+            elif _isdigit(ch):
                 tokens.append(self._read_number())
             elif ch in FUNCTION_GLYPHS:
                 tokens.append(Token(TokenType.FUNCTION, ch))
@@ -168,7 +178,7 @@ class Tokenizer:
                 self._advance()  # skip second :
                 rest = self._read_id()
                 tokens.append(Token(TokenType.QUALIFIED_NAME, "$::" + str(rest.value)))
-            elif ch.isalpha() or ch == "_":
+            elif _isalpha(ch) or ch == "_":
                 tokens.append(self._read_id())
             else:
                 self._advance()
