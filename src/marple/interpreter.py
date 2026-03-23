@@ -382,9 +382,11 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
                 a = np.reshape(left.data, left.shape) if len(left.shape) > 1 else left.data
                 b = np.reshape(right.data, right.shape) if len(right.shape) > 1 else right.data
                 result = ufunc.outer(a, b)
-                if hasattr(result, "shape") and len(result.shape) == 0:
-                    return S(result.item())
-                return APLArray(list(result.shape), result.ravel())
+                if hasattr(result, "shape") and len(result.shape) == 0:  # type: ignore[union-attr]
+                    return S(result.item())  # type: ignore[union-attr]
+                result_flat = result.ravel() if hasattr(result, "ravel") else result  # type: ignore[union-attr]
+                result_shape = list(result.shape) if hasattr(result, "shape") else []  # type: ignore[union-attr]
+                return APLArray(result_shape, result_flat)
         func = _lookup_dyadic(node.function)
         if func is None:
             raise DomainError(f"Unknown function in outer product: {node.function}")
