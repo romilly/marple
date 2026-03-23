@@ -533,6 +533,7 @@ def _inner_product(
         and apply_fn is multiply
         and is_numeric_array(alpha.data)
         and is_numeric_array(omega.data)
+        and hasattr(np, "tensordot")
     ):
         # Check compatible dimensions: last axis of A must match first axis of B
         if len(alpha.shape) <= 1 and len(omega.shape) <= 1:
