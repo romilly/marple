@@ -1,0 +1,17 @@
+⎕VER
+⍝ ═══════════════════════════════════════════════════
+⍝ MARPLE Demo 5: File I/O on Pico
+⍝ ═══════════════════════════════════════════════════
+
+⍝ ── Write a file ──
+#import $::io::nwrite
+#import $::io::nread
+
+'Hello from MARPLE on Pico!' nwrite '/test.txt'
+
+⍝ ── Read it back ──
+nread '/test.txt'
+
+⍝ ── Write and read numeric data as text ──
+(⍕⍳10) nwrite '/nums.txt'
+nread '/nums.txt'
