@@ -27,13 +27,17 @@ More extensive documentation is available [here](https://romilly.github.io/marpl
 
 ## Quick start
 
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) if you don't have it, then:
+
 ```bash
-pip install -e .
+uv venv
+source .venv/bin/activate      # on Windows: .venv\Scripts\activate
+uv pip install marple-lang
 marple
 ```
 
 ```
-MARPLE v0.2.11 - Mini APL in Python
+MARPLE v0.3.0 - Mini APL in Python
 CLEAR WS
 
       ⍳5

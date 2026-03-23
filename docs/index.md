@@ -25,8 +25,12 @@ But it's been fun and I hope it's useful. Do let me know what you think of it!
 
 ## Quick start
 
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) if you don't have it, then:
+
 ```bash
-pip install marple-lang
+uv venv
+source .venv/bin/activate      # on Windows: .venv\Scripts\activate
+uv pip install marple-lang
 marple
 ```
 
@@ -35,9 +39,9 @@ Or install from source:
 ```bash
 git clone https://github.com/romilly/marple.git
 cd marple
-python -m venv venv
-source venv/bin/activate      # on Windows: venv\Scripts\activate
-pip install -e .
+uv venv
+source .venv/bin/activate      # on Windows: .venv\Scripts\activate
+uv pip install -e .
 marple
 ```
 
