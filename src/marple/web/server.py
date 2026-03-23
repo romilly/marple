@@ -97,6 +97,37 @@ class WebSession:
             return "CLEAR WS"
         return f"Unknown command: {cmd}"
 
+    def workspace_fragment(self) -> str:
+        """Return an HTML fragment listing variables and functions."""
+        vars_list = []
+        fns_list = []
+        for name in sorted(self.env):
+            if name.startswith("⎕") or name.startswith("__"):
+                continue
+            if name in ("⍵", "⍺", "∇"):
+                continue
+            val = self.env[name]
+            if isinstance(val, APLArray):
+                shape_str = " ".join(str(s) for s in val.shape) if val.shape else "scalar"
+                vars_list.append(
+                    f'<div class="ws-item" data-name="{html.escape(name)}">'
+                    f'{html.escape(name)} '
+                    f'<span class="ws-shape">{shape_str}</span></div>'
+                )
+            elif isinstance(val, _DfnClosure):
+                fns_list.append(
+                    f'<div class="ws-item" data-name="{html.escape(name)}">'
+                    f'{html.escape(name)}</div>'
+                )
+        parts = []
+        if vars_list:
+            parts.append('<div class="ws-section"><h4>Variables</h4>'
+                         + "".join(vars_list) + "</div>")
+        if fns_list:
+            parts.append('<div class="ws-section"><h4>Functions</h4>'
+                         + "".join(fns_list) + "</div>")
+        return "".join(parts)
+
 
 class MARPLEHandler(BaseHTTPRequestHandler):
     """HTTP request handler for the MARPLE web REPL."""
@@ -106,6 +137,9 @@ class MARPLEHandler(BaseHTTPRequestHandler):
             self._serve_file("desktop.html", "text/html")
         elif self.path == "/health":
             self._send_json({"status": "ok"})
+        elif self.path == "/workspace":
+            fragment = self.server.session.workspace_fragment()  # type: ignore[attr-defined]
+            self._send_html(fragment)
         else:
             self.send_error(404)
 
