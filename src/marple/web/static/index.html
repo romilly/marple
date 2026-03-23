@@ -87,6 +87,28 @@
     var input = document.getElementById('input');
     var session = document.getElementById('session');
 
+    // Session history
+    var historyList = [];
+    var historyPos = -1;
+
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (historyList.length === 0) return;
+            if (historyPos < historyList.length - 1) historyPos++;
+            input.value = historyList[historyList.length - 1 - historyPos];
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (historyPos > 0) {
+                historyPos--;
+                input.value = historyList[historyList.length - 1 - historyPos];
+            } else {
+                historyPos = -1;
+                input.value = '';
+            }
+        }
+    });
+
     var GLYPHS = {
         '-':'×','=':'÷','<':'≤','>':'≥','/':'≠',
         'r':'⍴','i':'⍳','e':'∈','t':'↑','y':'↓',
@@ -177,6 +199,8 @@
         var text = input.value.trim();
         if (!text) return;
         input.value = '';
+        historyList.push(text);
+        historyPos = -1;
 
         var url = text.charAt(0) === ')' ? '/system' : '/eval';
         var param = text.charAt(0) === ')' ? 'cmd' : 'expr';

@@ -88,6 +88,28 @@
     const input = document.getElementById('input');
     const session = document.getElementById('session');
 
+    // Session history
+    const history = [];
+    let historyPos = -1;
+
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (history.length === 0) return;
+            if (historyPos < history.length - 1) historyPos++;
+            input.value = history[history.length - 1 - historyPos];
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (historyPos > 0) {
+                historyPos--;
+                input.value = history[history.length - 1 - historyPos];
+            } else {
+                historyPos = -1;
+                input.value = '';
+            }
+        }
+    });
+
     // Backtick glyph input
     const GLYPHS = {
         '-':'×','=':'÷','<':'≤','>':'≥','/':'≠',
@@ -179,6 +201,8 @@
         const text = input.value.trim();
         if (!text) return;
         input.value = '';
+        history.push(text);
+        historyPos = -1;
 
         const url = text.startsWith(')') ? '/system' : '/eval';
         const param = text.startsWith(')') ? 'cmd' : 'expr';
