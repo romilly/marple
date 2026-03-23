@@ -287,82 +287,13 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         return node  # type: ignore[return-value]
 
     if isinstance(node, MonadicFunc):
-        if node.function == "⍎":
-            operand = _evaluate(node.operand, env)
-            source = "".join(str(c) for c in operand.data)
-            return _evaluate(parse(source, env.get("__name_table__")), env)
-        if node.function == "⍕":
-            operand = _evaluate(node.operand, env)
-            return _format_array(operand)
-        if node.function == "⍳":
-            operand = _evaluate(node.operand, env)
-            io = int(env.get("⎕IO", S(1)).data[0])
-            n = int(operand.data[0])
-            return APLArray([n], list(range(io, n + io)))
-        if node.function == "≢":
-            operand = _evaluate(node.operand, env)
-            if operand.is_scalar():
-                return S(1)
-            return S(operand.shape[0])
-        if node.function in ("⍋", "⍒"):
-            operand = _evaluate(node.operand, env)
-            io = int(env.get("⎕IO", S(1)).data[0])
-            if node.function == "⍋":
-                return grade_up(operand, io)
-            return grade_down(operand, io)
-        if node.function == "?":
-            operand = _evaluate(node.operand, env)
-            return _roll(operand, env)
         operand = _evaluate(node.operand, env)
-        func = MONADIC_FUNCTIONS.get(node.function)
-        if func is None:
-            raise DomainError(f"Unknown monadic function: {node.function}")
-        return func(operand)  # type: ignore[operator]
+        return _dispatch_monadic(node.function, operand, env)
 
     if isinstance(node, DyadicFunc):
-        if node.function == "⍕":
-            left = _evaluate(node.left, env)
-            right = _evaluate(node.right, env)
-            return _dyadic_format(left, right)
-        if node.function == "⍳":
-            left = _evaluate(node.left, env)
-            right = _evaluate(node.right, env)
-            io = int(env.get("⎕IO", S(1)).data[0])
-            ct = float(env.get("⎕CT", S(1e-14)).data[0])
-            return index_of(left, right, io, ct)
-        if node.function in _CT_COMPARISONS:
-            left = _evaluate(node.left, env)
-            right = _evaluate(node.right, env)
-            ct = float(env.get("⎕CT", S(1e-14)).data[0])
-            return _CT_COMPARISONS[node.function](left, right, ct)  # type: ignore[operator]
-        if node.function == "∈":
-            left = _evaluate(node.left, env)
-            right = _evaluate(node.right, env)
-            ct = float(env.get("⎕CT", S(1e-14)).data[0])
-            return membership(left, right, ct)
-        if node.function == "?":
-            left = _evaluate(node.left, env)
-            right = _evaluate(node.right, env)
-            return _deal(left, right, env)
-        if node.function == "⌷":
-            left = _evaluate(node.left, env)
-            right = _evaluate(node.right, env)
-            io = int(env.get("⎕IO", S(1)).data[0])
-            return from_array(left, right, io)
-        if node.function == "≡":
-            left = _evaluate(node.left, env)
-            right = _evaluate(node.right, env)
-            return S(1 if left == right else 0)
-        if node.function == "≢":
-            left = _evaluate(node.left, env)
-            right = _evaluate(node.right, env)
-            return S(0 if left == right else 1)
         left = _evaluate(node.left, env)
         right = _evaluate(node.right, env)
-        func = DYADIC_FUNCTIONS.get(node.function)
-        if func is None:
-            raise DomainError(f"Unknown dyadic function: {node.function}")
-        return func(left, right)  # type: ignore[operator]
+        return _dispatch_dyadic(node.function, left, right, env)
 
     if isinstance(node, MonadicDfnCall):
         if isinstance(node.dfn, SysVar):
@@ -737,6 +668,63 @@ def _call_ibeam_dyadic(fn: Any, left: APLArray, right: APLArray) -> APLArray:
     return result
 
 
+def _get_io(env: dict[str, Any]) -> int:
+    return int(env.get("⎕IO", S(1)).data[0])
+
+
+def _get_ct(env: dict[str, Any]) -> float:
+    return float(env.get("⎕CT", S(1e-14)).data[0])
+
+
+def _dispatch_monadic(glyph: str, operand: APLArray, env: dict[str, Any]) -> APLArray:
+    """Dispatch a monadic primitive function."""
+    if glyph == "⍎":
+        source = "".join(str(c) for c in operand.data)
+        return _evaluate(parse(source, env.get("__name_table__")), env)
+    if glyph == "⍕":
+        return _format_array(operand)
+    if glyph == "⍳":
+        io = _get_io(env)
+        n = int(operand.data[0])
+        return APLArray([n], list(range(io, n + io)))
+    if glyph == "≢":
+        return S(1) if operand.is_scalar() else S(operand.shape[0])
+    if glyph == "⍋":
+        return grade_up(operand, _get_io(env))
+    if glyph == "⍒":
+        return grade_down(operand, _get_io(env))
+    if glyph == "?":
+        return _roll(operand, env)
+    func = MONADIC_FUNCTIONS.get(glyph)
+    if func is not None:
+        return func(operand)  # type: ignore[operator]
+    raise DomainError(f"Unknown monadic function: {glyph}")
+
+
+def _dispatch_dyadic(glyph: str, left: APLArray, right: APLArray, env: dict[str, Any]) -> APLArray:
+    """Dispatch a dyadic primitive function."""
+    if glyph == "⍕":
+        return _dyadic_format(left, right)
+    if glyph == "⍳":
+        return index_of(left, right, _get_io(env), _get_ct(env))
+    if glyph in _CT_COMPARISONS:
+        return _CT_COMPARISONS[glyph](left, right, _get_ct(env))  # type: ignore[operator]
+    if glyph == "∈":
+        return membership(left, right, _get_ct(env))
+    if glyph == "?":
+        return _deal(left, right, env)
+    if glyph == "⌷":
+        return from_array(left, right, _get_io(env))
+    if glyph == "≡":
+        return S(1 if left == right else 0)
+    if glyph == "≢":
+        return S(0 if left == right else 1)
+    func = _lookup_dyadic(glyph)
+    if func is not None:
+        return func(left, right)  # type: ignore[operator]
+    raise DomainError(f"Unknown dyadic function: {glyph}")
+
+
 def _seed_random(env: dict[str, Any]) -> None:
     """Seed the random module from ⎕RL if set."""
     rl = int(env.get("⎕RL", S(0)).data[0])
@@ -834,24 +822,7 @@ def _apply_func_monadic(
 ) -> APLArray:
     """Apply a function monadically. Used by rank operator."""
     if isinstance(func, str):
-        # Primitive glyph — build a MonadicFunc node and evaluate
-        from marple.parser import MonadicFunc as MF, Num as N
-        # Create a dummy AST and evaluate
-        node = MF(func, N(0))  # dummy operand, won't be used
-        # Instead, directly look up and apply
-        if func == "⍳":
-            io = int(env.get("⎕IO", S(1)).data[0])
-            n = int(omega.data[0])
-            return APLArray([n], list(range(io, n + io)))
-        if func in ("⍋", "⍒"):
-            io = int(env.get("⎕IO", S(1)).data[0])
-            if func == "⍋":
-                return grade_up(omega, io)
-            return grade_down(omega, io)
-        f = MONADIC_FUNCTIONS.get(func)
-        if f is not None:
-            return f(omega)  # type: ignore[operator]
-        raise DomainError(f"Unknown monadic function: {func}")
+        return _dispatch_monadic(func, omega, env)
     if isinstance(func, ReduceOp):
         f = _lookup_dyadic(func.function)
         if f is None:
@@ -878,19 +849,7 @@ def _apply_func_dyadic(
 ) -> APLArray:
     """Apply a function dyadically. Used by rank operator."""
     if isinstance(func, str):
-        if func == "⌷":
-            io = int(env.get("⎕IO", S(1)).data[0])
-            return from_array(alpha, omega, io)
-        if func in _CT_COMPARISONS:
-            ct = float(env.get("⎕CT", S(1e-14)).data[0])
-            return _CT_COMPARISONS[func](alpha, omega, ct)  # type: ignore[operator]
-        if func == "∈":
-            ct = float(env.get("⎕CT", S(1e-14)).data[0])
-            return membership(alpha, omega, ct)
-        f = DYADIC_FUNCTIONS.get(func)
-        if f is not None:
-            return f(alpha, omega)  # type: ignore[operator]
-        raise DomainError(f"Unknown dyadic function: {func}")
+        return _dispatch_dyadic(func, alpha, omega, env)
     if isinstance(func, (Dfn, Var)):
         val = _evaluate(func, env)
         if isinstance(val, _DfnClosure):
