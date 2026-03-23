@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import random as _random
 from typing import Any, Callable
 
 from marple.arraymodel import APLArray, S
@@ -309,6 +310,9 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
             if node.function == "⍋":
                 return grade_up(operand, io)
             return grade_down(operand, io)
+        if node.function == "?":
+            operand = _evaluate(node.operand, env)
+            return _roll(operand, env)
         operand = _evaluate(node.operand, env)
         func = MONADIC_FUNCTIONS.get(node.function)
         if func is None:
@@ -336,6 +340,10 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
             right = _evaluate(node.right, env)
             ct = float(env.get("⎕CT", S(1e-14)).data[0])
             return membership(left, right, ct)
+        if node.function == "?":
+            left = _evaluate(node.left, env)
+            right = _evaluate(node.right, env)
+            return _deal(left, right, env)
         if node.function == "⌷":
             left = _evaluate(node.left, env)
             right = _evaluate(node.right, env)
@@ -729,6 +737,42 @@ def _call_ibeam_dyadic(fn: Any, left: APLArray, right: APLArray) -> APLArray:
     return result
 
 
+def _seed_random(env: dict[str, Any]) -> None:
+    """Seed the random module from ⎕RL if set."""
+    rl = int(env.get("⎕RL", S(0)).data[0])
+    if rl > 0:
+        _random.seed(rl)
+
+
+def _roll(omega: APLArray, env: dict[str, Any]) -> APLArray:
+    """Monadic ?: roll. ?N → random int ⎕IO..N, ?0 → random float [0,1)."""
+    _seed_random(env)
+    io = int(env.get("⎕IO", S(1)).data[0])
+    data = to_list(omega.data)
+    results: list[object] = []
+    for x in data:
+        n = int(x)
+        if n == 0:
+            results.append(_random.random())
+        else:
+            results.append(_random.randint(io, n - 1 + io))
+    if omega.is_scalar():
+        return S(results[0])
+    return APLArray(list(omega.shape), results)
+
+
+def _deal(alpha: APLArray, omega: APLArray, env: dict[str, Any]) -> APLArray:
+    """Dyadic ?: deal. N?M → N distinct random integers from ⎕IO..M."""
+    _seed_random(env)
+    io = int(env.get("⎕IO", S(1)).data[0])
+    n = int(alpha.data[0])
+    m = int(omega.data[0])
+    if n > m:
+        raise LengthError(f"Deal: cannot choose {n} from {m}")
+    result = _random.sample(range(io, m + io), n)
+    return APLArray([n], result)
+
+
 def _call_sys_function_monadic(name: str, operand_node: object, env: dict[str, Any]) -> APLArray:
     """Dispatch a monadic system function call."""
     operand = _evaluate(operand_node, env)
@@ -997,6 +1041,8 @@ def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
         env["⎕D"] = APLArray([10], list("0123456789"))
     if "⎕WSID" not in env:
         env["⎕WSID"] = APLArray([8], list("CLEAR WS"))
+    if "⎕RL" not in env:
+        env["⎕RL"] = S(0)
     # Handle #import directives
     if source.strip().startswith("#import"):
         return _handle_import(source.strip(), env)
