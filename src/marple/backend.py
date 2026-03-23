@@ -1,6 +1,9 @@
 
 import os
-from typing import Any
+try:
+    from typing import Any
+except ImportError:
+    pass
 
 # Backend selection: environment variable overrides auto-detection
 _backend_name = os.environ.get("MARPLE_BACKEND", "auto")

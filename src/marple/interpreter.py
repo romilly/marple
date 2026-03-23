@@ -1,7 +1,10 @@
 
 import os
 import random as _random
-from typing import Any, Callable
+try:
+    from typing import Any, Callable
+except ImportError:
+    pass
 
 from marple.arraymodel import APLArray, S
 from marple.backend import is_numeric_array, np, to_list

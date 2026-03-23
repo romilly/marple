@@ -1,6 +1,9 @@
 
 import os
-from typing import Any
+try:
+    from typing import Any
+except ImportError:
+    pass
 
 
 class Namespace:

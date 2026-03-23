@@ -1,5 +1,8 @@
 
-from typing import Any
+try:
+    from typing import Any
+except ImportError:
+    pass
 
 from marple.backend import is_numeric_array, np, to_array, to_list
 

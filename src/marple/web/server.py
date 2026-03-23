@@ -8,7 +8,10 @@ import html
 import json
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
-from typing import Any
+try:
+    from typing import Any
+except ImportError:
+    pass
 from urllib.parse import parse_qs
 
 from marple.arraymodel import APLArray

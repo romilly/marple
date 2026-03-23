@@ -1,5 +1,8 @@
 
-from typing import Any
+try:
+    from typing import Any
+except ImportError:
+    pass
 
 from marple.errors import APLError
 from marple.interpreter import default_env, interpret

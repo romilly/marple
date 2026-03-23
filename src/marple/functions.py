@@ -1,6 +1,9 @@
 
 import math
-from typing import Callable
+try:
+    from typing import Callable
+except ImportError:
+    pass
 
 from marple.arraymodel import APLArray
 from marple.backend import is_numeric_array, np, to_list

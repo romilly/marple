@@ -1,7 +1,10 @@
 
 import os
 from datetime import datetime
-from typing import Any
+try:
+    from typing import Any
+except ImportError:
+    pass
 
 from marple.arraymodel import APLArray, S
 from marple.backend import to_list
