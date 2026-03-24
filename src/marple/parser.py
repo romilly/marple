@@ -548,7 +548,7 @@ class Parser:
 
         if (
             self._current().type in (TokenType.ID, TokenType.SYSVAR)
-            and isinstance(left, (Num, Vector, Str))
+            and not isinstance(left, (Dfn, Nabla))
         ):
             # Could be: left name right (dyadic named dfn/sys call)
             # But only if the name is followed by an array

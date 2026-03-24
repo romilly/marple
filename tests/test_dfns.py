@@ -42,6 +42,17 @@ class TestDyadicDfns:
         interpret("avg←{(⍺+⍵)÷2}", env)
         assert interpret("3 avg 5", env) == S(4.0)
 
+    def test_named_dyadic_with_variable_left_arg(self) -> None:
+        env = default_env()
+        interpret("add←{⍺+⍵}", env)
+        interpret("x←10", env)
+        assert interpret("x add 5", env) == S(15)
+
+    def test_named_dyadic_with_parenthesized_left_arg(self) -> None:
+        env = default_env()
+        interpret("add←{⍺+⍵}", env)
+        assert interpret("(2+3) add 5", env) == S(10)
+
 
 class TestGuards:
     def test_single_guard(self) -> None:

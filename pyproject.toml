@@ -50,4 +50,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short -m 'not pico'"
+markers = [
+    "pico: end-to-end tests requiring a connected Raspberry Pi Pico (deselect with '-m not pico')",
+]
