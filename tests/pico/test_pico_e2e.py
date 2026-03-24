@@ -174,6 +174,15 @@ class TestPicoSystemVars:
     def test_d(self, pico):
         assert pico.eval("⎕D") == "0123456789"
 
+    def test_ts(self, pico):
+        result = pico.eval("⍴⎕TS")
+        assert result == "7"
+
+    def test_ts_year(self, pico):
+        result = pico.eval("1⌷⎕TS")
+        year = int(result)
+        assert 2020 <= year <= 2030
+
 
 class TestPicoOuterProduct:
     def test_multiplication_table(self, pico):

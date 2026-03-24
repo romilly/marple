@@ -5,7 +5,25 @@ prints results. Protocol: one line in, one or more lines out,
 terminated by a sentinel line "\\x00" (null byte).
 """
 import sys
+import time
 sys.path.insert(0, "")
+
+# Sync RTC via NTP if WiFi config is available (Pico W only)
+try:
+    import network  # type: ignore[import-not-found]
+    import ntptime  # type: ignore[import-not-found]
+    import WIFI_CONFIG  # type: ignore[import-not-found]
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    wlan.connect(WIFI_CONFIG.SSID, WIFI_CONFIG.PASSWORD)
+    for _ in range(20):
+        if wlan.isconnected():
+            break
+        time.sleep(1)
+    if wlan.isconnected():
+        ntptime.settime()
+except (ImportError, OSError):
+    pass  # No WiFi — RTC will be unset
 
 from marple.interpreter import interpret, default_env
 from marple.repl import format_result, _is_silent

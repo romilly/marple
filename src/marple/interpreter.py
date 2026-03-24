@@ -253,11 +253,10 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
 
     if isinstance(node, SysVar):
         if node.name == "⎕TS":
-            from datetime import datetime
-            now = datetime.now()
-            return APLArray([7], [now.year, now.month, now.day,
-                                  now.hour, now.minute, now.second,
-                                  now.microsecond // 1000])
+            import time
+            t = time.localtime()
+            return APLArray([7], [t[0], t[1], t[2],
+                                  t[3], t[4], t[5], 0])
         if node.name == "⎕VER":
             from marple import __version__
             import sys
