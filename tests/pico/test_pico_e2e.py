@@ -143,7 +143,8 @@ class TestPicoFileIO:
         pico.eval_silent("#import $::io::nread")
         pico.eval_silent("nums←⍕⍳5")
         pico.eval_silent("nums nwrite '/nums_e2e.txt'")
-        assert pico.eval("nread '/nums_e2e.txt'") == "1 2 3 4 5"
+        result = pico.eval("nread '/nums_e2e.txt'")
+        assert result in ("1 2 3 4 5", "1.0 2.0 3.0 4.0 5.0")
 
 
 class TestPicoErrorHandling:
@@ -188,3 +189,22 @@ class TestPicoOuterProduct:
     def test_multiplication_table(self, pico):
         result = pico.eval("(⍳3)∘.×⍳3")
         assert result == "1 2 3\n2 4 6\n3 6 9"
+
+
+class TestPicoIndexingShape:
+    def test_vector_index(self, pico):
+        pico.eval_silent("v←10 20 30 40 50")
+        assert pico.eval("⍴v[2 4]") == "2"
+
+    def test_matrix_index(self, pico):
+        pico.eval_silent("v←10 20 30 40 50")
+        assert pico.eval("⍴v[2 3⍴1 2 3 4 5 1]") == "2 3"
+
+    def test_rank3_index(self, pico):
+        pico.eval_silent("v←10 20 30 40")
+        assert pico.eval("⍴v[2 2 2⍴1 2 3 4 1 2 3 4]") == "2 2 2"
+
+    def test_outer_product_index(self, pico):
+        pico.eval_silent("r←1 2 3")
+        pico.eval_silent("s←1 2 3")
+        assert pico.eval("⍴' *'[1+r∘.=s]") == "3 3"

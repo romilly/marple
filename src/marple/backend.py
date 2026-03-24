@@ -30,6 +30,12 @@ if _backend_name != "none":
 
 HAS_BACKEND: bool = np is not None
 
+# Module-level comparison tolerance for downcast (updated by interpreter when ⎕CT changes)
+_DOWNCAST_CT: float = 1e-14
+
+# Ufunc names that can overflow integer arithmetic
+_OVERFLOW_UFUNCS: set[str] = {"add", "subtract", "multiply", "power"}
+
 
 def to_array(data: list[Any]) -> Any:
     """Convert a Python list to an ndarray if numeric and backend is available."""
@@ -37,12 +43,34 @@ def to_array(data: list[Any]) -> Any:
         return data
     if not all(isinstance(x, (int, float)) for x in data):
         return data
+    # Preserve integer type: ulab defaults to float, so specify dtype explicitly
+    if all(isinstance(x, int) for x in data):
+        for dtype_name in ("int32", "int16"):
+            dt = getattr(np, dtype_name, None)
+            if dt is not None:
+                try:
+                    arr = np.array(data, dtype=dt)
+                except (ValueError, OverflowError):
+                    continue
+                # Verify no silent overflow (numpy/ulab wrap without error)
+                if arr.tolist() == data:
+                    return arr
     return np.array(data)
 
 
+def _to_python(x: Any) -> Any:
+    """Convert a numpy scalar to a native Python type."""
+    if hasattr(x, "item"):
+        return x.item()  # type: ignore[union-attr]
+    return x
+
+
 def to_list(data: Any) -> list[Any]:
-    """Convert an ndarray to a Python list. Pass lists through unchanged."""
+    """Convert an ndarray or list to a Python list with native types."""
     if isinstance(data, list):
+        # Only convert if list might contain numpy scalars
+        if data and hasattr(data[0], "item"):
+            return [_to_python(x) for x in data]
         return data
     return data.tolist()  # type: ignore[union-attr]
 
@@ -52,3 +80,73 @@ def is_numeric_array(data: Any) -> bool:
     if not HAS_BACKEND:
         return False
     return hasattr(data, "dtype")
+
+
+def _is_int_dtype(arr: Any) -> bool:
+    """Check if an ndarray has an integer dtype."""
+    dtype_str = str(arr.dtype)
+    return "int" in dtype_str
+
+
+def _is_float_dtype(arr: Any) -> bool:
+    """Check if an ndarray has a float dtype."""
+    dtype_str = str(arr.dtype)
+    return "float" in dtype_str
+
+
+def maybe_upcast(data: Any) -> Any:
+    """Convert integer arrays to float to prevent overflow.
+
+    Returns non-array data unchanged.
+    """
+    if not is_numeric_array(data):
+        return data
+    if not _is_int_dtype(data):
+        return data
+    return np.array(data.tolist(), dtype=np.float64)
+
+
+def maybe_downcast_scalar(value: Any, ct: float) -> Any:
+    """Downcast a single float value to int if close to a whole number."""
+    if not isinstance(value, float):
+        return value
+    r = round(value)
+    diff = abs(value - r)
+    mag = max(abs(value), abs(r))
+    if ct == 0:
+        if diff == 0:
+            return r
+    elif mag == 0 or diff <= ct * mag:
+        return r
+    return value
+
+
+def maybe_downcast(data: Any, ct: float) -> Any:
+    """Convert float arrays to int if all elements are close to whole numbers.
+
+    Uses APL tolerance: |value - round(value)| <= ct * max(|value|, |round(value)|)
+    Returns non-array or already-integer data unchanged.
+    """
+    if not is_numeric_array(data):
+        return data
+    if _is_int_dtype(data):
+        return data
+    if not _is_float_dtype(data):
+        return data
+    values = data.tolist()
+    if len(values) == 0:
+        return data
+    # Check if all values are close to whole numbers
+    for v in values:
+        r = round(v)
+        diff = abs(v - r)
+        mag = max(abs(v), abs(r))
+        if ct == 0:
+            if diff != 0:
+                return data
+        else:
+            if diff > ct * mag:
+                return data
+    # All close to integers — try to fit into available int dtypes
+    int_values = [round(v) for v in values]
+    return to_array(int_values)

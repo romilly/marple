@@ -6,7 +6,10 @@ except ImportError:
     pass
 
 from marple.arraymodel import APLArray
-from marple.backend import is_numeric_array, np, to_list
+from marple.backend import (
+    _DOWNCAST_CT, _OVERFLOW_UFUNCS, is_numeric_array,
+    maybe_downcast, maybe_upcast, np, to_list,
+)
 from marple.errors import DomainError, LengthError
 
 
@@ -35,10 +38,17 @@ def _pervade_dyadic(
     ):
         ufunc = getattr(np, ufunc_name, None)
         if ufunc is not None:
+            a_arr = alpha.data
+            b_arr = omega.data
+            if ufunc_name in _OVERFLOW_UFUNCS:
+                a_arr = maybe_upcast(a_arr)
+                b_arr = maybe_upcast(b_arr)
             try:
-                result = ufunc(alpha.data, omega.data)
+                result = ufunc(a_arr, b_arr)
             except ValueError:
                 raise LengthError(f"Shape mismatch: {alpha.shape} vs {omega.shape}")
+            if ufunc_name in _OVERFLOW_UFUNCS:
+                result = maybe_downcast(result, _DOWNCAST_CT)
             shape = list(omega.shape) if not omega.is_scalar() else list(alpha.shape)
             return APLArray(shape, result)
     # Fallback: element-wise Python

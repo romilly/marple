@@ -7,7 +7,10 @@ except ImportError:
     pass
 
 from marple.arraymodel import APLArray, S
-from marple.backend import is_numeric_array, np, to_list
+from marple.backend import (
+    _DOWNCAST_CT, is_numeric_array, maybe_downcast, maybe_downcast_scalar,
+    maybe_upcast, np, to_list,
+)
 from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
 from marple.errors import APLError, ClassError, DomainError, IndexError_, LengthError, LimitError, RankError, SecurityError, SyntaxError_, ValueError_
 
@@ -163,12 +166,13 @@ DYADIC_FUNCTIONS: dict[str, object] = {
 
 def _format_array(omega: APLArray) -> APLArray:
     """Monadic ⍕: format an array as a character vector."""
+    from marple.formatting import format_num
     if omega.is_scalar():
-        s = str(omega.data[0])
+        s = format_num(omega.data[0])
     else:
         parts = []
         for val in omega.data:
-            parts.append(str(val))
+            parts.append(format_num(val))
         s = " ".join(parts)
     chars = list(s)
     return APLArray([len(chars)], chars)
@@ -385,13 +389,22 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         ):
             ufunc = getattr(np, ufunc_name, None)
             if ufunc is not None and hasattr(ufunc, "outer"):
+                from marple.backend import _OVERFLOW_UFUNCS
                 a = np.reshape(left.data, left.shape) if len(left.shape) > 1 else left.data
                 b = np.reshape(right.data, right.shape) if len(right.shape) > 1 else right.data
+                if ufunc_name in _OVERFLOW_UFUNCS:
+                    a = maybe_upcast(a)
+                    b = maybe_upcast(b)
                 result = ufunc.outer(a, b)
                 if hasattr(result, "shape") and len(result.shape) == 0:  # type: ignore[union-attr]
-                    return S(result.item())  # type: ignore[union-attr]
-                result_flat = result.ravel() if hasattr(result, "ravel") else result  # type: ignore[union-attr]
+                    raw = result.item()  # type: ignore[union-attr]
+                    if ufunc_name in _OVERFLOW_UFUNCS:
+                        raw = maybe_downcast_scalar(raw, _DOWNCAST_CT)
+                    return S(raw)
                 result_shape = list(result.shape) if hasattr(result, "shape") else []  # type: ignore[union-attr]
+                result_flat = result.ravel() if hasattr(result, "ravel") else result  # type: ignore[union-attr]
+                if ufunc_name in _OVERFLOW_UFUNCS:
+                    result_flat = maybe_downcast(result_flat, _DOWNCAST_CT)
                 return APLArray(result_shape, result_flat)
         func = _lookup_dyadic(node.function)
         if func is None:
@@ -469,15 +482,13 @@ def _reduce(
         if ufunc_name and is_numeric_array(data):
             ufunc = getattr(np, ufunc_name, None)
             if ufunc is not None and hasattr(ufunc, "reduce"):
-                # Use float64 for multiply to avoid int64 overflow
-                if func is multiply:
-                    work_data = np.array(to_list(data), dtype=np.float64)
-                else:
-                    work_data = data
+                work_data = maybe_upcast(data)
                 if len(omega.shape) <= 1:
-                    return S(ufunc.reduce(work_data).item())
+                    raw = ufunc.reduce(work_data).item()
+                    return S(maybe_downcast_scalar(raw, _DOWNCAST_CT))
                 shaped = np.reshape(work_data, omega.shape)
                 result = ufunc.reduce(shaped, axis=-1)
+                result = maybe_downcast(result, _DOWNCAST_CT)
                 return APLArray(list(result.shape), result.ravel())
 
     # Fallback: Python loop
@@ -545,9 +556,13 @@ def _inner_product(
                 raise LengthError(f"Inner product length error: {len(alpha.data)} vs {len(omega.data)}")
         a = np.reshape(alpha.data, alpha.shape) if len(alpha.shape) > 1 else alpha.data
         b = np.reshape(omega.data, omega.shape) if len(omega.shape) > 1 else omega.data
+        a = maybe_upcast(a)
+        b = maybe_upcast(b)
         result = np.tensordot(a, b, axes=([-1], [0]))
         if hasattr(result, "shape") and len(result.shape) == 0:
-            return S(result.item())
+            return S(maybe_downcast_scalar(result.item(), _DOWNCAST_CT))
+        if is_numeric_array(result):
+            result = maybe_downcast(result, _DOWNCAST_CT)
         result_flat = result.ravel() if hasattr(result, "ravel") else result
         result_shape = list(result.shape) if hasattr(result, "shape") else [len(result_flat)]
         return APLArray(result_shape, result_flat)
@@ -1011,18 +1026,22 @@ def _bracket_index(
         for item in lists[0]:
             for rest in product(*lists[1:]):
                 yield (item,) + rest
-    # Build 0-based index lists for each axis
+    # Build 0-based index lists for each axis, tracking index shapes
     axis_indices: list[list[int]] = []
+    idx_shapes: list[list[int]] = []  # shape of each index expression
     for axis, idx_node in enumerate(indices):
         if idx_node is None:
             axis_indices.append(list(range(array.shape[axis])))
+            idx_shapes.append([array.shape[axis]])
         else:
             idx = _evaluate(idx_node, env)
             vals = to_list(idx.data) if not idx.is_scalar() else [idx.data[0]]
             axis_indices.append([int(v) - io for v in vals])
+            idx_shapes.append(idx.shape if not idx.is_scalar() else [])
     # Pad missing axes with full range
     for axis in range(len(indices), len(array.shape)):
         axis_indices.append(list(range(array.shape[axis])))
+        idx_shapes.append([array.shape[axis]])
     # Compute strides
     strides = [1] * len(array.shape)
     for i in range(len(array.shape) - 2, -1, -1):
@@ -1032,8 +1051,11 @@ def _bracket_index(
     for combo in product(*axis_indices):
         flat = sum(i * s for i, s in zip(combo, strides))
         result.append(data[flat])
-    # Result shape: drop singleton axes
-    result_shape = [len(ai) for ai in axis_indices if len(ai) > 1]
+    # Result shape: concatenation of each index expression's shape
+    # (scalar indices are dropped, matching APL semantics)
+    result_shape: list[int] = []
+    for s in idx_shapes:
+        result_shape.extend(s)
     if not result_shape:
         return S(result[0])
     return APLArray(result_shape, result)

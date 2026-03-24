@@ -14,6 +14,56 @@ class TestVectorIndexing:
         assert interpret("v[1 3 5]", env) == APLArray([3], [10, 30, 50])
 
 
+class TestIndexingPreservesShape:
+    """Indexing A[I] must preserve the shape of I."""
+
+    def test_scalar_index(self) -> None:
+        env = default_env()
+        interpret("v←10 20 30", env)
+        result = interpret("v[2]", env)
+        assert result.shape == []
+
+    def test_vector_index(self) -> None:
+        env = default_env()
+        interpret("v←10 20 30 40 50", env)
+        result = interpret("v[2 4]", env)
+        assert result.shape == [2]
+
+    def test_matrix_index(self) -> None:
+        env = default_env()
+        interpret("v←10 20 30 40 50", env)
+        result = interpret("v[2 3⍴1 2 3 4 5 1]", env)
+        assert result.shape == [2, 3]
+        assert list(result.data) == [10, 20, 30, 40, 50, 10]
+
+    def test_rank3_index(self) -> None:
+        env = default_env()
+        interpret("v←10 20 30 40", env)
+        result = interpret("v[2 2 2⍴1 2 3 4 1 2 3 4]", env)
+        assert result.shape == [2, 2, 2]
+        assert list(result.data) == [10, 20, 30, 40, 10, 20, 30, 40]
+
+    def test_rank4_index(self) -> None:
+        env = default_env()
+        interpret("v←10 20 30", env)
+        result = interpret("v[2 1 3 1⍴1 2 3 1 2 3]", env)
+        assert result.shape == [2, 1, 3, 1]
+
+    def test_outer_product_index(self) -> None:
+        """The original bug report: ' *'[1+r∘.=s]"""
+        env = default_env()
+        interpret("r←1 2 3", env)
+        interpret("s←1 2 3", env)
+        result = interpret("' *'[1+r∘.=s]", env)
+        assert result.shape == [3, 3]
+
+    def test_string_index_with_matrix(self) -> None:
+        env = default_env()
+        result = interpret("'abcde'[2 3⍴1 2 3 4 5 1]", env)
+        assert result.shape == [2, 3]
+        assert result.data == ['a', 'b', 'c', 'd', 'e', 'a']
+
+
 class TestMatrixIndexing:
     def test_single_element(self) -> None:
         env = default_env()

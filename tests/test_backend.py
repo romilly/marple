@@ -30,6 +30,23 @@ class TestToArray:
         result = to_array([1, 2.5, 3])
         assert is_numeric_array(result)
 
+    @needs_backend
+    def test_int_list_preserves_int_type(self) -> None:
+        result = to_array([1, 2, 3])
+        # Elements should remain integers, not become floats
+        assert isinstance(result.tolist()[0], int)
+
+    @needs_backend
+    def test_large_int_does_not_overflow_to_int16(self) -> None:
+        result = to_array([40000])
+        # 40000 exceeds int16 range — must not silently wrap
+        assert result.tolist()[0] == 40000
+
+    @needs_backend
+    def test_int_within_range_stays_int(self) -> None:
+        result = to_array([100])
+        assert isinstance(result.tolist()[0], int)
+
     def test_no_backend_returns_list(self) -> None:
         if HAS_BACKEND:
             pytest.skip("backend is available")

@@ -23,6 +23,21 @@ class TestFormat:
         result = interpret("⍕1 2 3")
         assert result.data == list("1 2 3")
 
+    def test_format_whole_number_float(self) -> None:
+        # ⍕1.0 should give '1', not '1.0'
+        result = interpret("⍕1.0")
+        assert result.data == list("1")
+
+    def test_format_vector_of_floats(self) -> None:
+        # Whole-number floats should format as integers
+        env = default_env()
+        interpret("v←1.0 2.0 3.0", env)
+        result = interpret("⍕v", env)
+        assert result.data == list("1 2 3")
+
+    def test_format_negative_whole_float(self) -> None:
+        result = interpret("⍕¯3.0")
+        assert result.data == list("¯3")
 
     def test_dyadic_format_width(self) -> None:
         # 6⍕42 → '    42' (right-aligned in field of width 6)
