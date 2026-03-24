@@ -146,3 +146,38 @@ class TestProductOverflow:
     def test_outer_product_small_is_integer(self) -> None:
         result = interpret("1 2∘.+3 4")
         assert isinstance(result.data.tolist()[0], int)
+
+
+@needs_backend
+class TestBooleanDtype:
+    def test_comparison_produces_uint8(self) -> None:
+        result = interpret("1 2 3=1 3 3")
+        assert str(result.data.dtype) == "uint8"
+
+    def test_less_than_produces_uint8(self) -> None:
+        result = interpret("1 2 3<2 2 2")
+        assert str(result.data.dtype) == "uint8"
+
+    def test_not_produces_uint8(self) -> None:
+        result = interpret("~1 0 1")
+        assert str(result.data.dtype) == "uint8"
+
+    def test_and_produces_uint8(self) -> None:
+        result = interpret("1 0 1∧1 1 0")
+        assert str(result.data.dtype) == "uint8"
+
+    def test_or_produces_uint8(self) -> None:
+        result = interpret("1 0 1∨0 1 0")
+        assert str(result.data.dtype) == "uint8"
+
+    def test_boolean_values_correct(self) -> None:
+        result = interpret("1 2 3=1 3 3")
+        assert list(result.data) == [1, 0, 1]
+
+    def test_boolean_in_arithmetic(self) -> None:
+        result = interpret("2+(1 2 3=1 3 3)")
+        assert list(result.data) == [3, 2, 3]
+
+    def test_replicate_with_boolean(self) -> None:
+        result = interpret("(3>⍳5)/⍳5")
+        assert list(result.data) == [1, 2]

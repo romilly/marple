@@ -8,7 +8,7 @@ except ImportError:
 from marple.arraymodel import APLArray
 from marple.backend import (
     _DOWNCAST_CT, _OVERFLOW_UFUNCS, is_numeric_array,
-    maybe_downcast, maybe_upcast, np, to_list,
+    maybe_downcast, maybe_upcast, np, to_bool_array, to_list,
 )
 from marple.errors import DomainError, LengthError
 
@@ -17,12 +17,19 @@ def _pervade_monadic(
     f: Callable[[int | float], int | float],
     omega: APLArray,
     ufunc_name: str | None = None,
+    bool_result: bool = False,
 ) -> APLArray:
     if ufunc_name and is_numeric_array(omega.data):
         ufunc = getattr(np, ufunc_name, None)
         if ufunc is not None:
-            return APLArray(list(omega.shape), ufunc(omega.data))
-    return APLArray(list(omega.shape), [f(x) for x in to_list(omega.data)])
+            result = ufunc(omega.data)
+            if bool_result:
+                result = to_bool_array(result)
+            return APLArray(list(omega.shape), result)
+    data = [f(x) for x in to_list(omega.data)]
+    if bool_result:
+        data = to_bool_array(data)
+    return APLArray(list(omega.shape), data)
 
 
 def _pervade_dyadic(
@@ -30,6 +37,7 @@ def _pervade_dyadic(
     alpha: APLArray,
     omega: APLArray,
     ufunc_name: str | None = None,
+    bool_result: bool = False,
 ) -> APLArray:
     if (
         ufunc_name
@@ -49,6 +57,8 @@ def _pervade_dyadic(
                 raise LengthError(f"Shape mismatch: {alpha.shape} vs {omega.shape}")
             if ufunc_name in _OVERFLOW_UFUNCS:
                 result = maybe_downcast(result, _DOWNCAST_CT)
+            if bool_result:
+                result = to_bool_array(result)
             shape = list(omega.shape) if not omega.is_scalar() else list(alpha.shape)
             return APLArray(shape, result)
     # Fallback: element-wise Python
@@ -58,16 +68,18 @@ def _pervade_dyadic(
         return APLArray([], [f(a_data[0], b_data[0])])
     if alpha.is_scalar():
         a = a_data[0]
-        return APLArray(list(omega.shape), [f(a, x) for x in b_data])
+        data = to_bool_array([f(a, x) for x in b_data]) if bool_result else [f(a, x) for x in b_data]
+        return APLArray(list(omega.shape), data)
     if omega.is_scalar():
         b = b_data[0]
-        return APLArray(list(alpha.shape), [f(x, b) for x in a_data])
+        data = to_bool_array([f(x, b) for x in a_data]) if bool_result else [f(x, b) for x in a_data]
+        return APLArray(list(alpha.shape), data)
     if alpha.shape != omega.shape:
         raise LengthError(f"Shape mismatch: {alpha.shape} vs {omega.shape}")
-    return APLArray(
-        list(alpha.shape),
-        [f(a, b) for a, b in zip(a_data, b_data)],
-    )
+    data = [f(a, b) for a, b in zip(a_data, b_data)]
+    if bool_result:
+        data = to_bool_array(data)
+    return APLArray(list(alpha.shape), data)
 
 
 # Monadic functions
@@ -137,7 +149,7 @@ def absolute_value(omega: APLArray) -> APLArray:
 
 
 def logical_not(omega: APLArray) -> APLArray:
-    return _pervade_monadic(lambda x: int(not x), omega, "logical_not")
+    return _pervade_monadic(lambda x: int(not x), omega, "logical_not", bool_result=True)
 
 
 def pi_times(omega: APLArray) -> APLArray:
@@ -194,32 +206,32 @@ def _tolerant_eq(a: int | float, b: int | float, ct: float) -> bool:
 
 
 def less_than(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a < b and not _tolerant_eq(a, b, ct)), alpha, omega)
+    return _pervade_dyadic(lambda a, b: int(a < b and not _tolerant_eq(a, b, ct)), alpha, omega, bool_result=True)
 
 
 def less_equal(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a <= b or _tolerant_eq(a, b, ct)), alpha, omega)
+    return _pervade_dyadic(lambda a, b: int(a <= b or _tolerant_eq(a, b, ct)), alpha, omega, bool_result=True)
 
 
 def equal(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(_tolerant_eq(a, b, ct)), alpha, omega)
+    return _pervade_dyadic(lambda a, b: int(_tolerant_eq(a, b, ct)), alpha, omega, bool_result=True)
 
 
 def greater_equal(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a >= b or _tolerant_eq(a, b, ct)), alpha, omega)
+    return _pervade_dyadic(lambda a, b: int(a >= b or _tolerant_eq(a, b, ct)), alpha, omega, bool_result=True)
 
 
 def greater_than(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a > b and not _tolerant_eq(a, b, ct)), alpha, omega)
+    return _pervade_dyadic(lambda a, b: int(a > b and not _tolerant_eq(a, b, ct)), alpha, omega, bool_result=True)
 
 
 def not_equal(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(not _tolerant_eq(a, b, ct)), alpha, omega)
+    return _pervade_dyadic(lambda a, b: int(not _tolerant_eq(a, b, ct)), alpha, omega, bool_result=True)
 
 
 def logical_and(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(bool(a) and bool(b)), alpha, omega, "logical_and")
+    return _pervade_dyadic(lambda a, b: int(bool(a) and bool(b)), alpha, omega, "logical_and", bool_result=True)
 
 
 def logical_or(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(bool(a) or bool(b)), alpha, omega, "logical_or")
+    return _pervade_dyadic(lambda a, b: int(bool(a) or bool(b)), alpha, omega, "logical_or", bool_result=True)

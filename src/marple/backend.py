@@ -82,6 +82,21 @@ def is_numeric_array(data: Any) -> bool:
     return hasattr(data, "dtype")
 
 
+def to_bool_array(data: Any) -> Any:
+    """Convert data to a uint8 boolean array (0/1 values).
+
+    If no backend, returns the data unchanged.
+    """
+    if not HAS_BACKEND:
+        return data
+    dt = getattr(np, "uint8", None)
+    if dt is None:
+        return data
+    if hasattr(data, "dtype"):
+        return np.array(data.tolist(), dtype=dt)
+    return np.array(data, dtype=dt)
+
+
 def _is_int_dtype(arr: Any) -> bool:
     """Check if an ndarray has an integer dtype."""
     dtype_str = str(arr.dtype)
