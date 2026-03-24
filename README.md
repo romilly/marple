@@ -21,13 +21,15 @@ MARPLE runs on the Raspberry Pi Pico 2 via MicroPython. See the [demo videos](ht
 - **Namespaces** — `$::str::upper 'hello'`, `#import` directives, `::` separator
 - **I-beam operator** (`⌶`) — Python FFI for extending MARPLE with Python code
 - **Error handling** — `⎕EA` (execute alternate), `⎕EN` (error number), `⎕DM` (diagnostic message), `⎕SIGNAL`
-- **System variables** — `⎕IO`, `⎕CT`, `⎕PP`, `⎕RL`, `⎕A`, `⎕D`, `⎕TS`, `⎕WSID`, `⎕UCS`, `⎕NC`, `⎕EX`
-- **Matrices** — reshape, transpose, bracket indexing (`M[r;c]` any rank), matrix inverse (`⌹`)
+- **System variables** — `⎕IO`, `⎕CT`, `⎕PP`, `⎕RL`, `⎕A`, `⎕D`, `⎕TS`, `⎕WSID`, `⎕UCS`, `⎕NC`, `⎕EX`, `⎕FR`
+- **Data representation** — `⎕DR` queries/converts internal types; `⎕FR←1287` enables exact decimal arithmetic
+- **Numeric type system** — automatic upcast/downcast prevents integer overflow; boolean uint8 for comparisons
+- **Matrices** — reshape, transpose, bracket indexing (`M[r;c]` any rank, index shape preserved), matrix inverse (`⌹`)
 - **Numpy backend** — automatic vectorization (73x faster for element-wise, 380x for outer product), with pure-Python fallback
 - **Web REPL** — browser-based REPL with language bar, workspace panel, session history, multi-line input
 - **Terminal REPL** — live backtick→glyph input, workspace save/load, APL-style formatting
 - **Script runner** — `marple script.marple` with session transcript output
-- **448 tests** (412 interpreter + 36 Playwright), pyright strict
+- **481 tests** + 45 Pico end-to-end tests, pyright strict
 
 ## Quick start
 
@@ -78,11 +80,13 @@ marple examples/01_primitives.marple          # run and display
 marple examples/01_primitives.marple > out.txt  # capture session transcript
 ```
 
-Four demo scripts are included in `examples/`:
+Six demo scripts are included in `examples/`:
 - `01_primitives.marple` — arithmetic, vectors, matrices, reduce, products
 - `02_dfns.marple` — user functions, guards, recursion, rank operator
 - `03_namespaces.marple` — system library, imports, file I/O, i-beams
 - `04_errors.marple` — ea/en error handling, error codes
+- `05_pico_io.marple` — file I/O on Raspberry Pi Pico 2
+- `06_numeric_types.marple` — ⎕DR, ⎕FR, boolean dtype, overflow protection, decimal arithmetic
 
 ### APL character input
 
