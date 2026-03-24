@@ -23,4 +23,14 @@ def format_num(x: Any, pp: int = 10) -> str:
         return s
     if isinstance(x, int) and x < 0:
         return "¯" + str(abs(x))
+    # Decimal support
+    try:
+        from decimal import Decimal
+        if isinstance(x, Decimal):
+            s = str(x)
+            if s.startswith("-"):
+                return "¯" + s[1:]
+            return s
+    except ImportError:
+        pass
     return str(x)

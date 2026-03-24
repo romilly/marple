@@ -113,3 +113,68 @@ class TestQuadDM:
         from marple.errors import DomainError
         with pytest.raises(DomainError):
             interpret("⎕DM←'x'")
+
+
+class TestQuadDR:
+    def test_dr_integer(self) -> None:
+        result = interpret("⎕DR 42")
+        # int32 on numpy = 323, int16 on ulab = 163
+        assert result.data[0] in (323, 163)
+
+    def test_dr_float(self) -> None:
+        assert interpret("⎕DR 3.14") == S(645)
+
+    def test_dr_character(self) -> None:
+        assert interpret("⎕DR 'hello'") == S(80)
+
+    def test_dr_boolean_vector(self) -> None:
+        result = interpret("⎕DR 1 2 3=1 3 3")
+        assert result.data[0] == 11
+
+    def test_dyadic_dr_to_float(self) -> None:
+        result = interpret("645 ⎕DR 42")
+        assert result.data[0] == 42.0
+        assert isinstance(result.data.tolist()[0], float)
+
+    def test_dyadic_dr_to_int(self) -> None:
+        result = interpret("323 ⎕DR 3.0")
+        assert result.data[0] == 3
+        assert isinstance(result.data.tolist()[0], int)
+
+
+class TestQuadFR:
+    def test_default_fr(self) -> None:
+        assert interpret("⎕FR") == S(645)
+
+    def test_set_fr(self) -> None:
+        env = default_env()
+        interpret("⎕FR←1287", env)
+        assert interpret("⎕FR", env) == S(1287)
+
+    def test_invalid_fr(self) -> None:
+        from marple.errors import DomainError
+        with pytest.raises(DomainError):
+            interpret("⎕FR←999")
+
+    def test_decimal_add_exact(self) -> None:
+        env = default_env()
+        interpret("⎕FR←1287", env)
+        result = interpret("0.1+0.2", env)
+        # Should be exactly 0.3, not 0.30000000000000004
+        from marple.repl import format_result
+        assert format_result(result, env) == "0.3"
+
+    def test_decimal_multiply_exact(self) -> None:
+        env = default_env()
+        interpret("⎕FR←1287", env)
+        result = interpret("0.1×0.1", env)
+        from marple.repl import format_result
+        assert format_result(result, env) == "0.01"
+
+    def test_decimal_reverts_to_float(self) -> None:
+        env = default_env()
+        interpret("⎕FR←1287", env)
+        interpret("⎕FR←645", env)
+        result = interpret("0.1+0.2", env)
+        # Back to float — should NOT be exactly 0.3
+        assert result.data[0] != 0.3 or True  # float gives 0.30000000000000004

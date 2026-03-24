@@ -232,7 +232,11 @@ def _call_dfn(
 
 def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
     if isinstance(node, Num):
-        return S(node.value)
+        value = node.value
+        if isinstance(value, float) and int(env.get("⎕FR", S(645)).data[0]) == 1287:
+            from decimal import Decimal
+            value = Decimal(str(node.value))
+        return S(value)
 
     if isinstance(node, Str):
         chars = list(node.value)
@@ -364,6 +368,10 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         env[node.name] = value
         if node.name == "⎕RL" and isinstance(value, APLArray):
             _random.seed(int(value.data[0]))
+        if node.name == "⎕FR" and isinstance(value, APLArray):
+            fr_val = int(value.data[0])
+            if fr_val not in (645, 1287):
+                raise DomainError("⎕FR must be 645 or 1287")
         return value if isinstance(value, APLArray) else S(0)
 
     if isinstance(node, InnerProduct):
@@ -869,6 +877,64 @@ def _dispatch_dyadic(glyph: str, left: APLArray, right: APLArray, env: dict[str,
     raise DomainError(f"Unknown dyadic function: {glyph}")
 
 
+def _monadic_dr(operand: APLArray) -> APLArray:
+    """Monadic ⎕DR: query internal data representation."""
+    from marple.backend import _is_int_dtype, _is_float_dtype
+    # Character data
+    if len(operand.data) > 0 and isinstance(to_list(operand.data)[0], str):
+        return S(80)
+    # Numeric array with dtype
+    if is_numeric_array(operand.data):
+        dtype_str = str(operand.data.dtype)
+        if "uint8" in dtype_str:
+            return S(11)  # boolean
+        if "int8" in dtype_str:
+            return S(83)
+        if "int16" in dtype_str:
+            return S(163)
+        if "int32" in dtype_str:
+            return S(323)
+        if "int64" in dtype_str:
+            return S(645)  # treat as float-equivalent width
+        if _is_float_dtype(operand.data):
+            return S(645)
+    # Python list fallback
+    vals = to_list(operand.data)
+    if vals:
+        v = vals[0]
+        if isinstance(v, str):
+            return S(80)
+        if isinstance(v, float):
+            return S(645)
+        if isinstance(v, int):
+            return S(323)
+    return S(0)
+
+
+def _dyadic_dr(left: APLArray, right: APLArray) -> APLArray:
+    """Dyadic ⎕DR: convert data representation."""
+    target = int(left.data[0])
+    vals = to_list(right.data)
+    if target == 645:
+        # Convert to float
+        new_data = [float(v) for v in vals]
+        return APLArray(list(right.shape), new_data)
+    if target in (323, 163, 83):
+        # Convert to integer
+        new_data = [int(round(v)) for v in vals]
+        return APLArray(list(right.shape), new_data)
+    if target == 11:
+        # Convert to boolean (uint8)
+        from marple.backend import to_bool_array
+        new_data = to_bool_array([int(bool(v)) for v in vals])
+        return APLArray(list(right.shape), new_data)
+    if target == 80:
+        # Convert to character (via UCS)
+        new_data = [chr(int(v)) for v in vals]
+        return APLArray(list(right.shape), new_data)
+    raise DomainError("Invalid ⎕DR type code: " + str(target))
+
+
 def _call_sys_function_monadic(name: str, operand_node: object, env: dict[str, Any]) -> APLArray:
     """Dispatch a monadic system function call."""
     operand = _evaluate(operand_node, env)
@@ -896,6 +962,8 @@ def _call_sys_function_monadic(name: str, operand_node: object, env: dict[str, A
                 del name_table[ex_name]
             return S(1)
         return S(0)
+    if name == "⎕DR":
+        return _monadic_dr(operand)
     if name == "⎕SIGNAL":
         code = int(operand.data[0])
         _ERROR_MAP = {
@@ -920,6 +988,10 @@ def _call_sys_function_dyadic(name: str, left_node: object, right_node: object, 
             env["⎕DM"] = APLArray([len(str(e))], list(str(e)))
             left_str = "".join(str(c) for c in left.data)
             return interpret(left_str, env)
+    if name == "⎕DR":
+        left = _evaluate(left_node, env)
+        right = _evaluate(right_node, env)
+        return _dyadic_dr(left, right)
     raise DomainError(f"Unknown dyadic system function: {name}")
 
 
@@ -1102,6 +1174,7 @@ _SYSTEM_DEFAULTS: dict[str, Any] = {
     "⎕D": APLArray([10], list("0123456789")),
     "⎕WSID": APLArray([8], list("CLEAR WS")),
     "⎕RL": S(1),
+    "⎕FR": S(645),
 }
 
 
@@ -1119,7 +1192,7 @@ def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
         return _handle_import(source.strip(), env)
     name_table = env.get("__name_table__", {})
     # System functions are always classified as functions
-    for qfn in ("⎕EA", "⎕UCS", "⎕NC", "⎕EX", "⎕SIGNAL"):
+    for qfn in ("⎕EA", "⎕UCS", "⎕NC", "⎕EX", "⎕SIGNAL", "⎕DR"):
         name_table[qfn] = NC_FUNCTION
     env["__name_table__"] = name_table
     tree = parse(source, name_table)
