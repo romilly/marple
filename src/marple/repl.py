@@ -39,7 +39,12 @@ def _is_char_array(arr: APLArray) -> bool:
 from marple.formatting import format_num as _format_num
 
 
-def format_result(result: APLArray, pp: int = 10) -> str:
+def format_result(result: APLArray, env: dict[str, Any] | None = None) -> str:
+    pp = 10
+    if env is not None:
+        pp_val = env.get("⎕PP")
+        if pp_val is not None:
+            pp = int(pp_val.data[0])
     if result.is_scalar():
         return _format_num(result.data[0], pp)
     if _is_char_array(result):
@@ -204,7 +209,7 @@ def main() -> None:
         try:
             result = interpret(line, env)
             if not _is_silent(line):
-                print(format_result(result))
+                print(format_result(result, env))
         except APLError as e:
             print(e)
         except Exception as e:

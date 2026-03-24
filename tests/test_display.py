@@ -1,5 +1,21 @@
 from marple.arraymodel import APLArray, S
-from marple.interpreter import interpret
+from marple.interpreter import interpret, default_env
+from marple.repl import format_result
+
+
+class TestQuadPPDisplay:
+    def test_pp_affects_format_result(self) -> None:
+        env = default_env()
+        interpret("⎕PP←17", env)
+        result = interpret("0.1+0.2", env)
+        text = format_result(result, env)
+        # With 17 digits, the float imprecision is visible
+        assert "0.3000000000000000" in text
+
+    def test_default_pp_rounds(self) -> None:
+        result = interpret("0.1+0.2")
+        text = format_result(result)
+        assert text == "0.3"
 
 
 class TestCharacterDisplay:

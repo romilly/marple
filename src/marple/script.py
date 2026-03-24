@@ -31,7 +31,7 @@ def run_script(path: str) -> list[str]:
             try:
                 result = interpret(line, env)
                 if not _is_silent(line):
-                    output.append(format_result(result))
+                    output.append(format_result(result, env))
             except APLError as e:
                 output.append(f"{e} at line {lineno}")
                 output.append(f"  {line}")

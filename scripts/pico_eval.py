@@ -52,7 +52,7 @@ while True:
         if _is_silent(line):
             print(SENTINEL)
         else:
-            print(format_result(result))
+            print(format_result(result, env))
             print(SENTINEL)
     except APLError as e:
         print("ERROR: " + str(e))

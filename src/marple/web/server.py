@@ -40,7 +40,7 @@ class WebSession:
                     f'<pre class="input">{input_html}</pre>'
                     f"</div>"
                 )
-            output_html = html.escape(format_result(result))
+            output_html = html.escape(format_result(result, self.env))
             return (
                 f'<div class="entry">'
                 f'<pre class="input">{input_html}</pre>'
