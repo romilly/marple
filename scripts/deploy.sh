@@ -31,6 +31,7 @@ mpremote \
     cp src/marple/terminal.py :marple/terminal.py + \
     cp src/marple/tokenizer.py :marple/tokenizer.py + \
     cp src/marple/namespace.py :marple/namespace.py + \
+    cp src/marple/formatting.py :marple/formatting.py + \
     cp src/marple/stdlib/__init__.py :marple/stdlib/__init__.py + \
     cp src/marple/stdlib/io_impl.py :marple/stdlib/io_impl.py + \
     cp src/marple/stdlib/str_impl.py :marple/stdlib/str_impl.py + \
