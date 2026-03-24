@@ -96,11 +96,14 @@ class Tokenizer:
                 has_dot = True
             result += self._current()  # type: ignore[operator]
             self._advance()
-        # Handle scientific notation: 1e10, 1E-14, 1.5e3
+        # Handle scientific notation: 1E¯14, 1E3, 1e-14, 1.5E3
         if self._current() is not None and self._current() in ("e", "E"):
             result += self._current()  # type: ignore[operator]
             self._advance()
-            if self._current() is not None and self._current() in ("-", "+"):
+            if self._current() is not None and self._current() == "¯":
+                result += "-"  # APL high minus → Python minus for float()
+                self._advance()
+            elif self._current() is not None and self._current() in ("-", "+"):
                 result += self._current()  # type: ignore[operator]
                 self._advance()
             while self._current() is not None and _isdigit(self._current()):  # type: ignore[union-attr]

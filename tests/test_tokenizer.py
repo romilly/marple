@@ -22,6 +22,18 @@ class TestTokenizerNumbers:
         tokens = Tokenizer("¯2.5").tokenize()
         assert tokens[0] == Token(TokenType.NUMBER, -2.5)
 
+    def test_scientific_with_high_minus_exponent(self) -> None:
+        tokens = Tokenizer("1E¯14").tokenize()
+        assert tokens[0] == Token(TokenType.NUMBER, 1e-14)
+
+    def test_scientific_uppercase_positive(self) -> None:
+        tokens = Tokenizer("2.5E3").tokenize()
+        assert tokens[0] == Token(TokenType.NUMBER, 2500.0)
+
+    def test_scientific_negative_mantissa_and_exponent(self) -> None:
+        tokens = Tokenizer("¯1.5E¯3").tokenize()
+        assert tokens[0] == Token(TokenType.NUMBER, -1.5e-3)
+
 
 class TestTokenizerFunctions:
     def test_plus(self) -> None:

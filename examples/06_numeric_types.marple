@@ -1,0 +1,54 @@
+⎕VER
+⍝ ═══════════════════════════════════════════════════
+⍝ MARPLE Demo 6: Numeric Types and Data Representation
+⍝ ═══════════════════════════════════════════════════
+
+⍝ ── Query data types with ⎕DR ──
+⎕DR 42
+⎕DR 3.14
+⎕DR 'hello'
+
+⍝ ── Boolean results are uint8 (type 11) ──
+⎕DR 1 2 3=1 3 3
+
+⍝ ── Comparison results ──
+1 2 3 4 5 ≥ 3
+⎕DR 1 2 3 4 5 ≥ 3
+
+⍝ ── Booleans work in arithmetic ──
+2 + 1 2 3 = 1 3 3
+
+⍝ ── Boolean compress ──
+(3>⍳5)/⍳5
+
+⍝ ── Convert types with dyadic ⎕DR ──
+645 ⎕DR 42
+⎕DR 645 ⎕DR 42
+
+⍝ ── Large integer arithmetic (no overflow) ──
+2000000000 + 2000000000
+×/ 100000 100000
+
+⍝ ── Integer results preserved when exact ──
+1.5 + 1.5
+⎕DR 1.5 + 1.5
+
+⍝ ── Float results stay float ──
+1 ÷ 3
+⎕DR 1 ÷ 3
+
+⍝ ── Exact decimal arithmetic with ⎕FR ──
+⎕FR
+⍝ Default is 645 (IEEE float64)
+⍝ Float: 0.1+0.2 is not exactly equal to 0.3
+⎕CT ← 0
+(0.1+0.2) = 0.3
+
+⍝ Switch to decimal mode: exact arithmetic
+⎕FR ← 1287
+(0.1+0.2) = 0.3
+0.1 × 0.1
+
+⍝ ── Back to float ──
+⎕FR ← 645
+⎕CT ← 1e¯14
