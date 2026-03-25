@@ -189,6 +189,61 @@ async def test_ws_load_session(aiohttp_client, app, tmp_path):
     await ws.close()
 
 
+async def test_ws_check_session_exists(aiohttp_client, app, tmp_path):
+    app["sessions_dir"] = str(tmp_path)
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/ws")
+    # Save a session
+    await ws.send_json({"type": "eval", "expr": "1+1"})
+    await ws.receive_json()  # result
+    await ws.receive_json()  # workspace
+    await ws.send_json({"type": "save_session", "name": "existing"})
+    await ws.receive_json()  # saved
+    # Check it exists
+    await ws.send_json({"type": "check_session", "name": "existing"})
+    msg = await ws.receive_json()
+    assert msg["type"] == "session_exists"
+    assert msg["exists"] is True
+    # Check one that doesn't
+    await ws.send_json({"type": "check_session", "name": "nope"})
+    msg = await ws.receive_json()
+    assert msg["type"] == "session_exists"
+    assert msg["exists"] is False
+    await ws.close()
+
+
+async def test_ws_delete_session(aiohttp_client, app, tmp_path):
+    app["sessions_dir"] = str(tmp_path)
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/ws")
+    # Save a session
+    await ws.send_json({"type": "eval", "expr": "1+1"})
+    await ws.receive_json()
+    await ws.receive_json()
+    await ws.send_json({"type": "save_session", "name": "deleteme"})
+    await ws.receive_json()
+    # Delete it
+    await ws.send_json({"type": "delete_session", "name": "deleteme"})
+    msg = await ws.receive_json()
+    assert msg["type"] == "session_deleted"
+    assert msg["name"] == "deleteme"
+    # Verify it's gone
+    await ws.send_json({"type": "list_sessions"})
+    msg = await ws.receive_json()
+    assert "deleteme" not in msg["sessions"]
+    await ws.close()
+
+
+async def test_ws_delete_nonexistent(aiohttp_client, app, tmp_path):
+    app["sessions_dir"] = str(tmp_path)
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/ws")
+    await ws.send_json({"type": "delete_session", "name": "ghost"})
+    msg = await ws.receive_json()
+    assert msg["type"] == "error"
+    await ws.close()
+
+
 async def test_ws_pico_then_local(aiohttp_client, app_with_pico):
     client = await aiohttp_client(app_with_pico)
     ws = await client.ws_connect("/ws")

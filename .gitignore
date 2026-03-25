@@ -140,3 +140,6 @@ data/incoming
 
 # WiFi credentials for Pico W
 WIFI_CONFIG.py
+
+# PRIDE saved sessions
+sessions/

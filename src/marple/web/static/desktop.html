@@ -109,6 +109,7 @@
                 <ul class="dropdown-menu dropdown-menu-dark">
                     <li><a class="dropdown-item" href="#" id="menu-save">Save...</a></li>
                     <li><a class="dropdown-item" href="#" id="menu-load">Load...</a></li>
+                    <li><a class="dropdown-item" href="#" id="menu-delete">Delete...</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="https://romilly.github.io/marple/"
                            target="_blank">Docs &#8599;</a></li>
@@ -194,6 +195,19 @@
                         input.focus();
                     });
                 });
+            } else if (msg.type === 'session_exists') {
+                if (msg.exists) {
+                    if (confirm('Session "' + msg.name + '" already exists. Overwrite?')) {
+                        ws.send(JSON.stringify({type: 'save_session', name: msg.name}));
+                    }
+                } else {
+                    ws.send(JSON.stringify({type: 'save_session', name: pendingSaveName}));
+                }
+            } else if (msg.type === 'session_deleted') {
+                session.insertAdjacentHTML('beforeend',
+                    '<div class="entry"><pre class="output">Session deleted: ' +
+                    msg.name + '</pre></div>');
+                session.scrollTop = session.scrollHeight;
             } else if (msg.type === 'session_saved') {
                 session.insertAdjacentHTML('beforeend',
                     '<div class="entry"><pre class="output">Session saved: ' +
@@ -340,12 +354,15 @@
         }
     }).catch(function() {});
 
-    // Session save/load menu handlers
+    // Session save/load/delete menu handlers
+    var pendingSaveName = '';
+
     document.getElementById('menu-save').addEventListener('click', function(e) {
         e.preventDefault();
         var name = prompt('Session name:');
         if (name && ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({type: 'save_session', name: name}));
+            pendingSaveName = name;
+            ws.send(JSON.stringify({type: 'check_session', name: name}));
         }
     });
 
@@ -356,14 +373,33 @@
         }
     });
 
+    document.getElementById('menu-delete').addEventListener('click', function(e) {
+        e.preventDefault();
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            pendingAction = 'delete';
+            ws.send(JSON.stringify({type: 'list_sessions'}));
+        }
+    });
+
+    var pendingAction = 'load';
+
     function showLoadDialog(sessions) {
         if (sessions.length === 0) {
             alert('No saved sessions found.');
             return;
         }
-        var choice = prompt('Load session:\\n' + sessions.join('\\n') + '\\n\\nEnter name:');
+        var action = pendingAction;
+        pendingAction = 'load';
+        var label = action === 'delete' ? 'Delete' : 'Load';
+        var choice = prompt(label + ' session:\\n' + sessions.join('\\n') + '\\n\\nEnter name:');
         if (choice && ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({type: 'load_session', name: choice}));
+            if (action === 'delete') {
+                if (confirm('Delete session "' + choice + '"? This cannot be undone.')) {
+                    ws.send(JSON.stringify({type: 'delete_session', name: choice}));
+                }
+            } else {
+                ws.send(JSON.stringify({type: 'load_session', name: choice}));
+            }
         }
     }
 

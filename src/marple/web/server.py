@@ -316,6 +316,22 @@ async def handle_ws(request: web.Request) -> web.WebSocketResponse:
                 sessions_dir = request.app.get("sessions_dir", "sessions")
                 sessions = WebSession.list_sessions(sessions_dir)
                 await ws.send_json({"type": "session_list", "sessions": sessions})
+            elif msg_type == "check_session":
+                import os
+                name = data.get("name", "")
+                sessions_dir = request.app.get("sessions_dir", "sessions")
+                path = os.path.join(sessions_dir, name + ".md")
+                await ws.send_json({"type": "session_exists", "name": name, "exists": os.path.isfile(path)})
+            elif msg_type == "delete_session":
+                import os
+                name = data.get("name", "")
+                sessions_dir = request.app.get("sessions_dir", "sessions")
+                path = os.path.join(sessions_dir, name + ".md")
+                if os.path.isfile(path):
+                    os.remove(path)
+                    await ws.send_json({"type": "session_deleted", "name": name})
+                else:
+                    await ws.send_json({"type": "error", "message": "Session not found: " + name})
             else:
                 await ws.send_json({"type": "error", "message": "Unknown message type: " + str(msg_type)})
         elif msg.type in (web.WSMsgType.ERROR, web.WSMsgType.CLOSE):
