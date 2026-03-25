@@ -77,8 +77,11 @@ def format_result(result: APLArray, env: dict[str, Any] | None = None) -> str:
 
 
 def _is_silent(line: str) -> bool:
-    """Check if a line is a bare assignment or directive (should not print)."""
-    if line.strip().startswith("#"):
+    """Check if a line is a comment, bare assignment, or directive (should not print)."""
+    stripped = line.strip()
+    if stripped.startswith("#"):
+        return True
+    if stripped.startswith("⍝"):
         return True
     try:
         tree = parse(line)

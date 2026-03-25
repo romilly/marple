@@ -2,6 +2,21 @@ from marple.arraymodel import APLArray, S
 from marple.interpreter import interpret, default_env
 
 
+class TestCommentOnlyLines:
+    def test_comment_only(self) -> None:
+        # A comment-only line should not raise an error
+        result = interpret("⍝ this is a comment")
+        assert result == S(0)
+
+    def test_comment_with_box_drawing(self) -> None:
+        result = interpret("⍝ ═══════════════════")
+        assert result == S(0)
+
+    def test_comment_only_no_space(self) -> None:
+        result = interpret("⍝comment")
+        assert result == S(0)
+
+
 class TestInterpreterScalars:
     def test_single_number(self) -> None:
         assert interpret("5") == S(5)

@@ -571,6 +571,9 @@ class Parser:
         return left
 
     def parse(self) -> object:
+        # Empty input (e.g. comment-only line) → return Num(0) as no-op
+        if self._current().type == TokenType.EOF:
+            return Num(0)
         statements = [self._parse_statement()]
         while self._current().type == TokenType.DIAMOND:
             self._eat(TokenType.DIAMOND)
