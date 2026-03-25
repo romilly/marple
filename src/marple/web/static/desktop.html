@@ -181,13 +181,13 @@
             wsStatus.style.color = '#a44';
             setTimeout(connectWS, 2000);
         };
-        ws.onmessage = function(e) {
-            var msg = JSON.parse(e.data);
-            if (msg.type === 'result') {
+        var messageHandlers = {
+            result: function(msg) {
                 session.insertAdjacentHTML('beforeend', msg.html);
                 session.scrollTop = session.scrollHeight;
                 attachInputClickHandlers();
-            } else if (msg.type === 'workspace') {
+            },
+            workspace: function(msg) {
                 workspace.innerHTML = msg.html;
                 workspace.querySelectorAll('.ws-item').forEach(function(el) {
                     el.addEventListener('click', function() {
@@ -195,7 +195,8 @@
                         input.focus();
                     });
                 });
-            } else if (msg.type === 'session_exists') {
+            },
+            session_exists: function(msg) {
                 if (msg.exists) {
                     if (confirm('Session "' + msg.name + '" already exists. Overwrite?')) {
                         ws.send(JSON.stringify({type: 'save_session', name: msg.name}));
@@ -203,28 +204,38 @@
                 } else {
                     ws.send(JSON.stringify({type: 'save_session', name: pendingSaveName}));
                 }
-            } else if (msg.type === 'session_deleted') {
+            },
+            session_deleted: function(msg) {
                 session.insertAdjacentHTML('beforeend',
                     '<div class="entry"><pre class="output">Session deleted: ' +
                     msg.name + '</pre></div>');
                 session.scrollTop = session.scrollHeight;
-            } else if (msg.type === 'session_saved') {
+            },
+            session_saved: function(msg) {
                 session.insertAdjacentHTML('beforeend',
                     '<div class="entry"><pre class="output">Session saved: ' +
                     msg.name + '</pre></div>');
                 session.scrollTop = session.scrollHeight;
-            } else if (msg.type === 'session_loaded') {
+            },
+            session_loaded: function(msg) {
                 session.innerHTML = msg.html;
                 attachInputClickHandlers();
                 session.scrollTop = session.scrollHeight;
-            } else if (msg.type === 'session_list') {
+            },
+            session_list: function(msg) {
                 showLoadDialog(msg.sessions);
-            } else if (msg.type === 'error') {
+            },
+            error: function(msg) {
                 session.insertAdjacentHTML('beforeend',
                     '<div class="entry"><pre class="error">' +
                     msg.message + '</pre></div>');
                 session.scrollTop = session.scrollHeight;
             }
+        };
+        ws.onmessage = function(e) {
+            var msg = JSON.parse(e.data);
+            var handler = messageHandlers[msg.type];
+            if (handler) handler(msg);
             input.focus();
         };
     }

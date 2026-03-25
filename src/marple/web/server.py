@@ -249,14 +249,109 @@ def _pico_eval_html(expr: str, result_text: str) -> str:
     return f'<div class="entry">{"".join(parts)}</div>'
 
 
-async def handle_ws(request: web.Request) -> web.WebSocketResponse:
-    import asyncio
+class WSHandler:
+    """Handles WebSocket messages for a single connection."""
 
+    def __init__(self, ws: web.WebSocketResponse, app: web.Application) -> None:
+        self.ws = ws
+        self.session: WebSession = app["session"]
+        self.pico = app.get("pico")
+        self.sessions_dir: str = app.get("sessions_dir", "sessions")
+        self.mode = "local"
+        self._dispatch: dict[str, Any] = {
+            "mode": self._handle_mode,
+            "eval": self._handle_eval,
+            "system": self._handle_system,
+            "save_session": self._handle_save_session,
+            "load_session": self._handle_load_session,
+            "list_sessions": self._handle_list_sessions,
+            "check_session": self._handle_check_session,
+            "delete_session": self._handle_delete_session,
+        }
+
+    async def handle_message(self, data: dict[str, Any]) -> None:
+        msg_type = data.get("type")
+        handler = self._dispatch.get(str(msg_type))
+        if handler is not None:
+            await handler(data)
+        else:
+            await self.ws.send_json({"type": "error", "message": "Unknown message type: " + str(msg_type)})
+
+    async def _handle_mode(self, data: dict[str, Any]) -> None:
+        new_mode = data.get("mode", "")
+        if new_mode == "pico" and self.pico is None:
+            await self.ws.send_json({"type": "error", "message": "No Pico connected"})
+        elif new_mode in ("local", "pico"):
+            self.mode = new_mode
+            await self.ws.send_json({"type": "mode_changed", "mode": self.mode})
+        else:
+            await self.ws.send_json({"type": "error", "message": "Invalid mode: " + str(new_mode)})
+
+    async def _handle_eval(self, data: dict[str, Any]) -> None:
+        import asyncio
+        expr = data.get("expr", "")
+        if self.mode == "pico" and self.pico is not None:
+            try:
+                result_text = await asyncio.get_event_loop().run_in_executor(
+                    None, self.pico.eval, expr
+                )
+            except Exception as e:
+                result_text = "ERROR: " + str(e)
+            fragment = _pico_eval_html(expr, result_text)
+            await self.ws.send_json({"type": "result", "html": fragment})
+        else:
+            fragment = self.session.evaluate(expr)
+            await self.ws.send_json({"type": "result", "html": fragment})
+            await self.ws.send_json({"type": "workspace", "html": self.session.workspace_fragment()})
+
+    async def _handle_system(self, data: dict[str, Any]) -> None:
+        cmd = data.get("cmd", "")
+        fragment = self.session.system_command(cmd)
+        await self.ws.send_json({"type": "result", "html": fragment})
+        await self.ws.send_json({"type": "workspace", "html": self.session.workspace_fragment()})
+
+    async def _handle_save_session(self, data: dict[str, Any]) -> None:
+        name = data.get("name", "")
+        try:
+            self.session.save_session(name, self.sessions_dir)
+            await self.ws.send_json({"type": "session_saved", "name": name})
+        except Exception as e:
+            await self.ws.send_json({"type": "error", "message": str(e)})
+
+    async def _handle_load_session(self, data: dict[str, Any]) -> None:
+        name = data.get("name", "")
+        try:
+            html_content = self.session.load_session(name, self.sessions_dir)
+            await self.ws.send_json({"type": "session_loaded", "html": html_content})
+            await self.ws.send_json({"type": "workspace", "html": self.session.workspace_fragment()})
+        except Exception as e:
+            await self.ws.send_json({"type": "error", "message": str(e)})
+
+    async def _handle_list_sessions(self, data: dict[str, Any]) -> None:
+        sessions = WebSession.list_sessions(self.sessions_dir)
+        await self.ws.send_json({"type": "session_list", "sessions": sessions})
+
+    async def _handle_check_session(self, data: dict[str, Any]) -> None:
+        import os
+        name = data.get("name", "")
+        path = os.path.join(self.sessions_dir, name + ".md")
+        await self.ws.send_json({"type": "session_exists", "name": name, "exists": os.path.isfile(path)})
+
+    async def _handle_delete_session(self, data: dict[str, Any]) -> None:
+        import os
+        name = data.get("name", "")
+        path = os.path.join(self.sessions_dir, name + ".md")
+        if os.path.isfile(path):
+            os.remove(path)
+            await self.ws.send_json({"type": "session_deleted", "name": name})
+        else:
+            await self.ws.send_json({"type": "error", "message": "Session not found: " + name})
+
+
+async def handle_ws(request: web.Request) -> web.WebSocketResponse:
     ws = web.WebSocketResponse()
     await ws.prepare(request)
-    session: WebSession = request.app["session"]
-    pico = request.app.get("pico")
-    mode = "local"
+    handler = WSHandler(ws, request.app)
 
     async for msg in ws:
         if msg.type == web.WSMsgType.TEXT:
@@ -265,75 +360,7 @@ async def handle_ws(request: web.Request) -> web.WebSocketResponse:
             except (json.JSONDecodeError, ValueError):
                 await ws.send_json({"type": "error", "message": "Invalid JSON"})
                 continue
-            msg_type = data.get("type")
-            if msg_type == "mode":
-                new_mode = data.get("mode", "")
-                if new_mode == "pico" and pico is None:
-                    await ws.send_json({"type": "error", "message": "No Pico connected"})
-                elif new_mode in ("local", "pico"):
-                    mode = new_mode
-                    await ws.send_json({"type": "mode_changed", "mode": mode})
-                else:
-                    await ws.send_json({"type": "error", "message": "Invalid mode: " + str(new_mode)})
-            elif msg_type == "eval":
-                expr = data.get("expr", "")
-                if mode == "pico" and pico is not None:
-                    try:
-                        result_text = await asyncio.get_event_loop().run_in_executor(
-                            None, pico.eval, expr
-                        )
-                    except Exception as e:
-                        result_text = "ERROR: " + str(e)
-                    fragment = _pico_eval_html(expr, result_text)
-                    await ws.send_json({"type": "result", "html": fragment})
-                else:
-                    fragment = session.evaluate(expr)
-                    await ws.send_json({"type": "result", "html": fragment})
-                    await ws.send_json({"type": "workspace", "html": session.workspace_fragment()})
-            elif msg_type == "system":
-                cmd = data.get("cmd", "")
-                fragment = session.system_command(cmd)
-                await ws.send_json({"type": "result", "html": fragment})
-                await ws.send_json({"type": "workspace", "html": session.workspace_fragment()})
-            elif msg_type == "save_session":
-                name = data.get("name", "")
-                sessions_dir = request.app.get("sessions_dir", "sessions")
-                try:
-                    session.save_session(name, sessions_dir)
-                    await ws.send_json({"type": "session_saved", "name": name})
-                except Exception as e:
-                    await ws.send_json({"type": "error", "message": str(e)})
-            elif msg_type == "load_session":
-                name = data.get("name", "")
-                sessions_dir = request.app.get("sessions_dir", "sessions")
-                try:
-                    html_content = session.load_session(name, sessions_dir)
-                    await ws.send_json({"type": "session_loaded", "html": html_content})
-                    await ws.send_json({"type": "workspace", "html": session.workspace_fragment()})
-                except Exception as e:
-                    await ws.send_json({"type": "error", "message": str(e)})
-            elif msg_type == "list_sessions":
-                sessions_dir = request.app.get("sessions_dir", "sessions")
-                sessions = WebSession.list_sessions(sessions_dir)
-                await ws.send_json({"type": "session_list", "sessions": sessions})
-            elif msg_type == "check_session":
-                import os
-                name = data.get("name", "")
-                sessions_dir = request.app.get("sessions_dir", "sessions")
-                path = os.path.join(sessions_dir, name + ".md")
-                await ws.send_json({"type": "session_exists", "name": name, "exists": os.path.isfile(path)})
-            elif msg_type == "delete_session":
-                import os
-                name = data.get("name", "")
-                sessions_dir = request.app.get("sessions_dir", "sessions")
-                path = os.path.join(sessions_dir, name + ".md")
-                if os.path.isfile(path):
-                    os.remove(path)
-                    await ws.send_json({"type": "session_deleted", "name": name})
-                else:
-                    await ws.send_json({"type": "error", "message": "Session not found: " + name})
-            else:
-                await ws.send_json({"type": "error", "message": "Unknown message type: " + str(msg_type)})
+            await handler.handle_message(data)
         elif msg.type in (web.WSMsgType.ERROR, web.WSMsgType.CLOSE):
             break
 
