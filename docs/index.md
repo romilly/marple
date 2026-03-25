@@ -11,7 +11,7 @@ It is implemented in Python. Performance is better than you might expect, as it 
 
 It has a simple mechanism that allows you to add new language features in Python and then use i-beams to turn them into functions available to the APL developer.
 
-Claude and Claude code have done all the hard work. Getting to this point has taken a day and a half. I have much more I want to implement, and I expect to do so in days rather than months.
+Claude and Claude Code have done all the hard work. Getting to this point has taken under a week. I have much more I want to implement, and I expect to do so in days rather than months.
 
 ## MARPLE is Alpha code
 
@@ -73,7 +73,7 @@ marple
 - **From indexing** (`⌷`) — select major cells along the leading axis. Composes with the rank operator for arbitrary-axis selection.
 - **Direct definition** — dfns (`{⍺+⍵}`) and dops (`{⍺⍺/⍵}`) with guards, recursion, and lexical scope. No tradfns.
 - **Python-powered** — NumPy backend when available (~73× faster for large arrays), pure-Python fallback for portability.
-- **Web REPL** — browser-based REPL with language bar, workspace panel, session history, and multi-line input. Accessible from other machines on the network.
+- **PRIDE web IDE** — browser-based IDE over WebSocket with language bar, click-to-re-edit, session save/load, workspace panel, and Pico serial bridge.
 - **40+ primitives** — arithmetic, comparison, boolean, structural, and mixed functions, all with scalar extension.
 
 ## Who is this for?
