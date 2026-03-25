@@ -140,6 +140,11 @@ async def handle_health(request: web.Request) -> web.Response:
     return web.json_response({"status": "ok"})
 
 
+async def handle_config(request: web.Request) -> web.Response:
+    has_pico = request.app.get("pico") is not None
+    return web.json_response({"pico_available": has_pico})
+
+
 async def handle_workspace(request: web.Request) -> web.Response:
     session: WebSession = request.app["session"]
     fragment = session.workspace_fragment()
@@ -166,10 +171,32 @@ async def handle_system(request: web.Request) -> web.Response:
     return web.Response(text=fragment, content_type="text/html")
 
 
+def _pico_eval_html(expr: str, result_text: str) -> str:
+    """Format a Pico eval result as an HTML fragment."""
+    input_html = html.escape(INPUT_INDENT + expr)
+    if result_text.startswith("ERROR:"):
+        error_html = html.escape(result_text[7:])
+        return (
+            f'<div class="entry">'
+            f'<pre class="input">{input_html}</pre>'
+            f'<pre class="error">{error_html}</pre>'
+            f"</div>"
+        )
+    parts = [f'<pre class="input">{input_html}</pre>']
+    if result_text:
+        output_html = html.escape(result_text)
+        parts.append(f'<pre class="output">{output_html}</pre>')
+    return f'<div class="entry">{"".join(parts)}</div>'
+
+
 async def handle_ws(request: web.Request) -> web.WebSocketResponse:
+    import asyncio
+
     ws = web.WebSocketResponse()
     await ws.prepare(request)
     session: WebSession = request.app["session"]
+    pico = request.app.get("pico")
+    mode = "local"
 
     async for msg in ws:
         if msg.type == web.WSMsgType.TEXT:
@@ -179,11 +206,30 @@ async def handle_ws(request: web.Request) -> web.WebSocketResponse:
                 await ws.send_json({"type": "error", "message": "Invalid JSON"})
                 continue
             msg_type = data.get("type")
-            if msg_type == "eval":
+            if msg_type == "mode":
+                new_mode = data.get("mode", "")
+                if new_mode == "pico" and pico is None:
+                    await ws.send_json({"type": "error", "message": "No Pico connected"})
+                elif new_mode in ("local", "pico"):
+                    mode = new_mode
+                    await ws.send_json({"type": "mode_changed", "mode": mode})
+                else:
+                    await ws.send_json({"type": "error", "message": "Invalid mode: " + str(new_mode)})
+            elif msg_type == "eval":
                 expr = data.get("expr", "")
-                fragment = session.evaluate(expr)
-                await ws.send_json({"type": "result", "html": fragment})
-                await ws.send_json({"type": "workspace", "html": session.workspace_fragment()})
+                if mode == "pico" and pico is not None:
+                    try:
+                        result_text = await asyncio.get_event_loop().run_in_executor(
+                            None, pico.eval, expr
+                        )
+                    except Exception as e:
+                        result_text = "ERROR: " + str(e)
+                    fragment = _pico_eval_html(expr, result_text)
+                    await ws.send_json({"type": "result", "html": fragment})
+                else:
+                    fragment = session.evaluate(expr)
+                    await ws.send_json({"type": "result", "html": fragment})
+                    await ws.send_json({"type": "workspace", "html": session.workspace_fragment()})
             elif msg_type == "system":
                 cmd = data.get("cmd", "")
                 fragment = session.system_command(cmd)
@@ -202,6 +248,7 @@ def create_app() -> web.Application:
     app["session"] = WebSession()
     app.router.add_get("/", handle_index)
     app.router.add_get("/health", handle_health)
+    app.router.add_get("/config", handle_config)
     app.router.add_get("/workspace", handle_workspace)
     app.router.add_post("/eval", handle_eval)
     app.router.add_post("/system", handle_system)
@@ -213,6 +260,14 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8888)
+    parser.add_argument("--pico-port", type=str, default=None,
+                        help="Serial port for Pico (e.g. /dev/ttyACM0)")
     args = parser.parse_args()
+    app = create_app()
+    if args.pico_port:
+        from marple.web.pico_bridge import PicoConnection
+        print(f"Connecting to Pico on {args.pico_port}...")
+        app["pico"] = PicoConnection(args.pico_port)
+        print("Pico connected.")
     print(f"MARPLE Web REPL: http://localhost:{args.port}/")
-    web.run_app(create_app(), port=args.port, print=None)
+    web.run_app(app, port=args.port, print=None)
