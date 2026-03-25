@@ -71,7 +71,13 @@ def record_demo(script_path: str, output_path: str,
         page.goto(url)
         page.wait_for_timeout(INITIAL_PAUSE)
 
-        for line in lines:
+        for i, line in enumerate(lines):
+            print(f"[{i+1}/{len(lines)}] {line}", file=sys.stderr)
+            # Check input is clear before typing
+            current = page.locator("#input").input_value()
+            if current:
+                print(f"  WARNING: input not empty: {current!r}", file=sys.stderr)
+                page.locator("#input").fill("")
             if line.lstrip().startswith("⍝"):
                 # Comment — type it and submit, pause to read
                 type_expression(page, line)
