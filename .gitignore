@@ -134,7 +134,9 @@ ENV/
 test/test/data/generated
 
 Link.md
+
 data/zips
+data/incoming
 
 # WiFi credentials for Pico W
 WIFI_CONFIG.py
