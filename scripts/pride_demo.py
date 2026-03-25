@@ -28,10 +28,14 @@ SERVER_URL = "http://localhost:8888"
 
 
 def type_expression(page, expr: str) -> None:
-    """Type an APL expression into the input, character by character."""
+    """Type an APL expression into the input, character by character.
+
+    Uses fill() with progressively longer strings to avoid triggering
+    browser autocomplete (which keyboard events can cause).
+    """
     input_el = page.locator("#input")
-    for ch in expr:
-        input_el.type(ch, delay=0)
+    for i in range(len(expr)):
+        input_el.fill(expr[:i + 1])
         page.wait_for_timeout(CHAR_DELAY)
 
 
