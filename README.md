@@ -26,11 +26,11 @@ MARPLE runs on the Raspberry Pi Pico 2 via MicroPython. See the [demo videos](ht
 - **Numeric type system** — automatic upcast/downcast prevents integer overflow; boolean uint8 for comparisons
 - **Matrices** — reshape, transpose, bracket indexing (`M[r;c]` any rank, index shape preserved), matrix inverse (`⌹`)
 - **Numpy backend** — automatic vectorization (73x faster for element-wise, 380x for outer product), with pure-Python fallback
-- **Web REPL** — browser-based REPL over WebSocket with language bar, workspace panel, session history, multi-line input
+- **PRIDE web IDE** — browser-based IDE over WebSocket with language bar, workspace panel, click-to-re-edit, session save/load as markdown, session history, multi-line input
 - **Pico web bridge** — evaluate APL on a connected Pico from the browser (`--pico-port /dev/ttyACM0`)
 - **Terminal REPL** — live backtick→glyph input, workspace save/load, APL-style formatting
 - **Script runner** — `marple script.marple` with session transcript output
-- **528 tests** (481 interpreter + 47 web), pyright strict
+- **565 tests** (515 interpreter + 50 web), pyright strict
 
 ## Quick start
 
@@ -66,13 +66,20 @@ CLEAR WS
 HELLO
 ```
 
-### Web REPL
+### PRIDE Web IDE
 
 ```bash
 python -m marple.web.server
 ```
 
-Open `http://localhost:8888/` in your browser. Communicates over WebSocket for real-time interaction. Features: clickable language bar, workspace panel, session history (up/down arrows), multi-line input (Shift+Enter).
+Open `http://localhost:8888/` in your browser. PRIDE (the MARPLE web IDE) communicates over WebSocket. Features:
+
+- Clickable language bar for APL glyph input
+- Click any previous input line to re-edit and re-submit
+- Session save/load as markdown (Session menu)
+- Workspace panel showing variables and functions
+- Session history (up/down arrows), multi-line input (Shift+Enter)
+- Link to MARPLE documentation
 
 To evaluate APL on a connected Raspberry Pi Pico 2 from the browser:
 

@@ -33,21 +33,33 @@ The translation happens live — the APL character appears immediately.
 
 Alternatively, if you have a Dyalog APL keyboard layout installed (e.g. via `setxkbmap` with `grp:win_switch`), you can use the Win key to type APL glyphs directly.
 
-## Web REPL
+## PRIDE Web IDE
 
 ```bash
 python -m marple.web.server          # start on port 8888
 python -m marple.web.server --port 9000  # custom port
 ```
 
-Open `http://localhost:8888/` in your browser. The web REPL provides:
+Open `http://localhost:8888/` in your browser. PRIDE (the MARPLE web IDE) communicates over WebSocket and provides:
 
 - **Language bar** — clickable APL glyphs above the input area. Click a glyph to insert it. Hover for name and description.
+- **Click to re-edit** — click any previous input line in the session to copy it back to the input for editing and re-submission.
+- **Session save/load** — use the Session menu to save the transcript as markdown or load a previous session.
 - **Workspace panel** — sidebar showing defined variables (with shapes) and functions. Click a name to insert it into the input.
 - **Session history** — up/down arrow keys cycle through previously entered expressions.
 - **Multi-line input** — Shift+Enter adds a newline; Enter submits. Newlines are converted to `⋄` (diamond) for execution.
 
-The web REPL is accessible from other machines on the same network — useful for running MARPLE on a Raspberry Pi and programming it from your workstation.
+### Pico bridge
+
+To evaluate APL on a connected Raspberry Pi Pico 2:
+
+```bash
+python -m marple.web.server --pico-port /dev/ttyACM0
+```
+
+A Local/Pico toggle appears in the header bar. Switch to Pico mode to send expressions to the Pico over USB serial.
+
+PRIDE is accessible from other machines on the same network — useful for running MARPLE on a Raspberry Pi and programming it from your workstation.
 
 ## The prompt
 
