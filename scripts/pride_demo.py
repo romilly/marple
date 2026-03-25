@@ -21,13 +21,14 @@ from playwright.sync_api import sync_playwright
 
 
 CHAR_DELAY = 40       # ms between characters
+COMMENT_CHAR_DELAY = 10  # ms between characters in comments
 PAUSE_AFTER = 800     # ms to pause after each result
 COMMENT_PAUSE = 1200  # ms to pause on comment lines
 INITIAL_PAUSE = 1500  # ms to wait after page load
 SERVER_URL = "http://localhost:8888"
 
 
-def type_expression(page, expr: str) -> None:
+def type_expression(page, expr: str, delay: int = CHAR_DELAY) -> None:
     """Type an APL expression into the input, character by character.
 
     Uses direct JavaScript value assignment to avoid triggering
@@ -37,7 +38,7 @@ def type_expression(page, expr: str) -> None:
     for i in range(len(expr)):
         partial = _json.dumps(expr[:i + 1])
         page.evaluate(f'document.getElementById("input").value = {partial}')
-        page.wait_for_timeout(CHAR_DELAY)
+        page.wait_for_timeout(delay)
 
 
 def submit_and_wait(page) -> None:
@@ -80,8 +81,8 @@ def record_demo(script_path: str, output_path: str,
                 print(f"  WARNING: input not empty: {current!r}", file=sys.stderr)
                 page.locator("#input").fill("")
             if line.lstrip().startswith("⍝"):
-                # Comment — type it and submit, pause to read
-                type_expression(page, line)
+                # Comment — type faster, submit, pause to read
+                type_expression(page, line, delay=COMMENT_CHAR_DELAY)
                 submit_and_wait(page)
                 page.wait_for_timeout(COMMENT_PAUSE)
             else:
