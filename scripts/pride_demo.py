@@ -20,8 +20,8 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 
-CHAR_DELAY = 80       # ms between characters
-PAUSE_AFTER = 1500    # ms to pause after each result
+CHAR_DELAY = 40       # ms between characters
+PAUSE_AFTER = 800     # ms to pause after each result
 COMMENT_PAUSE = 1200  # ms to pause on comment lines
 INITIAL_PAUSE = 1500  # ms to wait after page load
 SERVER_URL = "http://localhost:8888"
