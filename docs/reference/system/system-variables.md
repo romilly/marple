@@ -1,8 +1,10 @@
-# System Variables
+# System Variables and Functions
 
-System variables are names beginning with `⎕` (quad). They control interpreter behaviour.
+System variables are names beginning with `⎕` (quad). They control interpreter behaviour, provide system information, or act as built-in functions.
 
-## `⎕IO` — Index Origin
+## Settable System Variables
+
+### `⎕IO` — Index Origin
 
 | | |
 |---|---|
@@ -21,7 +23,7 @@ Controls where counting starts. Affects `⍳` (iota), `⍋` `⍒` (grade), `⌷`
 0 1 2 3 4
 ```
 
-## `⎕CT` — Comparison Tolerance
+### `⎕CT` — Comparison Tolerance
 
 | | |
 |---|---|
@@ -30,7 +32,7 @@ Controls where counting starts. Affects `⍳` (iota), `⍋` `⍒` (grade), `⌷`
 
 Controls tolerant comparison for floating-point numbers. Two values `a` and `b` are considered equal if `|a-b| ≤ ⎕CT × (|a| ⌈ |b|)`.
 
-Affects: `= ≠ < ≤ ≥ >`, dyadic `⍳` (index-of), `∈` (membership).
+Affects: `= ≠ < ≤ ≥ >`, dyadic `⍳` (index-of), `∈` (membership), and numeric downcast (integer results from float arithmetic).
 
 Does **not** affect: `≡` (match) and `≢` (not-match), which always use exact comparison.
 
@@ -42,7 +44,176 @@ Does **not** affect: `≡` (match) and `≢` (not-match), which always use exact
 0
 ```
 
-Set `⎕CT←0` when you need exact floating-point comparison.
+### `⎕PP` — Print Precision
 
-!!! note
-    `⎕PP` (print precision) is not a settable system variable. Display precision is fixed at 10 significant digits.
+| | |
+|---|---|
+| **Default** | `10` |
+| **Valid values** | Positive integer |
+
+Controls the number of significant digits used when displaying floating-point numbers.
+
+```apl
+      ○1
+3.141592654
+      ⎕PP←4
+      ○1
+3.142
+      ⎕PP←17
+      0.1+0.2
+0.30000000000000004
+```
+
+### `⎕RL` — Random Link
+
+| | |
+|---|---|
+| **Default** | `1` |
+| **Valid values** | Any integer |
+
+Seed for the random number generator. Setting `⎕RL` makes `?` (roll/deal) produce reproducible sequences.
+
+```apl
+      ⎕RL←42
+      ?10
+4
+```
+
+### `⎕WSID` — Workspace ID
+
+| | |
+|---|---|
+| **Default** | `CLEAR WS` |
+| **Valid values** | Character vector |
+
+The name of the current workspace. Used by `)save` and `)load`.
+
+### `⎕FR` — Floating-point Representation
+
+| | |
+|---|---|
+| **Default** | `645` |
+| **Valid values** | `645` or `1287` |
+
+Controls the arithmetic mode, following Dyalog APL conventions:
+
+- `645` — IEEE binary float64 (default). Standard floating-point arithmetic.
+- `1287` — Decimal arithmetic using Python's `decimal.Decimal`. Provides exact results for addition, subtraction, and multiplication of decimal values.
+
+```apl
+      ⎕CT←0
+      (0.1+0.2)=0.3      ⍝ float: not exactly equal
+0
+      ⎕FR←1287
+      (0.1+0.2)=0.3      ⍝ decimal: exactly equal
+1
+      0.1×0.1
+0.01
+```
+
+## Read-only System Variables
+
+These variables can be queried but not assigned.
+
+### `⎕A` — Alphabet
+
+The 26 uppercase Latin letters: `ABCDEFGHIJKLMNOPQRSTUVWXYZ`
+
+### `⎕D` — Digits
+
+The 10 decimal digits: `0123456789`
+
+### `⎕TS` — Timestamp
+
+A 7-element integer vector: `year month day hour minute second millisecond`.
+
+```apl
+      ⎕TS
+2026 3 25 14 30 0 0
+```
+
+### `⎕EN` — Error Number
+
+The numeric code of the most recent caught error (via `⎕EA`). `0` if no error has been caught.
+
+### `⎕DM` — Diagnostic Message
+
+The text of the most recent caught error. Empty character vector if no error has been caught.
+
+### `⎕VER` — Version
+
+A character vector identifying the MARPLE version and platform, e.g. `MARPLE v0.4.3 on linux`.
+
+## System Functions
+
+These quad-names behave as functions (monadic or dyadic).
+
+### `⎕DR` — Data Representation
+
+**Monadic:** `⎕DR x` returns an integer code for the internal data type of `x`:
+
+| Code | Type |
+|------|------|
+| `11` | Boolean (uint8) |
+| `80` | Character |
+| `163` | 16-bit integer (int16, ulab) |
+| `323` | 32-bit integer (int32, numpy) |
+| `645` | 64-bit float (float64) |
+
+```apl
+      ⎕DR 42
+323
+      ⎕DR 3.14
+645
+      ⎕DR 'hello'
+80
+      ⎕DR 1 2 3=1 3 3
+11
+```
+
+**Dyadic:** `code ⎕DR x` converts `x` to the specified type.
+
+```apl
+      645 ⎕DR 42        ⍝ int to float
+42
+      ⎕DR 645 ⎕DR 42
+645
+```
+
+### `⎕EA` — Execute Alternate
+
+`alternate ⎕EA expression` — evaluates `expression` (a character vector). If it errors, evaluates `alternate` instead.
+
+```apl
+      '0' ⎕EA '2+3'     ⍝ succeeds: returns 5
+5
+      '0' ⎕EA '1÷0'     ⍝ fails: returns 0
+0
+```
+
+### `⎕UCS` — Universal Character Set
+
+Converts between characters and Unicode code points.
+
+```apl
+      ⎕UCS 65 66 67
+ABC
+      ⎕UCS 'A'
+65
+```
+
+### `⎕NC` — Name Class
+
+`⎕NC 'name'` returns the name class: 0 (undefined), 2 (array), 3 (function), 4 (operator).
+
+### `⎕EX` — Expunge
+
+`⎕EX 'name'` removes a name from the workspace. Returns 1 if successful, 0 if the name was not defined.
+
+### `⎕SIGNAL` — Signal Error
+
+`⎕SIGNAL code` raises an APL error with the given numeric code.
+
+```apl
+      ⎕SIGNAL 3          ⍝ raises DOMAIN ERROR
+```

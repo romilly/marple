@@ -26,10 +26,11 @@ MARPLE runs on the Raspberry Pi Pico 2 via MicroPython. See the [demo videos](ht
 - **Numeric type system** — automatic upcast/downcast prevents integer overflow; boolean uint8 for comparisons
 - **Matrices** — reshape, transpose, bracket indexing (`M[r;c]` any rank, index shape preserved), matrix inverse (`⌹`)
 - **Numpy backend** — automatic vectorization (73x faster for element-wise, 380x for outer product), with pure-Python fallback
-- **Web REPL** — browser-based REPL with language bar, workspace panel, session history, multi-line input
+- **Web REPL** — browser-based REPL over WebSocket with language bar, workspace panel, session history, multi-line input
+- **Pico web bridge** — evaluate APL on a connected Pico from the browser (`--pico-port /dev/ttyACM0`)
 - **Terminal REPL** — live backtick→glyph input, workspace save/load, APL-style formatting
 - **Script runner** — `marple script.marple` with session transcript output
-- **481 tests** + 45 Pico end-to-end tests, pyright strict
+- **528 tests** (481 interpreter + 47 web), pyright strict
 
 ## Quick start
 
@@ -71,7 +72,15 @@ HELLO
 python -m marple.web.server
 ```
 
-Open `http://localhost:8888/` in your browser. Features: clickable language bar, workspace panel, session history (up/down arrows), multi-line input (Shift+Enter).
+Open `http://localhost:8888/` in your browser. Communicates over WebSocket for real-time interaction. Features: clickable language bar, workspace panel, session history (up/down arrows), multi-line input (Shift+Enter).
+
+To evaluate APL on a connected Raspberry Pi Pico 2 from the browser:
+
+```bash
+python -m marple.web.server --pico-port /dev/ttyACM0
+```
+
+A Local/Pico toggle appears in the header bar. Switch to Pico mode to send expressions to the Pico over USB serial.
 
 ### Running scripts
 
