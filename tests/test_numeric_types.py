@@ -181,3 +181,178 @@ class TestBooleanDtype:
     def test_replicate_with_boolean(self) -> None:
         result = interpret("(3>⍳5)/⍳5")
         assert list(result.data) == [1, 2]
+
+
+@needs_backend
+class TestCrossDtypeArithmetic:
+    """Arithmetic must work correctly across all dtype combinations:
+    int, float, boolean (uint8)."""
+
+    # ── int × int ──
+    def test_int_add_int(self) -> None:
+        result = interpret("1 2 3+4 5 6")
+        assert list(result.data) == [5, 7, 9]
+        assert isinstance(result.data.tolist()[0], int)
+
+    def test_int_multiply_int(self) -> None:
+        result = interpret("2 3×4 5")
+        assert list(result.data) == [8, 15]
+
+    def test_int_subtract_int(self) -> None:
+        result = interpret("10 20-3 7")
+        assert list(result.data) == [7, 13]
+
+    # ── float × float ──
+    def test_float_add_float(self) -> None:
+        result = interpret("1.5 2.5+3.5 4.5")
+        assert list(result.data) == [5, 7]
+
+    def test_float_multiply_float(self) -> None:
+        env = default_env()
+        interpret("v←1.5 2.0", env)
+        result = interpret("v×0.5 3.0", env)
+        assert list(result.data) == [0.75, 6]
+
+    # ── int × float (mixed) ──
+    def test_int_add_float(self) -> None:
+        result = interpret("1 2 3+0.5 0.5 0.5")
+        assert list(result.data) == [1.5, 2.5, 3.5]
+
+    def test_float_add_int(self) -> None:
+        result = interpret("0.5 1.5+1 2")
+        assert list(result.data) == [1.5, 3.5]
+
+    def test_int_multiply_float(self) -> None:
+        result = interpret("2 3×1.5 2.5")
+        assert list(result.data) == [3, 7.5]
+
+    # ── boolean × int ──
+    def test_bool_add_int(self) -> None:
+        env = default_env()
+        interpret("b←1 2 3=1 3 3", env)  # b is uint8: 1 0 1
+        result = interpret("b+10 20 30", env)
+        assert list(result.data) == [11, 20, 31]
+
+    def test_int_add_bool(self) -> None:
+        env = default_env()
+        interpret("b←1 2 3=1 3 3", env)
+        result = interpret("10 20 30+b", env)
+        assert list(result.data) == [11, 20, 31]
+
+    def test_int_multiply_bool(self) -> None:
+        env = default_env()
+        interpret("b←1 2 3=1 3 3", env)
+        result = interpret("10 20 30×b", env)
+        assert list(result.data) == [10, 0, 30]
+
+    # ── boolean × float ──
+    def test_bool_add_float(self) -> None:
+        env = default_env()
+        interpret("b←1 2 3=1 3 3", env)
+        result = interpret("b+0.5 1.5 2.5", env)
+        assert list(result.data) == [1.5, 1.5, 3.5]
+
+    def test_float_multiply_bool(self) -> None:
+        env = default_env()
+        interpret("b←1 2 3=1 3 3", env)
+        result = interpret("3.14 2.71 1.41×b", env)
+        # 3.14×1, 2.71×0, 1.41×1
+        assert result.data.tolist()[1] == 0
+
+    # ── boolean × boolean ──
+    def test_bool_add_bool(self) -> None:
+        env = default_env()
+        interpret("a←1 0 1=1 1 1", env)  # 1 0 1
+        interpret("b←1 1 0=1 1 1", env)  # 1 1 0
+        result = interpret("a+b", env)
+        assert list(result.data) == [2, 1, 1]
+
+    def test_bool_multiply_bool(self) -> None:
+        env = default_env()
+        interpret("a←1 0 1=1 1 1", env)
+        interpret("b←1 1 0=1 1 1", env)
+        result = interpret("a×b", env)
+        assert list(result.data) == [1, 0, 0]
+
+    # ── scalar extension across dtypes ──
+    def test_scalar_int_add_float_vector(self) -> None:
+        result = interpret("10+0.5 1.5 2.5")
+        assert list(result.data) == [10.5, 11.5, 12.5]
+
+    def test_scalar_float_multiply_int_vector(self) -> None:
+        result = interpret("0.5×2 4 6")
+        assert list(result.data) == [1, 2, 3]
+
+    def test_scalar_int_add_bool_vector(self) -> None:
+        env = default_env()
+        interpret("b←1 2 3=1 3 3", env)
+        result = interpret("100+b", env)
+        assert list(result.data) == [101, 100, 101]
+
+
+@needs_backend
+class TestCrossDtypeReduce:
+    """Reduce must work across all dtypes."""
+
+    def test_reduce_int(self) -> None:
+        assert interpret("+/1 2 3 4") == S(10)
+
+    def test_reduce_float(self) -> None:
+        result = interpret("+/0.1 0.2 0.3")
+        assert abs(result.data.tolist()[0] - 0.6) < 1e-10
+
+    def test_reduce_bool(self) -> None:
+        env = default_env()
+        interpret("b←1 2 3 4 5>3", env)  # 0 0 0 1 1
+        result = interpret("+/b", env)
+        assert result == S(2)
+
+    def test_reduce_multiply_bool(self) -> None:
+        env = default_env()
+        interpret("b←1 1 1=1 1 1", env)  # 1 1 1
+        result = interpret("×/b", env)
+        assert result == S(1)
+
+
+@needs_backend
+class TestCrossDtypeProducts:
+    """Inner and outer products across dtypes."""
+
+    def test_inner_product_int(self) -> None:
+        assert interpret("1 2 3+.×4 5 6") == S(32)
+
+    def test_inner_product_float(self) -> None:
+        result = interpret("1.0 2.0+.×3.0 4.0")
+        assert result == S(11)
+
+    def test_inner_product_mixed(self) -> None:
+        result = interpret("1 2+.×0.5 1.5")
+        assert result == S(3.5)
+
+    def test_inner_product_bool(self) -> None:
+        env = default_env()
+        interpret("a←1 0 1=1 1 1", env)  # 1 0 1
+        interpret("b←1 1 0=1 1 1", env)  # 1 1 0
+        result = interpret("a+.×b", env)
+        assert result == S(1)
+
+    def test_outer_product_int(self) -> None:
+        result = interpret("1 2∘.×3 4")
+        assert list(result.data) == [3, 4, 6, 8]
+
+    def test_outer_product_float(self) -> None:
+        result = interpret("0.5 1.5∘.+0.1 0.2")
+        # 0.6 0.7 1.6 1.7
+        vals = result.data.tolist()
+        assert abs(vals[0] - 0.6) < 1e-10
+
+    def test_outer_product_mixed(self) -> None:
+        result = interpret("1 2∘.×0.5 1.5")
+        assert list(result.data) == [0.5, 1.5, 1, 3]
+
+    def test_outer_product_bool(self) -> None:
+        env = default_env()
+        interpret("a←1 0=1 1", env)  # 1 0
+        interpret("b←0 1=1 1", env)  # 0 1
+        result = interpret("a∘.∧b", env)
+        assert list(result.data) == [0, 1, 0, 0]
