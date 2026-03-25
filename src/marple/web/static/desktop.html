@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MARPLE</title>
+    <title>PRIDE — MARPLE Web IDE</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <style>
         body {
@@ -31,7 +32,8 @@
             background: none;
             color: inherit;
         }
-        pre.input { color: #c0c0c0; }
+        pre.input { color: #c0c0c0; cursor: pointer; }
+        pre.input:hover { background: #1a2a4a; border-radius: 3px; }
         pre.output { color: #e0e0e0; }
         pre.error { color: #ff6b6b; }
         #input-bar {
@@ -97,7 +99,22 @@
 </head>
 <body>
     <div class="header-bar d-flex justify-content-between align-items-center">
-        <span>MARPLE</span>
+        <span class="d-flex align-items-center gap-3">
+            <strong>PRIDE</strong>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                        type="button" data-bs-toggle="dropdown" style="font-size:0.85em;">
+                    Session
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark">
+                    <li><a class="dropdown-item" href="#" id="menu-save">Save...</a></li>
+                    <li><a class="dropdown-item" href="#" id="menu-load">Load...</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="https://romilly.github.io/marple/"
+                           target="_blank">Docs &#8599;</a></li>
+                </ul>
+            </div>
+        </span>
         <span class="d-flex align-items-center gap-3">
             <span id="mode-toggle" style="display:none; font-size:0.8em;">
                 <label style="cursor:pointer; margin-right:0.5em;">
@@ -136,6 +153,19 @@
     const history = [];
     let historyPos = -1;
 
+    // Click to re-edit: click any input line to copy it to the input area
+    function attachInputClickHandlers() {
+        session.querySelectorAll('pre.input').forEach(function(el) {
+            if (!el.dataset.clickBound) {
+                el.dataset.clickBound = '1';
+                el.addEventListener('click', function() {
+                    input.value = el.textContent.trim();
+                    input.focus();
+                });
+            }
+        });
+    }
+
     // WebSocket connection
     let ws;
     function connectWS() {
@@ -155,6 +185,7 @@
             if (msg.type === 'result') {
                 session.insertAdjacentHTML('beforeend', msg.html);
                 session.scrollTop = session.scrollHeight;
+                attachInputClickHandlers();
             } else if (msg.type === 'workspace') {
                 workspace.innerHTML = msg.html;
                 workspace.querySelectorAll('.ws-item').forEach(function(el) {
@@ -163,6 +194,22 @@
                         input.focus();
                     });
                 });
+            } else if (msg.type === 'session_saved') {
+                session.insertAdjacentHTML('beforeend',
+                    '<div class="entry"><pre class="output">Session saved: ' +
+                    msg.name + '</pre></div>');
+                session.scrollTop = session.scrollHeight;
+            } else if (msg.type === 'session_loaded') {
+                session.innerHTML = msg.html;
+                attachInputClickHandlers();
+                session.scrollTop = session.scrollHeight;
+            } else if (msg.type === 'session_list') {
+                showLoadDialog(msg.sessions);
+            } else if (msg.type === 'error') {
+                session.insertAdjacentHTML('beforeend',
+                    '<div class="entry"><pre class="error">' +
+                    msg.message + '</pre></div>');
+                session.scrollTop = session.scrollHeight;
             }
             input.focus();
         };
@@ -292,6 +339,33 @@
             modeToggle.style.display = '';
         }
     }).catch(function() {});
+
+    // Session save/load menu handlers
+    document.getElementById('menu-save').addEventListener('click', function(e) {
+        e.preventDefault();
+        var name = prompt('Session name:');
+        if (name && ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({type: 'save_session', name: name}));
+        }
+    });
+
+    document.getElementById('menu-load').addEventListener('click', function(e) {
+        e.preventDefault();
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({type: 'list_sessions'}));
+        }
+    });
+
+    function showLoadDialog(sessions) {
+        if (sessions.length === 0) {
+            alert('No saved sessions found.');
+            return;
+        }
+        var choice = prompt('Load session:\\n' + sessions.join('\\n') + '\\n\\nEnter name:');
+        if (choice && ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({type: 'load_session', name: choice}));
+        }
+    }
 
     input.focus();
     </script>

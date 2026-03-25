@@ -123,3 +123,13 @@ def test_multiple_expressions_accumulate(page):
     assert page.locator(".entry").count() >= 3
     text = get_session_text(page)
     assert "2" in text and "4" in text and "6" in text
+
+
+def test_click_input_to_reedit(page):
+    """Clicking a previous input line copies it to the input textarea."""
+    submit_expr(page, "2+3")
+    submit_expr(page, "⍳5")
+    # Click the first input line (2+3)
+    first_input = page.locator("pre.input").first
+    first_input.click()
+    assert page.locator("#input").input_value() == "2+3"

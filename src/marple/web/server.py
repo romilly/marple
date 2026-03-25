@@ -28,6 +28,7 @@ class WebSession:
 
     def __init__(self) -> None:
         self.env: dict[str, Any] = default_env()
+        self.transcript: list[tuple[str, str]] = []  # (input, output_or_error)
 
     def evaluate(self, expr: str) -> str:
         """Evaluate an APL expression. Return an HTML fragment."""
@@ -35,12 +36,15 @@ class WebSession:
         try:
             result = interpret(expr, self.env)
             if _is_silent(expr):
+                self.transcript.append((expr, ""))
                 return (
                     f'<div class="entry">'
                     f'<pre class="input">{input_html}</pre>'
                     f"</div>"
                 )
-            output_html = html.escape(format_result(result, self.env))
+            output = format_result(result, self.env)
+            self.transcript.append((expr, output))
+            output_html = html.escape(output)
             return (
                 f'<div class="entry">'
                 f'<pre class="input">{input_html}</pre>'
@@ -48,6 +52,7 @@ class WebSession:
                 f"</div>"
             )
         except APLError as e:
+            self.transcript.append((expr, "ERROR: " + str(e)))
             error_html = html.escape(str(e))
             return (
                 f'<div class="entry">'
@@ -129,6 +134,61 @@ class WebSession:
             parts.append('<div class="ws-section"><h4>Functions</h4>'
                          + "".join(fns_list) + "</div>")
         return "".join(parts)
+
+    def save_session(self, name: str, sessions_dir: str) -> None:
+        """Save the session transcript as a markdown file."""
+        import os
+        from datetime import datetime
+        os.makedirs(sessions_dir, exist_ok=True)
+        path = os.path.join(sessions_dir, name + ".md")
+        lines = [f"# MARPLE Session — {name}",
+                 f"Saved: {datetime.now().isoformat(timespec='seconds')}",
+                 "", "```apl"]
+        for expr, output in self.transcript:
+            lines.append(INPUT_INDENT + expr)
+            if output:
+                lines.append(output)
+        lines.append("```")
+        lines.append("")
+        with open(path, "w") as f:
+            f.write("\n".join(lines))
+
+    def load_session(self, name: str, sessions_dir: str) -> str:
+        """Load a session from markdown, replay expressions, return HTML."""
+        import os
+        path = os.path.join(sessions_dir, name + ".md")
+        with open(path) as f:
+            text = f.read()
+        # Parse the markdown: extract input lines (indented with 6 spaces)
+        exprs: list[str] = []
+        in_code = False
+        for line in text.split("\n"):
+            if line.strip().startswith("```apl"):
+                in_code = True
+                continue
+            if line.strip().startswith("```"):
+                in_code = False
+                continue
+            if in_code and line.startswith(INPUT_INDENT):
+                exprs.append(line[len(INPUT_INDENT):])
+        # Reset and replay
+        self.env.clear()
+        self.env.update(default_env())
+        self.transcript.clear()
+        fragments: list[str] = []
+        for expr in exprs:
+            fragments.append(self.evaluate(expr))
+        return "".join(fragments)
+
+    @staticmethod
+    def list_sessions(sessions_dir: str) -> list[str]:
+        """List available session names."""
+        import os
+        if not os.path.isdir(sessions_dir):
+            return []
+        return sorted(
+            f[:-3] for f in os.listdir(sessions_dir) if f.endswith(".md")
+        )
 
 
 async def handle_index(request: web.Request) -> web.Response:
@@ -235,6 +295,27 @@ async def handle_ws(request: web.Request) -> web.WebSocketResponse:
                 fragment = session.system_command(cmd)
                 await ws.send_json({"type": "result", "html": fragment})
                 await ws.send_json({"type": "workspace", "html": session.workspace_fragment()})
+            elif msg_type == "save_session":
+                name = data.get("name", "")
+                sessions_dir = request.app.get("sessions_dir", "sessions")
+                try:
+                    session.save_session(name, sessions_dir)
+                    await ws.send_json({"type": "session_saved", "name": name})
+                except Exception as e:
+                    await ws.send_json({"type": "error", "message": str(e)})
+            elif msg_type == "load_session":
+                name = data.get("name", "")
+                sessions_dir = request.app.get("sessions_dir", "sessions")
+                try:
+                    html_content = session.load_session(name, sessions_dir)
+                    await ws.send_json({"type": "session_loaded", "html": html_content})
+                    await ws.send_json({"type": "workspace", "html": session.workspace_fragment()})
+                except Exception as e:
+                    await ws.send_json({"type": "error", "message": str(e)})
+            elif msg_type == "list_sessions":
+                sessions_dir = request.app.get("sessions_dir", "sessions")
+                sessions = WebSession.list_sessions(sessions_dir)
+                await ws.send_json({"type": "session_list", "sessions": sessions})
             else:
                 await ws.send_json({"type": "error", "message": "Unknown message type: " + str(msg_type)})
         elif msg.type in (web.WSMsgType.ERROR, web.WSMsgType.CLOSE):

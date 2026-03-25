@@ -144,6 +144,51 @@ async def test_ws_pico_eval(aiohttp_client, app_with_pico):
     await ws.close()
 
 
+async def test_ws_save_and_list_sessions(aiohttp_client, app, tmp_path):
+    app["sessions_dir"] = str(tmp_path)
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/ws")
+    # Eval something to have a transcript
+    await ws.send_json({"type": "eval", "expr": "2+3"})
+    await ws.receive_json()  # result
+    await ws.receive_json()  # workspace
+    # Save
+    await ws.send_json({"type": "save_session", "name": "test1"})
+    msg = await ws.receive_json()
+    assert msg["type"] == "session_saved"
+    assert msg["name"] == "test1"
+    # List
+    await ws.send_json({"type": "list_sessions"})
+    msg = await ws.receive_json()
+    assert msg["type"] == "session_list"
+    assert "test1" in msg["sessions"]
+    await ws.close()
+
+
+async def test_ws_load_session(aiohttp_client, app, tmp_path):
+    app["sessions_dir"] = str(tmp_path)
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/ws")
+    # Eval and save
+    await ws.send_json({"type": "eval", "expr": "x←42"})
+    await ws.receive_json()  # result
+    await ws.receive_json()  # workspace
+    await ws.send_json({"type": "eval", "expr": "x+1"})
+    await ws.receive_json()  # result
+    await ws.receive_json()  # workspace
+    await ws.send_json({"type": "save_session", "name": "test2"})
+    await ws.receive_json()  # saved
+    # Clear and load
+    await ws.send_json({"type": "system", "cmd": ")clear"})
+    await ws.receive_json()  # result
+    await ws.receive_json()  # workspace
+    await ws.send_json({"type": "load_session", "name": "test2"})
+    msg = await ws.receive_json()
+    assert msg["type"] == "session_loaded"
+    assert "42" in msg["html"] or "43" in msg["html"]
+    await ws.close()
+
+
 async def test_ws_pico_then_local(aiohttp_client, app_with_pico):
     client = await aiohttp_client(app_with_pico)
     ws = await client.ws_connect("/ws")
