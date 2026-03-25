@@ -6,13 +6,13 @@ Usage:
 
 import html
 import json
-from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 try:
     from typing import Any
 except ImportError:
     pass
-from urllib.parse import parse_qs
+
+from aiohttp import web
 
 from marple.arraymodel import APLArray
 from marple.errors import APLError
@@ -131,85 +131,50 @@ class WebSession:
         return "".join(parts)
 
 
-class MARPLEHandler(BaseHTTPRequestHandler):
-    """HTTP request handler for the MARPLE web REPL."""
-
-    def do_GET(self) -> None:
-        if self.path == "/":
-            self._serve_file("desktop.html", "text/html")
-        elif self.path == "/health":
-            self._send_json({"status": "ok"})
-        elif self.path == "/workspace":
-            fragment = self.server.session.workspace_fragment()  # type: ignore[attr-defined]
-            self._send_html(fragment)
-        else:
-            self.send_error(404)
-
-    def do_POST(self) -> None:
-        body = self._read_form_body()
-        if body is None:
-            return
-        if self.path == "/eval":
-            expr = body.get("expr", [""])[0]
-            if not expr:
-                self.send_error(400, "Empty expression")
-                return
-            fragment = self.server.session.evaluate(expr)  # type: ignore[attr-defined]
-            self._send_html(fragment)
-        elif self.path == "/system":
-            cmd = body.get("cmd", [""])[0]
-            if not cmd:
-                self.send_error(400, "Empty command")
-                return
-            fragment = self.server.session.system_command(cmd)  # type: ignore[attr-defined]
-            self._send_html(fragment)
-        else:
-            self.send_error(404)
-
-    def _read_form_body(self) -> dict[str, list[str]] | None:
-        length = int(self.headers.get("Content-Length", 0))
-        if length == 0:
-            self.send_error(400, "Empty body")
-            return None
-        raw = self.rfile.read(length).decode("utf-8")
-        return parse_qs(raw, keep_blank_values=True)
-
-    def _send_html(self, fragment: str) -> None:
-        data = fragment.encode("utf-8")
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
-        self.send_header("Content-Length", str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
-
-    def _send_json(self, obj: object) -> None:
-        data = json.dumps(obj).encode("utf-8")
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
-
-    def _serve_file(self, filename: str, content_type: str) -> None:
-        path = STATIC_DIR / filename
-        if not path.is_file():
-            self.send_error(404)
-            return
-        data = path.read_bytes()
-        self.send_response(200)
-        self.send_header("Content-Type", f"{content_type}; charset=utf-8")
-        self.send_header("Content-Length", str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
-
-    def log_message(self, format: str, *args: object) -> None:
-        pass  # suppress per-request logging
+async def handle_index(request: web.Request) -> web.Response:
+    path = STATIC_DIR / "desktop.html"
+    return web.FileResponse(path)
 
 
-def create_server(port: int = 8888) -> HTTPServer:
-    server = HTTPServer(("", port), MARPLEHandler)
-    server.session = WebSession()  # type: ignore[attr-defined]
-    return server
+async def handle_health(request: web.Request) -> web.Response:
+    return web.json_response({"status": "ok"})
+
+
+async def handle_workspace(request: web.Request) -> web.Response:
+    session: WebSession = request.app["session"]
+    fragment = session.workspace_fragment()
+    return web.Response(text=fragment, content_type="text/html")
+
+
+async def handle_eval(request: web.Request) -> web.Response:
+    data = await request.post()
+    expr = data.get("expr", "")
+    if not expr:
+        return web.Response(status=400, text="Empty expression")
+    session: WebSession = request.app["session"]
+    fragment = session.evaluate(str(expr))
+    return web.Response(text=fragment, content_type="text/html")
+
+
+async def handle_system(request: web.Request) -> web.Response:
+    data = await request.post()
+    cmd = data.get("cmd", "")
+    if not cmd:
+        return web.Response(status=400, text="Empty command")
+    session: WebSession = request.app["session"]
+    fragment = session.system_command(str(cmd))
+    return web.Response(text=fragment, content_type="text/html")
+
+
+def create_app() -> web.Application:
+    app = web.Application()
+    app["session"] = WebSession()
+    app.router.add_get("/", handle_index)
+    app.router.add_get("/health", handle_health)
+    app.router.add_get("/workspace", handle_workspace)
+    app.router.add_post("/eval", handle_eval)
+    app.router.add_post("/system", handle_system)
+    return app
 
 
 if __name__ == "__main__":
@@ -217,6 +182,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8888)
     args = parser.parse_args()
-    server = create_server(args.port)
     print(f"MARPLE Web REPL: http://localhost:{args.port}/")
-    server.serve_forever()
+    web.run_app(create_app(), port=args.port, print=None)
