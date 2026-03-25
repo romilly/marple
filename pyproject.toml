@@ -54,3 +54,4 @@ addopts = "-v --tb=short -m 'not pico'"
 markers = [
     "pico: end-to-end tests requiring a connected Raspberry Pi Pico (deselect with '-m not pico')",
 ]
+asyncio_mode = "auto"

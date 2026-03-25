@@ -166,6 +166,37 @@ async def handle_system(request: web.Request) -> web.Response:
     return web.Response(text=fragment, content_type="text/html")
 
 
+async def handle_ws(request: web.Request) -> web.WebSocketResponse:
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
+    session: WebSession = request.app["session"]
+
+    async for msg in ws:
+        if msg.type == web.WSMsgType.TEXT:
+            try:
+                data = json.loads(msg.data)
+            except (json.JSONDecodeError, ValueError):
+                await ws.send_json({"type": "error", "message": "Invalid JSON"})
+                continue
+            msg_type = data.get("type")
+            if msg_type == "eval":
+                expr = data.get("expr", "")
+                fragment = session.evaluate(expr)
+                await ws.send_json({"type": "result", "html": fragment})
+                await ws.send_json({"type": "workspace", "html": session.workspace_fragment()})
+            elif msg_type == "system":
+                cmd = data.get("cmd", "")
+                fragment = session.system_command(cmd)
+                await ws.send_json({"type": "result", "html": fragment})
+                await ws.send_json({"type": "workspace", "html": session.workspace_fragment()})
+            else:
+                await ws.send_json({"type": "error", "message": "Unknown message type: " + str(msg_type)})
+        elif msg.type in (web.WSMsgType.ERROR, web.WSMsgType.CLOSE):
+            break
+
+    return ws
+
+
 def create_app() -> web.Application:
     app = web.Application()
     app["session"] = WebSession()
@@ -174,6 +205,7 @@ def create_app() -> web.Application:
     app.router.add_get("/workspace", handle_workspace)
     app.router.add_post("/eval", handle_eval)
     app.router.add_post("/system", handle_system)
+    app.router.add_get("/ws", handle_ws)
     return app
 
 

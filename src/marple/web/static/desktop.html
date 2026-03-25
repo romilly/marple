@@ -98,6 +98,7 @@
 <body>
     <div class="header-bar d-flex justify-content-between align-items-center">
         <span>MARPLE</span>
+        <span id="ws-status" style="font-size:0.8em; color:#666;">connecting...</span>
     </div>
     <div class="row g-0 main-row">
         <div class="col-md-9 col-lg-10" id="session-col">
@@ -119,10 +120,44 @@
     const input = document.getElementById('input');
     const session = document.getElementById('session');
     const workspace = document.getElementById('workspace');
+    const wsStatus = document.getElementById('ws-status');
 
     // State
     const history = [];
     let historyPos = -1;
+
+    // WebSocket connection
+    let ws;
+    function connectWS() {
+        const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        ws = new WebSocket(proto + '//' + location.host + '/ws');
+        ws.onopen = function() {
+            wsStatus.textContent = 'connected';
+            wsStatus.style.color = '#4a4';
+        };
+        ws.onclose = function() {
+            wsStatus.textContent = 'disconnected';
+            wsStatus.style.color = '#a44';
+            setTimeout(connectWS, 2000);
+        };
+        ws.onmessage = function(e) {
+            var msg = JSON.parse(e.data);
+            if (msg.type === 'result') {
+                session.insertAdjacentHTML('beforeend', msg.html);
+                session.scrollTop = session.scrollHeight;
+            } else if (msg.type === 'workspace') {
+                workspace.innerHTML = msg.html;
+                workspace.querySelectorAll('.ws-item').forEach(function(el) {
+                    el.addEventListener('click', function() {
+                        insertAtCursor(input, el.dataset.name);
+                        input.focus();
+                    });
+                });
+            }
+            input.focus();
+        };
+    }
+    connectWS();
 
     function insertAtCursor(el, text) {
         const start = el.selectionStart;
@@ -217,35 +252,21 @@
         history.push(raw);
         historyPos = -1;
 
-        const url = text.startsWith(')') ? '/system' : '/eval';
-        const param = text.startsWith(')') ? 'cmd' : 'expr';
-        const body = new URLSearchParams();
-        body.set(param, text);
-
-        (async function() {
-            try {
-                const resp = await fetch(url, {
-                    method: 'POST',
-                    headers: {'Content-Type':
-                        'application/x-www-form-urlencoded'},
-                    body: body.toString()
-                });
-                const fragment = await resp.text();
-                session.insertAdjacentHTML('beforeend', fragment);
-                session.scrollTop = session.scrollHeight;
-            } catch (err) {
-                session.insertAdjacentHTML('beforeend',
-                    '<div class="entry">' +
-                    '<pre class="error">Connection error</pre>' +
-                    '</div>');
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            if (text.startsWith(')')) {
+                ws.send(JSON.stringify({type: 'system', cmd: text}));
+            } else {
+                ws.send(JSON.stringify({type: 'eval', expr: text}));
             }
-            await refreshWorkspace();
-            input.focus();
-        })();
+        } else {
+            session.insertAdjacentHTML('beforeend',
+                '<div class="entry">' +
+                '<pre class="error">Not connected</pre>' +
+                '</div>');
+        }
     });
 
     input.focus();
-    refreshWorkspace();
     </script>
 </body>
 </html>
