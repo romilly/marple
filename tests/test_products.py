@@ -18,6 +18,42 @@ class TestInnerProduct:
         assert result == APLArray([2, 2], [19, 22, 43, 50])
 
 
+    def test_matrix_multiply_float(self) -> None:
+        # Float matrices must not crash or return scalar
+        env = default_env()
+        interpret("A←2 3⍴1.5 2.5 3.5 4.5 5.5 6.5", env)
+        interpret("B←3 2⍴0.1 0.2 0.3 0.4 0.5 0.6", env)
+        result = interpret("A+.×B", env)
+        assert result.shape == [2, 2]
+
+    def test_matrix_multiply_non_square(self) -> None:
+        # (2 3⍴⍳6)+.×(3 2⍴⍳6) → 2×2 matrix
+        # [1 2 3] × [1 2] = [1×1+2×3+3×5  1×2+2×4+3×6] = [22 28]
+        # [4 5 6]   [3 4]   [4×1+5×3+6×5  4×2+5×4+6×6]   [49 64]
+        #           [5 6]
+        env = default_env()
+        interpret("A←2 3⍴⍳6", env)
+        interpret("B←3 2⍴⍳6", env)
+        result = interpret("A+.×B", env)
+        assert result.shape == [2, 2]
+        assert list(result.data) == [22, 28, 49, 64]
+
+    def test_matrix_vector_inner(self) -> None:
+        # (2 3⍴⍳6)+.×1 2 3 → vector of length 2
+        env = default_env()
+        interpret("M←2 3⍴⍳6", env)
+        result = interpret("M+.×1 2 3", env)
+        assert result.shape == [2]
+        assert list(result.data) == [14, 32]
+
+    def test_vector_matrix_inner(self) -> None:
+        # 1 2+.×(2 3⍴⍳6) → vector of length 3
+        env = default_env()
+        interpret("M←2 3⍴⍳6", env)
+        result = interpret("1 2+.×M", env)
+        assert result.shape == [3]
+        assert list(result.data) == [9, 12, 15]
+
     def test_length_error(self) -> None:
         # 2 3+.×3 4 5 → length error (2 vs 3)
         import pytest

@@ -569,10 +569,10 @@ def _inner_product(
         result = np.tensordot(a, b, axes=([-1], [0]))
         if hasattr(result, "shape") and len(result.shape) == 0:
             return S(maybe_downcast_scalar(result.item(), _DOWNCAST_CT))
-        if is_numeric_array(result):
-            result = maybe_downcast(result, _DOWNCAST_CT)
+        result_shape = list(result.shape) if hasattr(result, "shape") else []
         result_flat = result.ravel() if hasattr(result, "ravel") else result
-        result_shape = list(result.shape) if hasattr(result, "shape") else [len(result_flat)]
+        if is_numeric_array(result_flat):
+            result_flat = maybe_downcast(result_flat, _DOWNCAST_CT)
         return APLArray(result_shape, result_flat)
 
     # Vector inner product: reduce(apply(a, b))
@@ -601,7 +601,7 @@ def _inner_product(
                     val = reduce_fn(paired[idx], val)
                 result_data.append(val.data[0])
         return APLArray([m, n], result_data)
-    # Vector × matrix or matrix × vector
+    # Vector × matrix
     if len(alpha.shape) == 1 and len(omega.shape) == 2:
         k, n = omega.shape
         if len(alpha.data) != k:
@@ -615,6 +615,22 @@ def _inner_product(
                 val = reduce_fn(paired[idx], val)
             result_data.append(val.data[0])
         return APLArray([n], result_data)
+    # Matrix × vector
+    if len(alpha.shape) == 2 and len(omega.shape) == 1:
+        m, k1 = alpha.shape
+        if k1 != len(omega.data):
+            raise LengthError(f"Inner product shape mismatch")
+        a_data = to_list(alpha.data)
+        b_data = to_list(omega.data)
+        result_data = []
+        for i in range(m):
+            row = [a_data[i * k1 + p] for p in range(k1)]
+            paired = [apply_fn(S(a), S(b)) for a, b in zip(row, b_data)]
+            val = paired[-1]
+            for idx in range(len(paired) - 2, -1, -1):
+                val = reduce_fn(paired[idx], val)
+            result_data.append(val.data[0])
+        return APLArray([m], result_data)
     raise RankError(f"Inner product not supported for shapes {alpha.shape} and {omega.shape}")
 
 
