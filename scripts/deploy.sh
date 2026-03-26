@@ -15,7 +15,6 @@ echo "Deploying marple to Pico 2..."
 mpremote \
     mkdir :marple + \
     mkdir :marple/stdlib + \
-    mkdir :marple/stdlib/io + \
     mkdir :marple/stdlib/str + \
     cp src/marple/__init__.py :marple/__init__.py + \
     cp src/marple/arraymodel.py :marple/arraymodel.py + \
@@ -33,10 +32,7 @@ mpremote \
     cp src/marple/namespace.py :marple/namespace.py + \
     cp src/marple/formatting.py :marple/formatting.py + \
     cp src/marple/stdlib/__init__.py :marple/stdlib/__init__.py + \
-    cp src/marple/stdlib/io_impl.py :marple/stdlib/io_impl.py + \
     cp src/marple/stdlib/str_impl.py :marple/stdlib/str_impl.py + \
-    cp src/marple/stdlib/io/nread.apl :marple/stdlib/io/nread.apl + \
-    cp src/marple/stdlib/io/nwrite.apl :marple/stdlib/io/nwrite.apl + \
     cp src/marple/stdlib/str/lower.apl :marple/stdlib/str/lower.apl + \
     cp src/marple/stdlib/str/trim.apl :marple/stdlib/str/trim.apl + \
     cp src/marple/stdlib/str/upper.apl :marple/stdlib/str/upper.apl + \

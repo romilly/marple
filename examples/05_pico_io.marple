@@ -4,14 +4,18 @@
 ⍝ ═══════════════════════════════════════════════════
 
 ⍝ ── Write a file ──
-#import $::io::nwrite
-#import $::io::nread
-
-'Hello from MARPLE on Pico!' nwrite '/test.txt'
+'Hello from MARPLE on Pico!' ⎕NWRITE '/test.txt'
 
 ⍝ ── Read it back ──
-nread '/test.txt'
+⎕NREAD '/test.txt'
 
 ⍝ ── Write and read numeric data as text ──
-(⍕⍳10) nwrite '/nums.txt'
-nread '/nums.txt'
+(⍕⍳10) ⎕NWRITE '/nums.txt'
+⎕NREAD '/nums.txt'
+
+⍝ ── Check existence ──
+⎕NEXISTS '/test.txt'
+
+⍝ ── Clean up ──
+⎕NDELETE '/test.txt'
+⎕NDELETE '/nums.txt'

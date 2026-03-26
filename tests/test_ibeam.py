@@ -27,28 +27,6 @@ class TestIBeamBasic:
         assert result == APLArray([5], list("WORLD"))
 
 
-class TestIBeamIO:
-    def test_nread(self) -> None:
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
-            f.write("hello world")
-            path = f.name
-        try:
-            result = interpret(f"(⌶'marple.stdlib.io_impl.nread') '{path}'")
-            assert result == APLArray([11], list("hello world"))
-        finally:
-            os.unlink(path)
-
-    def test_dyadic_nwrite(self) -> None:
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
-            path = f.name
-        try:
-            interpret(f"'test data' (⌶'marple.stdlib.io_impl.nwrite') '{path}'")
-            with open(path) as f:
-                assert f.read() == "test data"
-        finally:
-            os.unlink(path)
-
-
 class TestIBeamErrors:
     def test_bad_module(self) -> None:
         with pytest.raises(Exception, match="DOMAIN ERROR"):

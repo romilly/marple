@@ -66,21 +66,18 @@ Use colon-separated qualified names:
 MARPLE provides a built-in system workspace referenced by `$`. It contains utility functions organised into namespaces:
 
 ```apl
-      $:io:nread '/tmp/data.txt'       ⍝ read a file
-      $:str:trim '  hello  '           ⍝ trim whitespace
-      $:error:ea                        ⍝ execute with error handling
+      $::str::trim '  hello  '          ⍝ trim whitespace
+      ⎕NREAD '/tmp/data.txt'            ⍝ read a file (system function)
 ```
 
-`$` is always available, regardless of your current workspace.
+`$` is always available, regardless of your current workspace. File I/O uses system functions (`⎕NREAD`, `⎕NWRITE`, `⎕NEXISTS`, `⎕NDELETE`) rather than the standard library.
 
 ### Available standard library namespaces
 
 | Namespace | Purpose |
 |-----------|---------|
-| `$:io` | File I/O — `nread`, `nwrite`, `nexists`, `ndelete` |
-| `$:str` | String utilities — `trim`, `split`, `join`, `upper`, `lower`, `u`, `v2m` |
-| `$:sys` | System access — `argv`, `exit`, `env` |
-| `$:error` | Error handling — `ea`, `en` |
+| `$::str` | String utilities — `trim`, `upper`, `lower` |
+| `$::error` | Error handling — `ea`, `en` |
 
 See the [Standard Library Reference](../../reference/standard-library/index.md) for full details.
 
@@ -89,14 +86,11 @@ See the [Standard Library Reference](../../reference/standard-library/index.md) 
 To avoid typing full qualified names, use `#import`:
 
 ```apl
-      #import $:io:nread                ⍝ import as nread
-      #import $:str:trim as strip       ⍝ import with alias
-      #import $:str                     ⍝ import namespace — use as str:trim
+      #import $::str::trim as strip    ⍝ import with alias
+      #import $::str                   ⍝ import namespace — use as str::trim
 ```
 
 Import directives work in the REPL and in `.apl` source files. They are not valid inside dfns — use qualified names there.
-
-<!-- TODO: Romilly — confirm that #import is implemented, or mark this as planned -->
 
 ## Key points
 

@@ -27,6 +27,6 @@ and the rank operator applied to matrices and 3D arrays.
 ## Demo 3: Namespaces and Standard Library
 
 Qualified names (`$::str::upper`), `#import` directives, aliases, file I/O
-(`nwrite`/`nread`), and the i-beam operator for direct Python FFI.
+(`⎕NWRITE`/`⎕NREAD`), and the i-beam operator for direct Python FFI.
 
 <video src="picoapl-2026-03-23_17.25.09.mp4" controls style="width:100%; max-width:1200px;"></video>

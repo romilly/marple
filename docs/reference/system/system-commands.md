@@ -49,4 +49,4 @@ Directives begin with `#` and work in both the REPL and script files:
 |-----------|-------------|
 | `#import $::str::upper` | Import a function by its qualified name |
 | `#import $::str::upper as up` | Import with an alias |
-| `#import $::io` | Import a namespace |
+| `#import $::str` | Import a namespace |

@@ -8,9 +8,8 @@
 Once `v2m` is available, you will be able to split a file into a character matrix with one row per line:
 
 ```apl
-      #import $::io::nread
       #import $::str::v2m
-      data ← v2m nread '/path/to/file.txt'
+      data ← v2m ⎕NREAD '/path/to/file.txt'
 ```
 
 ## Current workaround
@@ -18,8 +17,7 @@ Once `v2m` is available, you will be able to split a file into a character matri
 You can read the file as a character vector and process it using the available primitives:
 
 ```apl
-      #import $::io::nread
-      text ← nread '/path/to/file.txt'
+      text ← ⎕NREAD '/path/to/file.txt'
 ```
 
 See also: [Read a text file](read-text-file.md)

@@ -127,24 +127,18 @@ class TestPicoNamespaces:
 
 class TestPicoFileIO:
     def test_write_and_read(self, pico):
-        pico.eval_silent("#import $::io::nwrite")
-        pico.eval_silent("#import $::io::nread")
-        pico.eval_silent("'hello pico' nwrite '/test_e2e.txt'")
-        assert pico.eval("nread '/test_e2e.txt'") == "hello pico"
+        pico.eval_silent("'hello pico' ⎕NWRITE '/test_e2e.txt'")
+        assert pico.eval("⎕NREAD '/test_e2e.txt'") == "hello pico"
 
     def test_write_read_round_trip(self, pico):
-        pico.eval_silent("#import $::io::nwrite")
-        pico.eval_silent("#import $::io::nread")
-        pico.eval_silent("'one two three' nwrite '/words_e2e.txt'")
-        assert pico.eval("nread '/words_e2e.txt'") == "one two three"
+        pico.eval_silent("'one two three' ⎕NWRITE '/words_e2e.txt'")
+        assert pico.eval("⎕NREAD '/words_e2e.txt'") == "one two three"
 
-    def test_write_read_with_variable_left_arg(self, pico):
-        pico.eval_silent("#import $::io::nwrite")
-        pico.eval_silent("#import $::io::nread")
-        pico.eval_silent("nums←⍕⍳5")
-        pico.eval_silent("nums nwrite '/nums_e2e.txt'")
-        result = pico.eval("nread '/nums_e2e.txt'")
-        assert result in ("1 2 3 4 5", "1.0 2.0 3.0 4.0 5.0")
+    def test_nexists(self, pico):
+        pico.eval_silent("'test' ⎕NWRITE '/exists_e2e.txt'")
+        assert pico.eval("⎕NEXISTS '/exists_e2e.txt'") == "1"
+        pico.eval_silent("⎕NDELETE '/exists_e2e.txt'")
+        assert pico.eval("⎕NEXISTS '/exists_e2e.txt'") == "0"
 
 
 class TestPicoErrorHandling:

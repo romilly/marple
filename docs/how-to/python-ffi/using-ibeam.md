@@ -3,14 +3,16 @@
 The `⌶` operator calls Python functions from APL. Its operand is a string naming a Python callable using dotted module path notation:
 
 ```apl
-      (⌶'marple.stdlib.io_impl.nread') '/tmp/data.txt'
+      (⌶'marple.stdlib.str_impl.upper') 'hello'
+HELLO
 ```
 
 ## Assign to a name for reuse
 
 ```apl
-      readfile ← ⌶'marple.stdlib.io_impl.nread'
-      readfile '/tmp/data.txt'
+      up ← ⌶'marple.stdlib.str_impl.upper'
+      up 'hello world'
+HELLO WORLD
 ```
 
 The derived function is first-class -- you can assign it, pass it to operators, and call it monadically or dyadically.

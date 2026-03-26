@@ -19,13 +19,13 @@ trim '  no more padding  '
 #import $::str::lower as lc
 lc 'SHOUTY'
 
-⍝ ── File I/O: write then read a data file ──
-#import $::io::nwrite
-#import $::io::nread
-'Hello from MARPLE!' nwrite '/demo.txt'
-raw ← nread '/demo.txt'
+⍝ ── File I/O: system functions ──
+'Hello from MARPLE!' ⎕NWRITE '/demo.txt'
+raw ← ⎕NREAD '/demo.txt'
 ⍝ Show shape — it's a character vector
 ⍴ raw
+⎕NEXISTS '/demo.txt'
+⎕NDELETE '/demo.txt'
 
 ⍝ ── The i-beam operator: call Python directly ──
 ⍝ This is what the stdlib wrappers use internally

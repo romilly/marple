@@ -37,7 +37,8 @@ lower  trim  upper
 ## Available namespaces
 
 - `$::str` -- string utilities (trim, upper, lower)
-- `$::io` -- file I/O (nread, nwrite)
 - `$::error` -- error handling (ea, en)
+
+File I/O uses system functions: `⎕NREAD`, `⎕NWRITE`, `⎕NEXISTS`, `⎕NDELETE`.
 
 See also: [Standard library reference](../../reference/standard-library/index.md)

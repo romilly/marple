@@ -32,10 +32,11 @@ A function is **dyadic** if a value appears to its left; otherwise it is **monad
 | Number | `42`, `3.14`, `¯5`, `1e3` |
 | String | `'hello'`, `'it''s'` |
 | Function glyph | `+ - × ÷ ⌈ ⌊ * ⍟ \| < ≤ = ≥ > ≠ ∧ ∨ ~ ⍴ ⍳ , ↑ ↓ ⌽ ⍉ ⍋ ⍒ ⊤ ⊥ ⍎ ⍕ ⌹ ○ ⌷ ≡ ≢ ∈` |
-| Operator | `/ \ . ∘ ⍤ ⌶` |
+| Operator | `/ ⌿ \ ⍀ . ∘ ⍤ ⌶` |
 | Identifier | `x`, `myFunc`, `total` |
-| Qualified name | `$::io::nread`, `ns::func` |
-| System variable | `⎕IO`, `⎕CT`, `⎕PP` |
+| Qualified name | `$::str::upper`, `ns::func` |
+| System variable | `⎕IO`, `⎕CT`, `⎕PP`, `⎕FR` |
+| System function | `⎕NREAD`, `⎕NWRITE`, `⎕DR`, `⎕EA` |
 | Dfn delimiters | `{ }` |
 | Dfn special names | `⍵` `⍺` `∇` |
 | Guard | `:` (inside dfns) |
