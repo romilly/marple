@@ -59,6 +59,10 @@ python -m marple.web.server --pico-port /dev/ttyACM0
 
 A Local/Pico toggle appears in the header bar. Switch to Pico mode to send expressions to the Pico over USB serial.
 
+### Explorer LCD mirror
+
+On the Pimoroni Explorer, the REPL session automatically mirrors to the 320x240 LCD. Input is shown in white, output in green, and errors in red, using a custom APL bitmap font that renders all APL glyphs. No configuration needed — if `picographics` is available, the display activates automatically.
+
 PRIDE is accessible from other machines on the same network — useful for running MARPLE on a Raspberry Pi and programming it from your workstation.
 
 ## The prompt

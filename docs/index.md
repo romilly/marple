@@ -74,6 +74,7 @@ marple
 - **Direct definition** — dfns (`{⍺+⍵}`) and dops (`{⍺⍺/⍵}`) with guards, recursion, and lexical scope. No tradfns.
 - **Python-powered** — NumPy backend when available (~73× faster for large arrays), pure-Python fallback for portability.
 - **PRIDE web IDE** — browser-based IDE over WebSocket with language bar, click-to-re-edit, session save/load, workspace panel, and Pico serial bridge.
+- **Explorer LCD mirror** — REPL session mirrors to the Pimoroni Explorer's 320x240 LCD with custom APL bitmap font.
 - **40+ primitives** — arithmetic, comparison, boolean, structural, and mixed functions, all with scalar extension.
 
 ## Who is this for?
