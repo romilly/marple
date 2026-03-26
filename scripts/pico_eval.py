@@ -3,6 +3,9 @@
 Reads APL expressions from stdin (USB serial), evaluates them,
 prints results. Protocol: one line in, one or more lines out,
 terminated by a sentinel line "\\x00" (null byte).
+
+If running on a Pimoroni Explorer, also mirrors the session
+to the 320x240 LCD using the APL bitmap font.
 """
 import sys
 import time
@@ -28,10 +31,20 @@ except (ImportError, OSError):
 from marple.interpreter import interpret, default_env
 from marple.repl import format_result, _is_silent
 from marple.errors import APLError
+import marple
 
 SENTINEL = "\x00"
 
 env = default_env()
+
+# Optional Explorer LCD display
+try:
+    from explorer_display import ExplorerDisplay  # type: ignore[import-not-found]
+    lcd = ExplorerDisplay()
+    lcd.show_banner("MARPLE v" + marple.__version__)
+    lcd.show_banner("CLEAR WS")
+except ImportError:
+    lcd = None
 
 while True:
     try:
@@ -47,16 +60,25 @@ while True:
         line = bytes.fromhex(raw).decode("utf-8")
     except (ValueError, UnicodeDecodeError):
         line = raw  # fallback: treat as plain ASCII
+    if lcd:
+        lcd.show_input(line)
     try:
         result = interpret(line, env)
         if _is_silent(line):
             print(SENTINEL)
         else:
-            print(format_result(result, env))
+            output = format_result(result, env)
+            print(output)
             print(SENTINEL)
+            if lcd:
+                lcd.show_output(output)
     except APLError as e:
         print("ERROR: " + str(e))
         print(SENTINEL)
+        if lcd:
+            lcd.show_error(str(e))
     except Exception as e:
         print("ERROR: " + str(e))
         print(SENTINEL)
+        if lcd:
+            lcd.show_error(str(e))
