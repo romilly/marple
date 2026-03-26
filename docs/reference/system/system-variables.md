@@ -253,3 +253,41 @@ Monadic. Deletes a file. Raises DOMAIN ERROR if the file does not exist.
 ```apl
       ⎕NDELETE '/tmp/data.txt'
 ```
+
+### `⎕CR` — Canonical Representation
+
+Monadic. Returns the source text of a named function as a character vector.
+
+```apl
+      double←{⍵+⍵}
+      ⎕CR 'double'
+double←{⍵+⍵}
+```
+
+Raises DOMAIN ERROR if the name is not a defined function.
+
+### `⎕FX` — Fix
+
+Monadic. Defines a function from its text representation. Returns the function name as a character vector.
+
+```apl
+      ⎕FX 'triple←{⍵×3}'
+triple
+      triple 5
+15
+```
+
+Works with multi-statement dfns:
+
+```apl
+      ⎕FX 'abs←{⍵<0:-⍵ ⋄ ⍵}'
+      abs ¯7
+7
+```
+
+Round-trip with `⎕CR`:
+
+```apl
+      src ← ⎕CR 'double'
+      ⎕FX src           ⍝ re-define from source
+```

@@ -1068,6 +1068,27 @@ def _call_sys_function_monadic(name: str, operand_node: object, env: dict[str, A
         except OSError:
             raise DomainError("File not found: " + path)
         return S(0)
+    if name == "⎕CR":
+        fn_name = "".join(str(c) for c in operand.data)
+        sources = env.get("__sources__", {})
+        if fn_name not in sources:
+            raise DomainError("Not a defined function: " + fn_name)
+        text = sources[fn_name]
+        return APLArray([len(text)], list(text))
+    if name == "⎕FX":
+        text = "".join(str(c) for c in operand.data)
+        parts = text.split("←", 1)
+        if len(parts) < 2:
+            raise DomainError("⎕FX requires an assignment: name←{body}")
+        fn_name = parts[0].strip()
+        try:
+            interpret(text, env)
+        except APLError:
+            raise DomainError("⎕FX: invalid function definition")
+        if fn_name not in env or not isinstance(env[fn_name], _DfnClosure):
+            raise DomainError("⎕FX did not produce a function")
+        chars = list(fn_name)
+        return APLArray([len(chars)], chars)
     raise DomainError(f"Unknown system function: {name}")
 
 
@@ -1297,7 +1318,8 @@ def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
     name_table = env.get("__name_table__", {})
     # System functions are always classified as functions
     for qfn in ("⎕EA", "⎕UCS", "⎕NC", "⎕EX", "⎕SIGNAL", "⎕DR",
-                 "⎕NREAD", "⎕NWRITE", "⎕NEXISTS", "⎕NDELETE"):
+                 "⎕NREAD", "⎕NWRITE", "⎕NEXISTS", "⎕NDELETE",
+                 "⎕CR", "⎕FX"):
         name_table[qfn] = NC_FUNCTION
     env["__name_table__"] = name_table
     tree = parse(source, name_table)

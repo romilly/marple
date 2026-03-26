@@ -235,3 +235,59 @@ class TestQuadNDELETE:
         from marple.errors import DomainError
         with pytest.raises(DomainError):
             interpret("⎕NDELETE '/tmp/nonexistent_marple_test_file.txt'")
+
+
+class TestQuadCR:
+    def test_cr_simple(self) -> None:
+        env = default_env()
+        interpret("double←{⍵+⍵}", env)
+        result = interpret("⎕CR 'double'", env)
+        assert "".join(str(c) for c in result.data) == "double←{⍵+⍵}"
+
+    def test_cr_multi_statement(self) -> None:
+        env = default_env()
+        interpret("sign←{⍵>0:1 ⋄ ⍵<0:¯1 ⋄ 0}", env)
+        result = interpret("⎕CR 'sign'", env)
+        text = "".join(str(c) for c in result.data)
+        assert "sign←" in text
+        assert "⍵>0" in text
+
+    def test_cr_variable_error(self) -> None:
+        from marple.errors import DomainError
+        env = default_env()
+        interpret("x←42", env)
+        with pytest.raises(DomainError):
+            interpret("⎕CR 'x'", env)
+
+    def test_cr_undefined_error(self) -> None:
+        from marple.errors import DomainError
+        with pytest.raises(DomainError):
+            interpret("⎕CR 'nope'")
+
+
+class TestQuadFX:
+    def test_fx_simple(self) -> None:
+        env = default_env()
+        result = interpret("⎕FX 'triple←{⍵×3}'", env)
+        assert "".join(str(c) for c in result.data) == "triple"
+        assert interpret("triple 5", env) == S(15)
+
+    def test_fx_multi_statement(self) -> None:
+        env = default_env()
+        interpret("⎕FX 'abs←{⍵<0:-⍵ ⋄ ⍵}'", env)
+        assert interpret("abs ¯7", env) == S(7)
+
+    def test_fx_round_trip(self) -> None:
+        env = default_env()
+        interpret("double←{⍵+⍵}", env)
+        source = interpret("⎕CR 'double'", env)
+        # Change the name and fix it
+        text = "".join(str(c) for c in source.data)
+        new_text = text.replace("double", "dbl", 1)
+        interpret("⎕FX '" + new_text + "'", env)
+        assert interpret("dbl 10", env) == S(20)
+
+    def test_fx_bad_input(self) -> None:
+        from marple.errors import DomainError
+        with pytest.raises(DomainError):
+            interpret("⎕FX 'not a function'")
