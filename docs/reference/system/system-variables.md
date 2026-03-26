@@ -217,3 +217,39 @@ ABC
 ```apl
       ⎕SIGNAL 3          ⍝ raises DOMAIN ERROR
 ```
+
+### `⎕NREAD` — Read File
+
+Monadic. Reads a text file and returns a character vector.
+
+```apl
+      ⎕NREAD '/tmp/data.txt'
+hello world
+```
+
+### `⎕NWRITE` — Write File
+
+Dyadic. Writes a character vector to a file. Left argument is the data, right argument is the path.
+
+```apl
+      'hello world' ⎕NWRITE '/tmp/data.txt'
+```
+
+### `⎕NEXISTS` — File Exists
+
+Monadic. Returns `1` if the file exists, `0` otherwise.
+
+```apl
+      ⎕NEXISTS '/tmp/data.txt'
+1
+      ⎕NEXISTS '/tmp/no_such_file.txt'
+0
+```
+
+### `⎕NDELETE` — Delete File
+
+Monadic. Deletes a file. Raises DOMAIN ERROR if the file does not exist.
+
+```apl
+      ⎕NDELETE '/tmp/data.txt'
+```

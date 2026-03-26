@@ -1,3 +1,6 @@
+import os
+import tempfile
+
 from marple.arraymodel import APLArray, S
 from marple.interpreter import interpret, default_env
 import pytest
@@ -178,3 +181,57 @@ class TestQuadFR:
         result = interpret("0.1+0.2", env)
         # Back to float — should NOT be exactly 0.3
         assert result.data[0] != 0.3 or True  # float gives 0.30000000000000004
+
+
+class TestQuadNREAD:
+    def test_read_file(self) -> None:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            f.write("hello world")
+            path = f.name
+        try:
+            result = interpret(f"⎕NREAD '{path}'")
+            assert result == APLArray([11], list("hello world"))
+        finally:
+            os.unlink(path)
+
+
+class TestQuadNWRITE:
+    def test_write_file(self) -> None:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            path = f.name
+        try:
+            interpret(f"'test data' ⎕NWRITE '{path}'")
+            with open(path) as f:
+                assert f.read() == "test data"
+        finally:
+            os.unlink(path)
+
+
+class TestQuadNEXISTS:
+    def test_file_exists(self) -> None:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            f.write("hi")
+            path = f.name
+        try:
+            result = interpret(f"⎕NEXISTS '{path}'")
+            assert result == S(1)
+        finally:
+            os.unlink(path)
+
+    def test_file_not_exists(self) -> None:
+        result = interpret("⎕NEXISTS '/tmp/nonexistent_marple_test_file.txt'")
+        assert result == S(0)
+
+
+class TestQuadNDELETE:
+    def test_delete_file(self) -> None:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            f.write("delete me")
+            path = f.name
+        interpret(f"⎕NDELETE '{path}'")
+        assert not os.path.exists(path)
+
+    def test_delete_nonexistent(self) -> None:
+        from marple.errors import DomainError
+        with pytest.raises(DomainError):
+            interpret("⎕NDELETE '/tmp/nonexistent_marple_test_file.txt'")

@@ -1045,6 +1045,29 @@ def _call_sys_function_monadic(name: str, operand_node: object, env: dict[str, A
         }
         err_class = _ERROR_MAP.get(code, DomainError)
         raise err_class(f"Signalled by ⎕SIGNAL {code}")
+    if name == "⎕NREAD":
+        import os as _os
+        path = "".join(str(c) for c in operand.data)
+        with open(path) as f:
+            text = f.read()
+        chars = list(text)
+        return APLArray([len(chars)], chars) if chars else APLArray([0], [])
+    if name == "⎕NEXISTS":
+        import os as _os
+        path = "".join(str(c) for c in operand.data)
+        try:
+            _os.stat(path)
+            return S(1)
+        except OSError:
+            return S(0)
+    if name == "⎕NDELETE":
+        import os as _os
+        path = "".join(str(c) for c in operand.data)
+        try:
+            _os.remove(path)
+        except OSError:
+            raise DomainError("File not found: " + path)
+        return S(0)
     raise DomainError(f"Unknown system function: {name}")
 
 
@@ -1065,6 +1088,14 @@ def _call_sys_function_dyadic(name: str, left_node: object, right_node: object, 
         left = _evaluate(left_node, env)
         right = _evaluate(right_node, env)
         return _dyadic_dr(left, right)
+    if name == "⎕NWRITE":
+        left = _evaluate(left_node, env)
+        right = _evaluate(right_node, env)
+        path = "".join(str(c) for c in right.data)
+        text = "".join(str(c) for c in left.data)
+        with open(path, "w") as f:
+            f.write(text)
+        return APLArray([0], [])
     raise DomainError(f"Unknown dyadic system function: {name}")
 
 
@@ -1265,7 +1296,8 @@ def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
         return _handle_import(source.strip(), env)
     name_table = env.get("__name_table__", {})
     # System functions are always classified as functions
-    for qfn in ("⎕EA", "⎕UCS", "⎕NC", "⎕EX", "⎕SIGNAL", "⎕DR"):
+    for qfn in ("⎕EA", "⎕UCS", "⎕NC", "⎕EX", "⎕SIGNAL", "⎕DR",
+                 "⎕NREAD", "⎕NWRITE", "⎕NEXISTS", "⎕NDELETE"):
         name_table[qfn] = NC_FUNCTION
     env["__name_table__"] = name_table
     tree = parse(source, name_table)
