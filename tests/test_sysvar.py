@@ -118,6 +118,26 @@ class TestQuadDM:
             interpret("⎕DM←'x'")
 
 
+class TestQuadNC:
+    def test_undefined(self) -> None:
+        assert interpret("⎕NC 'nope'") == S(0)
+
+    def test_array(self) -> None:
+        env = default_env()
+        interpret("x←42", env)
+        assert interpret("⎕NC 'x'", env) == S(2)
+
+    def test_function(self) -> None:
+        env = default_env()
+        interpret("double←{⍵+⍵}", env)
+        assert interpret("⎕NC 'double'", env) == S(3)
+
+    def test_operator(self) -> None:
+        env = default_env()
+        interpret("twice←{⍺⍺ ⍺⍺ ⍵}", env)
+        assert interpret("⎕NC 'twice'", env) == S(4)
+
+
 class TestQuadDR:
     def test_dr_integer(self) -> None:
         result = interpret("⎕DR 42")

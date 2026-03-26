@@ -1331,6 +1331,11 @@ def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
             if "__sources__" not in env:
                 env["__sources__"] = {}
             env["__sources__"][tree.name] = source.strip()
+            # Fix name class: dops use ⍺⍺ or ⍵⍵
+            if "⍺⍺" in source or "⍵⍵" in source:
+                name_table = env.get("__name_table__", {})
+                name_table[tree.name] = NC_OPERATOR
+                env["__name_table__"] = name_table
     if isinstance(result, _DfnClosure):
         return S(0)
     return result
