@@ -1073,10 +1073,29 @@ def _call_sys_function_monadic(name: str, operand_node: object, env: dict[str, A
         sources = env.get("__sources__", {})
         if fn_name not in sources:
             raise DomainError("Not a defined function: " + fn_name)
-        text = sources[fn_name]
-        return APLArray([len(text)], list(text))
+        source = sources[fn_name]
+        # Source may be a list of lines (from matrix ⎕FX) or a string
+        if isinstance(source, list):
+            lines = source
+        else:
+            lines = [source]
+        max_len = max(len(l) for l in lines) if lines else 0
+        flat: list[object] = []
+        for line in lines:
+            flat.extend(list(line.ljust(max_len)))
+        return APLArray([len(lines), max_len], flat)
     if name == "⎕FX":
-        text = "".join(str(c) for c in operand.data)
+        # Accept vector (single line) or matrix (one row per line)
+        if len(operand.shape) == 2:
+            # Matrix: extract rows, strip trailing spaces, join with newlines
+            rows, cols = operand.shape
+            lines = []
+            for r in range(rows):
+                row_chars = operand.data[r * cols : (r + 1) * cols]
+                lines.append("".join(str(c) for c in row_chars).rstrip())
+            text = "\n".join(lines)
+        else:
+            text = "".join(str(c) for c in operand.data)
         parts = text.split("←", 1)
         if len(parts) < 2:
             raise DomainError("⎕FX requires an assignment: name←{body}")
@@ -1087,6 +1106,14 @@ def _call_sys_function_monadic(name: str, operand_node: object, env: dict[str, A
             raise DomainError("⎕FX: invalid function definition")
         if fn_name not in env or not isinstance(env[fn_name], _DfnClosure):
             raise DomainError("⎕FX did not produce a function")
+        # Store source as lines for matrix round-trip
+        if len(operand.shape) == 2:
+            sources = env.get("__sources__", {})
+            sources[fn_name] = [
+                "".join(str(c) for c in operand.data[r * cols : (r + 1) * cols]).rstrip()
+                for r in range(rows)
+            ]
+            env["__sources__"] = sources
         chars = list(fn_name)
         return APLArray([len(chars)], chars)
     raise DomainError(f"Unknown system function: {name}")

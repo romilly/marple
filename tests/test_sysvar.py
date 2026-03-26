@@ -258,19 +258,42 @@ class TestQuadNDELETE:
 
 
 class TestQuadCR:
-    def test_cr_simple(self) -> None:
+    def test_cr_simple_returns_matrix(self) -> None:
         env = default_env()
         interpret("double←{⍵+⍵}", env)
         result = interpret("⎕CR 'double'", env)
-        assert "".join(str(c) for c in result.data) == "double←{⍵+⍵}"
+        # Returns a 1-row character matrix
+        assert len(result.shape) == 2
+        assert result.shape[0] == 1
+        row = "".join(str(c) for c in result.data).rstrip()
+        assert row == "double←{⍵+⍵}"
 
-    def test_cr_multi_statement(self) -> None:
+    def test_cr_multi_statement_single_line(self) -> None:
         env = default_env()
         interpret("sign←{⍵>0:1 ⋄ ⍵<0:¯1 ⋄ 0}", env)
         result = interpret("⎕CR 'sign'", env)
-        text = "".join(str(c) for c in result.data)
-        assert "sign←" in text
-        assert "⍵>0" in text
+        # Defined on one line → 1-row matrix preserving diamonds
+        assert result.shape[0] == 1
+        text = "".join(str(c) for c in result.data).rstrip()
+        assert "⋄" in text
+
+    def test_cr_multi_line_via_fx(self) -> None:
+        from marple.arraymodel import APLArray
+        env = default_env()
+        # ⎕FX with a 3-row matrix
+        lines = ["abs←{", "  ⍵<0:-⍵", "  ⍵}"]
+        max_len = max(len(l) for l in lines)
+        padded = [list(l.ljust(max_len)) for l in lines]
+        flat = []
+        for row in padded:
+            flat.extend(row)
+        matrix = APLArray([3, max_len], flat)
+        env["__tmp"] = matrix
+        interpret("⎕FX __tmp", env)
+        assert interpret("abs ¯7", env) == S(7)
+        # ⎕CR should return a 3-row matrix
+        result = interpret("⎕CR 'abs'", env)
+        assert result.shape[0] == 3
 
     def test_cr_variable_error(self) -> None:
         from marple.errors import DomainError
