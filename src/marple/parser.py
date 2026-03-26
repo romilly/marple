@@ -297,10 +297,12 @@ class Parser:
     APL's right-to-left semantics.
     """
 
-    def __init__(self, tokens: list[Token], name_table: dict[str, int] | None = None) -> None:
+    def __init__(self, tokens: list[Token], name_table: dict[str, int] | None = None,
+                 operator_arity: dict[str, int] | None = None) -> None:
         self._tokens = tokens
         self._pos = 0
         self._name_table = name_table or {}
+        self._operator_arity = operator_arity or {}
 
     def _is_function_name(self, name: str) -> bool:
         """Check if a name is classified as a function in the name table."""
@@ -529,7 +531,7 @@ class Parser:
         # Parse left argument (array — may include dfn, ⍵, ⍺, ∇)
         left = self._parse_array()
 
-        # Check for user-defined operator: left op_name argument
+        # Check for user-defined operator: left op_name [right_operand] argument
         if (
             self._current().type == TokenType.ID
             and self._is_operator_name(self._current().value)
@@ -537,10 +539,17 @@ class Parser:
             op_token = self._eat(TokenType.ID)
             assert isinstance(op_token.value, str)
             op_var = Var(op_token.value)
-            if self._is_array_start() or self._current().type == TokenType.FUNCTION:
-                right = self._parse_statement()
-                return MonadicDopCall(op_var, left, right)
-            return MonadicDopCall(op_var, left, self._parse_statement())
+            arity = self._operator_arity.get(op_token.value, 1)
+            if arity == 2:
+                # Dyadic operator (conjunction): left op right_operand argument
+                # Right operand is a single atom (Iverson: immediate next token)
+                right_operand = self._parse_atom_with_index()
+                argument = self._parse_statement()
+                return DyadicDopCall(op_var, left, right_operand, argument)
+            else:
+                # Monadic operator (adverb): left op argument
+                argument = self._parse_statement()
+                return MonadicDopCall(op_var, left, argument)
 
         # If left is a known function name, it has long right scope
         _fn_name = None
@@ -574,6 +583,17 @@ class Parser:
                 return DerivedFunc(op_glyph, func_glyph, operand)
             right = self._parse_statement()
             return DyadicFunc(func_glyph, left, right)
+
+        # ⍺⍺/ or ⍺⍺\ → reduce/scan with operand function (not replicate/expand)
+        if (
+            isinstance(left, (AlphaAlpha, OmegaOmega))
+            and self._current().type == TokenType.OPERATOR
+            and self._current().value in ("/", "\\", "⌿", "⍀")
+        ):
+            op_token = self._eat(TokenType.OPERATOR)
+            assert isinstance(op_token.value, str)
+            operand = self._parse_statement()
+            return DerivedFunc(op_token.value, left, operand)
 
         # Check for dyadic operator as function: left / right, left \ right, etc.
         if (
@@ -643,7 +663,7 @@ class Parser:
             self._pos = saved_pos
 
         # Check if left is a dfn/var/rank-derived being applied as a monadic function
-        if isinstance(left, (Dfn, Var, QualifiedVar, Nabla, AlphaAlpha, RankDerived, IBeamDerived)) and self._is_array_start():
+        if isinstance(left, (Dfn, Var, QualifiedVar, Nabla, AlphaAlpha, OmegaOmega, RankDerived, IBeamDerived)) and self._is_array_start():
             right = self._parse_statement()
             return MonadicDfnCall(left, right)
 
@@ -664,6 +684,7 @@ class Parser:
         return Program(statements)
 
 
-def parse(source: str, name_table: dict[str, int] | None = None) -> object:
+def parse(source: str, name_table: dict[str, int] | None = None,
+          operator_arity: dict[str, int] | None = None) -> object:
     tokens = Tokenizer(source).tokenize()
-    return Parser(tokens, name_table).parse()
+    return Parser(tokens, name_table, operator_arity).parse()

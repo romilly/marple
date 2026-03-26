@@ -201,6 +201,19 @@ class TestDopApplication:
 
     # ── Dop producing derived function used dyadically ──
 
+    # ── Dop with reduce ──
+
+    def test_dop_with_reduce(self) -> None:
+        env = default_env()
+        interpret("redop←{⍺⍺/⍵}", env)
+        assert interpret("(+) redop ⍳10", env) == S(55)
+
+    def test_dop_with_scan(self) -> None:
+        env = default_env()
+        interpret("scanop←{⍺⍺\\⍵}", env)
+        result = interpret("(+) scanop 1 2 3", env)
+        assert list(result.data) == [1, 3, 6]
+
     # ── Dop composing with other functions ──
 
     def test_dop_compose(self) -> None:
@@ -227,6 +240,37 @@ class TestDopApplication:
         env = default_env()
         interpret("⎕FX 'twice←{⍺⍺ ⍺⍺ ⍵}'", env)
         assert interpret("⎕NC 'twice'", env) == S(4)
+
+    # ── Dyadic dop (conjunction, ⍵⍵) ──
+
+    def test_dyadic_dop_two_functions(self) -> None:
+        env = default_env()
+        interpret("compose←{⍵⍵ ⍺⍺ ⍵}", env)
+        interpret("double←{⍵+⍵}", env)
+        interpret("neg←{-⍵}", env)
+        # double compose neg 3 → neg(double(3)) → neg(6) → ¯6
+        assert interpret("double compose neg 3", env) == S(-6)
+
+    def test_dyadic_dop_with_primitives(self) -> None:
+        env = default_env()
+        interpret("compose←{⍵⍵ ⍺⍺ ⍵}", env)
+        # (-) compose (÷) 4 → ÷(-4) → ÷(¯4) → ¯0.25
+        assert interpret("(-) compose (÷) 4", env) == S(-0.25)
+
+    def test_dyadic_dop_array_operands(self) -> None:
+        env = default_env()
+        interpret("between←{⍺⍺+⍵⍵×⍵}", env)
+        # 10 between 3: 10 + 3×⍵ → 10+3×5 = 25
+        assert interpret("(10) between (3) 5", env) == S(25)
+
+    # ── Operator binding ──
+
+    def test_operator_with_parens(self) -> None:
+        env = default_env()
+        interpret("twice←{⍺⍺ ⍺⍺ ⍵}", env)
+        interpret("double←{⍵+⍵}", env)
+        # Parentheses resolve binding: ((double) twice 5) - 3 → 20 - 3 = 17
+        assert interpret("((double) twice 5)-3", env) == S(17)
 
     # ── Error cases ──
 

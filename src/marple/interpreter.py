@@ -210,6 +210,7 @@ def _call_dfn(
     omega: APLArray,
     alpha: APLArray | None = None,
     alpha_alpha: object | None = None,
+    omega_omega: object | None = None,
 ) -> APLArray:
     """Execute a dfn with the given arguments."""
     # Lexical scope: start from the defining environment
@@ -219,6 +220,8 @@ def _call_dfn(
         local_env["⍺"] = alpha
     if alpha_alpha is not None:
         local_env["⍺⍺"] = alpha_alpha
+    if omega_omega is not None:
+        local_env["⍵⍵"] = omega_omega
     # Store self-reference for ∇
     local_env["∇"] = closure
 
@@ -366,6 +369,17 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         argument = _evaluate(node.argument, env)
         return _call_dfn(dop_val, argument, alpha_alpha=operand)
 
+    if isinstance(node, DyadicDopCall):
+        dop_val = _evaluate(node.op_name, env)
+        if not isinstance(dop_val, _DfnClosure):
+            raise DomainError(f"Expected operator, got {type(dop_val)}")
+        left_operand = _evaluate(node.operand, env)   # ⍺⍺
+        right_operand = _evaluate(node.left, env)      # ⍵⍵
+        argument = _evaluate(node.right, env)           # ⍵
+        return _call_dfn(dop_val, argument,
+                         alpha_alpha=left_operand,
+                         omega_omega=right_operand)
+
     if isinstance(node, DyadicDfnCall):
         if isinstance(node.dfn, SysVar):
             return _call_sys_function_dyadic(node.dfn.name, node.left, node.right, env)
@@ -463,7 +477,17 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
 
     if isinstance(node, DerivedFunc):
         operand = _evaluate(node.operand, env)
-        func = _lookup_dyadic(node.function)
+        # Resolve function — may be a glyph string or an AlphaAlpha/OmegaOmega node
+        if isinstance(node.function, (AlphaAlpha, OmegaOmega)):
+            fn_val = _evaluate(node.function, env)
+            if isinstance(fn_val, FunctionRef):
+                func = _lookup_dyadic(fn_val.glyph)
+            elif isinstance(fn_val, _DfnClosure):
+                func = lambda a, o, _c=fn_val: _call_dfn(_c, o, alpha=a)
+            else:
+                raise DomainError("⍺⍺ is not a function in this context")
+        else:
+            func = _lookup_dyadic(node.function)
         if func is None:
             raise DomainError(f"Unknown function for operator: {node.function}")
         if node.operator == "/":
@@ -1388,7 +1412,8 @@ def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
                  "⎕CR", "⎕FX"):
         name_table[qfn] = NC_FUNCTION
     env["__name_table__"] = name_table
-    tree = parse(source, name_table)
+    op_arity = env.get("__operator_arity__", {})
+    tree = parse(source, name_table, op_arity)
     result = _evaluate(tree, env)
     # Track source for dfn assignments so workspace save can reconstruct them
     if isinstance(tree, Assignment):
@@ -1397,11 +1422,15 @@ def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
             if "__sources__" not in env:
                 env["__sources__"] = {}
             env["__sources__"][tree.name] = source.strip()
-            # Fix name class: dops use ⍺⍺ or ⍵⍵
+            # Fix name class and arity: dops use ⍺⍺ or ⍵⍵
             if "⍺⍺" in source or "⍵⍵" in source:
                 name_table = env.get("__name_table__", {})
                 name_table[tree.name] = NC_OPERATOR
                 env["__name_table__"] = name_table
+                arity = 2 if "⍵⍵" in source else 1
+                op_ar = env.get("__operator_arity__", {})
+                op_ar[tree.name] = arity
+                env["__operator_arity__"] = op_ar
     if isinstance(result, _DfnClosure):
         return S(0)
     return result
