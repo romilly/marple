@@ -287,6 +287,17 @@ class TestQuadFX:
         interpret("⎕FX '" + new_text + "'", env)
         assert interpret("dbl 10", env) == S(20)
 
+    def test_fx_dop(self) -> None:
+        env = default_env()
+        result = interpret("⎕FX 'twice←{⍺⍺ ⍺⍺ ⍵}'", env)
+        assert "".join(str(c) for c in result.data) == "twice"
+
+    def test_cr_dop(self) -> None:
+        env = default_env()
+        interpret("twice←{⍺⍺ ⍺⍺ ⍵}", env)
+        result = interpret("⎕CR 'twice'", env)
+        assert "twice←{⍺⍺ ⍺⍺ ⍵}" == "".join(str(c) for c in result.data)
+
     def test_fx_bad_input(self) -> None:
         from marple.errors import DomainError
         with pytest.raises(DomainError):
