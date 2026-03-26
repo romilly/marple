@@ -93,3 +93,68 @@ class TestDefaultAlpha:
         env = default_env()
         interpret("pad←{⍺←0⋄⍺,⍵}", env)
         assert interpret("9 pad 1 2 3", env) == APLArray([4], [9, 1, 2, 3])
+
+
+class TestMultiStatementDfns:
+    def test_diamond_separated(self) -> None:
+        env = default_env()
+        interpret("sign←{⍵>0:1 ⋄ ⍵<0:¯1 ⋄ 0}", env)
+        assert interpret("sign 5", env) == S(1)
+        assert interpret("sign ¯3", env) == S(-1)
+        assert interpret("sign 0", env) == S(0)
+
+    def test_newline_separated(self) -> None:
+        env = default_env()
+        # Newlines converted to diamonds by the REPL/script runner,
+        # but interpret() handles diamonds directly
+        interpret("abs←{⍵<0:-⍵\n⍵}", env)
+        assert interpret("abs ¯7", env) == S(7)
+        assert interpret("abs 3", env) == S(3)
+
+    def test_multi_guard_with_assignment(self) -> None:
+        env = default_env()
+        interpret("classify←{r←'zero' ⋄ ⍵>0:r←'positive' ⋄ ⍵<0:r←'negative' ⋄ r}", env)
+        result = interpret("classify 5", env)
+        assert "".join(str(c) for c in result.data) == "positive"
+
+    def test_cr_multi_statement(self) -> None:
+        env = default_env()
+        interpret("sign←{⍵>0:1 ⋄ ⍵<0:¯1 ⋄ 0}", env)
+        result = interpret("⎕CR 'sign'", env)
+        text = "".join(str(c) for c in result.data)
+        assert "⋄" in text
+        assert "sign←{" in text
+
+    def test_fx_multi_statement(self) -> None:
+        env = default_env()
+        interpret("⎕FX 'clamp←{⍵>100:100 ⋄ ⍵<0:0 ⋄ ⍵}'", env)
+        assert interpret("clamp 150", env) == S(100)
+        assert interpret("clamp ¯5", env) == S(0)
+        assert interpret("clamp 50", env) == S(50)
+
+    def test_cr_fx_round_trip_multi(self) -> None:
+        env = default_env()
+        interpret("sign←{⍵>0:1 ⋄ ⍵<0:¯1 ⋄ 0}", env)
+        src = interpret("⎕CR 'sign'", env)
+        text = "".join(str(c) for c in src.data)
+        new_text = text.replace("sign", "sgn", 1)
+        interpret("⎕FX '" + new_text + "'", env)
+        assert interpret("sgn 5", env) == S(1)
+        assert interpret("sgn ¯3", env) == S(-1)
+
+
+class TestMultiStatementDops:
+    """Dop tests — currently limited to single-expression dops.
+    Multi-statement dops with ⍺⍺ in assignment context are a known limitation."""
+
+    def test_cr_dop(self) -> None:
+        env = default_env()
+        interpret("twice←{⍺⍺ ⍺⍺ ⍵}", env)
+        result = interpret("⎕CR 'twice'", env)
+        text = "".join(str(c) for c in result.data)
+        assert "⍺⍺" in text
+
+    def test_fx_dop(self) -> None:
+        env = default_env()
+        interpret("⎕FX 'twice←{⍺⍺ ⍺⍺ ⍵}'", env)
+        assert interpret("⎕NC 'twice'", env) == S(4)
