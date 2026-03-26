@@ -211,6 +211,29 @@ def replicate(alpha: APLArray, omega: APLArray) -> APLArray:
     return APLArray([len(result)], result)
 
 
+def replicate_first(alpha: APLArray, omega: APLArray) -> APLArray:
+    """Dyadic ⌿: replicate/compress along first axis."""
+    counts = [int(x) for x in alpha.data]
+    if len(omega.shape) <= 1:
+        return replicate(alpha, omega)
+    first = omega.shape[0]
+    if len(counts) != first:
+        raise LengthError(f"Length mismatch: {len(counts)} vs {first}")
+    cell_shape = omega.shape[1:]
+    cell_size = 1
+    for s in cell_shape:
+        cell_size *= s
+    data = to_list(omega.data)
+    result: list[object] = []
+    total_rows = 0
+    for i, count in enumerate(counts):
+        cell = data[i * cell_size : (i + 1) * cell_size]
+        for _ in range(count):
+            result.extend(cell)
+            total_rows += 1
+    return APLArray([total_rows] + cell_shape, result)
+
+
 def expand(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic \\: expand. Insert fill elements (0) where alpha is 0."""
     mask = [int(x) for x in alpha.data]

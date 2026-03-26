@@ -442,7 +442,7 @@ class Parser:
                 # Rank operator: f⍤k
                 rank_spec = self._parse_array()
                 return RankDerived(func_glyph, rank_spec)
-            if op_glyph in ("/", "\\"):
+            if op_glyph in ("/", "\\", "⌿", "⍀"):
                 # Check if followed by ⍤ (e.g., +/⍤1)
                 if (
                     self._current().type == TokenType.OPERATOR
@@ -450,7 +450,7 @@ class Parser:
                 ):
                     self._eat(TokenType.OPERATOR)
                     rank_spec = self._parse_array()
-                    inner = ReduceOp(func_glyph) if op_glyph == "/" else ScanOp(func_glyph)
+                    inner = ReduceOp(func_glyph) if op_glyph in ("/", "⌿") else ScanOp(func_glyph)
                     return RankDerived(inner, rank_spec)
                 operand = self._parse_statement()
                 return DerivedFunc(op_glyph, func_glyph, operand)
@@ -496,10 +496,10 @@ class Parser:
             right = self._parse_statement()
             return DyadicFunc(func_glyph, left, right)
 
-        # Check for dyadic operator as function: left / right or left \ right
+        # Check for dyadic operator as function: left / right, left \ right, etc.
         if (
             self._current().type == TokenType.OPERATOR
-            and self._current().value in ("/", "\\")
+            and self._current().value in ("/", "\\", "⌿", "⍀")
         ):
             op_token = self._eat(TokenType.OPERATOR)
             assert isinstance(op_token.value, str)

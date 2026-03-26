@@ -56,6 +56,7 @@ from marple.structural import (
     expand,
     from_array,
     grade_down,
+    replicate_first,
     grade_up,
     index_of,
     iota,
@@ -158,6 +159,7 @@ DYADIC_FUNCTIONS: dict[str, object] = {
     "⊤": encode,
     "⊥": decode,
     "/": replicate,
+    "⌿": replicate_first,
     "\\": expand,
     "⌹": matrix_divide,
     "○": circular,
@@ -427,8 +429,12 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
             raise DomainError(f"Unknown function for operator: {node.function}")
         if node.operator == "/":
             return _reduce(func, operand)  # type: ignore[arg-type]
+        if node.operator == "⌿":
+            return _reduce_first(func, operand)  # type: ignore[arg-type]
         if node.operator == "\\":
             return _scan(func, operand)  # type: ignore[arg-type]
+        if node.operator == "⍀":
+            return _scan_first(func, operand)  # type: ignore[arg-type]
         raise DomainError(f"Unknown operator: {node.operator}")
 
     if isinstance(node, Program):
@@ -540,6 +546,57 @@ def _scan(
         for j in range(1, last):
             acc = func(acc, S(row[j]))
             results.append(acc.data[0])
+    return APLArray(list(omega.shape), results)
+
+
+def _reduce_first(
+    func: Callable[[APLArray, APLArray], APLArray],
+    omega: APLArray,
+) -> APLArray:
+    """Reduce along the first axis (⌿)."""
+    if len(omega.shape) <= 1:
+        return _reduce(func, omega)
+    # Extract major cells and reduce pairwise
+    first = omega.shape[0]
+    cell_shape = omega.shape[1:]
+    cell_size = 1
+    for s in cell_shape:
+        cell_size *= s
+    data_list = to_list(omega.data)
+    # Start with first major cell
+    acc = data_list[:cell_size]
+    for i in range(1, first):
+        cell = data_list[i * cell_size : (i + 1) * cell_size]
+        paired = []
+        for a, b in zip(acc, cell):
+            paired.append(func(S(a), S(b)).data[0])
+        acc = paired
+    return APLArray(cell_shape, acc)
+
+
+def _scan_first(
+    func: Callable[[APLArray, APLArray], APLArray],
+    omega: APLArray,
+) -> APLArray:
+    """Scan along the first axis (⍀)."""
+    if len(omega.shape) <= 1:
+        return _scan(func, omega)
+    first = omega.shape[0]
+    cell_shape = omega.shape[1:]
+    cell_size = 1
+    for s in cell_shape:
+        cell_size *= s
+    data_list = to_list(omega.data)
+    # First major cell is unchanged
+    acc = data_list[:cell_size]
+    results = list(acc)
+    for i in range(1, first):
+        cell = data_list[i * cell_size : (i + 1) * cell_size]
+        new_acc = []
+        for a, b in zip(acc, cell):
+            new_acc.append(func(S(a), S(b)).data[0])
+        acc = new_acc
+        results.extend(acc)
     return APLArray(list(omega.shape), results)
 
 
