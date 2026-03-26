@@ -91,6 +91,31 @@ class DerivedFunc:
         return self.operator == other.operator and self.function == other.function and self.operand == other.operand
 
 
+class MonadicDopCall:
+    """User-defined operator applied monadically: (operand op) argument"""
+    def __init__(self, op_name: object, operand: object, argument: object) -> None:
+        self.op_name = op_name    # the operator (Var)
+        self.operand = operand    # ⍺⍺ (the left function/array)
+        self.argument = argument  # ⍵ (the right argument)
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, MonadicDopCall):
+            return NotImplemented
+        return self.op_name == other.op_name and self.operand == other.operand and self.argument == other.argument
+
+
+class DyadicDopCall:
+    """User-defined operator applied dyadically: left (operand op) right"""
+    def __init__(self, op_name: object, operand: object, left: object, right: object) -> None:
+        self.op_name = op_name
+        self.operand = operand
+        self.left = left
+        self.right = right
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, DyadicDopCall):
+            return NotImplemented
+        return self.op_name == other.op_name and self.operand == other.operand and self.left == other.left and self.right == other.right
+
+
 class RankDerived:
     """Unapplied rank-derived function: f⍤k"""
     def __init__(self, function: object, rank_spec: object) -> None:
@@ -182,6 +207,26 @@ class Alpha:
     pass
 
 
+class FunctionRef:
+    """A reference to a primitive function glyph, used as a dop operand."""
+    def __init__(self, glyph: str) -> None:
+        self.glyph = glyph
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, FunctionRef):
+            return NotImplemented
+        return self.glyph == other.glyph
+
+
+class AlphaAlpha:
+    """⍺⍺ — left operand reference in a dop."""
+    pass
+
+
+class OmegaOmega:
+    """⍵⍵ — right operand reference in a dop."""
+    pass
+
+
 class Nabla:
     pass
 
@@ -261,6 +306,10 @@ class Parser:
         """Check if a name is classified as a function in the name table."""
         return self._name_table.get(name) == 3  # NC_FUNCTION
 
+    def _is_operator_name(self, name: str) -> bool:
+        """Check if a name is classified as an operator in the name table."""
+        return self._name_table.get(name) == 4  # NC_OPERATOR
+
     def _current(self) -> Token:
         return self._tokens[self._pos]
 
@@ -313,6 +362,16 @@ class Parser:
         token = self._current()
         if token.type == TokenType.LPAREN:
             self._eat(TokenType.LPAREN)
+            # Check for bare function glyph as operand: (-)  (+)  (⍳)  etc.
+            if (
+                self._current().type == TokenType.FUNCTION
+                and self._pos + 1 < len(self._tokens)
+                and self._tokens[self._pos + 1].type == TokenType.RPAREN
+            ):
+                fn_token = self._eat(TokenType.FUNCTION)
+                self._eat(TokenType.RPAREN)
+                assert isinstance(fn_token.value, str)
+                return FunctionRef(fn_token.value)
             result = self._parse_statement()
             self._eat(TokenType.RPAREN)
             return result
@@ -338,6 +397,12 @@ class Parser:
         if token.type == TokenType.ALPHA:
             self._eat(TokenType.ALPHA)
             return Alpha()
+        if token.type == TokenType.ALPHA_ALPHA:
+            self._eat(TokenType.ALPHA_ALPHA)
+            return AlphaAlpha()
+        if token.type == TokenType.OMEGA_OMEGA:
+            self._eat(TokenType.OMEGA_OMEGA)
+            return OmegaOmega()
         if token.type == TokenType.NABLA:
             self._eat(TokenType.NABLA)
             return Nabla()
@@ -380,7 +445,8 @@ class Parser:
     def _is_array_start(self) -> bool:
         return self._current().type in (
             TokenType.NUMBER, TokenType.LPAREN, TokenType.ID,
-            TokenType.OMEGA, TokenType.ALPHA, TokenType.NABLA,
+            TokenType.OMEGA, TokenType.ALPHA, TokenType.ALPHA_ALPHA,
+            TokenType.OMEGA_OMEGA, TokenType.NABLA,
             TokenType.LBRACE, TokenType.STRING, TokenType.QUALIFIED_NAME,
             TokenType.SYSVAR,
         )
@@ -462,6 +528,19 @@ class Parser:
 
         # Parse left argument (array — may include dfn, ⍵, ⍺, ∇)
         left = self._parse_array()
+
+        # Check for user-defined operator: left op_name argument
+        if (
+            self._current().type == TokenType.ID
+            and self._is_operator_name(self._current().value)
+        ):
+            op_token = self._eat(TokenType.ID)
+            assert isinstance(op_token.value, str)
+            op_var = Var(op_token.value)
+            if self._is_array_start() or self._current().type == TokenType.FUNCTION:
+                right = self._parse_statement()
+                return MonadicDopCall(op_var, left, right)
+            return MonadicDopCall(op_var, left, self._parse_statement())
 
         # If left is a known function name, it has long right scope
         _fn_name = None
@@ -564,7 +643,7 @@ class Parser:
             self._pos = saved_pos
 
         # Check if left is a dfn/var/rank-derived being applied as a monadic function
-        if isinstance(left, (Dfn, Var, QualifiedVar, Nabla, RankDerived, IBeamDerived)) and self._is_array_start():
+        if isinstance(left, (Dfn, Var, QualifiedVar, Nabla, AlphaAlpha, RankDerived, IBeamDerived)) and self._is_array_start():
             right = self._parse_statement()
             return MonadicDfnCall(left, right)
 

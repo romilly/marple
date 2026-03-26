@@ -21,6 +21,8 @@ class TokenType:
     RBRACE = "RBRACE"
     OMEGA = "OMEGA"
     ALPHA = "ALPHA"
+    ALPHA_ALPHA = "ALPHA_ALPHA"
+    OMEGA_OMEGA = "OMEGA_OMEGA"
     NABLA = "NABLA"
     GUARD = "GUARD"
     LBRACKET = "LBRACKET"
@@ -173,6 +175,14 @@ class Tokenizer:
                 tokens.append(self._read_number())
             elif ch in FUNCTION_GLYPHS:
                 tokens.append(Token(TokenType.FUNCTION, ch))
+                self._advance()
+            elif ch == "⍺" and self._pos + 1 < len(self._source) and self._source[self._pos + 1] == "⍺":
+                tokens.append(Token(TokenType.ALPHA_ALPHA, "⍺⍺"))
+                self._advance()
+                self._advance()
+            elif ch == "⍵" and self._pos + 1 < len(self._source) and self._source[self._pos + 1] == "⍵":
+                tokens.append(Token(TokenType.OMEGA_OMEGA, "⍵⍵"))
+                self._advance()
                 self._advance()
             elif ch in SINGLE_CHAR_TOKENS:
                 tokens.append(SINGLE_CHAR_TOKENS[ch])

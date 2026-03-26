@@ -143,9 +143,78 @@ class TestMultiStatementDfns:
         assert interpret("sgn ¯3", env) == S(-1)
 
 
-class TestMultiStatementDops:
-    """Dop tests — currently limited to single-expression dops.
-    Multi-statement dops with ⍺⍺ in assignment context are a known limitation."""
+class TestDopApplication:
+    """Tests for direct operator (dop) application."""
+
+    # ── Monadic dop with function operand ──
+
+    def test_simple_dop_with_dfn_operand(self) -> None:
+        env = default_env()
+        interpret("twice←{⍺⍺ ⍺⍺ ⍵}", env)
+        interpret("double←{⍵+⍵}", env)
+        assert interpret("(double) twice 3", env) == S(12)
+
+    def test_dop_with_negate(self) -> None:
+        env = default_env()
+        interpret("twice←{⍺⍺ ⍺⍺ ⍵}", env)
+        # Negate twice: -(-5) = 5
+        assert interpret("(-) twice 5", env) == S(5)
+
+    def test_dop_with_reciprocal(self) -> None:
+        env = default_env()
+        interpret("twice←{⍺⍺ ⍺⍺ ⍵}", env)
+        # Reciprocal twice: ÷(÷4) = 4
+        assert interpret("(÷) twice 4", env) == S(4)
+
+    def test_dop_with_iota(self) -> None:
+        env = default_env()
+        interpret("apply←{⍺⍺ ⍵}", env)
+        result = interpret("(⍳) apply 5", env)
+        assert result == APLArray([5], [1, 2, 3, 4, 5])
+
+    # ── Monadic dop with array operand ──
+
+    def test_dop_with_array_operand(self) -> None:
+        env = default_env()
+        interpret("addop←{⍺⍺+⍵}", env)
+        assert interpret("(10) addop 5", env) == S(15)
+
+    def test_dop_array_operand_vector(self) -> None:
+        env = default_env()
+        interpret("scale←{⍺⍺×⍵}", env)
+        result = interpret("(2) scale 1 2 3", env)
+        assert list(result.data) == [2, 4, 6]
+
+    # ── Multi-statement dop ──
+
+    def test_multi_statement_dop(self) -> None:
+        env = default_env()
+        interpret("apply_twice←{t←⍺⍺ ⍵ ⋄ ⍺⍺ t}", env)
+        interpret("double←{⍵+⍵}", env)
+        assert interpret("(double) apply_twice 3", env) == S(12)
+
+    def test_dop_with_guard(self) -> None:
+        env = default_env()
+        interpret("safe←{⍵=0:0 ⋄ ⍺⍺ ⍵}", env)
+        assert interpret("(÷) safe 4", env) == S(0.25)
+        assert interpret("(÷) safe 0", env) == S(0)
+
+    # ── Dop producing derived function used dyadically ──
+
+    # ── Dop composing with other functions ──
+
+    def test_dop_compose(self) -> None:
+        env = default_env()
+        interpret("apply←{⍺⍺ ⍵}", env)
+        interpret("sum←{+/⍵}", env)
+        assert interpret("(sum) apply ⍳10", env) == S(55)
+
+    # ── ⎕NC and ⎕CR for dops ──
+
+    def test_nc_dop(self) -> None:
+        env = default_env()
+        interpret("twice←{⍺⍺ ⍺⍺ ⍵}", env)
+        assert interpret("⎕NC 'twice'", env) == S(4)
 
     def test_cr_dop(self) -> None:
         env = default_env()
@@ -158,3 +227,11 @@ class TestMultiStatementDops:
         env = default_env()
         interpret("⎕FX 'twice←{⍺⍺ ⍺⍺ ⍵}'", env)
         assert interpret("⎕NC 'twice'", env) == S(4)
+
+    # ── Error cases ──
+
+    def test_alpha_alpha_outside_dop(self) -> None:
+        import pytest
+        from marple.errors import ValueError_
+        with pytest.raises(ValueError_):
+            interpret("{⍺⍺+⍵} 5")  # dfn used as dfn, but body has ⍺⍺

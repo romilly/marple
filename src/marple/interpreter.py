@@ -75,18 +75,23 @@ from marple.structural import (
 from marple.namespace import Namespace, load_system_workspace
 from marple.parser import (
     Alpha,
+    AlphaAlpha,
     AlphaDefault,
     Assignment,
+    FunctionRef,
     DerivedFunc,
     Dfn,
     DyadicDfnCall,
+    DyadicDopCall,
     DyadicFunc,
     Guard,
     IBeamDerived,
     Index,
     InnerProduct,
     MonadicDfnCall,
+    MonadicDopCall,
     MonadicFunc,
+    OmegaOmega,
     Nabla,
     Num,
     Omega,
@@ -204,6 +209,7 @@ def _call_dfn(
     closure: _DfnClosure,
     omega: APLArray,
     alpha: APLArray | None = None,
+    alpha_alpha: object | None = None,
 ) -> APLArray:
     """Execute a dfn with the given arguments."""
     # Lexical scope: start from the defining environment
@@ -211,6 +217,8 @@ def _call_dfn(
     local_env["⍵"] = omega
     if alpha is not None:
         local_env["⍺"] = alpha
+    if alpha_alpha is not None:
+        local_env["⍺⍺"] = alpha_alpha
     # Store self-reference for ∇
     local_env["∇"] = closure
 
@@ -291,10 +299,29 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
             raise ValueError_("⍺ used outside of dfn")
         return env["⍺"]
 
+    if isinstance(node, AlphaAlpha):
+        if "⍺⍺" not in env:
+            raise ValueError_("⍺⍺ used outside of dop")
+        val = env["⍺⍺"]
+        if isinstance(val, APLArray):
+            return val
+        return val  # type: ignore[return-value]
+
+    if isinstance(node, OmegaOmega):
+        if "⍵⍵" not in env:
+            raise ValueError_("⍵⍵ used outside of dop")
+        val = env["⍵⍵"]
+        if isinstance(val, APLArray):
+            return val
+        return val  # type: ignore[return-value]
+
     if isinstance(node, Nabla):
         if "∇" not in env:
             raise ValueError_("∇ used outside of dfn")
         return env["∇"]  # type: ignore[return-value]
+
+    if isinstance(node, FunctionRef):
+        return node  # type: ignore[return-value]
 
     if isinstance(node, Dfn):
         return _DfnClosure(node, env)  # type: ignore[return-value]
@@ -325,9 +352,19 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         if isinstance(dfn_val, IBeamDerived):
             fn = _resolve_ibeam(dfn_val.path)
             return _call_ibeam(fn, operand)
+        if isinstance(dfn_val, FunctionRef):
+            return _dispatch_monadic(dfn_val.glyph, operand, env)
         if not isinstance(dfn_val, _DfnClosure):
             raise DomainError(f"Expected dfn, got {type(dfn_val)}")
         return _call_dfn(dfn_val, operand)
+
+    if isinstance(node, MonadicDopCall):
+        dop_val = _evaluate(node.op_name, env)
+        if not isinstance(dop_val, _DfnClosure):
+            raise DomainError(f"Expected operator, got {type(dop_val)}")
+        operand = _evaluate(node.operand, env)
+        argument = _evaluate(node.argument, env)
+        return _call_dfn(dop_val, argument, alpha_alpha=operand)
 
     if isinstance(node, DyadicDfnCall):
         if isinstance(node.dfn, SysVar):
@@ -345,6 +382,8 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
         if isinstance(dfn_val, IBeamDerived):
             fn = _resolve_ibeam(dfn_val.path)
             return _call_ibeam_dyadic(fn, left, right)
+        if isinstance(dfn_val, FunctionRef):
+            return _dispatch_dyadic(dfn_val.glyph, left, right, env)
         if not isinstance(dfn_val, _DfnClosure):
             raise DomainError(f"Expected dfn, got {type(dfn_val)}")
         return _call_dfn(dfn_val, right, alpha=left)
