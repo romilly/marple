@@ -2,6 +2,45 @@ from marple.errors import SyntaxError_
 from marple.tokenizer import Token, TokenType, Tokenizer
 
 
+# ── Category constants for Iverson's stack-based parser ──
+
+CAT_END = 0    # End marker (⋄, EOF)
+CAT_NOUN = 1   # Noun (array/data)
+CAT_VERB = 2   # Verb (function)
+CAT_ADV = 3    # Adverb (monadic operator: /, \, ⌿, ⍀, ∘.)
+CAT_CONJ = 4   # Conjunction (dyadic operator: ⍤, ., ⌶)
+CAT_ASGN = 5   # Assignment (←)
+CAT_LP = 6     # Left paren
+CAT_RP = 7     # Right paren
+CAT_EMPTY = 8  # Padding for window positions
+
+# Context sets for case matching
+_CTX_MONAD = frozenset({CAT_END, CAT_ADV, CAT_VERB, CAT_ASGN, CAT_LP})
+_CTX_DYAD = frozenset({CAT_END, CAT_NOUN, CAT_ADV, CAT_VERB, CAT_ASGN, CAT_LP})
+
+# System functions (classified as verbs) vs system variables (nouns)
+_SYS_FUNCTIONS = frozenset({
+    "⎕CR", "⎕FX", "⎕NC", "⎕EX", "⎕SIGNAL", "⎕EA",
+    "⎕UCS", "⎕DR", "⎕NREAD", "⎕NWRITE", "⎕NEXISTS", "⎕NDELETE",
+    "⎕DL", "⎕FMT", "⎕VFI", "⎕JSON", "⎕NL",
+})
+
+
+def _ast_contains(node: object, target_type: type) -> bool:
+    """Check if any node in an AST subtree is of target_type."""
+    if isinstance(node, target_type):
+        return True
+    if hasattr(node, '__dict__'):
+        for val in node.__dict__.values():
+            if isinstance(val, list):
+                if any(_ast_contains(item, target_type) for item in val):
+                    return True
+            elif hasattr(val, '__dict__') and not isinstance(val, type):
+                if _ast_contains(val, target_type):
+                    return True
+    return False
+
+
 # AST nodes
 
 class Num:
@@ -227,6 +266,27 @@ class OmegaOmega:
     pass
 
 
+class BoundOperator:
+    """Operator bound to operand(s), not yet applied to argument.
+
+    Created during adverb/conjunction binding (cases 4/5) and resolved
+    into final AST nodes during function application (cases 1/3).
+    """
+    def __init__(self, operator: object, left_operand: object, left_cat: int,
+                 right_operand: object = None, right_cat: int = CAT_EMPTY) -> None:
+        self.operator = operator           # str ("/","⍤",".",etc) or Var for user dop
+        self.left_operand = left_operand   # ⍺⍺ operand node
+        self.left_cat = left_cat           # category of left operand (NOUN or VERB)
+        self.right_operand = right_operand # ⍵⍵ operand (conjunctions only)
+        self.right_cat = right_cat         # category of right operand
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, BoundOperator):
+            return NotImplemented
+        return (self.operator == other.operator and
+                self.left_operand == other.left_operand and
+                self.right_operand == other.right_operand)
+
+
 class Nabla:
     pass
 
@@ -290,11 +350,10 @@ class Program:
 
 
 class Parser:
-    """Right-to-left recursive descent parser for APL expressions.
+    """Stack-based APL parser following Iverson's parsing algorithm.
 
-    APL evaluation is right-to-left with long right scope and short left scope.
-    The parser processes tokens left-to-right but builds the AST respecting
-    APL's right-to-left semantics.
+    Uses a 4-position window on a stack with 9 pattern-matching rules
+    to correctly handle operator binding precedence.
     """
 
     def __init__(self, tokens: list[Token], name_table: dict[str, int] | None = None,
@@ -311,6 +370,457 @@ class Parser:
     def _is_operator_name(self, name: str) -> bool:
         """Check if a name is classified as an operator in the name table."""
         return self._name_table.get(name) == 4  # NC_OPERATOR
+
+    # ── Token classification ──
+
+    def _classify_operator(self, op: str) -> int:
+        """Classify an operator token as adverb or conjunction."""
+        if op in ("/", "\\", "⌿", "⍀", "∘."):
+            return CAT_ADV
+        if op in ("⍤", "⌶", ".", "∘"):
+            return CAT_CONJ
+        return CAT_ADV
+
+    def _classify_name(self, name: str) -> int:
+        """Classify a name using the name table."""
+        if self._is_operator_name(name):
+            arity = self._operator_arity.get(name, 1)
+            return CAT_ADV if arity == 1 else CAT_CONJ
+        if self._is_function_name(name):
+            return CAT_VERB
+        return CAT_NOUN
+
+    def _classify_sysvar(self, name: str) -> int:
+        """Classify a system variable/function."""
+        if name in _SYS_FUNCTIONS:
+            return CAT_VERB
+        return CAT_NOUN
+
+    def _classify_dfn(self, dfn: Dfn) -> int:
+        """Classify a dfn as verb, adverb, or conjunction."""
+        if _ast_contains(dfn, OmegaOmega):
+            return CAT_CONJ
+        if _ast_contains(dfn, AlphaAlpha):
+            return CAT_ADV
+        return CAT_VERB
+
+    # ── Item building (token → classified items) ──
+
+    def _build_items(self) -> list[tuple[int, object]]:
+        """Build classified items from current position to expression end.
+
+        Advances self._pos as tokens are consumed. Stops at statement
+        boundaries (⋄, :, }, ], ;, EOF) at paren depth 0.
+        """
+        items: list[tuple[int, object]] = []
+        paren_depth = 0
+        stop_types = frozenset({
+            TokenType.DIAMOND, TokenType.GUARD, TokenType.RBRACE,
+            TokenType.RBRACKET, TokenType.SEMICOLON, TokenType.EOF,
+            TokenType.LBRACKET,
+        })
+
+        while self._pos < len(self._tokens):
+            tok = self._current()
+
+            if paren_depth == 0 and tok.type in stop_types:
+                break
+
+            if tok.type == TokenType.LPAREN:
+                items.append((CAT_LP, None))
+                self._pos += 1
+                paren_depth += 1
+
+            elif tok.type == TokenType.RPAREN:
+                paren_depth -= 1
+                if paren_depth < 0:
+                    break
+                items.append((CAT_RP, None))
+                self._pos += 1
+
+            elif tok.type == TokenType.LBRACE:
+                dfn = self._parse_dfn()
+                cat = self._classify_dfn(dfn)
+                items.append((cat, dfn))
+
+            elif tok.type == TokenType.NUMBER:
+                node = self._parse_array()
+                items.append((CAT_NOUN, node))
+
+            elif tok.type == TokenType.STRING:
+                self._pos += 1
+                assert isinstance(tok.value, str)
+                items.append((CAT_NOUN, Str(tok.value)))
+
+            elif tok.type == TokenType.FUNCTION:
+                self._pos += 1
+                assert isinstance(tok.value, str)
+                items.append((CAT_VERB, tok.value))
+
+            elif tok.type == TokenType.OPERATOR:
+                assert isinstance(tok.value, str)
+                op = tok.value
+                self._pos += 1
+                # Compound ∘.f → outer product (pre-bound verb)
+                if (op == "∘" and self._pos < len(self._tokens)
+                        and self._current().type == TokenType.OPERATOR
+                        and self._current().value == "."):
+                    self._pos += 1  # consume .
+                    fn_tok = self._eat(TokenType.FUNCTION)
+                    assert isinstance(fn_tok.value, str)
+                    bound = BoundOperator("∘.", fn_tok.value, CAT_VERB)
+                    items.append((CAT_VERB, bound))
+                # I-beam ⌶'path' → IBeamDerived verb
+                elif (op == "⌶" and self._pos < len(self._tokens)
+                        and self._current().type == TokenType.STRING):
+                    path_tok = self._eat(TokenType.STRING)
+                    assert isinstance(path_tok.value, str)
+                    items.append((CAT_VERB, IBeamDerived(path_tok.value)))
+                else:
+                    cat = self._classify_operator(op)
+                    items.append((cat, op))
+
+            elif tok.type == TokenType.ASSIGN:
+                self._pos += 1
+                items.append((CAT_ASGN, "←"))
+
+            elif tok.type == TokenType.ID:
+                assert isinstance(tok.value, str)
+                name = tok.value
+                self._pos += 1
+                var_node = Var(name)
+                if self._current().type == TokenType.LBRACKET:
+                    node = self._parse_bracket_index(var_node)
+                    items.append((CAT_NOUN, node))
+                elif self._current().type == TokenType.ASSIGN:
+                    items.append((CAT_NOUN, var_node))
+                else:
+                    cat = self._classify_name(name)
+                    items.append((cat, var_node))
+
+            elif tok.type == TokenType.SYSVAR:
+                assert isinstance(tok.value, str)
+                name = tok.value
+                self._pos += 1
+                sv_node = SysVar(name)
+                if self._current().type == TokenType.LBRACKET:
+                    node = self._parse_bracket_index(sv_node)
+                    items.append((CAT_NOUN, node))
+                elif self._current().type == TokenType.ASSIGN:
+                    items.append((CAT_NOUN, sv_node))
+                else:
+                    cat = self._classify_sysvar(name)
+                    items.append((cat, sv_node))
+
+            elif tok.type == TokenType.OMEGA:
+                self._pos += 1
+                items.append((CAT_NOUN, Omega()))
+
+            elif tok.type == TokenType.ALPHA:
+                self._pos += 1
+                items.append((CAT_NOUN, Alpha()))
+
+            elif tok.type == TokenType.ALPHA_ALPHA:
+                self._pos += 1
+                items.append((CAT_NOUN, AlphaAlpha()))
+
+            elif tok.type == TokenType.OMEGA_OMEGA:
+                self._pos += 1
+                items.append((CAT_NOUN, OmegaOmega()))
+
+            elif tok.type == TokenType.NABLA:
+                self._pos += 1
+                items.append((CAT_VERB, Nabla()))
+
+            elif tok.type == TokenType.QUALIFIED_NAME:
+                assert isinstance(tok.value, str)
+                self._pos += 1
+                items.append((CAT_NOUN, QualifiedVar(tok.value.split("::"))))
+
+            else:
+                raise SyntaxError_(f"Unexpected token: {tok}")
+
+        return items
+
+    def _is_callable_noun(self, node: object) -> bool:
+        """Check if a NOUN-classified node can act as a function.
+        Returns True for: ⍺⍺, ⍵⍵, ∇, all Vars (may be dynamically-defined
+        functions), QualifiedVars, system functions, Dfns."""
+        if isinstance(node, (AlphaAlpha, OmegaOmega, Nabla, Dfn)):
+            return True
+        if isinstance(node, (Var, QualifiedVar)):
+            return True
+        if isinstance(node, SysVar) and node.name in _SYS_FUNCTIONS:
+            return True
+        return False
+
+    # ── AST construction helpers ──
+
+    def _make_monadic(self, verb_node: object, arg_node: object) -> object:
+        """Create AST node for monadic verb application."""
+        if isinstance(verb_node, str):
+            return MonadicFunc(verb_node, arg_node)
+        if isinstance(verb_node, BoundOperator):
+            return self._apply_bound_monadic(verb_node, arg_node)
+        if isinstance(verb_node, (Var, Dfn, QualifiedVar, Nabla,
+                                  AlphaAlpha, OmegaOmega,
+                                  RankDerived, IBeamDerived, FunctionRef)):
+            return MonadicDfnCall(verb_node, arg_node)
+        if isinstance(verb_node, SysVar):
+            return MonadicDfnCall(verb_node, arg_node)
+        raise SyntaxError_(f"Cannot apply as monadic function: {type(verb_node)}")
+
+    def _make_dyadic(self, verb_node: object, left_node: object,
+                     right_node: object) -> object:
+        """Create AST node for dyadic verb application."""
+        if isinstance(verb_node, str):
+            return DyadicFunc(verb_node, left_node, right_node)
+        if isinstance(verb_node, BoundOperator):
+            return self._apply_bound_dyadic(verb_node, left_node, right_node)
+        if isinstance(verb_node, (Var, Dfn, QualifiedVar,
+                                  RankDerived, IBeamDerived, FunctionRef)):
+            return DyadicDfnCall(verb_node, left_node, right_node)
+        if isinstance(verb_node, SysVar):
+            return DyadicDfnCall(verb_node, left_node, right_node)
+        raise SyntaxError_(f"Cannot apply as dyadic function: {type(verb_node)}")
+
+    def _apply_bound_monadic(self, bound: BoundOperator,
+                             arg_node: object) -> object:
+        """Apply a bound operator (derived verb) monadically."""
+        op = bound.operator
+        operand = bound.left_operand
+
+        if isinstance(op, str) and op in ("/", "\\", "⌿", "⍀"):
+            if (bound.left_cat == CAT_VERB
+                    or isinstance(operand, (AlphaAlpha, OmegaOmega))):
+                # fn/ → reduce/scan; ⍺⍺/ defers to runtime
+                return DerivedFunc(op, operand, arg_node)
+            else:
+                # noun/ → replicate/expand (treated as dyadic function)
+                return DyadicFunc(op, operand, arg_node)
+
+        if isinstance(op, str) and op == "⍤":
+            # Rank: fn⍤k applied monadically
+            rank_node = RankDerived(operand, bound.right_operand)
+            return MonadicDfnCall(rank_node, arg_node)
+
+        if isinstance(op, str) and op == ".":
+            # Inner product applied monadically — error
+            raise SyntaxError_("Inner product requires two arguments")
+
+        if isinstance(op, str) and op == "∘.":
+            # Outer product applied monadically — error
+            raise SyntaxError_("Outer product requires two arguments")
+
+        if isinstance(op, str) and op == "⌶":
+            # I-beam: ⌶'path' applied monadically
+            ibeam = IBeamDerived(operand) if isinstance(operand, str) else operand
+            return MonadicDfnCall(ibeam, arg_node)
+
+        # User-defined operator
+        if isinstance(op, Var):
+            # Wrap primitive glyphs in FunctionRef for the interpreter
+            op_operand = FunctionRef(operand) if isinstance(operand, str) else operand
+            if bound.right_operand is not None:
+                # Dyadic dop (conjunction): op(⍺⍺, ⍵⍵) applied to ⍵
+                r_operand = bound.right_operand
+                r_operand = FunctionRef(r_operand) if isinstance(r_operand, str) else r_operand
+                return DyadicDopCall(op, op_operand, r_operand, arg_node)
+            return MonadicDopCall(op, op_operand, arg_node)
+
+        raise SyntaxError_(f"Unknown operator in bound form: {op}")
+
+    def _apply_bound_dyadic(self, bound: BoundOperator,
+                            left_node: object, right_node: object) -> object:
+        """Apply a bound operator (derived verb) dyadically."""
+        op = bound.operator
+        operand = bound.left_operand
+
+        if isinstance(op, str) and op == "⍤":
+            rank_node = RankDerived(operand, bound.right_operand)
+            return DyadicDfnCall(rank_node, left_node, right_node)
+
+        if isinstance(op, str) and op == ".":
+            # Inner product: left (f.g) right
+            left_fn = operand
+            right_fn = bound.right_operand
+            return InnerProduct(left_fn, right_fn, left_node, right_node)
+
+        if isinstance(op, str) and op == "∘.":
+            # Outer product: left (∘.f) right
+            return OuterProduct(operand, left_node, right_node)
+
+        if isinstance(op, str) and op in ("/", "\\", "⌿", "⍀"):
+            if (bound.left_cat == CAT_VERB
+                    or isinstance(operand, (AlphaAlpha, OmegaOmega))):
+                return DerivedFunc(op, operand, right_node)
+            else:
+                return DyadicFunc(op, operand, right_node)
+
+        # User-defined operator applied dyadically
+        if isinstance(op, Var):
+            op_operand = FunctionRef(operand) if isinstance(operand, str) else operand
+            if bound.right_operand is not None:
+                r_operand = bound.right_operand
+                r_operand = FunctionRef(r_operand) if isinstance(r_operand, str) else r_operand
+                return DyadicDopCall(op, op_operand, r_operand, right_node)
+            return MonadicDopCall(op, op_operand, right_node)
+
+        raise SyntaxError_(f"Unknown operator in bound dyadic form: {op}")
+
+    # ── Iverson's stack-based parsing algorithm ──
+
+    def _stack_parse(self, items: list[tuple[int, object]]) -> object:
+        """Run Iverson's 9-case stack-based parser on classified items.
+
+        Items are processed right-to-left. The stack grows upward.
+        stack[-1] = r0 (top/newest), stack[-2] = r1, etc.
+        """
+        stack: list[tuple[int, object]] = []
+        # Items in left-to-right order; pop from right = read right-to-left
+        # END marker at position 0 = popped last = leftmost sentinel
+        input_q = [(CAT_END, None)] + items
+
+        while True:
+            n = len(stack)
+            c0 = stack[-1][0] if n >= 1 else CAT_EMPTY
+            c1 = stack[-2][0] if n >= 2 else CAT_EMPTY
+            c2 = stack[-3][0] if n >= 3 else CAT_EMPTY
+            c3 = stack[-4][0] if n >= 4 else CAT_EMPTY
+
+            matched = False
+
+            # Case 1: Monadic function — E/A/V/←/LP  V  N  —
+            if (c0 in _CTX_MONAD
+                    and c1 == CAT_VERB and c2 == CAT_NOUN):
+                verb_node = stack[-2][1]
+                arg_node = stack[-3][1]
+                result = self._make_monadic(verb_node, arg_node)
+                stack[-3:-1] = [(CAT_NOUN, result)]
+                matched = True
+
+            # Case 1.5: Callable noun as monadic function
+            # Handles ⍺⍺, ⍵⍵, ∇, named functions, Vars applied monadically
+            # Skip when deeper callable+noun exists (let case 3.6 handle it)
+            elif (c0 in _CTX_MONAD
+                    and c1 == CAT_NOUN and c2 == CAT_NOUN
+                    and self._is_callable_noun(stack[-2][1])
+                    and not (n >= 4 and c3 == CAT_NOUN
+                             and self._is_callable_noun(stack[-3][1]))):
+                verb_node = stack[-2][1]
+                arg_node = stack[-3][1]
+                result = self._make_monadic(verb_node, arg_node)
+                stack[-3:-1] = [(CAT_NOUN, result)]
+                matched = True
+
+            # Case 2: Monadic fn (conjunction context) — C  N  V  N
+            elif (c0 == CAT_CONJ and c1 == CAT_NOUN
+                    and c2 == CAT_VERB and c3 == CAT_NOUN):
+                verb_node = stack[-3][1]
+                arg_node = stack[-4][1]
+                result = self._make_monadic(verb_node, arg_node)
+                stack[-4:-2] = [(CAT_NOUN, result)]
+                matched = True
+
+            # Case 3: Dyadic function — E/N/A/V/←/LP  N  V  N
+            elif (c0 in _CTX_DYAD
+                    and c1 == CAT_NOUN and c2 == CAT_VERB
+                    and c3 == CAT_NOUN):
+                left_node = stack[-2][1]
+                verb_node = stack[-3][1]
+                right_node = stack[-4][1]
+                result = self._make_dyadic(verb_node, left_node, right_node)
+                stack[-4:-1] = [(CAT_NOUN, result)]
+                matched = True
+
+            # Case 3.5: Dyadic callable noun — N(non-callable) N(callable) N
+            # E.g. `3 add 4` where add is a dynamically-defined function
+            elif (c0 in _CTX_DYAD
+                    and c1 == CAT_NOUN and c2 == CAT_NOUN
+                    and c3 == CAT_NOUN
+                    and not self._is_callable_noun(stack[-2][1])
+                    and self._is_callable_noun(stack[-3][1])):
+                left_node = stack[-2][1]
+                verb_node = stack[-3][1]
+                right_node = stack[-4][1]
+                result = self._make_dyadic(verb_node, left_node, right_node)
+                stack[-4:-1] = [(CAT_NOUN, result)]
+                matched = True
+
+            # Case 3.6: Deep monadic chain — N(callable) N(callable) N
+            # E.g. `⍺⍺ ⍺⍺ ⍵`: bind deeper pair first for right-to-left eval
+            elif (c0 in _CTX_DYAD
+                    and c2 == CAT_NOUN and c3 == CAT_NOUN
+                    and self._is_callable_noun(stack[-3][1])):
+                verb_node = stack[-3][1]
+                arg_node = stack[-4][1]
+                result = self._make_monadic(verb_node, arg_node)
+                stack[-4:-2] = [(CAT_NOUN, result)]
+                matched = True
+
+            # Case 4: Adverb binding — E/N/A/V/←/LP  N/V  A  —
+            elif (c0 in _CTX_DYAD
+                    and c1 in (CAT_NOUN, CAT_VERB) and c2 == CAT_ADV):
+                operand_node = stack[-2][1]
+                operand_cat = stack[-2][0]
+                adv_node = stack[-3][1]
+                bound = BoundOperator(adv_node, operand_node, operand_cat)
+                stack[-3:-1] = [(CAT_VERB, bound)]
+                matched = True
+
+            # Case 5: Conjunction binding — E/N/A/V/←/LP  N/V  C  N/V
+            elif (c0 in _CTX_DYAD
+                    and c1 in (CAT_NOUN, CAT_VERB) and c2 == CAT_CONJ
+                    and c3 in (CAT_NOUN, CAT_VERB)):
+                left_operand = stack[-2][1]
+                left_cat = stack[-2][0]
+                conj_node = stack[-3][1]
+                right_operand = stack[-4][1]
+                right_cat = stack[-4][0]
+                bound = BoundOperator(conj_node, left_operand, left_cat,
+                                      right_operand, right_cat)
+                stack[-4:-1] = [(CAT_VERB, bound)]
+                matched = True
+
+            # Case 6: Assignment — N/name  ←  N/V/A/C  —
+            elif (c0 in (CAT_NOUN,) and c1 == CAT_ASGN
+                    and c2 in (CAT_NOUN, CAT_VERB, CAT_ADV, CAT_CONJ)):
+                name_node = stack[-1][1]
+                value_node = stack[-3][1]
+                value_cat = stack[-3][0]
+                if isinstance(name_node, (Var, SysVar)):
+                    name_str = name_node.name
+                else:
+                    raise SyntaxError_(f"Invalid assignment target: {name_node}")
+                result = Assignment(name_str, value_node)
+                stack[-3:] = [(value_cat, result)]
+                matched = True
+
+            # Case 7: Parentheses — LP  N/A/C/V  RP  —
+            elif (c0 == CAT_LP
+                    and c1 in (CAT_NOUN, CAT_ADV, CAT_CONJ, CAT_VERB)
+                    and c2 == CAT_RP):
+                inner_cat = stack[-2][0]
+                inner_node = stack[-2][1]
+                stack[-3:] = [(inner_cat, inner_node)]
+                matched = True
+
+            if not matched:
+                # Cases 8/9: Shift next item from input
+                if input_q:
+                    stack.append(input_q.pop())
+                else:
+                    break
+
+        # Extract result — should be END + result on stack
+        # Find the result (skip END markers)
+        result_node = None
+        for cat, node in stack:
+            if cat != CAT_END and node is not None:
+                result_node = node
+        if result_node is None:
+            return Num(0)
+        return result_node
 
     def _current(self) -> Token:
         return self._tokens[self._pos]
@@ -480,194 +990,16 @@ class Parser:
         return func_token.value, None
 
     def _parse_statement(self) -> object:
-        """Parse a statement: assignment or expression."""
-        # Check for assignment: ID ← or ⎕SYSVAR ←
-        if (
-            self._current().type in (TokenType.ID, TokenType.SYSVAR)
-            and self._peek() is not None
-            and self._peek().type == TokenType.ASSIGN  # type: ignore[union-attr]
-        ):
-            name_token = self._eat(self._current().type)
-            self._eat(TokenType.ASSIGN)
-            value = self._parse_statement()
-            assert isinstance(name_token.value, str)
-            return Assignment(name_token.value, value)
-
-        # Check for i-beam operator: ⌶'path'
-        if (
-            self._current().type == TokenType.OPERATOR
-            and self._current().value == "⌶"
-        ):
-            self._eat(TokenType.OPERATOR)
-            path_token = self._eat(TokenType.STRING)
-            assert isinstance(path_token.value, str)
-            return IBeamDerived(path_token.value)
-
-        # Check for primitive function (possibly followed by operator)
-        if self._current().type == TokenType.FUNCTION:
-            func_glyph, op_glyph = self._parse_function_expr()
-            if op_glyph == "⍤":
-                # Rank operator: f⍤k
-                rank_spec = self._parse_array()
-                return RankDerived(func_glyph, rank_spec)
-            if op_glyph in ("/", "\\", "⌿", "⍀"):
-                # Check if followed by ⍤ (e.g., +/⍤1)
-                if (
-                    self._current().type == TokenType.OPERATOR
-                    and self._current().value == "⍤"
-                ):
-                    self._eat(TokenType.OPERATOR)
-                    rank_spec = self._parse_array()
-                    inner = ReduceOp(func_glyph) if op_glyph in ("/", "⌿") else ScanOp(func_glyph)
-                    return RankDerived(inner, rank_spec)
-                operand = self._parse_statement()
-                return DerivedFunc(op_glyph, func_glyph, operand)
-            if op_glyph is not None:
-                operand = self._parse_statement()
-                return DerivedFunc(op_glyph, func_glyph, operand)
-            operand = self._parse_statement()
-            return MonadicFunc(func_glyph, operand)
-
-        # Parse left argument (array — may include dfn, ⍵, ⍺, ∇)
-        left = self._parse_array()
-
-        # Check for user-defined operator: left op_name [right_operand] argument
-        if (
-            self._current().type == TokenType.ID
-            and self._is_operator_name(self._current().value)
-        ):
-            op_token = self._eat(TokenType.ID)
-            assert isinstance(op_token.value, str)
-            op_var = Var(op_token.value)
-            arity = self._operator_arity.get(op_token.value, 1)
-            if arity == 2:
-                # Dyadic operator (conjunction): left op right_operand argument
-                # Right operand is a single atom (Iverson: immediate next token)
-                right_operand = self._parse_atom_with_index()
-                argument = self._parse_statement()
-                return DyadicDopCall(op_var, left, right_operand, argument)
-            else:
-                # Monadic operator (adverb): left op argument
-                argument = self._parse_statement()
-                return MonadicDopCall(op_var, left, argument)
-
-        # If left is a known function name, it has long right scope
-        _fn_name = None
-        if isinstance(left, Var):
-            _fn_name = left.name
-        elif isinstance(left, SysVar):
-            _fn_name = left.name
-        if (
-            _fn_name is not None
-            and self._is_function_name(_fn_name)
-            and (self._is_array_start()
-                 or self._current().type == TokenType.FUNCTION
-                 or self._current().type == TokenType.SYSVAR
-                 or (self._current().type == TokenType.OPERATOR
-                     and self._current().value == "⌶"))
-        ):
-            right = self._parse_statement()
-            return MonadicDfnCall(left, right)
-
-        # Check for dyadic primitive function or inner/outer product
-        if self._current().type == TokenType.FUNCTION:
-            func_glyph, op_glyph = self._parse_function_expr()
-            if op_glyph == ".":
-                # Inner product: left f.g right
-                right_fn_token = self._eat(TokenType.FUNCTION)
-                assert isinstance(right_fn_token.value, str)
-                right = self._parse_statement()
-                return InnerProduct(func_glyph, right_fn_token.value, left, right)
-            if op_glyph is not None:
-                operand = self._parse_statement()
-                return DerivedFunc(op_glyph, func_glyph, operand)
-            right = self._parse_statement()
-            return DyadicFunc(func_glyph, left, right)
-
-        # ⍺⍺/ or ⍺⍺\ → reduce/scan with operand function (not replicate/expand)
-        if (
-            isinstance(left, (AlphaAlpha, OmegaOmega))
-            and self._current().type == TokenType.OPERATOR
-            and self._current().value in ("/", "\\", "⌿", "⍀")
-        ):
-            op_token = self._eat(TokenType.OPERATOR)
-            assert isinstance(op_token.value, str)
-            operand = self._parse_statement()
-            return DerivedFunc(op_token.value, left, operand)
-
-        # Check for dyadic operator as function: left / right, left \ right, etc.
-        if (
-            self._current().type == TokenType.OPERATOR
-            and self._current().value in ("/", "\\", "⌿", "⍀")
-        ):
-            op_token = self._eat(TokenType.OPERATOR)
-            assert isinstance(op_token.value, str)
-            right = self._parse_statement()
-            return DyadicFunc(op_token.value, left, right)
-
-        # Check for outer product: left ∘.f right
-        if (
-            self._current().type == TokenType.OPERATOR
-            and self._current().value == "∘"
-        ):
-            self._eat(TokenType.OPERATOR)  # ∘
-            self._eat(TokenType.OPERATOR)  # .
-            func_token = self._eat(TokenType.FUNCTION)
-            assert isinstance(func_token.value, str)
-            right = self._parse_statement()
-            return OuterProduct(func_token.value, left, right)
-
-        # Check for ⍤ after Dfn or Var: {dfn}⍤k or name⍤k
-        if (
-            isinstance(left, (Dfn, Var))
-            and self._current().type == TokenType.OPERATOR
-            and self._current().value == "⍤"
-        ):
-            self._eat(TokenType.OPERATOR)
-            rank_spec = self._parse_array()
-            left = RankDerived(left, rank_spec)
-
-        # Check for dfn/var in dyadic position: left {body} right  or  left name right
-        if self._current().type == TokenType.LBRACE:
-            dfn = self._parse_dfn()
-            right = self._parse_statement()
-            return DyadicDfnCall(dfn, left, right)
-
-        # Check for parenthesized function in dyadic position: left (f⍤k) right
-        if self._current().type == TokenType.LPAREN:
-            saved_pos = self._pos
-            self._eat(TokenType.LPAREN)
-            inner = self._parse_statement()
-            if self._current().type == TokenType.RPAREN:
-                self._eat(TokenType.RPAREN)
-                if isinstance(inner, (RankDerived, IBeamDerived)) and self._is_array_start():
-                    right = self._parse_statement()
-                    return DyadicDfnCall(inner, left, right)
-            self._pos = saved_pos
-
-        if (
-            self._current().type in (TokenType.ID, TokenType.SYSVAR)
-            and not isinstance(left, (Dfn, Nabla))
-        ):
-            # Could be: left name right (dyadic named dfn/sys call)
-            # But only if the name is followed by an array
-            saved_pos = self._pos
-            tok_type = self._current().type
-            name_token = self._eat(tok_type)
-            assert isinstance(name_token.value, str)
-            if self._is_array_start() or self._current().type == TokenType.FUNCTION:
-                right = self._parse_statement()
-                node_fn = Var(name_token.value) if tok_type == TokenType.ID else SysVar(name_token.value)
-                return DyadicDfnCall(node_fn, left, right)
-            # Not a dyadic call — backtrack
-            self._pos = saved_pos
-
-        # Check if left is a dfn/var/rank-derived being applied as a monadic function
-        if isinstance(left, (Dfn, Var, QualifiedVar, Nabla, AlphaAlpha, OmegaOmega, RankDerived, IBeamDerived)) and self._is_array_start():
-            right = self._parse_statement()
-            return MonadicDfnCall(left, right)
-
-        return left
+        """Parse a statement using Iverson's stack-based algorithm."""
+        items = self._build_items()
+        if not items:
+            return Num(0)
+        result = self._stack_parse(items)
+        # Handle trailing bracket indexing: result[idx]
+        if (self._pos < len(self._tokens)
+                and self._current().type == TokenType.LBRACKET):
+            result = self._parse_bracket_index(result)
+        return result
 
     def parse(self) -> object:
         # Empty input (e.g. comment-only line) → return Num(0) as no-op

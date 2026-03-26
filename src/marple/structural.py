@@ -199,9 +199,13 @@ def decode(alpha: APLArray, omega: APLArray) -> APLArray:
 
 def replicate(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic /: replicate/compress. Each element of alpha says how many
-    times to repeat the corresponding element of omega."""
+    times to repeat the corresponding element of omega.
+    Scalar left argument is extended to match right argument length."""
     counts = [int(x) for x in alpha.data]
     data = list(omega.data)
+    # Scalar extension: single count applies to all elements
+    if len(counts) == 1 and len(data) > 1:
+        counts = counts * len(data)
     if len(counts) != len(data):
         raise LengthError(f"Length mismatch: {len(counts)} vs {len(data)}")
     result: list[object] = []
@@ -217,6 +221,8 @@ def replicate_first(alpha: APLArray, omega: APLArray) -> APLArray:
     if len(omega.shape) <= 1:
         return replicate(alpha, omega)
     first = omega.shape[0]
+    if len(counts) == 1 and first > 1:
+        counts = counts * first
     if len(counts) != first:
         raise LengthError(f"Length mismatch: {len(counts)} vs {first}")
     cell_shape = omega.shape[1:]

@@ -64,6 +64,14 @@ class TestReplicate:
         # 1 2 3/4 5 6 → 4 5 5 6 6 6
         assert interpret("1 2 3/4 5 6") == APLArray([6], [4, 5, 5, 6, 6, 6])
 
+    def test_replicate_scalar_left(self) -> None:
+        # 3/1 2 3 → 1 1 1 2 2 2 3 3 3 (scalar extension)
+        assert interpret("3/1 2 3") == APLArray([9], [1, 1, 1, 2, 2, 2, 3, 3, 3])
+
+    def test_replicate_scalar_both(self) -> None:
+        # 2/5 → 5 5
+        assert interpret("2/5") == APLArray([2], [5, 5])
+
 
 class TestExpand:
     def test_expand(self) -> None:

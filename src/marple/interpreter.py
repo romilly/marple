@@ -78,6 +78,7 @@ from marple.parser import (
     AlphaAlpha,
     AlphaDefault,
     Assignment,
+    BoundOperator,
     FunctionRef,
     DerivedFunc,
     Dfn,
@@ -477,8 +478,11 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
 
     if isinstance(node, DerivedFunc):
         operand = _evaluate(node.operand, env)
-        # Resolve function — may be a glyph string or an AlphaAlpha/OmegaOmega node
-        if isinstance(node.function, (AlphaAlpha, OmegaOmega)):
+        # Resolve function — may be a glyph string, AST node, or ⍺⍺/⍵⍵
+        func: Any = None
+        if isinstance(node.function, str):
+            func = _lookup_dyadic(node.function)
+        elif isinstance(node.function, (AlphaAlpha, OmegaOmega)):
             fn_val = _evaluate(node.function, env)
             if isinstance(fn_val, FunctionRef):
                 func = _lookup_dyadic(fn_val.glyph)
@@ -486,8 +490,14 @@ def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
                 func = lambda a, o, _c=fn_val: _call_dfn(_c, o, alpha=a)
             else:
                 raise DomainError("⍺⍺ is not a function in this context")
-        else:
-            func = _lookup_dyadic(node.function)
+        elif isinstance(node.function, (Dfn, Var)):
+            fn_val = _evaluate(node.function, env)
+            if isinstance(fn_val, _DfnClosure):
+                func = lambda a, o, _c=fn_val: _call_dfn(_c, o, alpha=a)
+            else:
+                raise DomainError(f"Expected function for operator, got {type(fn_val)}")
+        elif isinstance(node.function, FunctionRef):
+            func = _lookup_dyadic(node.function.glyph)
         if func is None:
             raise DomainError(f"Unknown function for operator: {node.function}")
         if node.operator == "/":
@@ -1233,6 +1243,23 @@ def _apply_func_monadic(
         if isinstance(val, _DfnClosure):
             return _call_dfn(val, omega)
         raise DomainError(f"Expected dfn, got {type(val)}")
+    if isinstance(func, FunctionRef):
+        return _dispatch_monadic(func.glyph, omega, env)
+    if isinstance(func, BoundOperator):
+        # A derived verb from operator binding, used inside rank
+        node = func  # type: ignore[assignment]
+        if isinstance(node.operator, str) and node.operator in ("/", "⌿"):
+            inner = _lookup_dyadic(node.left_operand) if isinstance(node.left_operand, str) else None
+            if inner and node.operator == "/":
+                return _reduce(inner, omega)  # type: ignore[arg-type]
+            if inner and node.operator == "⌿":
+                return _reduce_first(inner, omega)  # type: ignore[arg-type]
+        if isinstance(node.operator, str) and node.operator in ("\\", "⍀"):
+            inner = _lookup_dyadic(node.left_operand) if isinstance(node.left_operand, str) else None
+            if inner and node.operator == "\\":
+                return _scan(inner, omega)  # type: ignore[arg-type]
+            if inner and node.operator == "⍀":
+                return _scan_first(inner, omega)  # type: ignore[arg-type]
     raise DomainError(f"Cannot apply as monadic function: {type(func)}")
 
 
@@ -1400,6 +1427,24 @@ def default_env() -> dict[str, Any]:
     return env
 
 
+def _newlines_to_diamonds(source: str) -> str:
+    """Convert newlines to ⋄ (statement separator), preserving strings."""
+    result: list[str] = []
+    in_string = False
+    for ch in source:
+        if ch == "'" and not in_string:
+            in_string = True
+            result.append(ch)
+        elif ch == "'" and in_string:
+            in_string = False
+            result.append(ch)
+        elif ch == "\n" and not in_string:
+            result.append("⋄")
+        else:
+            result.append(ch)
+    return "".join(result)
+
+
 def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
     env = env or default_env()
     # Handle #import directives
@@ -1413,6 +1458,8 @@ def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
         name_table[qfn] = NC_FUNCTION
     env["__name_table__"] = name_table
     op_arity = env.get("__operator_arity__", {})
+    # Convert newlines to diamonds (statement separators) outside strings
+    source = _newlines_to_diamonds(source)
     tree = parse(source, name_table, op_arity)
     result = _evaluate(tree, env)
     # Track source for dfn assignments so workspace save can reconstruct them

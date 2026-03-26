@@ -1,0 +1,41 @@
+⎕VER
+⍝ ═══════════════════════════════════════════════════
+⍝ MARPLE Demo 8: Operators & Binding
+⍝ ═══════════════════════════════════════════════════
+
+⍝ ── Reduce with primitive functions ──
++/⍳10
+×/⍳6
+
+⍝ ── Reduce with a dfn as operand ──
+{⍺+⍵}/⍳10
+{⍺×⍵}/1 2 3 4 5
+
+⍝ ── Scan (running totals) with a dfn ──
+{⍺+⍵}\⍳5
+
+⍝ ── User-defined operators (dops) ──
+twice ← {⍺⍺ ⍺⍺ ⍵}
+double ← {⍵+⍵}
+(double) twice 3
+
+⍝ ── Primitives as operands ──
+(-) twice 5
+(÷) twice 4
+
+⍝ ── A conjunction: compose two functions ──
+compose ← {⍵⍵ ⍺⍺ ⍵}
+double compose (-) 3
+
+⍝ ── Array operand for a dop ──
+addop ← {⍺⍺+⍵}
+(10) addop 5
+
+⍝ ── Reduce-first along columns ──
+M ← 3 4⍴⍳12
+M
++⌿M
+
+⍝ ── Replicate and compress ──
+3/1 2 3
+1 0 1 0/⍳4
