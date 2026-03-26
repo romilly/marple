@@ -1,0 +1,39 @@
+⎕VER
+⍝ ═══════════════════════════════════════════════════
+⍝ MARPLE Demo 7: ⎕CR and ⎕FX — Function Introspection
+⍝ ═══════════════════════════════════════════════════
+
+⍝ ── Define a simple function ──
+double←{⍵+⍵}
+double 21
+
+⍝ ── ⎕CR: view its source ──
+⎕CR 'double'
+
+⍝ ── ⎕FX: define a function from text ──
+⎕FX 'triple←{⍵×3}'
+triple 14
+
+⍝ ── Round trip: clone a function ──
+⎕FX 'dbl←{⍵+⍵}'
+dbl 7
+
+⍝ ── Multi-statement dfn ──
+sign←{⍵>0:1 ⋄ ⍵<0:¯1 ⋄ 0}
+sign 42
+sign ¯7
+sign 0
+⎕CR 'sign'
+
+⍝ ── Operators (dops) work too ──
+twice←{⍺⍺ ⍺⍺ ⍵}
+⎕CR 'twice'
+⎕NC 'twice'
+⎕NC 'double'
+
+⍝ ── Dynamic lookup: functions see current values ──
+x←10
+f←{x+⍵}
+f 1
+x←99
+f 1
