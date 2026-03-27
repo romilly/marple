@@ -71,37 +71,45 @@ class WebSession:
             parts.append(f'<pre class="output">{output_html}</pre>')
         return f'<div class="entry">{"".join(parts)}</div>'
 
+    def _user_names(self, type_filter: type) -> str:
+        names = sorted(
+            n for n in self.env
+            if not n.startswith("⎕") and not n.startswith("__")
+            and n not in ("⍵", "⍺", "∇")
+            and isinstance(self.env[n], type_filter)
+        )
+        return "  ".join(names)
+
+    def _ws_clear(self, cmd: str) -> str:
+        self.env.clear()
+        self.env.update(default_env())
+        return "CLEAR WS"
+
+    def _ws_vars(self, cmd: str) -> str:
+        return self._user_names(APLArray)
+
+    def _ws_fns(self, cmd: str) -> str:
+        return self._user_names(_DfnClosure)
+
+    def _ws_wsid(self, cmd: str) -> str:
+        parts = cmd.split(None, 1)
+        if len(parts) > 1:
+            self.env["⎕WSID"] = APLArray([len(parts[1])], list(parts[1]))
+            return parts[1]
+        wsid = self.env.get("⎕WSID")
+        return "".join(str(c) for c in wsid.data) if isinstance(wsid, APLArray) else "CLEAR WS"
+
+    _SYS_COMMANDS: dict[str, str] = {
+        "clear": "_ws_clear", "vars": "_ws_vars",
+        "fns": "_ws_fns", "wsid": "_ws_wsid",
+    }
+
     def _run_system_command(self, cmd: str) -> str:
         """Execute a system command and return the output string."""
-        if cmd == ")clear":
-            self.env.clear()
-            self.env.update(default_env())
-            return "CLEAR WS"
-        if cmd == ")vars":
-            names = sorted(
-                n for n in self.env
-                if not n.startswith("⎕") and not n.startswith("__")
-                and n not in ("⍵", "⍺", "∇")
-                and isinstance(self.env[n], APLArray)
-            )
-            return "  ".join(names)
-        if cmd == ")fns":
-            names = sorted(
-                n for n in self.env
-                if not n.startswith("⎕") and not n.startswith("__")
-                and n not in ("⍵", "⍺", "∇")
-                and isinstance(self.env[n], _DfnClosure)
-            )
-            return "  ".join(names)
-        if cmd.startswith(")wsid"):
-            parts = cmd.split(None, 1)
-            if len(parts) > 1:
-                self.env["⎕WSID"] = APLArray([len(parts[1])], list(parts[1]))
-                return parts[1]
-            wsid = self.env.get("⎕WSID")
-            if isinstance(wsid, APLArray):
-                return "".join(str(c) for c in wsid.data)
-            return "CLEAR WS"
+        word = cmd[1:].split()[0].lower() if cmd[1:].strip() else ""
+        method_name = self._SYS_COMMANDS.get(word)
+        if method_name is not None:
+            return getattr(self, method_name)(cmd)
         return f"Unknown command: {cmd}"
 
     def workspace_fragment(self) -> str:

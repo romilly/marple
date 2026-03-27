@@ -33,7 +33,7 @@ MARPLE runs on the Raspberry Pi Pico 2 via MicroPython. On the Pimoroni Presto, 
 - **Presto LCD mirror** — REPL session mirrors to the Pimoroni Presto's 480x480 touchscreen with APL bitmap font
 - **Terminal REPL** — live backtick→glyph input, workspace save/load, APL-style formatting
 - **Script runner** — `marple script.marple` with session transcript output
-- **612 tests** (560+ interpreter + 50 web), pyright strict
+- **612 tests** (560+ interpreter + 50 web), dispatch-dict architecture, pyright strict
 
 ## Quick start
 
@@ -161,7 +161,7 @@ MARPLE_BACKEND=none pytest
 | `backend.py` | Numpy/CuPy/ulab detection with pure-Python fallback |
 | `tokenizer.py` | Lexer for APL glyphs, numbers, strings, qualified names |
 | `parser.py` | Iverson stack-based parser with operator binding precedence |
-| `interpreter.py` | Tree-walking evaluator with dfn closures |
+| `interpreter.py` | Dispatch-dict evaluator with dfn closures |
 | `functions.py` | Scalar functions with pervasion (numpy-accelerated) |
 | `structural.py` | Shape-manipulating and indexing functions |
 | `cells.py` | Cell decomposition and reassembly for the rank operator |

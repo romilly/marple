@@ -102,6 +102,117 @@ def _user_names(env: dict[str, Any]) -> list[str]:
     )
 
 
+def _cmd_off(line: str, env: dict[str, Any]) -> bool:
+    return True  # signal to break
+
+
+def _cmd_clear(line: str, env: dict[str, Any]) -> bool:
+    env.clear()
+    env["__wsid__"] = "CLEAR WS"
+    print("CLEAR WS")
+    return False
+
+
+def _cmd_wsid(line: str, env: dict[str, Any]) -> bool:
+    parts = line.split(None, 1)
+    if len(parts) > 1:
+        env["__wsid__"] = parts[1].strip()
+        print(parts[1].strip())
+    else:
+        print(env.get("__wsid__", "CLEAR WS"))
+    return False
+
+
+def _cmd_fns(line: str, env: dict[str, Any]) -> bool:
+    parts = line.split(None, 1)
+    if len(parts) > 1:
+        ns_name = parts[1].strip()
+        from marple.interpreter import _get_sys_workspace
+        if ns_name.startswith("$"):
+            ns_parts = ns_name.split("::")[1:] if "::" in ns_name else []
+            sys_ws = _get_sys_workspace()
+            ns = sys_ws.resolve(ns_parts) if ns_parts else sys_ws
+            if ns is not None and hasattr(ns, "list_names"):
+                print("  ".join(ns.list_names()))
+            else:
+                print(f"Namespace not found: {ns_name}")
+        else:
+            print(f"Namespace not found: {ns_name}")
+    else:
+        fns = [n for n in _user_names(env) if isinstance(env[n], _DfnClosure)]
+        print("  ".join(fns) if fns else "")
+    return False
+
+
+def _cmd_vars(line: str, env: dict[str, Any]) -> bool:
+    vars_ = [n for n in _user_names(env) if isinstance(env[n], APLArray)]
+    print("  ".join(vars_) if vars_ else "")
+    return False
+
+
+def _cmd_lib(line: str, env: dict[str, Any]) -> bool:
+    workspaces = list_workspaces(WORKSPACES_ROOT)
+    print("  ".join(workspaces) if workspaces else "(none)")
+    return False
+
+
+def _cmd_save(line: str, env: dict[str, Any]) -> bool:
+    parts = line.split(None, 1)
+    if len(parts) > 1:
+        env["__wsid__"] = parts[1].strip()
+    wsid = env.get("__wsid__", "CLEAR WS")
+    if wsid == "CLEAR WS":
+        print("ERROR: No workspace ID set. Use )WSID name first.")
+        return False
+    try:
+        save_workspace(env, os.path.join(WORKSPACES_ROOT, wsid))
+        print(f"{wsid} SAVED")
+    except Exception as e:
+        print(f"ERROR: {e}")
+    return False
+
+
+def _cmd_load(line: str, env: dict[str, Any]) -> bool:
+    parts = line.split(None, 1)
+    if len(parts) < 2:
+        print("ERROR: )LOAD requires a workspace name")
+        return False
+    name = parts[1].strip()
+    ws_dir = os.path.join(WORKSPACES_ROOT, name)
+    if not os.path.isdir(ws_dir):
+        print(f"ERROR: Workspace not found: {name}")
+        return False
+    env.clear()
+    try:
+        load_workspace(env, ws_dir)
+        print(env.get("__wsid__", name))
+    except Exception as e:
+        print(f"ERROR: {e}")
+    return False
+
+
+_SYSTEM_COMMANDS: dict[str, Any] = {
+    "off": _cmd_off,
+    "clear": _cmd_clear,
+    "wsid": _cmd_wsid,
+    "fns": _cmd_fns,
+    "vars": _cmd_vars,
+    "lib": _cmd_lib,
+    "save": _cmd_save,
+    "load": _cmd_load,
+}
+
+
+def _handle_system_command(line: str, env: dict[str, Any]) -> bool:
+    """Handle a )command. Returns True if REPL should exit."""
+    cmd = line[1:].split()[0].lower() if line[1:].strip() else ""
+    handler = _SYSTEM_COMMANDS.get(cmd)
+    if handler is not None:
+        return handler(line, env)
+    print(f"Unknown command: {line}")
+    return False
+
+
 def main() -> None:
     # Check for script mode: marple script.marple
     if len(sys.argv) > 1:
@@ -130,84 +241,9 @@ def main() -> None:
         line = line.strip()
         if not line:
             continue
-        if line == ")off":
-            break
-        if line == ")clear":
-            wsid = env.get("__wsid__", "CLEAR WS")
-            env.clear()
-            env["__wsid__"] = "CLEAR WS"
-            print("CLEAR WS")
-            continue
-        if line == ")wsid" or line == ")WSID":
-            print(env.get("__wsid__", "CLEAR WS"))
-            continue
-        if line.startswith(")wsid ") or line.startswith(")WSID "):
-            new_wsid = line.split(None, 1)[1].strip()
-            env["__wsid__"] = new_wsid
-            print(new_wsid)
-            continue
-        if line.startswith(")fns"):
-            parts = line.split(None, 1)
-            if len(parts) > 1:
-                # )fns $::str or )fns utils
-                ns_name = parts[1].strip()
-                from marple.interpreter import _get_sys_workspace
-                if ns_name.startswith("$"):
-                    ns_parts = ns_name.split("::")[1:] if "::" in ns_name else []
-                    sys_ws = _get_sys_workspace()
-                    ns = sys_ws.resolve(ns_parts) if ns_parts else sys_ws
-                    if ns is not None and hasattr(ns, "list_names"):
-                        print("  ".join(ns.list_names()))
-                    else:
-                        print(f"Namespace not found: {ns_name}")
-                else:
-                    print(f"Namespace not found: {ns_name}")
-            else:
-                fns = [n for n in _user_names(env) if isinstance(env[n], _DfnClosure)]
-                print("  ".join(fns) if fns else "")
-            continue
-        if line == ")vars":
-            vars_ = [n for n in _user_names(env) if isinstance(env[n], APLArray)]
-            print("  ".join(vars_) if vars_ else "")
-            continue
-        if line == ")lib" or line == ")LIB":
-            workspaces = list_workspaces(WORKSPACES_ROOT)
-            if workspaces:
-                print("  ".join(workspaces))
-            else:
-                print("(none)")
-            continue
-        if line.startswith(")save") or line.startswith(")SAVE"):
-            parts = line.split(None, 1)
-            if len(parts) > 1:
-                env["__wsid__"] = parts[1].strip()
-            wsid = env.get("__wsid__", "CLEAR WS")
-            if wsid == "CLEAR WS":
-                print("ERROR: No workspace ID set. Use )WSID name first.")
-                continue
-            ws_dir = os.path.join(WORKSPACES_ROOT, wsid)
-            try:
-                save_workspace(env, ws_dir)
-                print(f"{wsid} SAVED")
-            except Exception as e:
-                print(f"ERROR: {e}")
-            continue
-        if line.startswith(")load") or line.startswith(")LOAD"):
-            parts = line.split(None, 1)
-            if len(parts) < 2:
-                print("ERROR: )LOAD requires a workspace name")
-                continue
-            name = parts[1].strip()
-            ws_dir = os.path.join(WORKSPACES_ROOT, name)
-            if not os.path.isdir(ws_dir):
-                print(f"ERROR: Workspace not found: {name}")
-                continue
-            env.clear()
-            try:
-                load_workspace(env, ws_dir)
-                print(env.get("__wsid__", name))
-            except Exception as e:
-                print(f"ERROR: {e}")
+        if line.startswith(")"):
+            if _handle_system_command(line, env):
+                break
             continue
         try:
             result = interpret(line, env)
