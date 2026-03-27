@@ -37,6 +37,9 @@ Planned quad-names for MARPLE, based on Dyalog APL's system functions and variab
 | `⎕NWRITE` | Write text file (dyadic: `data ⎕NWRITE path`) |
 | `⎕NEXISTS` | Check file existence — returns 1 or 0 |
 | `⎕NDELETE` | Delete file |
+| `⎕FMT` | Format — dyadic with I/F/E/A/G codes, text insertion, G pattern |
+| `⎕CR` | Canonical Representation — function source as character matrix |
+| `⎕FX` | Fix — define function from text source |
 
 ---
 
@@ -44,7 +47,6 @@ Planned quad-names for MARPLE, based on Dyalog APL's system functions and variab
 
 | Name | Type | Description | Notes |
 |------|------|-------------|-------|
-| `⎕FMT` | Function | Format with specification (like C printf) | Dyalog uses A/I/F/E/G format codes |
 | `⎕VFI` | Function | Verify and Fix Input — parse numbers from text | Returns (validity vector)(value vector) |
 | `⎕DL` | Function | Delay — pause execution for N seconds | Simple: `⎕DL 2.5` sleeps 2.5s |
 | `⎕NL` | Function | Name List — list names of a given class | Programmable version of `)fns`/`)vars` |

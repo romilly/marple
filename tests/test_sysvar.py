@@ -345,3 +345,200 @@ class TestQuadFX:
         from marple.errors import DomainError
         with pytest.raises(DomainError):
             interpret("⎕FX 'not a function'")
+
+
+def _fmt_row(result: APLArray, row: int = 0) -> str:
+    """Extract a single row from a ⎕FMT character matrix as a string."""
+    if len(result.shape) == 1:
+        return "".join(str(c) for c in result.data)
+    cols = result.shape[1]
+    start = row * cols
+    return "".join(str(c) for c in result.data[start:start + cols])
+
+
+class TestFmt:
+    """Tests for ⎕FMT (format)."""
+
+    # ── Monadic ⎕FMT ──
+
+    def test_monadic_fmt_scalar(self) -> None:
+        result = interpret("⎕FMT 42")
+        assert _fmt_row(result) == "42"
+
+    def test_monadic_fmt_vector(self) -> None:
+        result = interpret("⎕FMT 1 2 3")
+        assert _fmt_row(result) == "1 2 3"
+
+    # ── Dyadic: single scalar args ──
+
+    def test_dyadic_fmt_integer(self) -> None:
+        result = interpret("'I5' ⎕FMT (42)")
+        assert _fmt_row(result) == "   42"
+
+    def test_dyadic_fmt_fixed(self) -> None:
+        result = interpret("'F8.2' ⎕FMT (3.14)")
+        assert _fmt_row(result) == "    3.14"
+
+    def test_dyadic_fmt_alpha(self) -> None:
+        # A format: left-justified by default in Dyalog
+        result = interpret("'A10' ⎕FMT ('hello')")
+        assert _fmt_row(result) == "hello     "
+
+    # ── Multiple columns (semicolon-separated) ──
+
+    def test_dyadic_fmt_multiple_columns(self) -> None:
+        env = default_env()
+        interpret("a←42", env)
+        interpret("b←3.14", env)
+        result = interpret("'I5,F8.2' ⎕FMT (a;b)", env)
+        assert _fmt_row(result) == "   42    3.14"
+
+    def test_fmt_semicolon_args(self) -> None:
+        result = interpret("'I3,I3' ⎕FMT (10;20)")
+        assert _fmt_row(result) == " 10 20"
+
+    # ── Vector args → matrix rows ──
+
+    def test_fmt_vector_arg_produces_matrix(self) -> None:
+        # A vector argument produces one row per element
+        result = interpret("'I5' ⎕FMT (1 2 3)")
+        assert result.shape == [3, 5]
+        assert _fmt_row(result, 0) == "    1"
+        assert _fmt_row(result, 1) == "    2"
+        assert _fmt_row(result, 2) == "    3"
+
+    def test_fmt_two_vector_columns(self) -> None:
+        result = interpret("'I3,F6.1' ⎕FMT (1 2 3;4 5 6)")
+        assert result.shape[0] == 3  # 3 rows
+        assert _fmt_row(result, 0) == "  1   4.0"
+        assert _fmt_row(result, 1) == "  2   5.0"
+        assert _fmt_row(result, 2) == "  3   6.0"
+
+    # ── Text insertion ──
+
+    def test_fmt_text_insertion(self) -> None:
+        # ⊂text⊃ inserts literal text; I3 right-justifies in 3 cols
+        result = interpret("'I3,⊂ => ⊃,I3' ⎕FMT (10;20)")
+        assert _fmt_row(result) == " 10 =>  20"
+
+    # ── Format cycling ──
+
+    def test_fmt_spec_cycles(self) -> None:
+        # Single format spec applied to multiple columns
+        result = interpret("'I4' ⎕FMT (1;2;3)")
+        assert _fmt_row(result) == "   1   2   3"
+
+    # ── Result is character matrix ──
+
+    def test_fmt_result_is_matrix(self) -> None:
+        result = interpret("'I5' ⎕FMT (42)")
+        assert len(result.shape) == 2  # matrix, not vector
+        assert result.shape == [1, 5]
+
+    # ── Character arguments ──
+
+    def test_fmt_char_vector_is_one_row(self) -> None:
+        # A character vector is a single string value (one row)
+        result = interpret("'A5' ⎕FMT ('hello')")
+        assert result.shape == [1, 5]
+        assert _fmt_row(result) == "hello"
+
+    def test_fmt_char_matrix_rows(self) -> None:
+        # A character matrix: each row is one row of output
+        # 2 3⍴'TOPCAT' → 2×3 matrix: TOP / CAT
+        result = interpret("'A3' ⎕FMT (2 3⍴'TOPCAT')")
+        assert result.shape == [2, 3]
+        assert _fmt_row(result, 0) == "TOP"
+        assert _fmt_row(result, 1) == "CAT"
+
+    def test_fmt_repeated_a1(self) -> None:
+        # 3A1 = three A1 phrases, each consuming one char
+        result = interpret("'3A1' ⎕FMT (2 3⍴'TOPCAT')")
+        assert result.shape == [2, 3]
+        assert _fmt_row(result, 0) == "TOP"
+        assert _fmt_row(result, 1) == "CAT"
+
+    def test_fmt_mixed_numeric_and_char_matrix(self) -> None:
+        # Dyalog example: 'I2,X3,3A1' ⎕FMT (⍳3;2 3⍴'TOPCAT')
+        # 3 rows: numbers 1-3, chars TOP/CAT/blank
+        result = interpret("'I2,3A1' ⎕FMT (⍳3;2 3⍴'TOPCAT')")
+        assert result.shape[0] == 3
+        assert _fmt_row(result, 0).rstrip() == " 1TOP"
+        assert _fmt_row(result, 1).rstrip() == " 2CAT"
+        assert _fmt_row(result, 2).rstrip() == " 3"
+
+    def test_fmt_short_column_pads(self) -> None:
+        # When one column has fewer rows, pad with blanks
+        result = interpret("'I3,I3' ⎕FMT (1 2 3;10 20)")
+        assert result.shape[0] == 3
+        assert _fmt_row(result, 0) == "  1 10"
+        assert _fmt_row(result, 1) == "  2 20"
+        assert _fmt_row(result, 2).rstrip() == "  3"
+
+    # ── Repeated A format = one column ──
+
+    def test_fmt_5a1_one_column(self) -> None:
+        # 5A1 takes 5 chars from ONE matrix column, not 5 columns
+        env = default_env()
+        interpret("M←3 5⍴'FRED BILL JAMES'", env)
+        result = interpret("'5A1' ⎕FMT (M)", env)
+        assert result.shape[0] == 3
+        assert _fmt_row(result, 0) == "FRED "
+        assert _fmt_row(result, 1) == "BILL "
+        assert _fmt_row(result, 2) == "JAMES"
+
+    def test_fmt_dyalog_men_women(self) -> None:
+        # Dyalog example: two matrices with text insertion
+        env = default_env()
+        interpret("MEN←3 5⍴'FRED BILL JAMES'", env)
+        interpret("WOMEN←2 5⍴'MARY JUNE '", env)
+        result = interpret("'5A1,⊂|⊃' ⎕FMT (MEN;WOMEN)", env)
+        assert result.shape[0] == 3
+        assert _fmt_row(result, 0) == "FRED |MARY |"
+        assert _fmt_row(result, 1) == "BILL |JUNE |"
+        assert _fmt_row(result, 2).rstrip() == "JAMES|     |"
+
+    def test_fmt_angle_bracket_text(self) -> None:
+        # <text> is an alternative to ⊂text⊃ for text insertion
+        result = interpret("'I3,<:>,I3' ⎕FMT (10;20)")
+        assert _fmt_row(result) == " 10: 20"
+
+    # ── G (pattern) format ──
+
+    def test_fmt_g_date_pattern(self) -> None:
+        # Dyalog example: G⊂99/99/99⊃ formats a date
+        result = interpret("'G⊂99/99/99⊃' ⎕FMT (0 100 100⊥8 7 89)")
+        assert _fmt_row(result) == "08/07/89"
+
+    def test_fmt_g_phone_pattern(self) -> None:
+        result = interpret("'G⊂(999) 999-9999⊃' ⎕FMT (5551234567)")
+        assert _fmt_row(result) == "(555) 123-4567"
+
+    # ── Error cases ──
+
+    def test_fmt_error_numeric_with_A(self) -> None:
+        from marple.errors import DomainError
+        with pytest.raises(DomainError):
+            interpret("'A5' ⎕FMT (42)")
+
+    def test_fmt_error_char_with_I(self) -> None:
+        from marple.errors import DomainError
+        with pytest.raises(DomainError):
+            interpret("'I5' ⎕FMT ('hello')")
+
+    def test_fmt_error_F_decimals_too_wide(self) -> None:
+        # d > w-2 is an error for F format
+        from marple.errors import DomainError
+        with pytest.raises(DomainError):
+            interpret("'F5.4' ⎕FMT (3.14)")
+
+    def test_fmt_error_E_decimals_too_wide(self) -> None:
+        # s > w-2 is an error for E format
+        from marple.errors import DomainError
+        with pytest.raises(DomainError):
+            interpret("'E5.4' ⎕FMT (3.14)")
+
+    def test_fmt_error_bad_spec(self) -> None:
+        from marple.errors import DomainError
+        with pytest.raises(DomainError):
+            interpret("'X5' ⎕FMT (42)")

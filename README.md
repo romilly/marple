@@ -17,10 +17,12 @@ MARPLE runs on the Raspberry Pi Pico 2 via MicroPython. On the Pimoroni Explorer
 - **Rank operator** — `(f⍤k)` applies any function along any axis: `(⌽⍤1) M` reverses rows, `(+/⍤1) M` sums rows
 - **From function** (`⌷`) — leading-axis selection that composes with rank
 - **Direct functions (dfns)** — `{⍵}` syntax with guards, recursion via `∇`, default `⍺`
-- **Symbol table-aware parser** — named functions work without parens: `double ⍳5`
+- **Direct operators (dops)** — `{⍺⍺ ⍵}` adverbs and `{⍺⍺ ⍵⍵ ⍵}` conjunctions with function or array operands
+- **Iverson stack-based parser** — correct operator binding precedence following the Dictionary of APL
 - **Namespaces** — `$::str::upper 'hello'`, `#import` directives, `::` separator
 - **I-beam operator** (`⌶`) — Python FFI for extending MARPLE with Python code
 - **Error handling** — `⎕EA` (execute alternate), `⎕EN` (error number), `⎕DM` (diagnostic message), `⎕SIGNAL`
+- **Format function** (`⎕FMT`) — Dyalog-compatible formatting with I/F/E/A/G codes, text insertion, G pattern, character matrices
 - **System variables** — `⎕IO`, `⎕CT`, `⎕PP`, `⎕RL`, `⎕A`, `⎕D`, `⎕TS`, `⎕WSID`, `⎕UCS`, `⎕NC`, `⎕EX`, `⎕FR`
 - **Data representation** — `⎕DR` queries/converts internal types; `⎕FR←1287` enables exact decimal arithmetic
 - **Numeric type system** — automatic upcast/downcast prevents integer overflow; boolean uint8 for comparisons
@@ -31,7 +33,7 @@ MARPLE runs on the Raspberry Pi Pico 2 via MicroPython. On the Pimoroni Explorer
 - **Explorer LCD mirror** — REPL session mirrors to the Pimoroni Explorer's 320x240 LCD with APL bitmap font
 - **Terminal REPL** — live backtick→glyph input, workspace save/load, APL-style formatting
 - **Script runner** — `marple script.marple` with session transcript output
-- **565 tests** (515 interpreter + 50 web), pyright strict
+- **604 tests** (550+ interpreter + 50 web), pyright strict
 
 ## Quick start
 
@@ -97,13 +99,16 @@ marple examples/01_primitives.marple          # run and display
 marple examples/01_primitives.marple > out.txt  # capture session transcript
 ```
 
-Six demo scripts are included in `examples/`:
+Nine demo scripts are included in `examples/`:
 - `01_primitives.marple` — arithmetic, vectors, matrices, reduce, products
 - `02_dfns.marple` — user functions, guards, recursion, rank operator
 - `03_namespaces.marple` — system library, imports, file I/O, i-beams
 - `04_errors.marple` — ea/en error handling, error codes
 - `05_pico_io.marple` — file I/O on Raspberry Pi Pico 2
 - `06_numeric_types.marple` — ⎕DR, ⎕FR, boolean dtype, overflow protection, decimal arithmetic
+- `07_cr_fx.marple` — ⎕CR, ⎕FX, ⎕NC, dynamic function definition
+- `08_operators.marple` — operators, dops, reduce/scan with dfns, replicate
+- `09_fmt.marple` — ⎕FMT formatting with I/F/E/A/G codes, text insertion, patterns
 
 ### APL character input
 
@@ -155,7 +160,7 @@ MARPLE_BACKEND=none pytest
 | `arraymodel.py` | `APLArray(shape, data)` — the core data structure |
 | `backend.py` | Numpy/CuPy/ulab detection with pure-Python fallback |
 | `tokenizer.py` | Lexer for APL glyphs, numbers, strings, qualified names |
-| `parser.py` | Right-to-left recursive descent with symbol table |
+| `parser.py` | Iverson stack-based parser with operator binding precedence |
 | `interpreter.py` | Tree-walking evaluator with dfn closures |
 | `functions.py` | Scalar functions with pervasion (numpy-accelerated) |
 | `structural.py` | Shape-manipulating and indexing functions |

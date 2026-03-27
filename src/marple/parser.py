@@ -287,6 +287,16 @@ class BoundOperator:
                 self.right_operand == other.right_operand)
 
 
+class FmtArgs:
+    """List of semicolon-separated arguments for ⎕FMT."""
+    def __init__(self, args: list[object]) -> None:
+        self.args = args
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, FmtArgs):
+            return NotImplemented
+        return self.args == other.args
+
+
 class Nabla:
     pass
 
@@ -508,6 +518,12 @@ class Parser:
                     items.append((CAT_NOUN, node))
                 elif self._current().type == TokenType.ASSIGN:
                     items.append((CAT_NOUN, sv_node))
+                elif (name == "⎕FMT"
+                      and self._current().type == TokenType.LPAREN):
+                    # Special: ⎕FMT (val1;val2;...) — semicolon-separated args
+                    items.append((CAT_VERB, sv_node))
+                    fmt_args = self._parse_fmt_args()
+                    items.append((CAT_NOUN, fmt_args))
                 else:
                     cat = self._classify_sysvar(name)
                     items.append((cat, sv_node))
@@ -541,6 +557,17 @@ class Parser:
                 raise SyntaxError_(f"Unexpected token: {tok}")
 
         return items
+
+    def _parse_fmt_args(self) -> FmtArgs:
+        """Parse (val1;val2;...) for ⎕FMT. Similar to bracket indexing."""
+        self._eat(TokenType.LPAREN)
+        args: list[object] = []
+        args.append(self._parse_statement())
+        while self._current().type == TokenType.SEMICOLON:
+            self._eat(TokenType.SEMICOLON)
+            args.append(self._parse_statement())
+        self._eat(TokenType.RPAREN)
+        return FmtArgs(args)
 
     def _is_callable_noun(self, node: object) -> bool:
         """Check if a NOUN-classified node can act as a function.

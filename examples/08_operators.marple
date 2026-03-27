@@ -20,8 +20,8 @@ double ← {⍵+⍵}
 (double) twice 3
 
 ⍝ ── Primitives as operands ──
-(-) twice 5
-(÷) twice 4
+- twice 5
+÷ twice 4
 
 ⍝ ── A conjunction: compose two functions ──
 compose ← {⍵⍵ ⍺⍺ ⍵}

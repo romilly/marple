@@ -1,0 +1,29 @@
+⎕VER
+⍝ ═══════════════════════════════════════════════════
+⍝ MARPLE Demo 9: ⎕FMT (Format)
+⍝ ═══════════════════════════════════════════════════
+
+⍝ ── Integer format: I width ──
+'I5' ⎕FMT (42)
+'I3,I3,I3' ⎕FMT (1;2;3)
+
+⍝ ── Fixed-point: F width.decimals ──
+'F8.2' ⎕FMT (3.14159)
+
+⍝ ── Text insertion with ⊂text⊃ ──
+'I4,⊂ + ⊃,I4,⊂ = ⊃,I4' ⎕FMT (3;4;7)
+
+⍝ ── Vector args produce a matrix ──
+'I5' ⎕FMT (10 20 30 40 50)
+
+⍝ ── Character matrix with 3A1 ──
+'I2,⊂ ⊃,3A1' ⎕FMT (⍳3;2 3⍴'TOPCAT')
+
+⍝ ── Multiple vector columns ──
+'I3,⊂: ⊃,F7.2' ⎕FMT (⍳3;100×⍳3)
+
+⍝ ── Character vector with A format ──
+'A8,⊂ = ⊃,I4' ⎕FMT ('answer';42)
+
+⍝ ── Scientific notation ──
+'E12.4' ⎕FMT (123456.789)

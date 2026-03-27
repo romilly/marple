@@ -291,3 +291,50 @@ Round-trip with `⎕CR`:
       src ← ⎕CR 'double'
       ⎕FX src           ⍝ re-define from source
 ```
+
+### `⎕FMT` — Format
+
+**Monadic:** `⎕FMT x` — default formatting as a character vector.
+
+**Dyadic:** `fmt ⎕FMT (val1;val2;...)` — format values according to specification. Returns a character matrix.
+
+The right argument uses semicolon-separated values in parentheses. Each value is a column; vectors produce multiple rows.
+
+#### Format codes
+
+| Code | Meaning | Example |
+|------|---------|---------|
+| `Iw` | Integer, w wide, right-justified | `I5` → `   42` |
+| `Fw.d` | Fixed-point, w wide, d decimals | `F8.2` → `    3.14` |
+| `Ew.d` | Scientific notation | `E12.4` → `  1.2346E+05` |
+| `Aw` | Character, w wide, left-justified | `A10` → `hello     ` |
+| `G⊂pattern⊃` | Pattern: `9` filled with digits | `G⊂99/99⊃` → `12/34` |
+| `⊂text⊃` or `<text>` | Literal text insertion | `⊂ => ⊃` |
+
+Comma separates format codes. An optional repetition prefix applies: `3I5` = three I5 columns, `5A1` = five characters from one column.
+
+#### Examples
+
+```apl
+      'I3,⊂: ⊃,F7.2' ⎕FMT (⍳3;100×⍳3)
+  1:  100.00
+  2:  200.00
+  3:  300.00
+
+      MEN←3 5⍴'FRED BILL JAMES'
+      WOMEN←2 5⍴'MARY JUNE '
+      '5A1,⊂|⊃' ⎕FMT (MEN;WOMEN)
+FRED |MARY |
+BILL |JUNE |
+JAMES|     |
+
+      'G⊂99/99/99⊃' ⎕FMT (0 100 100⊥8 7 89)
+08/07/89
+```
+
+#### Errors
+
+- Numeric data matched against A format
+- Character data matched against non-A format
+- F format: d > w-2
+- E format: d > w-2
