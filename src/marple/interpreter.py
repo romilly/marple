@@ -266,12 +266,7 @@ def _eval_vector(node: Vector, env: dict[str, Any]) -> APLArray:
 def _eval_var(node: Var, env: dict[str, Any]) -> APLArray:
     if node.name not in env:
         raise ValueError_(f"Undefined variable: {node.name}")
-    val = env[node.name]
-    if isinstance(val, APLArray):
-        return val
-    if isinstance(val, (_DfnClosure, IBeamDerived)):
-        return val  # type: ignore[return-value]
-    raise DomainError(f"Unexpected value type for {node.name}: {type(val)}")
+    return env[node.name]  # type: ignore[return-value]
 
 
 def _eval_qualified(node: QualifiedVar, env: dict[str, Any]) -> APLArray:
@@ -354,25 +349,50 @@ def _eval_dyadic_func(node: DyadicFunc, env: dict[str, Any]) -> APLArray:
     return _dispatch_dyadic(node.function, left, right, env)
 
 
+def _apply_monadic_val(dfn_val: object, operand: APLArray, env: dict[str, Any]) -> APLArray:
+    """Apply an evaluated callable value monadically."""
+    _dispatch: dict[type, Any] = {
+        _DfnClosure: lambda v, o, e: _call_dfn(v, o),
+        IBeamDerived: lambda v, o, e: _call_ibeam(_resolve_ibeam(v.path), o),
+        FunctionRef: lambda v, o, e: _dispatch_monadic(v.glyph, o, e),
+    }
+    handler = _dispatch.get(type(dfn_val))
+    if handler is not None:
+        return handler(dfn_val, operand, env)
+    raise DomainError(f"Expected dfn, got {type(dfn_val)}")
+
+
+def _apply_dyadic_val(dfn_val: object, left: APLArray, right: APLArray, env: dict[str, Any]) -> APLArray:
+    """Apply an evaluated callable value dyadically."""
+    _dispatch: dict[type, Any] = {
+        _DfnClosure: lambda v, l, r, e: _call_dfn(v, r, alpha=l),
+        IBeamDerived: lambda v, l, r, e: _call_ibeam_dyadic(_resolve_ibeam(v.path), l, r),
+        FunctionRef: lambda v, l, r, e: _dispatch_dyadic(v.glyph, l, r, e),
+    }
+    handler = _dispatch.get(type(dfn_val))
+    if handler is not None:
+        return handler(dfn_val, left, right, env)
+    raise DomainError(f"Expected dfn, got {type(dfn_val)}")
+
+
+def _monadic_dfn_call_sysvar(node: MonadicDfnCall, env: dict[str, Any]) -> APLArray:
+    return _call_sys_function_monadic(node.dfn.name, node.operand, env)  # type: ignore[union-attr]
+
+def _monadic_dfn_call_rank(node: MonadicDfnCall, env: dict[str, Any]) -> APLArray:
+    return _apply_rank_monadic(node.dfn, node.operand, env)  # type: ignore[arg-type]
+
+_MONADIC_DFN_CALL_DISPATCH: dict[type, Any] = {
+    SysVar: _monadic_dfn_call_sysvar,
+    RankDerived: _monadic_dfn_call_rank,
+}
+
 def _eval_monadic_dfn_call(node: MonadicDfnCall, env: dict[str, Any]) -> APLArray:
-    if isinstance(node.dfn, SysVar):
-        return _call_sys_function_monadic(node.dfn.name, node.operand, env)
-    if isinstance(node.dfn, IBeamDerived):
-        operand = _evaluate(node.operand, env)
-        fn = _resolve_ibeam(node.dfn.path)
-        return _call_ibeam(fn, operand)
-    if isinstance(node.dfn, RankDerived):
-        return _apply_rank_monadic(node.dfn, node.operand, env)
+    handler = _MONADIC_DFN_CALL_DISPATCH.get(type(node.dfn))
+    if handler is not None:
+        return handler(node, env)
     dfn_val = _evaluate(node.dfn, env)
     operand = _evaluate(node.operand, env)
-    if isinstance(dfn_val, IBeamDerived):
-        fn = _resolve_ibeam(dfn_val.path)
-        return _call_ibeam(fn, operand)
-    if isinstance(dfn_val, FunctionRef):
-        return _dispatch_monadic(dfn_val.glyph, operand, env)
-    if not isinstance(dfn_val, _DfnClosure):
-        raise DomainError(f"Expected dfn, got {type(dfn_val)}")
-    return _call_dfn(dfn_val, operand)
+    return _apply_monadic_val(dfn_val, operand, env)
 
 
 def _eval_monadic_dop_call(node: MonadicDopCall, env: dict[str, Any]) -> APLArray:
@@ -396,27 +416,25 @@ def _eval_dyadic_dop_call(node: DyadicDopCall, env: dict[str, Any]) -> APLArray:
                      alpha_alpha=left_operand, omega_omega=right_operand)
 
 
+def _dyadic_dfn_call_sysvar(node: DyadicDfnCall, env: dict[str, Any]) -> APLArray:
+    return _call_sys_function_dyadic(node.dfn.name, node.left, node.right, env)  # type: ignore[union-attr]
+
+def _dyadic_dfn_call_rank(node: DyadicDfnCall, env: dict[str, Any]) -> APLArray:
+    return _apply_rank_dyadic(node.dfn, node.left, node.right, env)  # type: ignore[arg-type]
+
+_DYADIC_DFN_CALL_DISPATCH: dict[type, Any] = {
+    SysVar: _dyadic_dfn_call_sysvar,
+    RankDerived: _dyadic_dfn_call_rank,
+}
+
 def _eval_dyadic_dfn_call(node: DyadicDfnCall, env: dict[str, Any]) -> APLArray:
-    if isinstance(node.dfn, SysVar):
-        return _call_sys_function_dyadic(node.dfn.name, node.left, node.right, env)
-    if isinstance(node.dfn, IBeamDerived):
-        right = _evaluate(node.right, env)
-        left = _evaluate(node.left, env)
-        fn = _resolve_ibeam(node.dfn.path)
-        return _call_ibeam_dyadic(fn, left, right)
-    if isinstance(node.dfn, RankDerived):
-        return _apply_rank_dyadic(node.dfn, node.left, node.right, env)
+    handler = _DYADIC_DFN_CALL_DISPATCH.get(type(node.dfn))
+    if handler is not None:
+        return handler(node, env)
     dfn_val = _evaluate(node.dfn, env)
     right = _evaluate(node.right, env)
     left = _evaluate(node.left, env)
-    if isinstance(dfn_val, IBeamDerived):
-        fn = _resolve_ibeam(dfn_val.path)
-        return _call_ibeam_dyadic(fn, left, right)
-    if isinstance(dfn_val, FunctionRef):
-        return _dispatch_dyadic(dfn_val.glyph, left, right, env)
-    if not isinstance(dfn_val, _DfnClosure):
-        raise DomainError(f"Expected dfn, got {type(dfn_val)}")
-    return _call_dfn(dfn_val, right, alpha=left)
+    return _apply_dyadic_val(dfn_val, left, right, env)
 
 
 _READONLY_QUADS = frozenset({"⎕A", "⎕D", "⎕TS", "⎕EN", "⎕DM"})
@@ -426,12 +444,8 @@ def _eval_assignment(node: Assignment, env: dict[str, Any]) -> APLArray:
     if node.name in _READONLY_QUADS:
         raise DomainError(f"Cannot assign to read-only system variable {node.name}")
     value = _evaluate(node.value, env)
-    if isinstance(value, (_DfnClosure, IBeamDerived)):
-        new_class = NC_FUNCTION
-    elif isinstance(value, APLArray):
-        new_class = NC_ARRAY
-    else:
-        new_class = NC_UNKNOWN
+    _CLASS_MAP = {_DfnClosure: NC_FUNCTION, IBeamDerived: NC_FUNCTION, APLArray: NC_ARRAY}
+    new_class = _CLASS_MAP.get(type(value), NC_UNKNOWN)
     name_table = env.get("__name_table__", {})
     if node.name in name_table and name_table[node.name] != new_class:
         raise ClassError("Cannot change class of " + node.name +
@@ -490,34 +504,40 @@ def _eval_outer_product(node: OuterProduct, env: dict[str, Any]) -> APLArray:
     return _outer_product(func, left, right)  # type: ignore[arg-type]
 
 
+def _resolve_dyadic_callable(fn_node: object, env: dict[str, Any]) -> Any:
+    """Resolve a function node to a dyadic callable for use with operators."""
+    # String glyph — direct lookup
+    if isinstance(fn_node, str):
+        func = _lookup_dyadic(fn_node)
+        if func is None:
+            raise DomainError(f"Unknown function for operator: {fn_node}")
+        return func
+    # FunctionRef — unwrap glyph
+    if isinstance(fn_node, FunctionRef):
+        func = _lookup_dyadic(fn_node.glyph)
+        if func is None:
+            raise DomainError(f"Unknown function for operator: {fn_node.glyph}")
+        return func
+    # AST node — evaluate then resolve the value
+    fn_val = _evaluate(fn_node, env)
+    _resolvers: dict[type, Any] = {
+        _DfnClosure: lambda v: (lambda a, o, _c=v: _call_dfn(_c, o, alpha=a)),
+        FunctionRef: lambda v: _lookup_dyadic(v.glyph),
+    }
+    resolver = _resolvers.get(type(fn_val))
+    if resolver is not None:
+        return resolver(fn_val)
+    raise DomainError(f"Expected function for operator, got {type(fn_val)}")
+
+
 def _eval_derived_func(node: DerivedFunc, env: dict[str, Any]) -> APLArray:
     operand = _evaluate(node.operand, env)
-    func: Any = None
-    if isinstance(node.function, str):
-        func = _lookup_dyadic(node.function)
-    elif isinstance(node.function, (AlphaAlpha, OmegaOmega)):
-        fn_val = _evaluate(node.function, env)
-        if isinstance(fn_val, FunctionRef):
-            func = _lookup_dyadic(fn_val.glyph)
-        elif isinstance(fn_val, _DfnClosure):
-            func = lambda a, o, _c=fn_val: _call_dfn(_c, o, alpha=a)
-        else:
-            raise DomainError("⍺⍺ is not a function in this context")
-    elif isinstance(node.function, (Dfn, Var)):
-        fn_val = _evaluate(node.function, env)
-        if isinstance(fn_val, _DfnClosure):
-            func = lambda a, o, _c=fn_val: _call_dfn(_c, o, alpha=a)
-        else:
-            raise DomainError(f"Expected function for operator, got {type(fn_val)}")
-    elif isinstance(node.function, FunctionRef):
-        func = _lookup_dyadic(node.function.glyph)
-    if func is None:
-        raise DomainError(f"Unknown function for operator: {node.function}")
-    _REDUCE_OPS: dict[str, Any] = {
+    func = _resolve_dyadic_callable(node.function, env)
+    _reduce_ops: dict[str, Any] = {
         "/": _reduce, "⌿": _reduce_first,
         "\\": _scan, "⍀": _scan_first,
     }
-    op_fn = _REDUCE_OPS.get(node.operator)
+    op_fn = _reduce_ops.get(node.operator)
     if op_fn is None:
         raise DomainError(f"Unknown operator: {node.operator}")
     return op_fn(func, operand)  # type: ignore[arg-type]
@@ -1647,64 +1667,46 @@ def _call_sys_function_dyadic(name: str, left_node: object, right_node: object, 
     raise DomainError(f"Unknown dyadic system function: {name}")
 
 
+def _apply_bound_op_monadic(node: BoundOperator, omega: APLArray) -> APLArray:
+    """Apply a BoundOperator monadically. Used by rank."""
+    _ops = {"/": _reduce, "⌿": _reduce_first, "\\": _scan, "⍀": _scan_first}
+    op_fn = _ops.get(node.operator)  # type: ignore[arg-type]
+    if op_fn is not None:
+        inner = _resolve_dyadic_callable(node.left_operand, {})
+        return op_fn(inner, omega)  # type: ignore[arg-type]
+    raise DomainError(f"Cannot apply bound operator: {node.operator}")
+
+
 def _apply_func_monadic(
-    func: object,
-    omega: APLArray,
-    env: dict[str, Any],
+    func: object, omega: APLArray, env: dict[str, Any],
 ) -> APLArray:
     """Apply a function monadically. Used by rank operator."""
+    # String glyph — most common path
     if isinstance(func, str):
         return _dispatch_monadic(func, omega, env)
-    if isinstance(func, ReduceOp):
-        f = _lookup_dyadic(func.function)
-        if f is None:
-            raise DomainError(f"Unknown function for reduce: {func.function}")
-        return _reduce(f, omega)  # type: ignore[arg-type]
-    if isinstance(func, ScanOp):
-        f = _lookup_dyadic(func.function)
-        if f is None:
-            raise DomainError(f"Unknown function for scan: {func.function}")
-        return _scan(f, omega)  # type: ignore[arg-type]
-    if isinstance(func, (Dfn, Var)):
-        val = _evaluate(func, env)
-        if isinstance(val, _DfnClosure):
-            return _call_dfn(val, omega)
-        raise DomainError(f"Expected dfn, got {type(val)}")
-    if isinstance(func, FunctionRef):
-        return _dispatch_monadic(func.glyph, omega, env)
-    if isinstance(func, BoundOperator):
-        # A derived verb from operator binding, used inside rank
-        node = func  # type: ignore[assignment]
-        if isinstance(node.operator, str) and node.operator in ("/", "⌿"):
-            inner = _lookup_dyadic(node.left_operand) if isinstance(node.left_operand, str) else None
-            if inner and node.operator == "/":
-                return _reduce(inner, omega)  # type: ignore[arg-type]
-            if inner and node.operator == "⌿":
-                return _reduce_first(inner, omega)  # type: ignore[arg-type]
-        if isinstance(node.operator, str) and node.operator in ("\\", "⍀"):
-            inner = _lookup_dyadic(node.left_operand) if isinstance(node.left_operand, str) else None
-            if inner and node.operator == "\\":
-                return _scan(inner, omega)  # type: ignore[arg-type]
-            if inner and node.operator == "⍀":
-                return _scan_first(inner, omega)  # type: ignore[arg-type]
-    raise DomainError(f"Cannot apply as monadic function: {type(func)}")
+    _handlers: dict[type, Any] = {
+        FunctionRef: lambda f, o, e: _dispatch_monadic(f.glyph, o, e),
+        ReduceOp: lambda f, o, e: _reduce(_resolve_dyadic_callable(f.function, e), o),
+        ScanOp: lambda f, o, e: _scan(_resolve_dyadic_callable(f.function, e), o),
+        BoundOperator: lambda f, o, e: _apply_bound_op_monadic(f, o),
+    }
+    handler = _handlers.get(type(func))
+    if handler is not None:
+        return handler(func, omega, env)  # type: ignore[arg-type]
+    val = _evaluate(func, env)
+    return _apply_monadic_val(val, omega, env)
 
 
 def _apply_func_dyadic(
-    func: object,
-    alpha: APLArray,
-    omega: APLArray,
-    env: dict[str, Any],
+    func: object, alpha: APLArray, omega: APLArray, env: dict[str, Any],
 ) -> APLArray:
     """Apply a function dyadically. Used by rank operator."""
     if isinstance(func, str):
         return _dispatch_dyadic(func, alpha, omega, env)
-    if isinstance(func, (Dfn, Var)):
-        val = _evaluate(func, env)
-        if isinstance(val, _DfnClosure):
-            return _call_dfn(val, omega, alpha=alpha)
-        raise DomainError(f"Expected dfn, got {type(val)}")
-    raise DomainError(f"Cannot apply as dyadic function: {type(func)}")
+    if isinstance(func, FunctionRef):
+        return _dispatch_dyadic(func.glyph, alpha, omega, env)
+    val = _evaluate(func, env)
+    return _apply_dyadic_val(val, alpha, omega, env)
 
 
 def _apply_rank_monadic(
