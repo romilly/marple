@@ -444,6 +444,9 @@ def _eval_assignment(node: Assignment, env: dict[str, Any]) -> APLArray:
     if node.name in _READONLY_QUADS:
         raise DomainError(f"Cannot assign to read-only system variable {node.name}")
     value = _evaluate(node.value, env)
+    # Downcast float arrays to int on assignment (deferred from computation)
+    if isinstance(value, APLArray) and is_numeric_array(value.data):
+        value = APLArray(list(value.shape), maybe_downcast(value.data, _DOWNCAST_CT))
     _CLASS_MAP = {_DfnBinding: NC_FUNCTION, IBeamDerived: NC_FUNCTION, APLArray: NC_ARRAY}
     new_class = _CLASS_MAP.get(type(value), NC_UNKNOWN)
     name_table = env.get("__name_table__", {})
@@ -490,13 +493,9 @@ def _eval_outer_product(node: OuterProduct, env: dict[str, Any]) -> APLArray:
             result = ufunc.outer(a, b)
             if hasattr(result, "shape") and len(result.shape) == 0:  # type: ignore[union-attr]
                 raw = result.item()  # type: ignore[union-attr]
-                if ufunc_name in _OVERFLOW_UFUNCS:
-                    raw = maybe_downcast_scalar(raw, _DOWNCAST_CT)
                 return S(raw)
             result_shape = list(result.shape) if hasattr(result, "shape") else []  # type: ignore[union-attr]
             result_flat = result.ravel() if hasattr(result, "ravel") else result  # type: ignore[union-attr]
-            if ufunc_name in _OVERFLOW_UFUNCS:
-                result_flat = maybe_downcast(result_flat, _DOWNCAST_CT)
             return APLArray(result_shape, result_flat)
     func = _lookup_dyadic(node.function)
     if func is None:
@@ -637,11 +636,9 @@ def _reduce(
             if ufunc is not None and hasattr(ufunc, "reduce"):
                 work_data = maybe_upcast(data)
                 if len(omega.shape) <= 1:
-                    raw = ufunc.reduce(work_data).item()
-                    return S(maybe_downcast_scalar(raw, _DOWNCAST_CT))
+                    return S(ufunc.reduce(work_data).item())
                 shaped = np.reshape(work_data, omega.shape)
                 result = ufunc.reduce(shaped, axis=-1)
-                result = maybe_downcast(result, _DOWNCAST_CT)
                 return APLArray(list(result.shape), result.ravel())
 
     # Fallback: Python loop
@@ -764,11 +761,9 @@ def _inner_product(
         b = maybe_upcast(b)
         result = np.tensordot(a, b, axes=([-1], [0]))
         if hasattr(result, "shape") and len(result.shape) == 0:
-            return S(maybe_downcast_scalar(result.item(), _DOWNCAST_CT))
+            return S(result.item())
         result_shape = list(result.shape) if hasattr(result, "shape") else []
         result_flat = result.ravel() if hasattr(result, "ravel") else result
-        if is_numeric_array(result_flat):
-            result_flat = maybe_downcast(result_flat, _DOWNCAST_CT)
         return APLArray(result_shape, result_flat)
 
     # Vector inner product: reduce(apply(a, b))
@@ -1909,4 +1904,7 @@ def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
                 env["__operator_arity__"] = op_ar
     if isinstance(result, _DfnBinding):
         return S(0)
+    # Downcast float arrays to int at output boundary
+    if isinstance(result, APLArray) and is_numeric_array(result.data):
+        result = APLArray(list(result.shape), maybe_downcast(result.data, _DOWNCAST_CT))
     return result

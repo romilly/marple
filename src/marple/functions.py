@@ -55,8 +55,7 @@ def _pervade_dyadic(
                 result = ufunc(a_arr, b_arr)
             except ValueError:
                 raise LengthError(f"Shape mismatch: {alpha.shape} vs {omega.shape}")
-            if ufunc_name in _OVERFLOW_UFUNCS:
-                result = maybe_downcast(result, _DOWNCAST_CT)
+            # No downcast here — deferred to assignment/display
             if bool_result:
                 result = to_bool_array(result)
             shape = list(omega.shape) if not omega.is_scalar() else list(alpha.shape)

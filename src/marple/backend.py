@@ -118,7 +118,7 @@ def maybe_upcast(data: Any) -> Any:
         return data
     if not _is_int_dtype(data):
         return data
-    return np.array(data.tolist(), dtype=np.float64)
+    return data.astype(np.float64)
 
 
 def maybe_downcast_scalar(value: Any, ct: float) -> Any:
@@ -148,20 +148,20 @@ def maybe_downcast(data: Any, ct: float) -> Any:
         return data
     if not _is_float_dtype(data):
         return data
-    values = data.tolist()
-    if len(values) == 0:
+    if data.size == 0:
         return data
-    # Check if all values are close to whole numbers
-    for v in values:
-        r = round(v)
-        diff = abs(v - r)
-        mag = max(abs(v), abs(r))
-        if ct == 0:
-            if diff != 0:
-                return data
-        else:
-            if diff > ct * mag:
-                return data
-    # All close to integers — try to fit into available int dtypes
-    int_values = [round(v) for v in values]
-    return to_array(int_values)
+    # Vectorised check: are all values close to whole numbers?
+    rounded = np.round(data)
+    diff = np.abs(data - rounded)
+    if ct == 0:
+        if not np.all(diff == 0):
+            return data
+    else:
+        mag = np.maximum(np.abs(data), np.abs(rounded))
+        if not np.all(diff <= ct * mag):
+            return data
+    # All close to integers — use int32 if values fit, else int64
+    int_arr = rounded.astype(np.int64)
+    if np.all(np.abs(int_arr) <= np.iinfo(np.int32).max):
+        return int_arr.astype(np.int32)
+    return int_arr
