@@ -4,8 +4,8 @@ Reads APL expressions from stdin (USB serial), evaluates them,
 prints results. Protocol: one line in, one or more lines out,
 terminated by a sentinel line "\\x00" (null byte).
 
-If running on a Pimoroni Explorer, also mirrors the session
-to the 320x240 LCD using the APL bitmap font.
+If running on a Pimoroni Presto, also mirrors the session
+to the 480x480 LCD using the APL bitmap font.
 """
 import sys
 import time
@@ -37,10 +37,10 @@ SENTINEL = "\x00"
 
 env = default_env()
 
-# Optional Explorer LCD display
+# Optional Presto LCD display
 try:
-    from explorer_display import ExplorerDisplay  # type: ignore[import-not-found]
-    lcd = ExplorerDisplay()
+    from presto_display import PrestoDisplay  # type: ignore[import-not-found]
+    lcd = PrestoDisplay()
     lcd.show_banner("MARPLE v" + marple.__version__)
     lcd.show_banner("CLEAR WS")
 except ImportError:

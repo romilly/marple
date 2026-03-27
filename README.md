@@ -8,7 +8,7 @@ More extensive documentation is available [here](https://romilly.github.io/marpl
 
 ## MARPLE on the Raspberry Pi Pico 2
 
-MARPLE runs on the Raspberry Pi Pico 2 via MicroPython. On the Pimoroni Explorer, the REPL session mirrors to the 320x240 LCD with a custom APL bitmap font. See the [demo videos](https://romilly.github.io/marple/demos/) — primitives, dfns, the rank operator, namespaces, and file I/O, all running on the Pico.
+MARPLE runs on the Raspberry Pi Pico 2 via MicroPython. On the Pimoroni Presto, the REPL session mirrors to the 480x480 touchscreen LCD with a custom APL bitmap font. See the [demo videos](https://romilly.github.io/marple/demos/) — primitives, dfns, the rank operator, namespaces, and file I/O, all running on the Pico.
 
 ## Features
 
@@ -30,7 +30,7 @@ MARPLE runs on the Raspberry Pi Pico 2 via MicroPython. On the Pimoroni Explorer
 - **Numpy backend** — automatic vectorization (73x faster for element-wise, 380x for outer product), with pure-Python fallback
 - **PRIDE web IDE** — browser-based IDE over WebSocket with language bar, workspace panel, click-to-re-edit, session save/load as markdown, session history, multi-line input
 - **Pico web bridge** — evaluate APL on a connected Pico from the browser (`--pico-port /dev/ttyACM0`)
-- **Explorer LCD mirror** — REPL session mirrors to the Pimoroni Explorer's 320x240 LCD with APL bitmap font
+- **Presto LCD mirror** — REPL session mirrors to the Pimoroni Presto's 480x480 touchscreen with APL bitmap font
 - **Terminal REPL** — live backtick→glyph input, workspace save/load, APL-style formatting
 - **Script runner** — `marple script.marple` with session transcript output
 - **604 tests** (550+ interpreter + 50 web), pyright strict
