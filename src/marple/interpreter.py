@@ -245,280 +245,325 @@ def _call_dfn(
     return result
 
 
-def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
-    if isinstance(node, Num):
-        value = node.value
-        if isinstance(value, float) and int(env.get("⎕FR", S(645)).data[0]) == 1287:
-            from decimal import Decimal
-            value = Decimal(str(node.value))
-        return S(value)
+def _eval_num(node: Num, env: dict[str, Any]) -> APLArray:
+    value = node.value
+    if isinstance(value, float) and int(env.get("⎕FR", S(645)).data[0]) == 1287:
+        from decimal import Decimal
+        value = Decimal(str(node.value))
+    return S(value)
 
-    if isinstance(node, Str):
-        chars = list(node.value)
-        return APLArray([len(chars)], chars)
 
-    if isinstance(node, Vector):
-        values = [el.value for el in node.elements]
-        return APLArray([len(values)], list(values))
+def _eval_str(node: Str, env: dict[str, Any]) -> APLArray:
+    chars = list(node.value)
+    return APLArray([len(chars)], chars)
 
-    if isinstance(node, Var):
-        if node.name not in env:
-            raise ValueError_(f"Undefined variable: {node.name}")
-        val = env[node.name]
-        if isinstance(val, APLArray):
-            return val
-        if isinstance(val, (_DfnClosure, IBeamDerived)):
-            return val  # type: ignore[return-value]
-        raise DomainError(f"Unexpected value type for {node.name}: {type(val)}")
 
-    if isinstance(node, QualifiedVar):
-        return _resolve_qualified(node.parts, env)
+def _eval_vector(node: Vector, env: dict[str, Any]) -> APLArray:
+    values = [el.value for el in node.elements]
+    return APLArray([len(values)], list(values))
 
-    if isinstance(node, SysVar):
-        if node.name == "⎕TS":
-            import time
-            t = time.localtime()
-            return APLArray([7], [t[0], t[1], t[2],
-                                  t[3], t[4], t[5], 0])
-        if node.name == "⎕VER":
-            from marple import __version__
-            import sys
-            s = "MARPLE v" + __version__ + " on " + sys.platform
-            return APLArray([len(s)], list(s))
-        if node.name not in env:
-            raise ValueError_(f"Undefined system variable: {node.name}")
-        return env[node.name]
 
-    if isinstance(node, Index):
-        array = _evaluate(node.array, env)
-        io = _get_io(env)
-        return _bracket_index(array, node.indices, env, io)
-
-    if isinstance(node, Omega):
-        if "⍵" not in env:
-            raise ValueError_("⍵ used outside of dfn")
-        return env["⍵"]
-
-    if isinstance(node, Alpha):
-        if "⍺" not in env:
-            raise ValueError_("⍺ used outside of dfn")
-        return env["⍺"]
-
-    if isinstance(node, AlphaAlpha):
-        if "⍺⍺" not in env:
-            raise ValueError_("⍺⍺ used outside of dop")
-        val = env["⍺⍺"]
-        if isinstance(val, APLArray):
-            return val
+def _eval_var(node: Var, env: dict[str, Any]) -> APLArray:
+    if node.name not in env:
+        raise ValueError_(f"Undefined variable: {node.name}")
+    val = env[node.name]
+    if isinstance(val, APLArray):
+        return val
+    if isinstance(val, (_DfnClosure, IBeamDerived)):
         return val  # type: ignore[return-value]
+    raise DomainError(f"Unexpected value type for {node.name}: {type(val)}")
 
-    if isinstance(node, OmegaOmega):
-        if "⍵⍵" not in env:
-            raise ValueError_("⍵⍵ used outside of dop")
-        val = env["⍵⍵"]
-        if isinstance(val, APLArray):
-            return val
-        return val  # type: ignore[return-value]
 
-    if isinstance(node, Nabla):
-        if "∇" not in env:
-            raise ValueError_("∇ used outside of dfn")
-        return env["∇"]  # type: ignore[return-value]
+def _eval_qualified(node: QualifiedVar, env: dict[str, Any]) -> APLArray:
+    return _resolve_qualified(node.parts, env)
 
-    if isinstance(node, FunctionRef):
-        return node  # type: ignore[return-value]
 
-    if isinstance(node, Dfn):
-        return _DfnClosure(node, env)  # type: ignore[return-value]
+def _eval_sysvar(node: SysVar, env: dict[str, Any]) -> APLArray:
+    if node.name == "⎕TS":
+        import time
+        now = time.time()
+        t = time.localtime(now)
+        ms = int((now % 1) * 1000)
+        return APLArray([7], [t[0], t[1], t[2], t[3], t[4], t[5], ms])
+    if node.name == "⎕VER":
+        from marple import __version__
+        import sys
+        s = "MARPLE v" + __version__ + " on " + sys.platform
+        return APLArray([len(s)], list(s))
+    if node.name not in env:
+        raise ValueError_(f"Undefined system variable: {node.name}")
+    return env[node.name]
 
-    if isinstance(node, IBeamDerived):
-        return node  # type: ignore[return-value]
 
-    if isinstance(node, MonadicFunc):
+def _eval_index(node: Index, env: dict[str, Any]) -> APLArray:
+    array = _evaluate(node.array, env)
+    io = _get_io(env)
+    return _bracket_index(array, node.indices, env, io)
+
+
+def _eval_omega(node: Omega, env: dict[str, Any]) -> APLArray:
+    if "⍵" not in env:
+        raise ValueError_("⍵ used outside of dfn")
+    return env["⍵"]
+
+
+def _eval_alpha(node: Alpha, env: dict[str, Any]) -> APLArray:
+    if "⍺" not in env:
+        raise ValueError_("⍺ used outside of dfn")
+    return env["⍺"]
+
+
+def _eval_alpha_alpha(node: AlphaAlpha, env: dict[str, Any]) -> APLArray:
+    if "⍺⍺" not in env:
+        raise ValueError_("⍺⍺ used outside of dop")
+    return env["⍺⍺"]  # type: ignore[return-value]
+
+
+def _eval_omega_omega(node: OmegaOmega, env: dict[str, Any]) -> APLArray:
+    if "⍵⍵" not in env:
+        raise ValueError_("⍵⍵ used outside of dop")
+    return env["⍵⍵"]  # type: ignore[return-value]
+
+
+def _eval_nabla(node: Nabla, env: dict[str, Any]) -> APLArray:
+    if "∇" not in env:
+        raise ValueError_("∇ used outside of dfn")
+    return env["∇"]  # type: ignore[return-value]
+
+
+def _eval_function_ref(node: FunctionRef, env: dict[str, Any]) -> APLArray:
+    return node  # type: ignore[return-value]
+
+
+def _eval_dfn(node: Dfn, env: dict[str, Any]) -> APLArray:
+    return _DfnClosure(node, env)  # type: ignore[return-value]
+
+
+def _eval_ibeam(node: IBeamDerived, env: dict[str, Any]) -> APLArray:
+    return node  # type: ignore[return-value]
+
+
+def _eval_monadic_func(node: MonadicFunc, env: dict[str, Any]) -> APLArray:
+    operand = _evaluate(node.operand, env)
+    return _dispatch_monadic(node.function, operand, env)
+
+
+def _eval_dyadic_func(node: DyadicFunc, env: dict[str, Any]) -> APLArray:
+    right = _evaluate(node.right, env)
+    left = _evaluate(node.left, env)
+    return _dispatch_dyadic(node.function, left, right, env)
+
+
+def _eval_monadic_dfn_call(node: MonadicDfnCall, env: dict[str, Any]) -> APLArray:
+    if isinstance(node.dfn, SysVar):
+        return _call_sys_function_monadic(node.dfn.name, node.operand, env)
+    if isinstance(node.dfn, IBeamDerived):
         operand = _evaluate(node.operand, env)
-        return _dispatch_monadic(node.function, operand, env)
+        fn = _resolve_ibeam(node.dfn.path)
+        return _call_ibeam(fn, operand)
+    if isinstance(node.dfn, RankDerived):
+        return _apply_rank_monadic(node.dfn, node.operand, env)
+    dfn_val = _evaluate(node.dfn, env)
+    operand = _evaluate(node.operand, env)
+    if isinstance(dfn_val, IBeamDerived):
+        fn = _resolve_ibeam(dfn_val.path)
+        return _call_ibeam(fn, operand)
+    if isinstance(dfn_val, FunctionRef):
+        return _dispatch_monadic(dfn_val.glyph, operand, env)
+    if not isinstance(dfn_val, _DfnClosure):
+        raise DomainError(f"Expected dfn, got {type(dfn_val)}")
+    return _call_dfn(dfn_val, operand)
 
-    if isinstance(node, DyadicFunc):
+
+def _eval_monadic_dop_call(node: MonadicDopCall, env: dict[str, Any]) -> APLArray:
+    dop_val = _evaluate(node.op_name, env)
+    if not isinstance(dop_val, _DfnClosure):
+        raise DomainError(f"Expected operator, got {type(dop_val)}")
+    operand = _evaluate(node.operand, env)
+    argument = _evaluate(node.argument, env)
+    alpha = _evaluate(node.alpha, env) if node.alpha is not None else None
+    return _call_dfn(dop_val, argument, alpha_alpha=operand, alpha=alpha)
+
+
+def _eval_dyadic_dop_call(node: DyadicDopCall, env: dict[str, Any]) -> APLArray:
+    dop_val = _evaluate(node.op_name, env)
+    if not isinstance(dop_val, _DfnClosure):
+        raise DomainError(f"Expected operator, got {type(dop_val)}")
+    left_operand = _evaluate(node.operand, env)   # ⍺⍺
+    right_operand = _evaluate(node.left, env)      # ⍵⍵
+    argument = _evaluate(node.right, env)           # ⍵
+    return _call_dfn(dop_val, argument,
+                     alpha_alpha=left_operand, omega_omega=right_operand)
+
+
+def _eval_dyadic_dfn_call(node: DyadicDfnCall, env: dict[str, Any]) -> APLArray:
+    if isinstance(node.dfn, SysVar):
+        return _call_sys_function_dyadic(node.dfn.name, node.left, node.right, env)
+    if isinstance(node.dfn, IBeamDerived):
         right = _evaluate(node.right, env)
         left = _evaluate(node.left, env)
-        return _dispatch_dyadic(node.function, left, right, env)
+        fn = _resolve_ibeam(node.dfn.path)
+        return _call_ibeam_dyadic(fn, left, right)
+    if isinstance(node.dfn, RankDerived):
+        return _apply_rank_dyadic(node.dfn, node.left, node.right, env)
+    dfn_val = _evaluate(node.dfn, env)
+    right = _evaluate(node.right, env)
+    left = _evaluate(node.left, env)
+    if isinstance(dfn_val, IBeamDerived):
+        fn = _resolve_ibeam(dfn_val.path)
+        return _call_ibeam_dyadic(fn, left, right)
+    if isinstance(dfn_val, FunctionRef):
+        return _dispatch_dyadic(dfn_val.glyph, left, right, env)
+    if not isinstance(dfn_val, _DfnClosure):
+        raise DomainError(f"Expected dfn, got {type(dfn_val)}")
+    return _call_dfn(dfn_val, right, alpha=left)
 
-    if isinstance(node, MonadicDfnCall):
-        if isinstance(node.dfn, SysVar):
-            return _call_sys_function_monadic(node.dfn.name, node.operand, env)
-        if isinstance(node.dfn, IBeamDerived):
-            operand = _evaluate(node.operand, env)
-            fn = _resolve_ibeam(node.dfn.path)
-            return _call_ibeam(fn, operand)
-        if isinstance(node.dfn, RankDerived):
-            return _apply_rank_monadic(node.dfn, node.operand, env)
-        dfn_val = _evaluate(node.dfn, env)
-        operand = _evaluate(node.operand, env)
-        if isinstance(dfn_val, IBeamDerived):
-            fn = _resolve_ibeam(dfn_val.path)
-            return _call_ibeam(fn, operand)
-        if isinstance(dfn_val, FunctionRef):
-            return _dispatch_monadic(dfn_val.glyph, operand, env)
-        if not isinstance(dfn_val, _DfnClosure):
-            raise DomainError(f"Expected dfn, got {type(dfn_val)}")
-        return _call_dfn(dfn_val, operand)
 
-    if isinstance(node, MonadicDopCall):
-        dop_val = _evaluate(node.op_name, env)
-        if not isinstance(dop_val, _DfnClosure):
-            raise DomainError(f"Expected operator, got {type(dop_val)}")
-        operand = _evaluate(node.operand, env)
-        argument = _evaluate(node.argument, env)
-        return _call_dfn(dop_val, argument, alpha_alpha=operand)
+_READONLY_QUADS = frozenset({"⎕A", "⎕D", "⎕TS", "⎕EN", "⎕DM"})
 
-    if isinstance(node, DyadicDopCall):
-        dop_val = _evaluate(node.op_name, env)
-        if not isinstance(dop_val, _DfnClosure):
-            raise DomainError(f"Expected operator, got {type(dop_val)}")
-        left_operand = _evaluate(node.operand, env)   # ⍺⍺
-        right_operand = _evaluate(node.left, env)      # ⍵⍵
-        argument = _evaluate(node.right, env)           # ⍵
-        return _call_dfn(dop_val, argument,
-                         alpha_alpha=left_operand,
-                         omega_omega=right_operand)
 
-    if isinstance(node, DyadicDfnCall):
-        if isinstance(node.dfn, SysVar):
-            return _call_sys_function_dyadic(node.dfn.name, node.left, node.right, env)
-        if isinstance(node.dfn, IBeamDerived):
-            right = _evaluate(node.right, env)
-            left = _evaluate(node.left, env)
-            fn = _resolve_ibeam(node.dfn.path)
-            return _call_ibeam_dyadic(fn, left, right)
-        if isinstance(node.dfn, RankDerived):
-            return _apply_rank_dyadic(node.dfn, node.left, node.right, env)
-        dfn_val = _evaluate(node.dfn, env)
-        right = _evaluate(node.right, env)
-        left = _evaluate(node.left, env)
-        if isinstance(dfn_val, IBeamDerived):
-            fn = _resolve_ibeam(dfn_val.path)
-            return _call_ibeam_dyadic(fn, left, right)
-        if isinstance(dfn_val, FunctionRef):
-            return _dispatch_dyadic(dfn_val.glyph, left, right, env)
-        if not isinstance(dfn_val, _DfnClosure):
-            raise DomainError(f"Expected dfn, got {type(dfn_val)}")
-        return _call_dfn(dfn_val, right, alpha=left)
+def _eval_assignment(node: Assignment, env: dict[str, Any]) -> APLArray:
+    if node.name in _READONLY_QUADS:
+        raise DomainError(f"Cannot assign to read-only system variable {node.name}")
+    value = _evaluate(node.value, env)
+    if isinstance(value, (_DfnClosure, IBeamDerived)):
+        new_class = NC_FUNCTION
+    elif isinstance(value, APLArray):
+        new_class = NC_ARRAY
+    else:
+        new_class = NC_UNKNOWN
+    name_table = env.get("__name_table__", {})
+    if node.name in name_table and name_table[node.name] != new_class:
+        raise ClassError("Cannot change class of " + node.name +
+                         " from " + str(name_table[node.name]) +
+                         " to " + str(new_class))
+    name_table[node.name] = new_class
+    env["__name_table__"] = name_table
+    env[node.name] = value
+    if node.name == "⎕RL" and isinstance(value, APLArray):
+        _random.seed(int(value.data[0]))
+    if node.name == "⎕FR" and isinstance(value, APLArray):
+        fr_val = int(value.data[0])
+        if fr_val not in (645, 1287):
+            raise DomainError("⎕FR must be 645 or 1287")
+    return value if isinstance(value, APLArray) else S(0)
 
-    if isinstance(node, Assignment):
-        # Protect read-only quad-names
-        _READONLY_QUADS = {"⎕A", "⎕D", "⎕TS", "⎕EN", "⎕DM"}
-        if node.name in _READONLY_QUADS:
-            raise DomainError(f"Cannot assign to read-only system variable {node.name}")
-        value = _evaluate(node.value, env)
-        # Classify and check name class
-        if isinstance(value, (_DfnClosure, IBeamDerived)):
-            new_class = NC_FUNCTION
-        elif isinstance(value, APLArray):
-            new_class = NC_ARRAY
-        else:
-            new_class = NC_UNKNOWN
-        name_table = env.get("__name_table__", {})
-        if node.name in name_table and name_table[node.name] != new_class:
-            raise ClassError("Cannot change class of " + node.name + " from " + str(name_table[node.name]) + " to " + str(new_class))
-        name_table[node.name] = new_class
-        env["__name_table__"] = name_table
-        env[node.name] = value
-        if node.name == "⎕RL" and isinstance(value, APLArray):
-            _random.seed(int(value.data[0]))
-        if node.name == "⎕FR" and isinstance(value, APLArray):
-            fr_val = int(value.data[0])
-            if fr_val not in (645, 1287):
-                raise DomainError("⎕FR must be 645 or 1287")
-        return value if isinstance(value, APLArray) else S(0)
 
-    if isinstance(node, InnerProduct):
-        right = _evaluate(node.right, env)
-        left = _evaluate(node.left, env)
-        left_fn = _lookup_dyadic(node.left_fn)
-        right_fn = _lookup_dyadic(node.right_fn)
-        if left_fn is None or right_fn is None:
-            raise DomainError(f"Unknown function in inner product")
-        reduce_fn: Callable[[APLArray, APLArray], APLArray] = left_fn  # type: ignore[assignment]
-        apply_fn: Callable[[APLArray, APLArray], APLArray] = right_fn  # type: ignore[assignment]
-        return _inner_product(reduce_fn, apply_fn, left, right)
+def _eval_inner_product(node: InnerProduct, env: dict[str, Any]) -> APLArray:
+    right = _evaluate(node.right, env)
+    left = _evaluate(node.left, env)
+    left_fn = _lookup_dyadic(node.left_fn)
+    right_fn = _lookup_dyadic(node.right_fn)
+    if left_fn is None or right_fn is None:
+        raise DomainError("Unknown function in inner product")
+    return _inner_product(left_fn, right_fn, left, right)  # type: ignore[arg-type]
 
-    if isinstance(node, OuterProduct):
-        right = _evaluate(node.right, env)
-        left = _evaluate(node.left, env)
-        # Fast path: numpy ufunc.outer
-        ufunc_name = _GLYPH_UFUNC.get(node.function)
-        if (
-            ufunc_name
-            and is_numeric_array(left.data)
-            and is_numeric_array(right.data)
-        ):
-            ufunc = getattr(np, ufunc_name, None)
-            if ufunc is not None and hasattr(ufunc, "outer"):
-                from marple.backend import _OVERFLOW_UFUNCS
-                a = np.reshape(left.data, left.shape) if len(left.shape) > 1 else left.data
-                b = np.reshape(right.data, right.shape) if len(right.shape) > 1 else right.data
+
+def _eval_outer_product(node: OuterProduct, env: dict[str, Any]) -> APLArray:
+    right = _evaluate(node.right, env)
+    left = _evaluate(node.left, env)
+    ufunc_name = _GLYPH_UFUNC.get(node.function)
+    if (ufunc_name and is_numeric_array(left.data)
+            and is_numeric_array(right.data)):
+        ufunc = getattr(np, ufunc_name, None)
+        if ufunc is not None and hasattr(ufunc, "outer"):
+            from marple.backend import _OVERFLOW_UFUNCS
+            a = np.reshape(left.data, left.shape) if len(left.shape) > 1 else left.data
+            b = np.reshape(right.data, right.shape) if len(right.shape) > 1 else right.data
+            if ufunc_name in _OVERFLOW_UFUNCS:
+                a = maybe_upcast(a)
+                b = maybe_upcast(b)
+            result = ufunc.outer(a, b)
+            if hasattr(result, "shape") and len(result.shape) == 0:  # type: ignore[union-attr]
+                raw = result.item()  # type: ignore[union-attr]
                 if ufunc_name in _OVERFLOW_UFUNCS:
-                    a = maybe_upcast(a)
-                    b = maybe_upcast(b)
-                result = ufunc.outer(a, b)
-                if hasattr(result, "shape") and len(result.shape) == 0:  # type: ignore[union-attr]
-                    raw = result.item()  # type: ignore[union-attr]
-                    if ufunc_name in _OVERFLOW_UFUNCS:
-                        raw = maybe_downcast_scalar(raw, _DOWNCAST_CT)
-                    return S(raw)
-                result_shape = list(result.shape) if hasattr(result, "shape") else []  # type: ignore[union-attr]
-                result_flat = result.ravel() if hasattr(result, "ravel") else result  # type: ignore[union-attr]
-                if ufunc_name in _OVERFLOW_UFUNCS:
-                    result_flat = maybe_downcast(result_flat, _DOWNCAST_CT)
-                return APLArray(result_shape, result_flat)
+                    raw = maybe_downcast_scalar(raw, _DOWNCAST_CT)
+                return S(raw)
+            result_shape = list(result.shape) if hasattr(result, "shape") else []  # type: ignore[union-attr]
+            result_flat = result.ravel() if hasattr(result, "ravel") else result  # type: ignore[union-attr]
+            if ufunc_name in _OVERFLOW_UFUNCS:
+                result_flat = maybe_downcast(result_flat, _DOWNCAST_CT)
+            return APLArray(result_shape, result_flat)
+    func = _lookup_dyadic(node.function)
+    if func is None:
+        raise DomainError(f"Unknown function in outer product: {node.function}")
+    return _outer_product(func, left, right)  # type: ignore[arg-type]
+
+
+def _eval_derived_func(node: DerivedFunc, env: dict[str, Any]) -> APLArray:
+    operand = _evaluate(node.operand, env)
+    func: Any = None
+    if isinstance(node.function, str):
         func = _lookup_dyadic(node.function)
-        if func is None:
-            raise DomainError(f"Unknown function in outer product: {node.function}")
-        apply_fn_: Callable[[APLArray, APLArray], APLArray] = func  # type: ignore[assignment]
-        return _outer_product(apply_fn_, left, right)
-
-    if isinstance(node, DerivedFunc):
-        operand = _evaluate(node.operand, env)
-        # Resolve function — may be a glyph string, AST node, or ⍺⍺/⍵⍵
-        func: Any = None
-        if isinstance(node.function, str):
-            func = _lookup_dyadic(node.function)
-        elif isinstance(node.function, (AlphaAlpha, OmegaOmega)):
-            fn_val = _evaluate(node.function, env)
-            if isinstance(fn_val, FunctionRef):
-                func = _lookup_dyadic(fn_val.glyph)
-            elif isinstance(fn_val, _DfnClosure):
-                func = lambda a, o, _c=fn_val: _call_dfn(_c, o, alpha=a)
-            else:
-                raise DomainError("⍺⍺ is not a function in this context")
-        elif isinstance(node.function, (Dfn, Var)):
-            fn_val = _evaluate(node.function, env)
-            if isinstance(fn_val, _DfnClosure):
-                func = lambda a, o, _c=fn_val: _call_dfn(_c, o, alpha=a)
-            else:
-                raise DomainError(f"Expected function for operator, got {type(fn_val)}")
-        elif isinstance(node.function, FunctionRef):
-            func = _lookup_dyadic(node.function.glyph)
-        if func is None:
-            raise DomainError(f"Unknown function for operator: {node.function}")
-        if node.operator == "/":
-            return _reduce(func, operand)  # type: ignore[arg-type]
-        if node.operator == "⌿":
-            return _reduce_first(func, operand)  # type: ignore[arg-type]
-        if node.operator == "\\":
-            return _scan(func, operand)  # type: ignore[arg-type]
-        if node.operator == "⍀":
-            return _scan_first(func, operand)  # type: ignore[arg-type]
+    elif isinstance(node.function, (AlphaAlpha, OmegaOmega)):
+        fn_val = _evaluate(node.function, env)
+        if isinstance(fn_val, FunctionRef):
+            func = _lookup_dyadic(fn_val.glyph)
+        elif isinstance(fn_val, _DfnClosure):
+            func = lambda a, o, _c=fn_val: _call_dfn(_c, o, alpha=a)
+        else:
+            raise DomainError("⍺⍺ is not a function in this context")
+    elif isinstance(node.function, (Dfn, Var)):
+        fn_val = _evaluate(node.function, env)
+        if isinstance(fn_val, _DfnClosure):
+            func = lambda a, o, _c=fn_val: _call_dfn(_c, o, alpha=a)
+        else:
+            raise DomainError(f"Expected function for operator, got {type(fn_val)}")
+    elif isinstance(node.function, FunctionRef):
+        func = _lookup_dyadic(node.function.glyph)
+    if func is None:
+        raise DomainError(f"Unknown function for operator: {node.function}")
+    _REDUCE_OPS: dict[str, Any] = {
+        "/": _reduce, "⌿": _reduce_first,
+        "\\": _scan, "⍀": _scan_first,
+    }
+    op_fn = _REDUCE_OPS.get(node.operator)
+    if op_fn is None:
         raise DomainError(f"Unknown operator: {node.operator}")
+    return op_fn(func, operand)  # type: ignore[arg-type]
 
-    if isinstance(node, Program):
-        result: APLArray | _DfnClosure = S(0)
-        for stmt in node.statements:
-            result = _evaluate(stmt, env)
-        if isinstance(result, APLArray):
-            return result
-        return S(0)
 
+def _eval_program(node: Program, env: dict[str, Any]) -> APLArray:
+    result: APLArray | _DfnClosure = S(0)
+    for stmt in node.statements:
+        result = _evaluate(stmt, env)
+    return result if isinstance(result, APLArray) else S(0)
+
+
+_EVAL_DISPATCH: dict[type, Any] = {
+    Num: _eval_num,
+    Str: _eval_str,
+    Vector: _eval_vector,
+    Var: _eval_var,
+    QualifiedVar: _eval_qualified,
+    SysVar: _eval_sysvar,
+    Index: _eval_index,
+    Omega: _eval_omega,
+    Alpha: _eval_alpha,
+    AlphaAlpha: _eval_alpha_alpha,
+    OmegaOmega: _eval_omega_omega,
+    Nabla: _eval_nabla,
+    FunctionRef: _eval_function_ref,
+    Dfn: _eval_dfn,
+    IBeamDerived: _eval_ibeam,
+    MonadicFunc: _eval_monadic_func,
+    DyadicFunc: _eval_dyadic_func,
+    MonadicDfnCall: _eval_monadic_dfn_call,
+    MonadicDopCall: _eval_monadic_dop_call,
+    DyadicDopCall: _eval_dyadic_dop_call,
+    DyadicDfnCall: _eval_dyadic_dfn_call,
+    Assignment: _eval_assignment,
+    InnerProduct: _eval_inner_product,
+    OuterProduct: _eval_outer_product,
+    DerivedFunc: _eval_derived_func,
+    Program: _eval_program,
+}
+
+
+def _evaluate(node: object, env: dict[str, Any]) -> APLArray:
+    handler = _EVAL_DISPATCH.get(type(node))
+    if handler is not None:
+        return handler(node, env)
     raise DomainError(f"Unknown AST node: {type(node)}")
 
 
@@ -1082,153 +1127,138 @@ def _dyadic_dr(left: APLArray, right: APLArray) -> APLArray:
     raise DomainError("Invalid ⎕DR type code: " + str(target))
 
 
-def _call_sys_function_monadic(name: str, operand_node: object, env: dict[str, Any]) -> APLArray:
-    """Dispatch a monadic system function call."""
-    operand = _evaluate(operand_node, env)
-    if name == "⎕UCS":
-        if all(isinstance(x, str) for x in operand.data):
-            # Chars to codepoints
-            return APLArray(list(operand.shape), [ord(c) for c in operand.data])
-        else:
-            # Codepoints to chars
-            data = to_list(operand.data)
-            if operand.is_scalar():
-                return APLArray([], [chr(int(data[0]))])
-            return APLArray(list(operand.shape), [chr(int(x)) for x in data])
-    if name == "⎕NC":
-        # Expect a character vector (name)
-        nc_name = "".join(str(c) for c in operand.data)
-        name_table = env.get("__name_table__", {})
-        return S(name_table.get(nc_name, 0))
-    if name == "⎕EX":
-        ex_name = "".join(str(c) for c in operand.data)
-        name_table = env.get("__name_table__", {})
-        if ex_name in env:
-            del env[ex_name]
-            if ex_name in name_table:
-                del name_table[ex_name]
-            return S(1)
+def _sys_ucs(operand: APLArray, env: dict[str, Any]) -> APLArray:
+    if all(isinstance(x, str) for x in operand.data):
+        return APLArray(list(operand.shape), [ord(c) for c in operand.data])
+    data = to_list(operand.data)
+    if operand.is_scalar():
+        return APLArray([], [chr(int(data[0]))])
+    return APLArray(list(operand.shape), [chr(int(x)) for x in data])
+
+
+def _sys_nc(operand: APLArray, env: dict[str, Any]) -> APLArray:
+    nc_name = "".join(str(c) for c in operand.data)
+    name_table = env.get("__name_table__", {})
+    return S(name_table.get(nc_name, 0))
+
+
+def _sys_ex(operand: APLArray, env: dict[str, Any]) -> APLArray:
+    ex_name = "".join(str(c) for c in operand.data)
+    name_table = env.get("__name_table__", {})
+    if ex_name in env:
+        del env[ex_name]
+        if ex_name in name_table:
+            del name_table[ex_name]
+        return S(1)
+    return S(0)
+
+
+def _sys_signal(operand: APLArray, env: dict[str, Any]) -> APLArray:
+    code = int(operand.data[0])
+    _ERROR_MAP = {
+        1: SyntaxError_, 2: ValueError_, 3: DomainError, 4: LengthError,
+        5: RankError, 6: IndexError_, 7: LimitError, 9: SecurityError,
+    }
+    err_class = _ERROR_MAP.get(code, DomainError)
+    raise err_class(f"Signalled by ⎕SIGNAL {code}")
+
+
+def _sys_nread(operand: APLArray, env: dict[str, Any]) -> APLArray:
+    path = "".join(str(c) for c in operand.data)
+    with open(path) as f:
+        text = f.read()
+    chars = list(text)
+    return APLArray([len(chars)], chars) if chars else APLArray([0], [])
+
+
+def _sys_nexists(operand: APLArray, env: dict[str, Any]) -> APLArray:
+    import os as _os
+    path = "".join(str(c) for c in operand.data)
+    try:
+        _os.stat(path)
+        return S(1)
+    except OSError:
         return S(0)
-    if name == "⎕DR":
-        return _monadic_dr(operand)
-    if name == "⎕SIGNAL":
-        code = int(operand.data[0])
-        _ERROR_MAP = {
-            1: SyntaxError_, 2: ValueError_, 3: DomainError, 4: LengthError,
-            5: RankError, 6: IndexError_, 7: LimitError, 9: SecurityError,
-        }
-        err_class = _ERROR_MAP.get(code, DomainError)
-        raise err_class(f"Signalled by ⎕SIGNAL {code}")
-    if name == "⎕NREAD":
-        import os as _os
-        path = "".join(str(c) for c in operand.data)
-        with open(path) as f:
-            text = f.read()
-        chars = list(text)
-        return APLArray([len(chars)], chars) if chars else APLArray([0], [])
-    if name == "⎕NEXISTS":
-        import os as _os
-        path = "".join(str(c) for c in operand.data)
-        try:
-            _os.stat(path)
-            return S(1)
-        except OSError:
-            return S(0)
-    if name == "⎕NDELETE":
-        import os as _os
-        path = "".join(str(c) for c in operand.data)
-        try:
-            _os.remove(path)
-        except OSError:
-            raise DomainError("File not found: " + path)
-        return S(0)
-    if name == "⎕CR":
-        fn_name = "".join(str(c) for c in operand.data)
+
+
+def _sys_ndelete(operand: APLArray, env: dict[str, Any]) -> APLArray:
+    import os as _os
+    path = "".join(str(c) for c in operand.data)
+    try:
+        _os.remove(path)
+    except OSError:
+        raise DomainError("File not found: " + path)
+    return S(0)
+
+
+def _sys_cr(operand: APLArray, env: dict[str, Any]) -> APLArray:
+    fn_name = "".join(str(c) for c in operand.data)
+    sources = env.get("__sources__", {})
+    if fn_name not in sources:
+        raise DomainError("Not a defined function: " + fn_name)
+    source = sources[fn_name]
+    if isinstance(source, list):
+        lines = source
+    else:
+        lines = [source]
+    max_len = max(len(l) for l in lines) if lines else 0
+    flat: list[object] = []
+    for line in lines:
+        flat.extend(list(line.ljust(max_len)))
+    return APLArray([len(lines), max_len], flat)
+
+
+def _sys_fx(operand: APLArray, env: dict[str, Any]) -> APLArray:
+    if len(operand.shape) == 2:
+        rows, cols = operand.shape
+        lines = []
+        for r in range(rows):
+            row_chars = operand.data[r * cols : (r + 1) * cols]
+            lines.append("".join(str(c) for c in row_chars).rstrip())
+        text = "\n".join(lines)
+    else:
+        text = "".join(str(c) for c in operand.data)
+    parts = text.split("←", 1)
+    if len(parts) < 2:
+        raise DomainError("⎕FX requires an assignment: name←{body}")
+    fn_name = parts[0].strip()
+    try:
+        interpret(text, env)
+    except APLError:
+        raise DomainError("⎕FX: invalid function definition")
+    if fn_name not in env or not isinstance(env[fn_name], _DfnClosure):
+        raise DomainError("⎕FX did not produce a function")
+    if len(operand.shape) == 2:
         sources = env.get("__sources__", {})
-        if fn_name not in sources:
-            raise DomainError("Not a defined function: " + fn_name)
-        source = sources[fn_name]
-        # Source may be a list of lines (from matrix ⎕FX) or a string
-        if isinstance(source, list):
-            lines = source
-        else:
-            lines = [source]
-        max_len = max(len(l) for l in lines) if lines else 0
-        flat: list[object] = []
-        for line in lines:
-            flat.extend(list(line.ljust(max_len)))
-        return APLArray([len(lines), max_len], flat)
-    if name == "⎕FX":
-        # Accept vector (single line) or matrix (one row per line)
-        if len(operand.shape) == 2:
-            # Matrix: extract rows, strip trailing spaces, join with newlines
-            rows, cols = operand.shape
-            lines = []
-            for r in range(rows):
-                row_chars = operand.data[r * cols : (r + 1) * cols]
-                lines.append("".join(str(c) for c in row_chars).rstrip())
-            text = "\n".join(lines)
-        else:
-            text = "".join(str(c) for c in operand.data)
-        parts = text.split("←", 1)
-        if len(parts) < 2:
-            raise DomainError("⎕FX requires an assignment: name←{body}")
-        fn_name = parts[0].strip()
-        try:
-            interpret(text, env)
-        except APLError:
-            raise DomainError("⎕FX: invalid function definition")
-        if fn_name not in env or not isinstance(env[fn_name], _DfnClosure):
-            raise DomainError("⎕FX did not produce a function")
-        # Store source as lines for matrix round-trip
-        if len(operand.shape) == 2:
-            sources = env.get("__sources__", {})
-            sources[fn_name] = [
-                "".join(str(c) for c in operand.data[r * cols : (r + 1) * cols]).rstrip()
-                for r in range(rows)
-            ]
-            env["__sources__"] = sources
-        chars = list(fn_name)
-        return APLArray([len(chars)], chars)
-    if name == "⎕FMT":
-        if isinstance(operand_node, FmtArgs):
-            values = [_evaluate(arg, env) for arg in operand_node.args]
-            # Monadic with multiple args: format each, join
-            from marple.formatting import format_num
-            parts = []
-            for v in values:
-                parts.append(_monadic_fmt(v))
-            # Concatenate the character vectors
-            all_chars: list[object] = []
-            for p in parts:
-                all_chars.extend(p.data)
-                all_chars.append(" ")
-            if all_chars:
-                all_chars.pop()  # remove trailing space
-            return APLArray([len(all_chars)], all_chars)
-        operand = _evaluate(operand_node, env)
-        return _monadic_fmt(operand)
-    if name == "⎕DL":
-        import time as _time
-        secs = float(operand.data[0])
-        t0 = _time.time()
-        _time.sleep(secs)
-        return S(_time.time() - t0)
-    if name == "⎕NL":
-        nc = int(operand.data[0])
-        name_table = env.get("__name_table__", {})
-        names = sorted(n for n, c in name_table.items()
-                       if c == nc and not n.startswith("⎕") and not n.startswith("__"))
-        if not names:
-            return APLArray([0, 0], [])
-        max_len = max(len(n) for n in names)
-        chars: list[object] = []
-        for n in names:
-            chars.extend(list(n.ljust(max_len)))
-        return APLArray([len(names), max_len], chars)
-    if name == "⎕CSV":
-        return _csv_import(operand, env)
-    raise DomainError(f"Unknown system function: {name}")
+        sources[fn_name] = [
+            "".join(str(c) for c in operand.data[r * cols : (r + 1) * cols]).rstrip()
+            for r in range(rows)
+        ]
+        env["__sources__"] = sources
+    chars = list(fn_name)
+    return APLArray([len(chars)], chars)
+
+
+def _sys_dl(operand: APLArray, env: dict[str, Any]) -> APLArray:
+    import time as _time
+    secs = float(operand.data[0])
+    t0 = _time.time()
+    _time.sleep(secs)
+    return S(_time.time() - t0)
+
+
+def _sys_nl(operand: APLArray, env: dict[str, Any]) -> APLArray:
+    nc = int(operand.data[0])
+    name_table = env.get("__name_table__", {})
+    names = sorted(n for n, c in name_table.items()
+                   if c == nc and not n.startswith("⎕") and not n.startswith("__"))
+    if not names:
+        return APLArray([0, 0], [])
+    max_len = max(len(n) for n in names)
+    chars: list[object] = []
+    for n in names:
+        chars.extend(list(n.ljust(max_len)))
+    return APLArray([len(names), max_len], chars)
 
 
 def _csv_import(operand: APLArray, env: dict[str, Any]) -> APLArray:
@@ -1238,14 +1268,11 @@ def _csv_import(operand: APLArray, env: dict[str, Any]) -> APLArray:
     with open(path, newline="") as f:
         reader = _csv.reader(f)
         headers = next(reader)
-        # Clean header names: replace spaces/special chars with _
         col_names = []
         for h in headers:
             name = h.strip().replace(" ", "_")
-            # Keep only alphanumeric and underscore
             name = "".join(c if c.isalnum() or c == "_" else "_" for c in name)
             col_names.append(name)
-        # Read all rows
         columns: list[list[str]] = [[] for _ in col_names]
         row_count = 0
         for row in reader:
@@ -1253,10 +1280,8 @@ def _csv_import(operand: APLArray, env: dict[str, Any]) -> APLArray:
             for i, val in enumerate(row):
                 if i < len(columns):
                     columns[i].append(val.strip())
-    # Create variables — try numeric first, fall back to character matrix
     name_table = env.get("__name_table__", {})
     for col_name, col_data in zip(col_names, columns):
-        # Try to parse all values as numbers
         try:
             nums = []
             for v in col_data:
@@ -1266,7 +1291,6 @@ def _csv_import(operand: APLArray, env: dict[str, Any]) -> APLArray:
                     nums.append(int(v))
             env[col_name] = APLArray([len(nums)], nums)
         except (ValueError, TypeError):
-            # Character data — create a matrix
             max_len = max((len(v) for v in col_data), default=0)
             chars: list[object] = []
             for v in col_data:
@@ -1275,6 +1299,45 @@ def _csv_import(operand: APLArray, env: dict[str, Any]) -> APLArray:
         name_table[col_name] = NC_ARRAY
     env["__name_table__"] = name_table
     return S(row_count)
+
+
+_MONADIC_SYS: dict[str, Any] = {
+    "⎕UCS": _sys_ucs,
+    "⎕NC": _sys_nc,
+    "⎕EX": _sys_ex,
+    "⎕DR": lambda op, env: _monadic_dr(op),
+    "⎕SIGNAL": _sys_signal,
+    "⎕NREAD": _sys_nread,
+    "⎕NEXISTS": _sys_nexists,
+    "⎕NDELETE": _sys_ndelete,
+    "⎕CR": _sys_cr,
+    "⎕FX": _sys_fx,
+    "⎕DL": _sys_dl,
+    "⎕NL": _sys_nl,
+    "⎕CSV": _csv_import,
+}
+
+
+def _call_sys_function_monadic(name: str, operand_node: object, env: dict[str, Any]) -> APLArray:
+    """Dispatch a monadic system function call."""
+    # ⎕FMT needs the raw operand_node (for FmtArgs), not the evaluated operand
+    if name == "⎕FMT":
+        if isinstance(operand_node, FmtArgs):
+            values = [_evaluate(arg, env) for arg in operand_node.args]
+            parts = [_monadic_fmt(v) for v in values]
+            all_chars: list[object] = []
+            for p in parts:
+                all_chars.extend(p.data)
+                all_chars.append(" ")
+            if all_chars:
+                all_chars.pop()
+            return APLArray([len(all_chars)], all_chars)
+        return _monadic_fmt(_evaluate(operand_node, env))
+    operand = _evaluate(operand_node, env)
+    handler = _MONADIC_SYS.get(name)
+    if handler is not None:
+        return handler(operand, env)
+    raise DomainError(f"Unknown system function: {name}")
 
 
 def _monadic_fmt(operand: APLArray) -> APLArray:
@@ -1538,41 +1601,49 @@ def _dyadic_fmt(fmt_str: str, values: list[APLArray]) -> APLArray:
     return APLArray([len(rows), max_width], all_chars)
 
 
+def _sys_ea(left: APLArray, right: APLArray, env: dict[str, Any]) -> APLArray:
+    right_str = "".join(str(c) for c in right.data)
+    try:
+        return interpret(right_str, env)
+    except APLError as e:
+        env["⎕EN"] = S(e.code)
+        env["⎕DM"] = APLArray([len(str(e))], list(str(e)))
+        left_str = "".join(str(c) for c in left.data)
+        return interpret(left_str, env)
+
+
+def _sys_nwrite(left: APLArray, right: APLArray, env: dict[str, Any]) -> APLArray:
+    path = "".join(str(c) for c in right.data)
+    text = "".join(str(c) for c in left.data)
+    with open(path, "w") as f:
+        f.write(text)
+    return APLArray([0], [])
+
+
+_DYADIC_SYS: dict[str, Any] = {
+    "⎕EA": _sys_ea,
+    "⎕DR": lambda l, r, env: _dyadic_dr(l, r),
+    "⎕NWRITE": _sys_nwrite,
+}
+
+
 def _call_sys_function_dyadic(name: str, left_node: object, right_node: object, env: dict[str, Any]) -> APLArray:
     """Dispatch a dyadic system function call."""
-    if name == "⎕EA":
-        right = _evaluate(right_node, env)
-        left = _evaluate(left_node, env)
-        right_str = "".join(str(c) for c in right.data)
-        try:
-            return interpret(right_str, env)
-        except APLError as e:
-            env["⎕EN"] = S(e.code)
-            env["⎕DM"] = APLArray([len(str(e))], list(str(e)))
-            left_str = "".join(str(c) for c in left.data)
-            return interpret(left_str, env)
-    if name == "⎕DR":
-        left = _evaluate(left_node, env)
-        right = _evaluate(right_node, env)
-        return _dyadic_dr(left, right)
-    if name == "⎕NWRITE":
-        left = _evaluate(left_node, env)
-        right = _evaluate(right_node, env)
-        path = "".join(str(c) for c in right.data)
-        text = "".join(str(c) for c in left.data)
-        with open(path, "w") as f:
-            f.write(text)
-        return APLArray([0], [])
+    # ⎕FMT needs the raw right_node (for FmtArgs)
     if name == "⎕FMT":
         left = _evaluate(left_node, env)
         fmt_str = "".join(str(c) for c in left.data)
-        # Right operand may be FmtArgs (semicolon list) or a single value
         if isinstance(right_node, FmtArgs):
             values = [_evaluate(arg, env) for arg in right_node.args]
         else:
             right = _evaluate(right_node, env)
             values = [right]
         return _dyadic_fmt(fmt_str, values)
+    left = _evaluate(left_node, env)
+    right = _evaluate(right_node, env)
+    handler = _DYADIC_SYS.get(name)
+    if handler is not None:
+        return handler(left, right, env)
     raise DomainError(f"Unknown dyadic system function: {name}")
 
 

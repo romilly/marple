@@ -131,11 +131,14 @@ class DerivedFunc:
 
 
 class MonadicDopCall:
-    """User-defined operator applied monadically: (operand op) argument"""
-    def __init__(self, op_name: object, operand: object, argument: object) -> None:
+    """User-defined operator applied: (operand op) argument
+    or: left (operand op) right (when derived verb is used dyadically)"""
+    def __init__(self, op_name: object, operand: object, argument: object,
+                 alpha: object = None) -> None:
         self.op_name = op_name    # the operator (Var)
         self.operand = operand    # ⍺⍺ (the left function/array)
         self.argument = argument  # ⍵ (the right argument)
+        self.alpha = alpha        # ⍺ (left arg when derived verb used dyadically)
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, MonadicDopCall):
             return NotImplemented
@@ -604,7 +607,8 @@ class Parser:
             return DyadicFunc(verb_node, left_node, right_node)
         if isinstance(verb_node, BoundOperator):
             return self._apply_bound_dyadic(verb_node, left_node, right_node)
-        if isinstance(verb_node, (Var, Dfn, QualifiedVar,
+        if isinstance(verb_node, (Var, Dfn, QualifiedVar, Nabla,
+                                  AlphaAlpha, OmegaOmega,
                                   RankDerived, IBeamDerived, FunctionRef)):
             return DyadicDfnCall(verb_node, left_node, right_node)
         if isinstance(verb_node, SysVar):
@@ -691,7 +695,7 @@ class Parser:
                 r_operand = bound.right_operand
                 r_operand = FunctionRef(r_operand) if isinstance(r_operand, str) else r_operand
                 return DyadicDopCall(op, op_operand, r_operand, right_node)
-            return MonadicDopCall(op, op_operand, right_node)
+            return MonadicDopCall(op, op_operand, right_node, alpha=left_node)
 
         raise SyntaxError_(f"Unknown operator in bound dyadic form: {op}")
 

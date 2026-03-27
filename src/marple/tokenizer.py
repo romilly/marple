@@ -164,7 +164,7 @@ class Tokenizer:
                 while self._current() is not None and _isalpha(self._current()):  # type: ignore[union-attr]
                     name += self._current()  # type: ignore[operator]
                     self._advance()
-                tokens.append(Token(TokenType.SYSVAR, "⎕" + name))
+                tokens.append(Token(TokenType.SYSVAR, "⎕" + name.upper()))
             elif ch == "¯":
                 self._advance()
                 num_token = self._read_number()

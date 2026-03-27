@@ -4,7 +4,9 @@
 ⍝ ═══════════════════════════════════════════════════
 
 ⍝ ── ⎕DL: Delay ──
+⎕TS
 ⎕DL 0.5
+⎕TS
 
 ⍝ ── ⎕NL: Name List ──
 double←{⍵+⍵}
@@ -18,6 +20,7 @@ y←⍳5
 ⎕NL 2
 
 ⍝ ── ⎕CSV: Import CSV data ──
+⎕NREAD 'examples/scores.csv'
 ⎕CSV 'examples/scores.csv'
 name
 score
