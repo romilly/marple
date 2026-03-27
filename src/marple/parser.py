@@ -22,7 +22,7 @@ _CTX_DYAD = frozenset({CAT_END, CAT_NOUN, CAT_ADV, CAT_VERB, CAT_ASGN, CAT_LP})
 _SYS_FUNCTIONS = frozenset({
     "⎕CR", "⎕FX", "⎕NC", "⎕EX", "⎕SIGNAL", "⎕EA",
     "⎕UCS", "⎕DR", "⎕NREAD", "⎕NWRITE", "⎕NEXISTS", "⎕NDELETE",
-    "⎕DL", "⎕FMT", "⎕VFI", "⎕JSON", "⎕NL",
+    "⎕DL", "⎕FMT", "⎕VFI", "⎕JSON", "⎕NL", "⎕CSV",
 })
 
 

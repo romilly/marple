@@ -1208,7 +1208,73 @@ def _call_sys_function_monadic(name: str, operand_node: object, env: dict[str, A
             return APLArray([len(all_chars)], all_chars)
         operand = _evaluate(operand_node, env)
         return _monadic_fmt(operand)
+    if name == "⎕DL":
+        import time as _time
+        secs = float(operand.data[0])
+        t0 = _time.time()
+        _time.sleep(secs)
+        return S(_time.time() - t0)
+    if name == "⎕NL":
+        nc = int(operand.data[0])
+        name_table = env.get("__name_table__", {})
+        names = sorted(n for n, c in name_table.items()
+                       if c == nc and not n.startswith("⎕") and not n.startswith("__"))
+        if not names:
+            return APLArray([0, 0], [])
+        max_len = max(len(n) for n in names)
+        chars: list[object] = []
+        for n in names:
+            chars.extend(list(n.ljust(max_len)))
+        return APLArray([len(names), max_len], chars)
+    if name == "⎕CSV":
+        return _csv_import(operand, env)
     raise DomainError(f"Unknown system function: {name}")
+
+
+def _csv_import(operand: APLArray, env: dict[str, Any]) -> APLArray:
+    """⎕CSV 'filename': read CSV, create variables from header columns."""
+    import csv as _csv
+    path = "".join(str(c) for c in operand.data)
+    with open(path, newline="") as f:
+        reader = _csv.reader(f)
+        headers = next(reader)
+        # Clean header names: replace spaces/special chars with _
+        col_names = []
+        for h in headers:
+            name = h.strip().replace(" ", "_")
+            # Keep only alphanumeric and underscore
+            name = "".join(c if c.isalnum() or c == "_" else "_" for c in name)
+            col_names.append(name)
+        # Read all rows
+        columns: list[list[str]] = [[] for _ in col_names]
+        row_count = 0
+        for row in reader:
+            row_count += 1
+            for i, val in enumerate(row):
+                if i < len(columns):
+                    columns[i].append(val.strip())
+    # Create variables — try numeric first, fall back to character matrix
+    name_table = env.get("__name_table__", {})
+    for col_name, col_data in zip(col_names, columns):
+        # Try to parse all values as numbers
+        try:
+            nums = []
+            for v in col_data:
+                if "." in v:
+                    nums.append(float(v))
+                else:
+                    nums.append(int(v))
+            env[col_name] = APLArray([len(nums)], nums)
+        except (ValueError, TypeError):
+            # Character data — create a matrix
+            max_len = max((len(v) for v in col_data), default=0)
+            chars: list[object] = []
+            for v in col_data:
+                chars.extend(list(v.ljust(max_len)))
+            env[col_name] = APLArray([len(col_data), max_len], chars)
+        name_table[col_name] = NC_ARRAY
+    env["__name_table__"] = name_table
+    return S(row_count)
 
 
 def _monadic_fmt(operand: APLArray) -> APLArray:

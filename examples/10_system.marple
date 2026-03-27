@@ -1,0 +1,26 @@
+⎕VER
+⍝ ═══════════════════════════════════════════════════
+⍝ MARPLE Demo 10: System Functions
+⍝ ═══════════════════════════════════════════════════
+
+⍝ ── ⎕DL: Delay ──
+⎕DL 0.5
+
+⍝ ── ⎕NL: Name List ──
+double←{⍵+⍵}
+triple←{⍵+⍵+⍵}
+⍝ List all functions (name class 3)
+⎕NL 3
+
+x←42
+y←⍳5
+⍝ List all variables (name class 2)
+⎕NL 2
+
+⍝ ── ⎕CSV: Import CSV data ──
+⎕CSV 'examples/scores.csv'
+name
+score
+grade
++/score
+⌈/score

@@ -542,3 +542,103 @@ class TestFmt:
         from marple.errors import DomainError
         with pytest.raises(DomainError):
             interpret("'X5' ⎕FMT (42)")
+
+
+class TestDL:
+    """Tests for ⎕DL (delay)."""
+
+    def test_dl_returns_elapsed(self) -> None:
+        result = interpret("⎕DL 0.1")
+        elapsed = float(result.data[0])
+        assert 0.05 < elapsed < 0.5  # generous tolerance
+
+    def test_dl_zero(self) -> None:
+        result = interpret("⎕DL 0")
+        assert float(result.data[0]) >= 0
+
+
+class TestNL:
+    """Tests for ⎕NL (name list)."""
+
+    def test_nl_functions(self) -> None:
+        env = default_env()
+        interpret("double←{⍵+⍵}", env)
+        interpret("triple←{⍵+⍵+⍵}", env)
+        result = interpret("⎕NL 3", env)
+        # Result is a character matrix, one row per name
+        assert len(result.shape) == 2
+        names = []
+        cols = result.shape[1]
+        for r in range(result.shape[0]):
+            row = "".join(str(c) for c in result.data[r * cols:(r + 1) * cols]).rstrip()
+            names.append(row)
+        assert "double" in names
+        assert "triple" in names
+
+    def test_nl_variables(self) -> None:
+        env = default_env()
+        interpret("x←5", env)
+        interpret("y←10", env)
+        result = interpret("⎕NL 2", env)
+        assert len(result.shape) == 2
+        cols = result.shape[1]
+        names = []
+        for r in range(result.shape[0]):
+            row = "".join(str(c) for c in result.data[r * cols:(r + 1) * cols]).rstrip()
+            names.append(row)
+        assert "x" in names
+        assert "y" in names
+
+    def test_nl_empty(self) -> None:
+        env = default_env()
+        result = interpret("⎕NL 4", env)
+        # No operators defined — should return empty
+        assert result.shape == [0, 0] or len(result.data) == 0
+
+
+class TestCSV:
+    """Tests for ⎕CSV (CSV import)."""
+
+    def test_csv_numeric_columns(self) -> None:
+        env = default_env()
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            f.write("age,score\n")
+            f.write("25,90\n")
+            f.write("30,85\n")
+            f.write("35,72\n")
+            path = f.name
+        try:
+            interpret(f"⎕CSV '{path}'", env)
+            assert env["age"] == APLArray([3], [25, 30, 35])
+            assert env["score"] == APLArray([3], [90, 85, 72])
+        finally:
+            os.unlink(path)
+
+    def test_csv_returns_row_count(self) -> None:
+        env = default_env()
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            f.write("x\n1\n2\n3\n")
+            path = f.name
+        try:
+            result = interpret(f"⎕CSV '{path}'", env)
+            assert result == S(3)
+        finally:
+            os.unlink(path)
+
+    def test_csv_text_columns(self) -> None:
+        env = default_env()
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            f.write("name,val\n")
+            f.write("Alice,10\n")
+            f.write("Bob,20\n")
+            path = f.name
+        try:
+            interpret(f"⎕CSV '{path}'", env)
+            # name column is character matrix (2 rows, padded)
+            assert env["name"].shape[0] == 2
+            row0 = "".join(str(c) for c in env["name"].data[:env["name"].shape[1]]).rstrip()
+            assert row0 == "Alice"
+            # val column is numeric
+            assert env["val"] == APLArray([2], [10, 20])
+        finally:
+            os.unlink(path)

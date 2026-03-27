@@ -40,6 +40,9 @@ Planned quad-names for MARPLE, based on Dyalog APL's system functions and variab
 | `⎕FMT` | Format — dyadic with I/F/E/A/G codes, text insertion, G pattern |
 | `⎕CR` | Canonical Representation — function source as character matrix |
 | `⎕FX` | Fix — define function from text source |
+| `⎕DL` | Delay — pause N seconds, returns elapsed time |
+| `⎕NL` | Name List — character matrix of names by class (2=var, 3=fn, 4=op) |
+| `⎕CSV` | CSV Import — reads file, creates variables from header columns |
 
 ---
 
@@ -48,10 +51,6 @@ Planned quad-names for MARPLE, based on Dyalog APL's system functions and variab
 | Name | Type | Description | Notes |
 |------|------|-------------|-------|
 | `⎕VFI` | Function | Verify and Fix Input — parse numbers from text | Returns (validity vector)(value vector) |
-| `⎕DL` | Function | Delay — pause execution for N seconds | Simple: `⎕DL 2.5` sleeps 2.5s |
-| `⎕NL` | Function | Name List — list names of a given class | Programmable version of `)fns`/`)vars` |
-| `⎕JSON` | Function | JSON — convert between APL arrays and JSON | Monadic (parse) and dyadic (generate) |
-| `⎕CSV` | Function | CSV — import/export tabular data | Useful for data processing |
 | `⎕DCT` | Variable | Decimal Comparison Tolerance | For `⎕FR←1287` mode, default `1E¯28` |
 | `⎕NULL` | Constant | Null value | For JSON interop, empty results |
 | `⎕SH`/`⎕CMD` | Function | Execute shell command | Returns output as char matrix |

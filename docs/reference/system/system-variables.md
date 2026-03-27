@@ -338,3 +338,45 @@ JAMES|     |
 - Character data matched against non-A format
 - F format: d > w-2
 - E format: d > w-2
+
+### `⎕DL` — Delay
+
+`⎕DL n` pauses execution for `n` seconds. Returns the actual elapsed time.
+
+```apl
+      ⎕DL 2.5    ⍝ pause 2.5 seconds
+2.500123
+```
+
+### `⎕NL` — Name List
+
+`⎕NL n` returns a character matrix of names with name class `n`:
+
+| Class | Meaning |
+|-------|---------|
+| 2 | Variables |
+| 3 | Functions |
+| 4 | Operators |
+
+```apl
+      double←{⍵+⍵}
+      triple←{⍵+⍵+⍵}
+      ⎕NL 3
+double
+triple
+```
+
+### `⎕CSV` — CSV Import
+
+`⎕CSV 'filename'` reads a CSV file. The first row is treated as column headers. Each column becomes a workspace variable using the header name. Returns the number of data rows imported.
+
+Numeric columns become numeric vectors. Non-numeric columns become character matrices.
+
+```apl
+      ⎕CSV 'data.csv'
+3
+      age
+25 30 35
+      score
+90 85 72
+```

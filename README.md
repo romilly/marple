@@ -33,7 +33,7 @@ MARPLE runs on the Raspberry Pi Pico 2 via MicroPython. On the Pimoroni Presto, 
 - **Presto LCD mirror** — REPL session mirrors to the Pimoroni Presto's 480x480 touchscreen with APL bitmap font
 - **Terminal REPL** — live backtick→glyph input, workspace save/load, APL-style formatting
 - **Script runner** — `marple script.marple` with session transcript output
-- **604 tests** (550+ interpreter + 50 web), pyright strict
+- **612 tests** (560+ interpreter + 50 web), pyright strict
 
 ## Quick start
 
