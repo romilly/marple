@@ -8,12 +8,12 @@ except ImportError:
 
 from marple.arraymodel import APLArray, S
 from marple.backend import to_list
-from marple.interpreter import _DfnClosure, interpret
+from marple.interpreter import _DfnBinding, interpret
 
 
 def _format_value(value: object) -> str | None:
     """Convert an APLArray value to APL source text."""
-    if isinstance(value, _DfnClosure):
+    if isinstance(value, _DfnBinding):
         return None
     if not isinstance(value, APLArray):
         return None
@@ -101,7 +101,7 @@ def save_workspace(env: dict[str, Any], ws_dir: str) -> None:
             continue
         value = env[name]
         filename = _entity_filename(name)
-        if isinstance(value, _DfnClosure) and name in sources:
+        if isinstance(value, _DfnBinding) and name in sources:
             written_files.add(filename)
             with open(os.path.join(ws_dir, filename), "w") as f:
                 f.write(f"{sources[name]}\n")

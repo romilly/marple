@@ -161,7 +161,7 @@ MARPLE_BACKEND=none pytest
 | `backend.py` | Numpy/CuPy/ulab detection with pure-Python fallback |
 | `tokenizer.py` | Lexer for APL glyphs, numbers, strings, qualified names |
 | `parser.py` | Iverson stack-based parser with operator binding precedence |
-| `interpreter.py` | Dispatch-dict evaluator with dfn closures |
+| `interpreter.py` | Dispatch-dict evaluator with dfn environments |
 | `functions.py` | Scalar functions with pervasion (numpy-accelerated) |
 | `structural.py` | Shape-manipulating and indexing functions |
 | `cells.py` | Cell decomposition and reassembly for the rank operator |

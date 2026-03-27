@@ -27,7 +27,7 @@ Nested dfns see their enclosing scope:
 10
 ```
 
-The inner dfn captures `scale` from `outer`. This is a closure.
+The inner dfn looks up `scale` from the calling environment via dynamic lookup.
 
 ## Guard patterns
 
@@ -111,7 +111,7 @@ Dfns don't have to be named:
 
 ## Key points
 
-- Dfns use lexical scope — inner dfns can capture variables from outer dfns (closures)
+- Dfns use dynamic lookup — inner dfns look up names in the calling environment
 - Guards are checked top to bottom; the last unguarded expression is the default
 - `∇` enables recursion; use an accumulator pattern for tail-style recursion
 - Dfns are values: assign them, pass them to operators, use them inline

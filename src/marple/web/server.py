@@ -16,7 +16,7 @@ from aiohttp import web
 
 from marple.arraymodel import APLArray
 from marple.errors import APLError
-from marple.interpreter import default_env, interpret, _DfnClosure
+from marple.interpreter import default_env, interpret, _DfnBinding
 from marple.repl import format_result, _is_silent
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -89,7 +89,7 @@ class WebSession:
         return self._user_names(APLArray)
 
     def _ws_fns(self, cmd: str) -> str:
-        return self._user_names(_DfnClosure)
+        return self._user_names(_DfnBinding)
 
     def _ws_wsid(self, cmd: str) -> str:
         parts = cmd.split(None, 1)
@@ -129,7 +129,7 @@ class WebSession:
                     f'{html.escape(name)} '
                     f'<span class="ws-shape">{shape_str}</span></div>'
                 )
-            elif isinstance(val, _DfnClosure):
+            elif isinstance(val, _DfnBinding):
                 fns_list.append(
                     f'<div class="ws-item" data-name="{html.escape(name)}">'
                     f'{html.escape(name)}</div>'

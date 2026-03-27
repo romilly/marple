@@ -111,7 +111,7 @@ from marple.parser import (
 )
 
 
-class _DfnClosure:
+class _DfnBinding:
     """A dfn paired with its defining environment."""
 
     def __init__(self, dfn: Dfn, env: dict[str, Any]) -> None:
@@ -208,7 +208,7 @@ def _dyadic_format(alpha: APLArray, omega: APLArray) -> APLArray:
 
 
 def _call_dfn(
-    closure: _DfnClosure,
+    closure: _DfnBinding,
     omega: APLArray,
     alpha: APLArray | None = None,
     alpha_alpha: object | None = None,
@@ -331,7 +331,7 @@ def _eval_function_ref(node: FunctionRef, env: dict[str, Any]) -> APLArray:
 
 
 def _eval_dfn(node: Dfn, env: dict[str, Any]) -> APLArray:
-    return _DfnClosure(node, env)  # type: ignore[return-value]
+    return _DfnBinding(node, env)  # type: ignore[return-value]
 
 
 def _eval_ibeam(node: IBeamDerived, env: dict[str, Any]) -> APLArray:
@@ -352,7 +352,7 @@ def _eval_dyadic_func(node: DyadicFunc, env: dict[str, Any]) -> APLArray:
 def _apply_monadic_val(dfn_val: object, operand: APLArray, env: dict[str, Any]) -> APLArray:
     """Apply an evaluated callable value monadically."""
     _dispatch: dict[type, Any] = {
-        _DfnClosure: lambda v, o, e: _call_dfn(v, o),
+        _DfnBinding: lambda v, o, e: _call_dfn(v, o),
         IBeamDerived: lambda v, o, e: _call_ibeam(_resolve_ibeam(v.path), o),
         FunctionRef: lambda v, o, e: _dispatch_monadic(v.glyph, o, e),
     }
@@ -365,7 +365,7 @@ def _apply_monadic_val(dfn_val: object, operand: APLArray, env: dict[str, Any]) 
 def _apply_dyadic_val(dfn_val: object, left: APLArray, right: APLArray, env: dict[str, Any]) -> APLArray:
     """Apply an evaluated callable value dyadically."""
     _dispatch: dict[type, Any] = {
-        _DfnClosure: lambda v, l, r, e: _call_dfn(v, r, alpha=l),
+        _DfnBinding: lambda v, l, r, e: _call_dfn(v, r, alpha=l),
         IBeamDerived: lambda v, l, r, e: _call_ibeam_dyadic(_resolve_ibeam(v.path), l, r),
         FunctionRef: lambda v, l, r, e: _dispatch_dyadic(v.glyph, l, r, e),
     }
@@ -397,7 +397,7 @@ def _eval_monadic_dfn_call(node: MonadicDfnCall, env: dict[str, Any]) -> APLArra
 
 def _eval_monadic_dop_call(node: MonadicDopCall, env: dict[str, Any]) -> APLArray:
     dop_val = _evaluate(node.op_name, env)
-    if not isinstance(dop_val, _DfnClosure):
+    if not isinstance(dop_val, _DfnBinding):
         raise DomainError(f"Expected operator, got {type(dop_val)}")
     operand = _evaluate(node.operand, env)
     argument = _evaluate(node.argument, env)
@@ -407,7 +407,7 @@ def _eval_monadic_dop_call(node: MonadicDopCall, env: dict[str, Any]) -> APLArra
 
 def _eval_dyadic_dop_call(node: DyadicDopCall, env: dict[str, Any]) -> APLArray:
     dop_val = _evaluate(node.op_name, env)
-    if not isinstance(dop_val, _DfnClosure):
+    if not isinstance(dop_val, _DfnBinding):
         raise DomainError(f"Expected operator, got {type(dop_val)}")
     left_operand = _evaluate(node.operand, env)   # ⍺⍺
     right_operand = _evaluate(node.left, env)      # ⍵⍵
@@ -444,7 +444,7 @@ def _eval_assignment(node: Assignment, env: dict[str, Any]) -> APLArray:
     if node.name in _READONLY_QUADS:
         raise DomainError(f"Cannot assign to read-only system variable {node.name}")
     value = _evaluate(node.value, env)
-    _CLASS_MAP = {_DfnClosure: NC_FUNCTION, IBeamDerived: NC_FUNCTION, APLArray: NC_ARRAY}
+    _CLASS_MAP = {_DfnBinding: NC_FUNCTION, IBeamDerived: NC_FUNCTION, APLArray: NC_ARRAY}
     new_class = _CLASS_MAP.get(type(value), NC_UNKNOWN)
     name_table = env.get("__name_table__", {})
     if node.name in name_table and name_table[node.name] != new_class:
@@ -521,7 +521,7 @@ def _resolve_dyadic_callable(fn_node: object, env: dict[str, Any]) -> Any:
     # AST node — evaluate then resolve the value
     fn_val = _evaluate(fn_node, env)
     _resolvers: dict[type, Any] = {
-        _DfnClosure: lambda v: (lambda a, o, _c=v: _call_dfn(_c, o, alpha=a)),
+        _DfnBinding: lambda v: (lambda a, o, _c=v: _call_dfn(_c, o, alpha=a)),
         FunctionRef: lambda v: _lookup_dyadic(v.glyph),
     }
     resolver = _resolvers.get(type(fn_val))
@@ -544,7 +544,7 @@ def _eval_derived_func(node: DerivedFunc, env: dict[str, Any]) -> APLArray:
 
 
 def _eval_program(node: Program, env: dict[str, Any]) -> APLArray:
-    result: APLArray | _DfnClosure = S(0)
+    result: APLArray | _DfnBinding = S(0)
     for stmt in node.statements:
         result = _evaluate(stmt, env)
     return result if isinstance(result, APLArray) else S(0)
@@ -1246,7 +1246,7 @@ def _sys_fx(operand: APLArray, env: dict[str, Any]) -> APLArray:
         interpret(text, env)
     except APLError:
         raise DomainError("⎕FX: invalid function definition")
-    if fn_name not in env or not isinstance(env[fn_name], _DfnClosure):
+    if fn_name not in env or not isinstance(env[fn_name], _DfnBinding):
         raise DomainError("⎕FX did not produce a function")
     if len(operand.shape) == 2:
         sources = env.get("__sources__", {})
@@ -1827,7 +1827,7 @@ def _handle_import(source: str, env: dict[str, Any]) -> APLArray:
     bind_name = alias if alias else name_parts[-1]
     env[bind_name] = result
     name_table = env.get("__name_table__", {})
-    if isinstance(result, (_DfnClosure, IBeamDerived)):
+    if isinstance(result, (_DfnBinding, IBeamDerived)):
         name_table[bind_name] = NC_FUNCTION
     elif isinstance(result, APLArray):
         name_table[bind_name] = NC_ARRAY
@@ -1894,7 +1894,7 @@ def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
     # Track source for dfn assignments so workspace save can reconstruct them
     if isinstance(tree, Assignment):
         value = env.get(tree.name)
-        if isinstance(value, _DfnClosure):
+        if isinstance(value, _DfnBinding):
             if "__sources__" not in env:
                 env["__sources__"] = {}
             env["__sources__"][tree.name] = source.strip()
@@ -1907,6 +1907,6 @@ def interpret(source: str, env: dict[str, Any] | None = None) -> APLArray:
                 op_ar = env.get("__operator_arity__", {})
                 op_ar[tree.name] = arity
                 env["__operator_arity__"] = op_ar
-    if isinstance(result, _DfnClosure):
+    if isinstance(result, _DfnBinding):
         return S(0)
     return result

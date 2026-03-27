@@ -9,7 +9,7 @@ import sys
 
 from marple.arraymodel import APLArray
 from marple.errors import APLError
-from marple.interpreter import _DfnClosure, default_env, interpret
+from marple.interpreter import _DfnBinding, default_env, interpret
 from marple.parser import Assignment, Program, parse
 try:
     from marple.terminal import read_line
@@ -139,7 +139,7 @@ def _cmd_fns(line: str, env: dict[str, Any]) -> bool:
         else:
             print(f"Namespace not found: {ns_name}")
     else:
-        fns = [n for n in _user_names(env) if isinstance(env[n], _DfnClosure)]
+        fns = [n for n in _user_names(env) if isinstance(env[n], _DfnBinding)]
         print("  ".join(fns) if fns else "")
     return False
 

@@ -32,7 +32,7 @@ For dyadic recursive calls, `∇` is called with a left argument:
 
 ## Notes
 
-`∇` captures the dfn as a closure, so it works correctly with lexical scope. Named dfns can also call themselves by name.
+`∇` refers to the current dfn, enabling anonymous recursion. Named dfns can also call themselves by name.
 
 ## See also
 

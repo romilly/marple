@@ -4,6 +4,6 @@ These tutorials cover MARPLE's distinctive features. They assume you're comforta
 
 1. **[The Rank Operator Step by Step](rank-operator.md)** — the most important feature MARPLE adds to first-generation APL
 2. **[Indexing with From](from-indexing.md)** — leading-axis selection that composes with rank
-3. **[Direct Functions in Depth](dfns-in-depth.md)** — guards, recursion, closures, and patterns
+3. **[Direct Functions in Depth](dfns-in-depth.md)** — guards, recursion, dynamic lookup, and patterns
 4. **[Direct Operators](dops.md)** — writing your own higher-order tools
 5. **[Workspaces and Namespaces](workspaces-and-namespaces.md)** — organising code, the standard library, and imports

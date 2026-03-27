@@ -23,8 +23,7 @@ Here's the mean declares as a dfn.
 
 Key differences:
 
-- **Lexical scope** -- a dfn sees the variables that existed where it was defined, not where it's called. This makes code easier to reason about and eliminates accidental name collisions.
-- **Closures** -- dfns capture their defining environment, so they compose naturally with operators.
+- **Dynamic lookup** -- a dfn looks up names in the calling environment at runtime. Local assignments shadow outer names.
 - **Guards instead of branching** -- `condition : result` replaces `→label`. No line numbers, no labels, no branch targets.
 - **First-class values** -- dfns are values that can be assigned, passed to operators, and returned from other dfns.
 
@@ -38,7 +37,7 @@ MARPLE does not support traditional `∇`-header definitions. The reasons are bo
 
 **No branch.** The `→` primitive is the source of many bugs in traditional APL. Guards (`condition : result`) are clearer and less error-prone.
 
-**Modern expectations.** Lexical scope, closures, and first-class functions are standard in modern programming. Dynamic scope and line-number-based flow control are not.
+**Modern expectations.** First-class functions and clean scoping are standard in modern programming. Line-number-based flow control is not.
 
 ## What you lose
 
