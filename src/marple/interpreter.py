@@ -1173,8 +1173,21 @@ def _sys_nc(operand: APLArray, env: dict[str, Any]) -> APLArray:
 
 
 def _sys_ex(operand: APLArray, env: dict[str, Any]) -> APLArray:
-    ex_name = "".join(str(c) for c in operand.data)
     name_table = env.get("__name_table__", {})
+    # Matrix argument: expunge each row as a separate name
+    if len(operand.shape) == 2:
+        rows, cols = operand.shape
+        count = 0
+        for r in range(rows):
+            name = "".join(str(c) for c in operand.data[r * cols:(r + 1) * cols]).rstrip()
+            if name in env:
+                del env[name]
+                if name in name_table:
+                    del name_table[name]
+                count += 1
+        return S(count)
+    # Vector argument: single name
+    ex_name = "".join(str(c) for c in operand.data).rstrip()
     if ex_name in env:
         del env[ex_name]
         if ex_name in name_table:
