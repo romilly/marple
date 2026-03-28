@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+
 from marple.arraymodel import APLArray, S
 from marple.errors import SyntaxError_, DomainError, ValueError_
 from marple.tokenizer import Token, TokenType, Tokenizer
@@ -44,7 +46,13 @@ def _ast_contains(node: object, target_type: type) -> bool:
 
 # AST nodes
 
-class Num:
+class Node(ABC):
+    """Abstract base for all AST nodes that can be evaluated."""
+    @abstractmethod
+    def execute(self, ctx: object) -> object: ...
+
+
+class Num(Node):
     def __init__(self, value: int | float) -> None:
         self.value = value
     def __eq__(self, other: object) -> bool:
@@ -59,7 +67,7 @@ class Num:
         return S(value)
 
 
-class Str:
+class Str(Node):
     def __init__(self, value: str) -> None:
         self.value = value
     def __eq__(self, other: object) -> bool:
@@ -70,7 +78,7 @@ class Str:
         return APLArray([len(self.value)], list(self.value))
 
 
-class Vector:
+class Vector(Node):
     def __init__(self, elements: list[Num]) -> None:
         self.elements = elements
     def __eq__(self, other: object) -> bool:
@@ -82,7 +90,7 @@ class Vector:
         return APLArray([len(values)], list(values))
 
 
-class MonadicFunc:
+class MonadicFunc(Node):
     def __init__(self, function: str, operand: object) -> None:
         self.function = function
         self.operand = operand
@@ -95,7 +103,7 @@ class MonadicFunc:
         return ctx.dispatch_monadic(self.function, operand)  # type: ignore[union-attr]
 
 
-class DyadicFunc:
+class DyadicFunc(Node):
     def __init__(self, function: str, left: object, right: object) -> None:
         self.function = function
         self.left = left
@@ -110,7 +118,7 @@ class DyadicFunc:
         return ctx.dispatch_dyadic(self.function, left, right)  # type: ignore[union-attr]
 
 
-class Assignment:
+class Assignment(Node):
     def __init__(self, name: str, value: object) -> None:
         self.name = name
         self.value = value
@@ -122,7 +130,7 @@ class Assignment:
         return ctx.assign(self.name, self.value)  # type: ignore[union-attr]
 
 
-class Var:
+class Var(Node):
     def __init__(self, name: str) -> None:
         self.name = name
     def __eq__(self, other: object) -> bool:
@@ -144,7 +152,7 @@ class QualifiedVar:
         return self.parts == other.parts
 
 
-class DerivedFunc:
+class DerivedFunc(Node):
     def __init__(self, operator: str, function: str, operand: object) -> None:
         self.operator = operator
         self.function = function
@@ -158,7 +166,7 @@ class DerivedFunc:
         return ctx.apply_derived(self.operator, self.function, operand)  # type: ignore[union-attr]
 
 
-class MonadicDopCall:
+class MonadicDopCall(Node):
     """User-defined operator applied: (operand op) argument
     or: left (operand op) right (when derived verb is used dyadically)"""
     def __init__(self, op_name: object, operand: object, argument: object,
@@ -252,7 +260,7 @@ class OuterProduct:
         return self.function == other.function and self.left == other.left and self.right == other.right
 
 
-class SysVar:
+class SysVar(Node):
     def __init__(self, name: str) -> None:
         self.name = name
     def __eq__(self, other: object) -> bool:
@@ -273,21 +281,21 @@ class Index:
         return self.array == other.array and self.indices == other.indices
 
 
-class Omega:
+class Omega(Node):
     def execute(self, ctx: object) -> APLArray:
         if "⍵" not in ctx.env:  # type: ignore[union-attr]
             raise ValueError_("⍵ used outside of dfn")
         return ctx.env["⍵"]  # type: ignore[union-attr]
 
 
-class Alpha:
+class Alpha(Node):
     def execute(self, ctx: object) -> APLArray:
         if "⍺" not in ctx.env:  # type: ignore[union-attr]
             raise ValueError_("⍺ used outside of dfn")
         return ctx.env["⍺"]  # type: ignore[union-attr]
 
 
-class FunctionRef:
+class FunctionRef(Node):
     """A reference to a primitive function glyph, used as a dop operand."""
     def __init__(self, glyph: str) -> None:
         self.glyph = glyph
@@ -299,7 +307,7 @@ class FunctionRef:
         return self
 
 
-class AlphaAlpha:
+class AlphaAlpha(Node):
     """⍺⍺ — left operand reference in a dop."""
     def execute(self, ctx: object) -> object:
         if "⍺⍺" not in ctx.env:  # type: ignore[union-attr]
@@ -366,7 +374,7 @@ class AlphaDefault:
         return self.default == other.default
 
 
-class Dfn:
+class Dfn(Node):
     def __init__(self, body: list[object]) -> None:
         self.body = body
     def __eq__(self, other: object) -> bool:
@@ -377,7 +385,7 @@ class Dfn:
         return ctx.create_binding(self)  # type: ignore[union-attr]
 
 
-class MonadicDfnCall:
+class MonadicDfnCall(Node):
     def __init__(self, dfn: object, operand: object) -> None:
         self.dfn = dfn
         self.operand = operand
@@ -389,7 +397,7 @@ class MonadicDfnCall:
         return ctx.apply_monadic_call(self)  # type: ignore[union-attr]
 
 
-class DyadicDfnCall:
+class DyadicDfnCall(Node):
     def __init__(self, dfn: object, left: object, right: object) -> None:
         self.dfn = dfn
         self.left = left
@@ -402,7 +410,7 @@ class DyadicDfnCall:
         return ctx.apply_dyadic_call(self)  # type: ignore[union-attr]
 
 
-class Program:
+class Program(Node):
     def __init__(self, statements: list[object]) -> None:
         self.statements = statements
     def __eq__(self, other: object) -> bool:

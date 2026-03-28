@@ -20,6 +20,7 @@ from marple.parser import (
     MonadicDfnCall,
     MonadicDopCall,
     DyadicDfnCall,
+    Node,
     Program,
     RankDerived,
     ReduceOp,
@@ -91,10 +92,10 @@ class Executor:
 
     # ── Core evaluation ──
 
-    def evaluate(self, node: object) -> APLArray:
+    def evaluate(self, node: Node | object) -> APLArray:
         """Evaluate an AST node by calling its execute method."""
-        if hasattr(node, 'execute'):
-            return node.execute(self)  # type: ignore[union-attr]
+        if isinstance(node, Node):
+            return node.execute(self)  # type: ignore[return-value]
         raise DomainError(f"Unknown AST node: {type(node)}")
 
     # ── Callback methods for node execute() ──
