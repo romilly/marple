@@ -14,19 +14,25 @@ from marple.dyadic_functions import DyadicFunctionBinding
 from marple.monadic_functions import MonadicFunctionBinding
 from marple.operator_binding import DerivedFunctionBinding
 from marple.symbol_table import NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN
+from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
 from marple.parser import (
     Alpha,
     AlphaAlpha,
     Assignment,
+    BoundOperator,
     DerivedFunc,
     Dfn,
     DyadicDfnCall,
     DyadicFunc,
+    FunctionRef,
     MonadicDfnCall,
     MonadicFunc,
     Num,
     Omega,
     Program,
+    RankDerived,
+    ReduceOp,
+    ScanOp,
     Str,
     SysVar,
     Var,
@@ -229,6 +235,8 @@ class Executor:
         from marple.dfn_binding import DfnBinding
         if isinstance(node.dfn, SysVar):
             return self._dispatch_sys_monadic(node.dfn.name, node.operand)
+        if isinstance(node.dfn, RankDerived):
+            return self._apply_rank_monadic(node.dfn, node.operand)
         dfn_val = self._evaluate(node.dfn)
         operand = self._evaluate(node.operand)
         if isinstance(dfn_val, DfnBinding):
@@ -250,6 +258,32 @@ class Executor:
         for stmt in node.statements:
             result = self._evaluate(stmt)
         return result if isinstance(result, APLArray) else S(0)
+
+    # ── Rank operator ──
+
+    def _apply_rank_monadic(self, rank_node: RankDerived, operand_node: object) -> APLArray:
+        omega = self._evaluate(operand_node)
+        rank_spec_val = self._evaluate(rank_node.rank_spec)
+        a, _, _ = resolve_rank_spec(rank_spec_val)
+        k = clamp_rank(a, len(omega.shape))
+        frame_shape, cells = decompose(omega, k)
+        results = [self._apply_func_monadic(rank_node.function, cell) for cell in cells]
+        return reassemble(frame_shape, results)
+
+    def _apply_func_monadic(self, func: object, omega: APLArray) -> APLArray:
+        """Apply a function monadically. Used by rank operator."""
+        if isinstance(func, str):
+            return MonadicFunctionBinding(self.env).apply(func, omega)
+        if isinstance(func, FunctionRef):
+            return MonadicFunctionBinding(self.env).apply(func.glyph, omega)
+        if isinstance(func, ReduceOp):
+            return DerivedFunctionBinding().apply("/", func.function, omega)
+        if isinstance(func, ScanOp):
+            return DerivedFunctionBinding().apply("\\", func.function, omega)
+        if isinstance(func, BoundOperator):
+            return DerivedFunctionBinding().apply(
+                func.operator, func.left_operand, omega)
+        raise DomainError(f"Expected function for rank, got {type(func)}")
 
     # ── System functions ──
 

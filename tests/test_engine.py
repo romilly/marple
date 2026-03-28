@@ -83,3 +83,8 @@ class TestOperators:
         interp = Interpreter(io=1)
         result = interp.run("+\\⍳5")
         assert result == APLArray([5], [1, 3, 6, 10, 15])
+
+    def test_rank(self) -> None:
+        interp = Interpreter(io=1)
+        result = interp.run("(+/⍤1) 3 4⍴⍳12")
+        assert result == APLArray([3], [10, 26, 42])
