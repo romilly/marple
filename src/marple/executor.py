@@ -84,6 +84,9 @@ class Executor:
         "⎕NC": "_sys_nc",
         "⎕EX": "_sys_ex",
         "⎕NL": "_sys_nl",
+        "⎕UCS": "_sys_ucs",
+        "⎕DR": "_sys_dr",
+        "⎕SIGNAL": "_sys_signal",
     }
 
     # ── Core evaluation ──
@@ -231,3 +234,54 @@ class Executor:
         for n in names:
             chars.extend(list(_ljust(n, max_len)))
         return APLArray([len(names), max_len], chars)
+
+    def _sys_ucs(self, operand: APLArray) -> APLArray:
+        from marple.backend import to_list
+        if all(isinstance(x, str) for x in operand.data):
+            return APLArray(list(operand.shape), [ord(c) for c in operand.data])
+        data = to_list(operand.data)
+        if operand.is_scalar():
+            return APLArray([], [chr(int(data[0]))])
+        return APLArray(list(operand.shape), [chr(int(x)) for x in data])
+
+    def _sys_dr(self, operand: APLArray) -> APLArray:
+        from marple.backend import is_numeric_array, to_list, _is_float_dtype
+        if len(operand.data) > 0 and isinstance(to_list(operand.data)[0], str):
+            return S(80)
+        if is_numeric_array(operand.data):
+            dtype_str = str(operand.data.dtype)
+            if "uint8" in dtype_str:
+                return S(11)
+            if "int8" in dtype_str:
+                return S(83)
+            if "int16" in dtype_str:
+                return S(163)
+            if "int32" in dtype_str:
+                return S(323)
+            if "int64" in dtype_str:
+                return S(645)
+            if _is_float_dtype(operand.data):
+                return S(645)
+        vals = to_list(operand.data)
+        if vals:
+            v = vals[0]
+            if isinstance(v, str):
+                return S(80)
+            if isinstance(v, float):
+                return S(645)
+            if isinstance(v, int):
+                return S(323)
+        return S(0)
+
+    def _sys_signal(self, operand: APLArray) -> APLArray:
+        from marple.errors import (
+            SyntaxError_, ValueError_, LengthError,
+            RankError, IndexError_, LimitError, SecurityError,
+        )
+        code = int(operand.data[0])
+        error_map: dict[int, type] = {
+            1: SyntaxError_, 2: ValueError_, 3: DomainError, 4: LengthError,
+            5: RankError, 6: IndexError_, 7: LimitError, 9: SecurityError,
+        }
+        err_class = error_map.get(code, DomainError)
+        raise err_class(f"Signalled by ⎕SIGNAL {code}")

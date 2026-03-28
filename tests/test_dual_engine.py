@@ -215,6 +215,30 @@ class TestProducts:
         ])
 
 
+class TestSystemFunctionsExtra:
+    def test_ucs_to_char(self, engine: object) -> None:
+        result = engine.run("⎕UCS 65")
+        assert result == S("A")
+
+    def test_ucs_to_code(self, engine: object) -> None:
+        result = engine.run("⎕UCS 'A'")
+        assert result == APLArray([1], [65])
+
+    def test_dr_integer(self, engine: object) -> None:
+        result = engine.run("⎕DR 42")
+        assert result == S(323)
+
+    def test_dr_char(self, engine: object) -> None:
+        result = engine.run("⎕DR 'hello'")
+        assert result == S(80)
+
+    def test_signal(self, engine: object) -> None:
+        import pytest
+        from marple.errors import DomainError
+        with pytest.raises(DomainError):
+            engine.run("⎕SIGNAL 3")
+
+
 class TestDyadicFormat:
     def test_dyadic_format_width(self, engine: object) -> None:
         result = engine.run("5⍕42")
