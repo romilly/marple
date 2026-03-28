@@ -21,7 +21,6 @@ from marple.parser import (
     MonadicDopCall,
     DyadicDfnCall,
     Node,
-    Program,
     RankDerived,
     ReduceOp,
     ScanOp,
@@ -165,13 +164,6 @@ class Executor:
         argument = self.evaluate(node.argument)
         alpha = self.evaluate(node.alpha) if node.alpha is not None else None
         return dop_val.apply(argument, alpha_alpha=operand, alpha=alpha)
-
-    def execute_program(self, node: Program) -> APLArray:
-        from marple.dfn_binding import DfnBinding
-        result: APLArray | DfnBinding = S(0)
-        for stmt in node.statements:
-            result = self.evaluate(stmt)
-        return result if isinstance(result, APLArray) else S(0)
 
     # ── System variables ──
 

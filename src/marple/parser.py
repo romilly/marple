@@ -417,8 +417,11 @@ class Program(Node):
         if not isinstance(other, Program):
             return NotImplemented
         return self.statements == other.statements
-    def execute(self, ctx: object) -> APLArray:
-        return ctx.execute_program(self)  # type: ignore[union-attr]
+    def execute(self, ctx: object) -> object:
+        result: object = S(0)
+        for stmt in self.statements:
+            result = ctx.evaluate(stmt)  # type: ignore[union-attr]
+        return result
 
 
 class Parser:
