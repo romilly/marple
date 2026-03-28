@@ -12,15 +12,6 @@ from marple.backend import (
 from marple.errors import DomainError, ValueError_
 from marple.functions import (
     add,
-    negate,
-    reciprocal,
-    ceiling,
-    floor,
-    exponential,
-    natural_log,
-    absolute_value,
-    logical_not,
-    pi_times,
     subtract,
     multiply,
     divide,
@@ -33,23 +24,18 @@ from marple.functions import (
     logical_or,
     circular,
 )
+from marple.monadic_functions import MonadicFunctionBinding
 from marple.structural import (
     catenate,
     drop,
     encode,
     decode,
     expand,
-    iota,
-    ravel,
     replicate,
     replicate_first,
     reshape,
-    reverse,
     rotate,
-    shape,
     take,
-    transpose,
-    matrix_inverse,
     matrix_divide,
 )
 from marple.parser import (
@@ -136,26 +122,6 @@ class Executor:
 
     env: dict[str, Any]
 
-    # ── Monadic primitives (no env needed) ──
-    _MONADIC_SIMPLE: dict[str, object] = {
-        "+": lambda omega: omega,
-        "-": negate,
-        "×": lambda omega: S((-1 if omega.data[0] < 0 else 1 if omega.data[0] > 0 else 0)),
-        "÷": reciprocal,
-        "⌈": ceiling,
-        "⌊": floor,
-        "*": exponential,
-        "⍟": natural_log,
-        "|": absolute_value,
-        "~": logical_not,
-        "⍴": shape,
-        ",": ravel,
-        "⌽": reverse,
-        "⍉": transpose,
-        "⌹": matrix_inverse,
-        "○": pi_times,
-    }
-
     # ── Dyadic primitives (no env needed) ──
     _DYADIC_SIMPLE: dict[str, object] = {
         "+": add,
@@ -194,11 +160,6 @@ class Executor:
         "⎕NC": "_sys_nc",
         "⎕EX": "_sys_ex",
         "⎕NL": "_sys_nl",
-    }
-
-    _MONADIC_ENV_DISPATCH: dict[str, str] = {
-        "⍳": "_monadic_iota",
-        "≢": "_monadic_tally",
     }
 
     # ── Type-keyed eval dispatch (class-level, shared) ──
@@ -307,29 +268,12 @@ class Executor:
 
     def _eval_monadic_func(self, node: MonadicFunc) -> APLArray:
         operand = self._evaluate(node.operand)
-        return self._dispatch_monadic(node.function, operand)
+        return MonadicFunctionBinding(self.env).apply(node.function, operand)
 
     def _eval_dyadic_func(self, node: DyadicFunc) -> APLArray:
         right = self._evaluate(node.right)
         left = self._evaluate(node.left)
         return self._dispatch_dyadic(node.function, left, right)
-
-    def _monadic_iota(self, operand: APLArray) -> APLArray:
-        io = self._get_io()
-        n = int(operand.data[0])
-        return APLArray([n], list(range(io, n + io)))
-
-    def _monadic_tally(self, operand: APLArray) -> APLArray:
-        return S(1) if operand.is_scalar() else S(operand.shape[0])
-
-    def _dispatch_monadic(self, glyph: str, operand: APLArray) -> APLArray:
-        method_name = self._MONADIC_ENV_DISPATCH.get(glyph)
-        if method_name is not None:
-            return getattr(self, method_name)(operand)
-        func = self._MONADIC_SIMPLE.get(glyph)
-        if func is not None:
-            return func(operand)  # type: ignore[operator]
-        raise DomainError(f"Unknown monadic function: {glyph}")
 
     def _dispatch_dyadic(self, glyph: str, left: APLArray, right: APLArray) -> APLArray:
         func = self._DYADIC_SIMPLE.get(glyph)
