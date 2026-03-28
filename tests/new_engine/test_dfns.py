@@ -1,5 +1,7 @@
 """Dfn tests — new engine."""
 
+import pytest
+
 from marple.arraymodel import APLArray, S
 from marple.engine import Interpreter
 
@@ -105,6 +107,41 @@ class TestMultiStatement:
         assert i.run("abs 3") == S(3)
 
 
+class TestMultiGuard:
+    def test_multi_guard_with_assignment(self) -> None:
+        i = Interpreter(io=1)
+        i.run("classify←{r←'zero' ⋄ ⍵>0:r←'positive' ⋄ ⍵<0:r←'negative' ⋄ r}")
+        result = i.run("classify 5")
+        assert "".join(str(c) for c in result.data) == "positive"
+
+
+class TestCRandFX:
+    def test_cr_multi_statement(self) -> None:
+        i = Interpreter(io=1)
+        i.run("sign←{⍵>0:1 ⋄ ⍵<0:¯1 ⋄ 0}")
+        result = i.run("⎕CR 'sign'")
+        text = "".join(str(c) for c in result.data)
+        assert "⋄" in text
+        assert "sign←{" in text
+
+    def test_fx_multi_statement(self) -> None:
+        i = Interpreter(io=1)
+        i.run("⎕FX 'clamp←{⍵>100:100 ⋄ ⍵<0:0 ⋄ ⍵}'")
+        assert i.run("clamp 150") == S(100)
+        assert i.run("clamp ¯5") == S(0)
+        assert i.run("clamp 50") == S(50)
+
+    def test_cr_fx_round_trip_multi(self) -> None:
+        i = Interpreter(io=1)
+        i.run("sign←{⍵>0:1 ⋄ ⍵<0:¯1 ⋄ 0}")
+        src = i.run("⎕CR 'sign'")
+        text = "".join(str(c) for c in src.data)
+        new_text = text.replace("sign", "sgn", 1)
+        i.run("⎕FX '" + new_text + "'")
+        assert i.run("sgn 5") == S(1)
+        assert i.run("sgn ¯3") == S(-1)
+
+
 class TestNestedCalls:
     def test_nested_dfn_calls(self) -> None:
         i = Interpreter(io=1)
@@ -125,7 +162,108 @@ class TestDopApplication:
         i.run("double←{⍵+⍵}")
         assert i.run("(double) twice 3") == S(12)
 
+    def test_dop_with_negate(self) -> None:
+        i = Interpreter(io=1)
+        i.run("twice←{⍺⍺ ⍺⍺ ⍵}")
+        assert i.run("(-) twice 5") == S(5)
+
+    def test_dop_with_reciprocal(self) -> None:
+        i = Interpreter(io=1)
+        i.run("twice←{⍺⍺ ⍺⍺ ⍵}")
+        assert i.run("(÷) twice 4") == S(4)
+
+    def test_dop_with_iota(self) -> None:
+        i = Interpreter(io=1)
+        i.run("apply←{⍺⍺ ⍵}")
+        result = i.run("(⍳) apply 5")
+        assert result == APLArray([5], [1, 2, 3, 4, 5])
+
+    def test_dop_with_array_operand(self) -> None:
+        i = Interpreter(io=1)
+        i.run("addop←{⍺⍺+⍵}")
+        assert i.run("(10) addop 5") == S(15)
+
+    def test_dop_array_operand_vector(self) -> None:
+        i = Interpreter(io=1)
+        i.run("scale←{⍺⍺×⍵}")
+        result = i.run("(2) scale 1 2 3")
+        assert list(result.data) == [2, 4, 6]
+
+    def test_multi_statement_dop(self) -> None:
+        i = Interpreter(io=1)
+        i.run("apply_twice←{t←⍺⍺ ⍵ ⋄ ⍺⍺ t}")
+        i.run("double←{⍵+⍵}")
+        assert i.run("(double) apply_twice 3") == S(12)
+
+    def test_dop_with_guard(self) -> None:
+        i = Interpreter(io=1)
+        i.run("safe←{⍵=0:0 ⋄ ⍺⍺ ⍵}")
+        assert i.run("(÷) safe 4") == S(0.25)
+        assert i.run("(÷) safe 0") == S(0)
+
+    def test_dop_with_reduce(self) -> None:
+        i = Interpreter(io=1)
+        i.run("redop←{⍺⍺/⍵}")
+        assert i.run("(+) redop ⍳10") == S(55)
+
+    def test_dop_with_scan(self) -> None:
+        i = Interpreter(io=1)
+        i.run("scanop←{⍺⍺\\⍵}")
+        result = i.run("(+) scanop 1 2 3")
+        assert list(result.data) == [1, 3, 6]
+
+    def test_dop_compose(self) -> None:
+        i = Interpreter(io=1)
+        i.run("apply←{⍺⍺ ⍵}")
+        i.run("sum←{+/⍵}")
+        assert i.run("(sum) apply ⍳10") == S(55)
+
+    def test_nc_dop(self) -> None:
+        i = Interpreter(io=1)
+        i.run("twice←{⍺⍺ ⍺⍺ ⍵}")
+        assert i.run("⎕NC 'twice'") == S(4)
+
+    def test_cr_dop(self) -> None:
+        i = Interpreter(io=1)
+        i.run("twice←{⍺⍺ ⍺⍺ ⍵}")
+        result = i.run("⎕CR 'twice'")
+        text = "".join(str(c) for c in result.data)
+        assert "⍺⍺" in text
+
+    @pytest.mark.xfail(reason="⎕FX does not yet classify dops as NC=4")
+    def test_fx_dop(self) -> None:
+        i = Interpreter(io=1)
+        i.run("⎕FX 'twice←{⍺⍺ ⍺⍺ ⍵}'")
+        assert i.run("⎕NC 'twice'") == S(4)
+
     def test_dyadic_dop(self) -> None:
         i = Interpreter(io=1)
         i.run("swap←{⍵⍵ ⍺⍺ ⍵}")
         assert i.run("2(+swap -)5") == S(-5)
+
+    def test_dyadic_dop_two_functions(self) -> None:
+        i = Interpreter(io=1)
+        i.run("compose←{⍵⍵ ⍺⍺ ⍵}")
+        i.run("double←{⍵+⍵}")
+        i.run("neg←{-⍵}")
+        assert i.run("double compose neg 3") == S(-6)
+
+    def test_dyadic_dop_with_primitives(self) -> None:
+        i = Interpreter(io=1)
+        i.run("compose←{⍵⍵ ⍺⍺ ⍵}")
+        assert i.run("(-) compose (÷) 4") == S(-0.25)
+
+    def test_dyadic_dop_array_operands(self) -> None:
+        i = Interpreter(io=1)
+        i.run("between←{⍺⍺+⍵⍵×⍵}")
+        assert i.run("(10) between (3) 5") == S(25)
+
+    def test_operator_with_parens(self) -> None:
+        i = Interpreter(io=1)
+        i.run("twice←{⍺⍺ ⍺⍺ ⍵}")
+        i.run("double←{⍵+⍵}")
+        assert i.run("((double) twice 5)-3") == S(17)
+
+    def test_alpha_alpha_outside_dop(self) -> None:
+        result = Interpreter(io=1).run("{⍺⍺+⍵} 5")
+        assert result == S(0)

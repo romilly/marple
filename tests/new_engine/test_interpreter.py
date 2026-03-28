@@ -11,6 +11,9 @@ class TestComments:
     def test_comment_with_box_drawing(self) -> None:
         assert Interpreter(io=1).run("⍝ ═══════════════════") == S(0)
 
+    def test_comment_only_no_space(self) -> None:
+        assert Interpreter(io=1).run("⍝comment") == S(0)
+
     def test_comment_ignored(self) -> None:
         assert Interpreter(io=1).run("3+4 ⍝ add them") == S(7)
 

@@ -8,6 +8,9 @@ class TestIota:
     def test_iota(self) -> None:
         assert Interpreter(io=1).run("⍳5") == APLArray([5], [1, 2, 3, 4, 5])
 
+    def test_iota_one(self) -> None:
+        assert Interpreter(io=1).run("⍳1") == APLArray([1], [1])
+
     def test_iota_zero_origin(self) -> None:
         assert Interpreter(io=0).run("⍳5") == APLArray([5], [0, 1, 2, 3, 4])
 
@@ -30,6 +33,12 @@ class TestReshape:
     def test_reshape_scalar_fill(self) -> None:
         assert Interpreter(io=1).run("2 3⍴1") == APLArray([2, 3], [1, 1, 1, 1, 1, 1])
 
+    def test_reshape_scalar_to_vector(self) -> None:
+        assert Interpreter(io=1).run("3⍴5") == APLArray([3], [5, 5, 5])
+
+    def test_reshape_vector(self) -> None:
+        assert Interpreter(io=1).run("5⍴1 2 3") == APLArray([5], [1, 2, 3, 1, 2])
+
     def test_reshape_cycle(self) -> None:
         assert Interpreter(io=1).run("2 3⍴1 2") == APLArray([2, 3], [1, 2, 1, 2, 1, 2])
 
@@ -37,6 +46,12 @@ class TestReshape:
 class TestRavel:
     def test_ravel(self) -> None:
         assert Interpreter(io=1).run(",2 3⍴⍳6") == APLArray([6], [1, 2, 3, 4, 5, 6])
+
+    def test_ravel_vector(self) -> None:
+        assert Interpreter(io=1).run(",1 2 3") == APLArray([3], [1, 2, 3])
+
+    def test_ravel_scalar(self) -> None:
+        assert Interpreter(io=1).run(",5") == APLArray([1], [5])
 
 
 class TestReverse:
@@ -48,18 +63,42 @@ class TestRotate:
     def test_rotate(self) -> None:
         assert Interpreter(io=1).run("1⌽1 2 3") == APLArray([3], [2, 3, 1])
 
+    def test_rotate_left(self) -> None:
+        assert Interpreter(io=1).run("1⌽1 2 3 4 5") == APLArray([5], [2, 3, 4, 5, 1])
+
+    def test_rotate_right(self) -> None:
+        assert Interpreter(io=1).run("¯1⌽1 2 3 4 5") == APLArray([5], [5, 1, 2, 3, 4])
+
 
 class TestTakeAndDrop:
     def test_take(self) -> None:
         assert Interpreter(io=1).run("3↑⍳5") == APLArray([3], [1, 2, 3])
 
+    def test_take_from_front(self) -> None:
+        assert Interpreter(io=1).run("2↑1 2 3 4 5") == APLArray([2], [1, 2])
+
+    def test_take_from_end(self) -> None:
+        assert Interpreter(io=1).run("¯2↑1 2 3 4 5") == APLArray([2], [4, 5])
+
     def test_drop(self) -> None:
         assert Interpreter(io=1).run("2↓⍳5") == APLArray([3], [3, 4, 5])
+
+    def test_drop_from_front(self) -> None:
+        assert Interpreter(io=1).run("2↓1 2 3 4 5") == APLArray([3], [3, 4, 5])
+
+    def test_drop_from_end(self) -> None:
+        assert Interpreter(io=1).run("¯2↓1 2 3 4 5") == APLArray([3], [1, 2, 3])
 
 
 class TestCatenate:
     def test_catenate(self) -> None:
         assert Interpreter(io=1).run("1 2 3,4 5") == APLArray([5], [1, 2, 3, 4, 5])
+
+    def test_catenate_vectors(self) -> None:
+        assert Interpreter(io=1).run("1 2 3,4 5 6") == APLArray([6], [1, 2, 3, 4, 5, 6])
+
+    def test_catenate_scalar_to_vector(self) -> None:
+        assert Interpreter(io=1).run("0,1 2 3") == APLArray([4], [0, 1, 2, 3])
 
 
 class TestTranspose:

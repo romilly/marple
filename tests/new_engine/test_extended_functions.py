@@ -71,6 +71,19 @@ class TestCircular:
         result = Interpreter(io=1).run("¯1○1")
         assert abs(result.data[0] - math.pi / 2) < 1e-10
 
+    def test_pi_times_two(self) -> None:
+        result = Interpreter(io=1).run("○2")
+        assert abs(result.data[0] - 2 * math.pi) < 1e-10
+
+    def test_tan(self) -> None:
+        result = Interpreter(io=1).run("3○0")  # tan(0) = 0
+        assert abs(result.data[0]) < 1e-10
+
+    def test_sqrt_via_circle(self) -> None:
+        # 0○x → sqrt(1-x²)
+        result = Interpreter(io=1).run("0○0.6")  # sqrt(1 - 0.36) = sqrt(0.64) = 0.8
+        assert abs(result.data[0] - 0.8) < 1e-10
+
     def test_sinh(self) -> None:
         result = Interpreter(io=1).run("5○1")
         assert abs(result.data[0] - math.sinh(1)) < 1e-10

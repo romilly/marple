@@ -36,6 +36,27 @@ class TestIndexingPreservesShape:
         assert result.shape == [2, 3]
         assert list(result.data) == [10, 20, 30, 40, 50, 10]
 
+    def test_rank3_index(self) -> None:
+        i = Interpreter(io=1)
+        i.run("v←10 20 30 40")
+        result = i.run("v[2 2 2⍴1 2 3 4 1 2 3 4]")
+        assert result.shape == [2, 2, 2]
+        assert list(result.data) == [10, 20, 30, 40, 10, 20, 30, 40]
+
+    def test_rank4_index(self) -> None:
+        i = Interpreter(io=1)
+        i.run("v←10 20 30")
+        result = i.run("v[2 1 3 1⍴1 2 3 1 2 3]")
+        assert result.shape == [2, 1, 3, 1]
+
+    def test_outer_product_index(self) -> None:
+        """The original bug report: ' *'[1+r∘.=s]"""
+        i = Interpreter(io=1)
+        i.run("r←1 2 3")
+        i.run("s←1 2 3")
+        result = i.run("' *'[1+r∘.=s]")
+        assert result.shape == [3, 3]
+
     def test_string_index_with_matrix(self) -> None:
         result = Interpreter(io=1).run("'abcde'[2 3⍴1 2 3 4 5 1]")
         assert result.shape == [2, 3]
@@ -59,6 +80,14 @@ class TestMatrixIndexing:
         assert i.run("M[;2]") == APLArray([2], [2, 5])
 
 
+class TestDefaultIndexOrigin:
+    def test_default_index_origin(self) -> None:
+        assert Interpreter(io=1).run("⎕IO") == S(1)
+
+    def test_index_origin_zero(self) -> None:
+        assert Interpreter(io=0).run("⍳3") == APLArray([3], [0, 1, 2])
+
+
 class TestIndexOriginZero:
     def test_indexing_with_io0(self) -> None:
         i = Interpreter(io=0)
@@ -70,6 +99,9 @@ class TestIndexOriginZero:
 
     def test_index_of_with_io0(self) -> None:
         assert Interpreter(io=0).run("10 20 30⍳20") == S(1)
+
+    def test_grade_down_with_io0(self) -> None:
+        assert Interpreter(io=0).run("⍒3 1 4") == APLArray([3], [2, 0, 1])
 
     def test_index_of_not_found_with_io0(self) -> None:
         assert Interpreter(io=0).run("10 20 30⍳99") == S(3)

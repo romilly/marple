@@ -7,7 +7,7 @@ overflow, and cross-dtype operations.
 import pytest
 
 from marple.arraymodel import APLArray, S
-from marple.backend import HAS_BACKEND, np
+from marple.backend import HAS_BACKEND, maybe_downcast, maybe_upcast, np
 from marple.engine import Interpreter
 
 needs_backend = pytest.mark.skipif(not HAS_BACKEND, reason="no numpy backend")
@@ -235,3 +235,81 @@ class TestCrossDtypeProducts:
         i.run("a←1 0=1 1")
         i.run("b←0 1=1 1")
         assert list(i.run("a∘.∧b").data) == [0, 1, 0, 0]
+
+
+@needs_backend
+class TestMaybeDowncast:
+    def test_exact_integers(self) -> None:
+        arr = np.array([1.0, 2.0, 3.0])
+        result = maybe_downcast(arr, 1e-14)
+        assert isinstance(result.tolist()[0], int)
+        assert result.tolist() == [1, 2, 3]
+
+    def test_near_integers_within_ct(self) -> None:
+        arr = np.array([1.0000000000000002, 2.0])
+        result = maybe_downcast(arr, 1e-14)
+        assert isinstance(result.tolist()[0], int)
+
+    def test_non_integers_stay_float(self) -> None:
+        arr = np.array([1.5, 2.7])
+        result = maybe_downcast(arr, 1e-14)
+        assert isinstance(result.tolist()[0], float)
+
+    def test_mixed_stay_float(self) -> None:
+        arr = np.array([1.0, 2.5])
+        result = maybe_downcast(arr, 1e-14)
+        assert isinstance(result.tolist()[0], float)
+
+    def test_already_int_unchanged(self) -> None:
+        arr = np.array([1, 2, 3], dtype=np.int32)
+        result = maybe_downcast(arr, 1e-14)
+        assert result.tolist() == [1, 2, 3]
+        assert isinstance(result.tolist()[0], int)
+
+    def test_large_whole_integers_stay_float(self) -> None:
+        arr = np.array([1e18])
+        result = maybe_downcast(arr, 1e-14)
+        assert result.tolist()[0] == 1e18
+
+    def test_zero_ct_exact_only(self) -> None:
+        arr = np.array([1.0000000000000002])
+        result = maybe_downcast(arr, 0)
+        assert isinstance(result.tolist()[0], float)
+
+    def test_zero_ct_exact_integers(self) -> None:
+        arr = np.array([1.0, 2.0])
+        result = maybe_downcast(arr, 0)
+        assert isinstance(result.tolist()[0], int)
+
+    def test_empty_unchanged(self) -> None:
+        arr = np.array([])
+        result = maybe_downcast(arr, 1e-14)
+        assert result.tolist() == []
+
+    def test_plain_list_unchanged(self) -> None:
+        data = [1.0, 2.0]
+        result = maybe_downcast(data, 1e-14)
+        assert result is data
+
+
+@needs_backend
+class TestMaybeUpcast:
+    def test_int_becomes_float(self) -> None:
+        arr = np.array([1, 2, 3], dtype=np.int32)
+        result = maybe_upcast(arr)
+        assert isinstance(result.tolist()[0], float)
+
+    def test_float_unchanged(self) -> None:
+        arr = np.array([1.5, 2.5])
+        result = maybe_upcast(arr)
+        assert result.tolist() == [1.5, 2.5]
+
+    def test_values_preserved(self) -> None:
+        arr = np.array([1, 2, 3], dtype=np.int32)
+        result = maybe_upcast(arr)
+        assert result.tolist() == [1.0, 2.0, 3.0]
+
+    def test_plain_list_unchanged(self) -> None:
+        data = [1, 2, 3]
+        result = maybe_upcast(data)
+        assert result is data

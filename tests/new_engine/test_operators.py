@@ -11,18 +11,46 @@ class TestReduce:
     def test_product(self) -> None:
         assert Interpreter(io=1).run("×/⍳5") == S(120)
 
+    def test_right_to_left(self) -> None:
+        assert Interpreter(io=1).run("-/1 2 3") == S(2)
+
     def test_max_reduce(self) -> None:
         assert Interpreter(io=1).run("⌈/3 1 4 1 5") == S(5)
+
+    def test_single_element(self) -> None:
+        assert Interpreter(io=1).run("+/5") == S(5)
 
     def test_reduce_matrix_rows(self) -> None:
         result = Interpreter(io=1).run("+/2 3⍴⍳6")
         assert result == APLArray([2], [6, 15])
+
+    def test_reduce_large_sum(self) -> None:
+        assert Interpreter(io=1).run("+/⍳10000") == S(50005000)
+
+    def test_reduce_subtract_right_to_left(self) -> None:
+        assert Interpreter(io=1).run("-/1 2 3 4") == S(-2)
 
 
 class TestReduceFirst:
     def test_reduce_first_axis(self) -> None:
         result = Interpreter(io=1).run("+⌿2 3⍴⍳6")
         assert result == APLArray([3], [5, 7, 9])
+
+    def test_matrix_sum_columns(self) -> None:
+        assert Interpreter(io=1).run("+⌿2 3⍴1 2 3 4 5 6") == APLArray([3], [5, 7, 9])
+
+    def test_matrix_max_columns(self) -> None:
+        assert Interpreter(io=1).run("⌈⌿2 3⍴3 1 4 1 5 9") == APLArray([3], [3, 5, 9])
+
+    def test_reduce_first_rank3(self) -> None:
+        i = Interpreter(io=1)
+        i.run("A←2 2 3⍴⍳12")
+        result = i.run("+⌿A")
+        assert result.shape == [2, 3]
+        assert list(result.data) == [8, 10, 12, 14, 16, 18]
+
+    def test_vector_same_as_reduce(self) -> None:
+        assert Interpreter(io=1).run("+⌿1 2 3") == S(6)
 
 
 class TestScan:
@@ -31,6 +59,10 @@ class TestScan:
 
     def test_running_product(self) -> None:
         assert Interpreter(io=1).run("×\\⍳5") == APLArray([5], [1, 2, 6, 24, 120])
+
+    def test_running_max(self) -> None:
+        result = Interpreter(io=1).run("⌈\\3 1 4 1 5")
+        assert result == APLArray([5], [3, 3, 4, 4, 5])
 
 
 class TestInnerProduct:
@@ -87,3 +119,41 @@ class TestRank:
     def test_dyadic_rank(self) -> None:
         result = Interpreter(io=1).run("10(+⍤0 1)1 2 3")
         assert result == APLArray([3], [11, 12, 13])
+
+
+class TestScanFirst:
+    def test_scan_first_vector(self) -> None:
+        result = Interpreter(io=1).run("+⍀1 2 3")
+        assert result == APLArray([3], [1, 3, 6])
+
+    def test_scan_first_matrix_columns(self) -> None:
+        result = Interpreter(io=1).run("+⍀2 3⍴1 2 3 4 5 6")
+        assert result.shape == [2, 3]
+        assert list(result.data) == [1, 2, 3, 5, 7, 9]
+
+    def test_scan_first_rank3(self) -> None:
+        i = Interpreter(io=1)
+        i.run("A←2 2 3⍴⍳12")
+        result = i.run("+⍀A")
+        assert result.shape == [2, 2, 3]
+        assert list(result.data) == [1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18]
+
+
+class TestReplicateFirst:
+    def test_compress_rows(self) -> None:
+        i = Interpreter(io=1)
+        i.run("M←2 3⍴1 2 3 4 5 6")
+        result = i.run("1 0⌿M")
+        assert result.shape == [1, 3]
+        assert list(result.data) == [1, 2, 3]
+
+    def test_replicate_rows(self) -> None:
+        i = Interpreter(io=1)
+        i.run("M←2 3⍴1 2 3 4 5 6")
+        result = i.run("2 1⌿M")
+        assert result.shape == [3, 3]
+        assert list(result.data) == [1, 2, 3, 1, 2, 3, 4, 5, 6]
+
+    def test_vector_same_as_slash(self) -> None:
+        result = Interpreter(io=1).run("1 0 1⌿10 20 30")
+        assert list(result.data) == [10, 30]

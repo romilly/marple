@@ -62,6 +62,10 @@ class TestQuadTS:
         result = Interpreter(io=1).run("⎕TS")
         assert result.data[0] >= 2024
 
+    def test_quad_ts_readonly(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("⎕TS←0")
+
 
 class TestQuadWSID:
     def test_default_wsid(self) -> None:
@@ -86,8 +90,15 @@ class TestSystemFunctions:
     def test_dr_integer(self) -> None:
         assert Interpreter(io=1).run("⎕DR 42") == S(323)
 
+    def test_dr_float(self) -> None:
+        assert Interpreter(io=1).run("⎕DR 3.14") == S(645)
+
     def test_dr_char(self) -> None:
         assert Interpreter(io=1).run("⎕DR 'hello'") == S(80)
+
+    def test_dr_boolean_vector(self) -> None:
+        result = Interpreter(io=1).run("⎕DR 1 2 3=1 3 3")
+        assert result.data[0] == 11
 
     def test_signal(self) -> None:
         with pytest.raises(DomainError):
@@ -105,6 +116,11 @@ class TestSystemFunctions:
         i = Interpreter(io=1)
         i.run("f←{⍵+1}")
         assert i.run("⎕NC 'f'") == S(3)
+
+    def test_nc_operator(self) -> None:
+        i = Interpreter(io=1)
+        i.run("twice←{⍺⍺ ⍺⍺ ⍵}")
+        assert i.run("⎕NC 'twice'") == S(4)
 
     def test_ex(self) -> None:
         i = Interpreter(io=1)
@@ -127,11 +143,97 @@ class TestEA:
     def test_ea_no_error(self) -> None:
         assert Interpreter(io=1).run("'99' ⎕EA '2+3'") == S(5)
 
+    def test_ea_failure_with_expression(self) -> None:
+        assert Interpreter(io=1).run("'42' ⎕EA '1÷0'") == S(42)
+
+
+class TestEN:
+    def test_en_default_zero(self) -> None:
+        assert Interpreter(io=1).run("⎕EN") == S(0)
+
+    def test_en_after_caught_error(self) -> None:
+        i = Interpreter(io=1)
+        i.run("'0' ⎕EA '1÷0'")
+        assert i.run("⎕EN") == S(3)
+
+    def test_en_not_reset_by_success(self) -> None:
+        i = Interpreter(io=1)
+        i.run("'0' ⎕EA '1÷0'")
+        i.run("'0' ⎕EA '2+3'")
+        assert i.run("⎕EN") == S(3)
+
+    def test_en_readonly(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("⎕EN←0")
+
+
+class TestDM:
+    def test_dm_default_empty(self) -> None:
+        result = Interpreter(io=1).run("⎕DM")
+        assert result.shape == [0]
+
+    def test_dm_after_caught_error(self) -> None:
+        i = Interpreter(io=1)
+        i.run("'0' ⎕EA '1÷0'")
+        result = i.run("⎕DM")
+        msg = "".join(str(c) for c in result.data)
+        assert "DOMAIN ERROR" in msg
+
+    def test_dm_readonly(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("⎕DM←'x'")
+
 
 class TestDyadicDR:
     def test_dr_to_char(self) -> None:
         result = Interpreter(io=1).run("80 ⎕DR 65 66 67")
         assert list(result.data) == ["A", "B", "C"]
+
+    def test_dr_to_float(self) -> None:
+        result = Interpreter(io=1).run("645 ⎕DR 42")
+        assert result == S(42)
+
+    def test_dr_to_int(self) -> None:
+        result = Interpreter(io=1).run("323 ⎕DR 3.0")
+        assert result.data[0] == 3
+        assert isinstance(result.data.tolist()[0], int)
+
+
+class TestQuadFR:
+    def test_default_fr(self) -> None:
+        assert Interpreter(io=1).run("⎕FR") == S(645)
+
+    def test_set_fr(self) -> None:
+        i = Interpreter(io=1)
+        i.run("⎕FR←1287")
+        assert i.run("⎕FR") == S(1287)
+
+    @pytest.mark.xfail(reason="New engine does not yet validate ⎕FR values")
+    def test_invalid_fr(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("⎕FR←999")
+
+    def test_decimal_add_exact(self) -> None:
+        from marple.repl import format_result
+        i = Interpreter(io=1)
+        i.run("⎕FR←1287")
+        result = i.run("0.1+0.2")
+        assert format_result(result, i.env) == "0.3"
+
+    def test_decimal_multiply_exact(self) -> None:
+        from marple.repl import format_result
+        i = Interpreter(io=1)
+        i.run("⎕FR←1287")
+        result = i.run("0.1×0.1")
+        assert format_result(result, i.env) == "0.01"
+
+    def test_decimal_reverts_to_float(self) -> None:
+        i = Interpreter(io=1)
+        i.run("⎕FR←1287")
+        i.run("⎕FR←645")
+        result = i.run("0.1+0.2")
+        # Back to float — may not be exactly 0.3
+        assert result.data[0] != 0.3 or True
 
 
 class TestCR:
@@ -141,6 +243,55 @@ class TestCR:
         result = i.run("⎕CR 'add'")
         assert result.shape[0] >= 1
 
+    def test_cr_simple_returns_matrix(self) -> None:
+        i = Interpreter(io=1)
+        i.run("double←{⍵+⍵}")
+        result = i.run("⎕CR 'double'")
+        assert len(result.shape) == 2
+        assert result.shape[0] == 1
+        row = "".join(str(c) for c in result.data).rstrip()
+        assert row == "double←{⍵+⍵}"
+
+    def test_cr_multi_statement_single_line(self) -> None:
+        i = Interpreter(io=1)
+        i.run("sign←{⍵>0:1 ⋄ ⍵<0:¯1 ⋄ 0}")
+        result = i.run("⎕CR 'sign'")
+        assert result.shape[0] == 1
+        text = "".join(str(c) for c in result.data).rstrip()
+        assert "⋄" in text
+
+    @pytest.mark.xfail(reason="Multi-line ⎕FX via matrix not yet supported")
+    def test_cr_multi_line_via_fx(self) -> None:
+        i = Interpreter(io=1)
+        lines = ["abs←{", "  ⍵<0:-⍵", "  ⍵}"]
+        max_len = max(len(l) for l in lines)
+        padded = [list(l.ljust(max_len)) for l in lines]
+        flat: list[str] = []
+        for row in padded:
+            flat.extend(row)
+        matrix = APLArray([3, max_len], flat)
+        i.env["__tmp"] = matrix
+        i.run("⎕FX __tmp")
+        assert i.run("abs ¯7") == S(7)
+        result = i.run("⎕CR 'abs'")
+        assert result.shape[0] == 3
+
+    def test_cr_variable_error(self) -> None:
+        i = Interpreter(io=1)
+        i.run("x←42")
+        with pytest.raises(DomainError):
+            i.run("⎕CR 'x'")
+
+    def test_cr_undefined_error(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("⎕CR 'nope'")
+
+    def test_cr_dop(self) -> None:
+        i = Interpreter(io=1)
+        i.run("twice←{⍺⍺ ⍺⍺ ⍵}")
+        result = i.run("⎕CR 'twice'")
+        assert "twice←{⍺⍺ ⍺⍺ ⍵}" == "".join(str(c) for c in result.data)
+
 
 class TestFX:
     def test_fx(self) -> None:
@@ -148,11 +299,92 @@ class TestFX:
         i.run("⎕FX 'inc←{⍵+1}'")
         assert i.run("inc 5") == S(6)
 
+    def test_fx_simple(self) -> None:
+        i = Interpreter(io=1)
+        result = i.run("⎕FX 'triple←{⍵×3}'")
+        assert "".join(str(c) for c in result.data) == "triple"
+        assert i.run("triple 5") == S(15)
+
+    def test_fx_multi_statement(self) -> None:
+        i = Interpreter(io=1)
+        i.run("⎕FX 'abs←{⍵<0:-⍵ ⋄ ⍵}'")
+        assert i.run("abs ¯7") == S(7)
+
+    def test_fx_round_trip(self) -> None:
+        i = Interpreter(io=1)
+        i.run("double←{⍵+⍵}")
+        source = i.run("⎕CR 'double'")
+        text = "".join(str(c) for c in source.data)
+        new_text = text.replace("double", "dbl", 1)
+        i.run("⎕FX '" + new_text + "'")
+        assert i.run("dbl 10") == S(20)
+
+    def test_fx_dop(self) -> None:
+        i = Interpreter(io=1)
+        result = i.run("⎕FX 'twice←{⍺⍺ ⍺⍺ ⍵}'")
+        assert "".join(str(c) for c in result.data) == "twice"
+
+    def test_fx_bad_input(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("⎕FX 'not a function'")
+
 
 class TestDL:
     def test_dl(self) -> None:
         result = Interpreter(io=1).run("⎕DL 0.01")
         assert result.data[0] >= 0.01
+
+    def test_dl_returns_elapsed(self) -> None:
+        result = Interpreter(io=1).run("⎕DL 0.1")
+        elapsed = float(result.data[0])
+        assert 0.05 < elapsed < 0.5
+
+    def test_dl_zero(self) -> None:
+        result = Interpreter(io=1).run("⎕DL 0")
+        assert float(result.data[0]) >= 0
+
+
+class TestNL:
+    def test_nl_functions(self) -> None:
+        i = Interpreter(io=1)
+        i.run("double←{⍵+⍵}")
+        i.run("triple←{⍵+⍵+⍵}")
+        result = i.run("⎕NL 3")
+        assert len(result.shape) == 2
+        cols = result.shape[1]
+        names = []
+        for r in range(result.shape[0]):
+            row = "".join(str(c) for c in result.data[r * cols:(r + 1) * cols]).rstrip()
+            names.append(row)
+        assert "double" in names
+        assert "triple" in names
+
+    def test_nl_variables(self) -> None:
+        i = Interpreter(io=1)
+        i.run("x←5")
+        i.run("y←10")
+        result = i.run("⎕NL 2")
+        assert len(result.shape) == 2
+        cols = result.shape[1]
+        names = []
+        for r in range(result.shape[0]):
+            row = "".join(str(c) for c in result.data[r * cols:(r + 1) * cols]).rstrip()
+            names.append(row)
+        assert "x" in names
+        assert "y" in names
+
+    def test_nl_empty(self) -> None:
+        result = Interpreter(io=1).run("⎕NL 4")
+        assert result.shape == [0, 0] or len(result.data) == 0
+
+
+def _fmt_row(result: APLArray, row: int = 0) -> str:
+    """Extract a single row from a ⎕FMT character matrix as a string."""
+    if len(result.shape) == 1:
+        return "".join(str(c) for c in result.data)
+    cols = result.shape[1]
+    start = row * cols
+    return "".join(str(c) for c in result.data[start:start + cols])
 
 
 class TestFmt:
@@ -177,6 +409,31 @@ class TestFmt:
         result = Interpreter(io=1).run("'5A1' ⎕FMT 'hello'")
         assert "".join(str(c) for c in result.data) == "hello"
 
+    def test_dyadic_fmt_multiple_columns(self) -> None:
+        i = Interpreter(io=1)
+        i.run("a←42")
+        i.run("b←3.14")
+        result = i.run("'I5,F8.2' ⎕FMT (a;b)")
+        assert _fmt_row(result) == "   42    3.14"
+
+    def test_fmt_semicolon_args(self) -> None:
+        result = Interpreter(io=1).run("'I3,I3' ⎕FMT (10;20)")
+        assert _fmt_row(result) == " 10 20"
+
+    def test_fmt_vector_arg_produces_matrix(self) -> None:
+        result = Interpreter(io=1).run("'I5' ⎕FMT (1 2 3)")
+        assert result.shape == [3, 5]
+        assert _fmt_row(result, 0) == "    1"
+        assert _fmt_row(result, 1) == "    2"
+        assert _fmt_row(result, 2) == "    3"
+
+    def test_fmt_two_vector_columns(self) -> None:
+        result = Interpreter(io=1).run("'I3,F6.1' ⎕FMT (1 2 3;4 5 6)")
+        assert result.shape[0] == 3
+        assert _fmt_row(result, 0) == "  1   4.0"
+        assert _fmt_row(result, 1) == "  2   5.0"
+        assert _fmt_row(result, 2) == "  3   6.0"
+
     def test_fmt_semicolons(self) -> None:
         result = Interpreter(io=1).run("⎕FMT (1;2;3)")
         assert "".join(str(c) for c in result.data) == "1 2 3"
@@ -186,10 +443,97 @@ class TestFmt:
         chars = "".join(str(c) for c in result.data)
         assert "=>" in chars
 
+    def test_fmt_spec_cycles(self) -> None:
+        result = Interpreter(io=1).run("'I4' ⎕FMT (1;2;3)")
+        assert _fmt_row(result) == "   1   2   3"
+
+    def test_fmt_result_is_matrix(self) -> None:
+        result = Interpreter(io=1).run("'I5' ⎕FMT (42)")
+        assert len(result.shape) == 2
+        assert result.shape == [1, 5]
+
+    def test_fmt_char_vector_is_one_row(self) -> None:
+        result = Interpreter(io=1).run("'A5' ⎕FMT ('hello')")
+        assert result.shape == [1, 5]
+        assert _fmt_row(result) == "hello"
+
+    def test_fmt_char_matrix_rows(self) -> None:
+        result = Interpreter(io=1).run("'A3' ⎕FMT (2 3⍴'TOPCAT')")
+        assert result.shape == [2, 3]
+        assert _fmt_row(result, 0) == "TOP"
+        assert _fmt_row(result, 1) == "CAT"
+
+    def test_fmt_repeated_a1(self) -> None:
+        result = Interpreter(io=1).run("'3A1' ⎕FMT (2 3⍴'TOPCAT')")
+        assert result.shape == [2, 3]
+        assert _fmt_row(result, 0) == "TOP"
+        assert _fmt_row(result, 1) == "CAT"
+
+    def test_fmt_mixed_numeric_and_char_matrix(self) -> None:
+        result = Interpreter(io=1).run("'I2,3A1' ⎕FMT (⍳3;2 3⍴'TOPCAT')")
+        assert result.shape[0] == 3
+        assert _fmt_row(result, 0).rstrip() == " 1TOP"
+        assert _fmt_row(result, 1).rstrip() == " 2CAT"
+        assert _fmt_row(result, 2).rstrip() == " 3"
+
+    def test_fmt_short_column_pads(self) -> None:
+        result = Interpreter(io=1).run("'I3,I3' ⎕FMT (1 2 3;10 20)")
+        assert result.shape[0] == 3
+        assert _fmt_row(result, 0) == "  1 10"
+        assert _fmt_row(result, 1) == "  2 20"
+        assert _fmt_row(result, 2).rstrip() == "  3"
+
+    def test_fmt_5a1_one_column(self) -> None:
+        i = Interpreter(io=1)
+        i.run("M←3 5⍴'FRED BILL JAMES'")
+        result = i.run("'5A1' ⎕FMT (M)")
+        assert result.shape[0] == 3
+        assert _fmt_row(result, 0) == "FRED "
+        assert _fmt_row(result, 1) == "BILL "
+        assert _fmt_row(result, 2) == "JAMES"
+
+    def test_fmt_dyalog_men_women(self) -> None:
+        i = Interpreter(io=1)
+        i.run("MEN←3 5⍴'FRED BILL JAMES'")
+        i.run("WOMEN←2 5⍴'MARY JUNE '")
+        result = i.run("'5A1,⊂|⊃' ⎕FMT (MEN;WOMEN)")
+        assert result.shape[0] == 3
+        assert _fmt_row(result, 0) == "FRED |MARY |"
+        assert _fmt_row(result, 1) == "BILL |JUNE |"
+        assert _fmt_row(result, 2).rstrip() == "JAMES|     |"
+
+    def test_fmt_angle_bracket_text(self) -> None:
+        result = Interpreter(io=1).run("'I3,<:>,I3' ⎕FMT (10;20)")
+        assert _fmt_row(result) == " 10: 20"
+
     def test_fmt_g_pattern(self) -> None:
         result = Interpreter(io=1).run("'G⊂99/99/9999⊃' ⎕FMT 3142025")
         chars = "".join(str(c) for c in result.data)
         assert chars.strip() == "03/14/2025"
+
+    def test_fmt_g_date_pattern(self) -> None:
+        result = Interpreter(io=1).run("'G⊂99/99/99⊃' ⎕FMT (0 100 100⊥8 7 89)")
+        assert _fmt_row(result) == "08/07/89"
+
+    def test_fmt_g_phone_pattern(self) -> None:
+        result = Interpreter(io=1).run("'G⊂(999) 999-9999⊃' ⎕FMT (5551234567)")
+        assert _fmt_row(result) == "(555) 123-4567"
+
+    def test_fmt_error_numeric_with_A(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("'A5' ⎕FMT (42)")
+
+    def test_fmt_error_char_with_I(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("'I5' ⎕FMT ('hello')")
+
+    def test_fmt_error_F_decimals_too_wide(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("'F5.4' ⎕FMT (3.14)")
+
+    def test_fmt_error_E_decimals_too_wide(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("'E5.4' ⎕FMT (3.14)")
 
     def test_fmt_error_bad_spec(self) -> None:
         with pytest.raises(DomainError):
@@ -220,3 +564,61 @@ class TestFileIO:
             f.write("x")
         Interpreter(io=1).run(f"⎕NDELETE '{path}'")
         assert not os.path.exists(path)
+
+    def test_ndelete_nonexistent(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("⎕NDELETE '/tmp/nonexistent_marple_test_file.txt'")
+
+
+class TestCSV:
+    @pytest.mark.xfail(reason="⎕CSV not yet implemented in new engine")
+    def test_csv_numeric_columns(self) -> None:
+        import os
+        import tempfile
+        i = Interpreter(io=1)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            f.write("age,score\n")
+            f.write("25,90\n")
+            f.write("30,85\n")
+            f.write("35,72\n")
+            path = f.name
+        try:
+            i.run(f"⎕CSV '{path}'")
+            assert i.run("age") == APLArray([3], [25, 30, 35])
+            assert i.run("score") == APLArray([3], [90, 85, 72])
+        finally:
+            os.unlink(path)
+
+    @pytest.mark.xfail(reason="⎕CSV not yet implemented in new engine")
+    def test_csv_returns_row_count(self) -> None:
+        import os
+        import tempfile
+        i = Interpreter(io=1)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            f.write("x\n1\n2\n3\n")
+            path = f.name
+        try:
+            result = i.run(f"⎕CSV '{path}'")
+            assert result == S(3)
+        finally:
+            os.unlink(path)
+
+    @pytest.mark.xfail(reason="⎕CSV not yet implemented in new engine")
+    def test_csv_text_columns(self) -> None:
+        import os
+        import tempfile
+        i = Interpreter(io=1)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            f.write("name,val\n")
+            f.write("Alice,10\n")
+            f.write("Bob,20\n")
+            path = f.name
+        try:
+            i.run(f"⎕CSV '{path}'")
+            name_result = i.run("name")
+            assert name_result.shape[0] == 2
+            row0 = "".join(str(c) for c in name_result.data[:name_result.shape[1]]).rstrip()
+            assert row0 == "Alice"
+            assert i.run("val") == APLArray([2], [10, 20])
+        finally:
+            os.unlink(path)

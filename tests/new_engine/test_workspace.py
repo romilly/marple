@@ -42,6 +42,14 @@ class TestSaveWorkspace:
             save_workspace(env_dict, ws_dir)
             assert os.path.isfile(os.path.join(ws_dir, "x.apl"))
 
+    def test_save_system_variable(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            ws_dir = os.path.join(root, "test_ws")
+            i = Interpreter(io=0)
+            env_dict = _save_env_as_dict(i)
+            save_workspace(env_dict, ws_dir)
+            assert os.path.isfile(os.path.join(ws_dir, "__IO.apl"))
+
 
 class TestLoadWorkspace:
     def test_load_restores_variable(self) -> None:
@@ -76,6 +84,30 @@ class TestLoadWorkspace:
             i2 = Interpreter(io=1)
             load_workspace(i2.env, ws_dir, evaluate=i2.run)
             assert i2.run("double 5") == S(10)
+
+    def test_load_restores_wsid(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            ws_dir = os.path.join(root, "test_ws")
+            i = Interpreter(io=1)
+            i.run("⎕WSID←'test_ws'")
+            env_dict = _save_env_as_dict(i)
+            save_workspace(env_dict, ws_dir)
+            i2 = Interpreter(io=1)
+            load_workspace(i2.env, ws_dir, evaluate=i2.run)
+            wsid = i2.run("⎕WSID")
+            assert "".join(str(c) for c in wsid.data) == "test_ws"
+
+    def test_load_system_vars_first(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            ws_dir = os.path.join(root, "test_ws")
+            i = Interpreter(io=0)
+            i.run("x←⍳3")
+            env_dict = _save_env_as_dict(i)
+            save_workspace(env_dict, ws_dir)
+            i2 = Interpreter(io=1)
+            load_workspace(i2.env, ws_dir, evaluate=i2.run)
+            # ⎕IO should be restored to 0, so x should be 0 1 2
+            assert i2.run("x") == APLArray([3], [0, 1, 2])
 
 
 class TestLoadWorkspaceChars:
