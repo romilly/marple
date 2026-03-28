@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
 
-from marple.arraymodel import APLArray
+from marple.arraymodel import APLArray, S
 
 if TYPE_CHECKING:
     from marple.environment import Environment
@@ -35,6 +35,9 @@ from marple.structural import (
     encode,
     decode,
     expand,
+    from_array,
+    index_of,
+    membership,
     replicate,
     replicate_first,
     reshape,
@@ -71,15 +74,20 @@ class DyadicFunctionBinding:
         "\\": expand,
         "⌹": matrix_divide,
         "○": circular,
+        "≡": lambda a, o: S(1 if a == o else 0),
+        "≢": lambda a, o: S(0 if a == o else 1),
     }
 
-    _CT_COMPARISONS: dict[str, str] = {
+    _ENV_DEPENDENT: dict[str, str] = {
         "<": "_less_than",
         "≤": "_less_equal",
         "=": "_equal",
         "≥": "_greater_equal",
         ">": "_greater_than",
         "≠": "_not_equal",
+        "⍳": "_index_of",
+        "∈": "_membership",
+        "⌷": "_from",
     }
 
     def __init__(self, env: Environment) -> None:
@@ -87,7 +95,7 @@ class DyadicFunctionBinding:
 
     def apply(self, glyph: str, left: APLArray, right: APLArray) -> APLArray:
         """Apply a dyadic primitive function to left and right arguments."""
-        method_name = self._CT_COMPARISONS.get(glyph)
+        method_name = self._ENV_DEPENDENT.get(glyph)
         if method_name is not None:
             return getattr(self, method_name)(left, right)
         func = self._SIMPLE.get(glyph)
@@ -112,6 +120,15 @@ class DyadicFunctionBinding:
 
     def _not_equal(self, left: APLArray, right: APLArray) -> APLArray:
         return not_equal(left, right, self._env.ct)
+
+    def _index_of(self, left: APLArray, right: APLArray) -> APLArray:
+        return index_of(left, right, self._env.io, self._env.ct)
+
+    def _membership(self, left: APLArray, right: APLArray) -> APLArray:
+        return membership(left, right, self._env.ct)
+
+    def _from(self, left: APLArray, right: APLArray) -> APLArray:
+        return from_array(left, right, self._env.io)
 
     @classmethod
     def resolve(cls, glyph: str) -> object:

@@ -126,3 +126,30 @@ class TestComparisons:
         interp = Interpreter(io=1)
         assert interp.run("2≠3") == S(1)
         assert interp.run("2≠2") == S(0)
+
+
+class TestDyadicStructural:
+    def test_index_of(self) -> None:
+        interp = Interpreter(io=1)
+        result = interp.run("3 1 4 1 5⍳4")
+        assert result == S(3)
+
+    def test_membership(self) -> None:
+        interp = Interpreter(io=1)
+        result = interp.run("2 3∈1 2 3 4 5")
+        assert result == APLArray([2], [1, 1])
+
+    def test_from(self) -> None:
+        interp = Interpreter(io=1)
+        result = interp.run("2⌷10 20 30")
+        assert result == S(20)
+
+    def test_match(self) -> None:
+        interp = Interpreter(io=1)
+        assert interp.run("(1 2 3)≡(1 2 3)") == S(1)
+        assert interp.run("(1 2 3)≡(1 2 4)") == S(0)
+
+    def test_not_match(self) -> None:
+        interp = Interpreter(io=1)
+        assert interp.run("(1 2 3)≢(1 2 4)") == S(1)
+        assert interp.run("(1 2 3)≢(1 2 3)") == S(0)
