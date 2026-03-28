@@ -1,16 +1,21 @@
 """DfnBinding: a dfn/dop that can evaluate its own body."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from marple.arraymodel import APLArray, S
 from marple.executor import Executor
 from marple.parser import AlphaDefault, Dfn, Guard
 
+if TYPE_CHECKING:
+    from marple.environment import Environment
+
 
 class DfnBinding(Executor):
     """A dfn or dop bound to the environment in which it was defined."""
 
-    def __init__(self, dfn: Dfn, defining_env: dict[str, Any]) -> None:
+    def __init__(self, dfn: Dfn, defining_env: Environment) -> None:
         self.dfn = dfn
         self.defining_env = defining_env
         self.env = defining_env  # current env; swapped during apply
@@ -36,9 +41,9 @@ class DfnBinding(Executor):
         alpha: APLArray | None,
         alpha_alpha: object | None,
         omega_omega: object | None,
-    ) -> dict[str, Any]:
+    ) -> Environment:
         """Build the local environment for this call."""
-        local_env: dict[str, Any] = dict(self.defining_env)
+        local_env = self.defining_env.copy()
         local_env["⍵"] = omega
         if alpha is not None:
             local_env["⍺"] = alpha

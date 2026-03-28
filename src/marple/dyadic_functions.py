@@ -1,8 +1,13 @@
 """Dyadic primitive function dispatch for MARPLE."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import Any, TYPE_CHECKING
 
 from marple.arraymodel import APLArray
+
+if TYPE_CHECKING:
+    from marple.environment import Environment
 from marple.errors import DomainError
 from marple.functions import (
     add,
@@ -62,7 +67,7 @@ class DyadicFunctionBinding:
         "○": circular,
     }
 
-    def __init__(self, env: dict[str, Any]) -> None:
+    def __init__(self, env: Environment) -> None:
         self._env = env
 
     def apply(self, glyph: str, left: APLArray, right: APLArray) -> APLArray:

@@ -1,28 +1,14 @@
 """Class-based APL interpreter for MARPLE."""
 
-from typing import Any
-
 from marple.arraymodel import APLArray, S
 from marple.backend import (
     _DOWNCAST_CT, is_numeric_array, maybe_downcast,
 )
 from marple.dfn_binding import DfnBinding
+from marple.environment import Environment
 from marple.executor import Executor, NC_FUNCTION, NC_OPERATOR, _newlines_to_diamonds
 from marple.parser import Assignment, parse
 
-
-_SYSTEM_DEFAULTS: dict[str, Any] = {
-    "⎕IO": S(1),
-    "⎕CT": S(1e-14),
-    "⎕PP": S(10),
-    "⎕EN": S(0),
-    "⎕DM": APLArray([0], []),
-    "⎕A": APLArray([26], list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
-    "⎕D": APLArray([10], list("0123456789")),
-    "⎕WSID": APLArray([8], list("CLEAR WS")),
-    "⎕RL": S(1),
-    "⎕FR": S(645),
-}
 
 _SYS_FUNCTION_NAMES = (
     "⎕EA", "⎕UCS", "⎕NC", "⎕EX", "⎕SIGNAL", "⎕DR",
@@ -36,8 +22,7 @@ class Interpreter(Executor):
     def __init__(self, io: int | None = None) -> None:
         from marple.config import get_default_io
         effective_io = io if io is not None else get_default_io()
-        self.env: dict[str, Any] = dict(_SYSTEM_DEFAULTS)
-        self.env["⎕IO"] = S(effective_io)
+        self.env = Environment(io=effective_io)
 
     def run(self, source: str) -> APLArray:
         """Parse and evaluate APL source code."""

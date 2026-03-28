@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from marple.arraymodel import APLArray, S
 from marple.backend import (
@@ -29,6 +29,9 @@ from marple.parser import (
     Var,
     Vector,
 )
+
+if TYPE_CHECKING:
+    from marple.environment import Environment
 
 
 # Name classes (following Dyalog ⎕NC convention)
@@ -80,7 +83,7 @@ def _name_class(value: object) -> int:
 class Executor:
     """Base class providing AST evaluation, shared by Interpreter and DfnBinding."""
 
-    env: dict[str, Any]
+    env: Environment
 
     # ── String-keyed dispatch tables (class-level, shared) ──
 
@@ -123,17 +126,11 @@ class Executor:
             return getattr(self, method_name)(node)
         raise DomainError(f"Unknown AST node: {type(node)}")
 
-    def _get_io(self) -> int:
-        return int(self.env["⎕IO"].data[0])
-
-    def _get_ct(self) -> float:
-        return float(self.env["⎕CT"].data[0])
-
     # ── Literal evaluators ──
 
     def _eval_num(self, node: Num) -> APLArray:
         value = node.value
-        if isinstance(value, float) and int(self.env.get("⎕FR", S(645)).data[0]) == 1287:
+        if isinstance(value, float) and self.env.fr == 1287:
             from decimal import Decimal
             value = Decimal(str(node.value))
         return S(value)
@@ -180,7 +177,7 @@ class Executor:
         from marple.dfn_binding import DfnBinding
         # Store a reference to env, not a copy — names added later
         # (e.g. forward references) are visible at call time when
-        # DfnBinding._make_env copies the dict.
+        # DfnBinding._make_env copies the env.
         return DfnBinding(node, self.env)  # type: ignore[return-value]
 
     def _eval_omega(self, node: Omega) -> APLArray:

@@ -1,8 +1,13 @@
 """Monadic primitive function dispatch for MARPLE."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from marple.arraymodel import APLArray, S
+
+if TYPE_CHECKING:
+    from marple.environment import Environment
 from marple.errors import DomainError
 from marple.functions import (
     negate,
@@ -51,11 +56,8 @@ class MonadicFunctionBinding:
         "≢": "_tally",
     }
 
-    def __init__(self, env: dict[str, Any]) -> None:
+    def __init__(self, env: Environment) -> None:
         self._env = env
-
-    def _get_io(self) -> int:
-        return int(self._env["⎕IO"].data[0])
 
     def apply(self, glyph: str, operand: APLArray) -> APLArray:
         """Apply a monadic primitive function to an operand."""
@@ -68,7 +70,7 @@ class MonadicFunctionBinding:
         raise DomainError(f"Unknown monadic function: {glyph}")
 
     def _iota(self, operand: APLArray) -> APLArray:
-        io = self._get_io()
+        io = self._env.io
         n = int(operand.data[0])
         return APLArray([n], list(range(io, n + io)))
 
