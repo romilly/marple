@@ -239,6 +239,22 @@ class TestSystemFunctionsExtra:
             engine.run("⎕SIGNAL 3")
 
 
+class TestSystemFunctionsCRFXDL:
+    def test_cr(self, engine: object) -> None:
+        engine.run("add←{⍺+⍵}")
+        result = engine.run("⎕CR 'add'")
+        assert result.shape[0] >= 1
+
+    def test_fx(self, engine: object) -> None:
+        engine.run("⎕FX 'inc←{⍵+1}'")
+        result = engine.run("inc 5")
+        assert result == S(6)
+
+    def test_dl(self, engine: object) -> None:
+        result = engine.run("⎕DL 0.01")
+        assert result.data[0] >= 0.01
+
+
 class TestFileIO:
     def test_nwrite_and_nread(self, engine: object, tmp_path: object) -> None:
         import os

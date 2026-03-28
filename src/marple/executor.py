@@ -90,6 +90,9 @@ class Executor:
         "⎕NREAD": "_sys_nread",
         "⎕NEXISTS": "_sys_nexists",
         "⎕NDELETE": "_sys_ndelete",
+        "⎕CR": "_sys_cr",
+        "⎕FX": "_sys_fx",
+        "⎕DL": "_sys_dl",
     }
 
     # ── Core evaluation ──
@@ -340,6 +343,59 @@ class Executor:
             new_data = [chr(int(v)) for v in vals]
             return APLArray(list(right.shape), new_data)
         raise DomainError("Invalid ⎕DR type code: " + str(target))
+
+    def _sys_cr(self, operand: APLArray) -> APLArray:
+        fn_name = _apl_chars_to_str(operand.data)
+        source = self.env.get_source(fn_name)
+        if source is None:
+            raise DomainError("Not a defined function: " + fn_name)
+        if isinstance(source, list):
+            lines = source
+        else:
+            lines = [source]
+        max_len = max(len(l) for l in lines) if lines else 0
+        flat: list[object] = []
+        for line in lines:
+            flat.extend(list(_ljust(line, max_len)))
+        return APLArray([len(lines), max_len], flat)
+
+    def _sys_fx(self, operand: APLArray) -> APLArray:
+        from marple.dfn_binding import DfnBinding
+        from marple.errors import APLError
+        from marple.parser import parse
+        if len(operand.shape) == 2:
+            rows, cols = operand.shape
+            lines = []
+            for r in range(rows):
+                row_chars = operand.data[r * cols : (r + 1) * cols]
+                lines.append(_apl_chars_to_str(row_chars).rstrip())
+            text = "\n".join(lines)
+        else:
+            text = _apl_chars_to_str(operand.data)
+        parts = text.split("←", 1)
+        if len(parts) < 2:
+            raise DomainError("⎕FX requires an assignment: name←{body}")
+        fn_name = parts[0].strip()
+        from marple.executor import _newlines_to_diamonds
+        source = _newlines_to_diamonds(text)
+        tree = parse(source, self.env.class_dict())
+        try:
+            self.evaluate(tree)
+        except APLError:
+            raise DomainError("⎕FX: invalid function definition")
+        val = self.env.get(fn_name)
+        if not isinstance(val, DfnBinding):
+            raise DomainError("⎕FX did not produce a function")
+        self.env.set_source(fn_name, text.strip())
+        chars = list(fn_name)
+        return APLArray([len(chars)], chars)
+
+    def _sys_dl(self, operand: APLArray) -> APLArray:
+        import time as _time
+        secs = float(operand.data[0])
+        t0 = _time.time()
+        _time.sleep(secs)
+        return S(_time.time() - t0)
 
     def _sys_nread(self, operand: APLArray) -> APLArray:
         path = _apl_chars_to_str(operand.data)
