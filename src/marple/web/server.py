@@ -162,31 +162,56 @@ class WebSession:
             f.write("\n".join(lines))
 
     def load_session(self, name: str, sessions_dir: str) -> str:
-        """Load a session from markdown, replay expressions, return HTML."""
+        """Load a session from markdown, display saved transcript as-is."""
         import os
         path = os.path.join(sessions_dir, name + ".md")
         with open(path) as f:
             text = f.read()
-        # Parse the markdown: extract input lines (indented with 6 spaces)
-        exprs: list[str] = []
+        # Reset environment (user can re-execute lines via click-to-edit)
+        self.env.clear()
+        self.env.update(default_env())
+        self.transcript.clear()
+        # Parse markdown: inputs are indented, outputs are not
+        fragments: list[str] = []
         in_code = False
+        current_input: str | None = None
+        output_lines: list[str] = []
         for line in text.split("\n"):
             if line.strip().startswith("```apl"):
                 in_code = True
                 continue
             if line.strip().startswith("```"):
+                # Flush any pending entry
+                if current_input is not None:
+                    fragments.append(
+                        self._format_entry(current_input, "\n".join(output_lines)))
+                    self.transcript.append((current_input, "\n".join(output_lines)))
                 in_code = False
                 continue
-            if in_code and line.startswith(INPUT_INDENT):
-                exprs.append(line[len(INPUT_INDENT):])
-        # Reset and replay
-        self.env.clear()
-        self.env.update(default_env())
-        self.transcript.clear()
-        fragments: list[str] = []
-        for expr in exprs:
-            fragments.append(self.evaluate(expr))
+            if not in_code:
+                continue
+            if line.startswith(INPUT_INDENT):
+                # New input — flush previous entry
+                if current_input is not None:
+                    fragments.append(
+                        self._format_entry(current_input, "\n".join(output_lines)))
+                    self.transcript.append((current_input, "\n".join(output_lines)))
+                current_input = line[len(INPUT_INDENT):]
+                output_lines = []
+            else:
+                # Output line
+                output_lines.append(line)
         return "".join(fragments)
+
+    @staticmethod
+    def _format_entry(expr: str, output: str) -> str:
+        """Format an input/output pair as an HTML fragment."""
+        input_html = html.escape(INPUT_INDENT + expr)
+        parts = [f'<pre class="input">{input_html}</pre>']
+        if output:
+            output_html = html.escape(output)
+            parts.append(f'<pre class="output">{output_html}</pre>')
+        return f'<div class="entry">{"".join(parts)}</div>'
 
     @staticmethod
     def list_sessions(sessions_dir: str) -> list[str]:
@@ -308,9 +333,15 @@ class WSHandler:
             fragment = _pico_eval_html(expr, result_text)
             await self.ws.send_json({"type": "result", "html": fragment})
         else:
-            fragment = self.session.evaluate(expr)
-            await self.ws.send_json({"type": "result", "html": fragment})
-            await self.ws.send_json({"type": "workspace", "html": self.session.workspace_fragment()})
+            try:
+                fragment = self.session.evaluate(expr)
+                await self.ws.send_json({"type": "result", "html": fragment})
+                await self.ws.send_json({"type": "workspace", "html": self.session.workspace_fragment()})
+            except Exception as e:
+                error_html = html.escape(str(e))
+                await self.ws.send_json({"type": "result", "html":
+                    f'<div class="entry"><pre class="input">      {html.escape(expr)}</pre>'
+                    f'<pre class="error">{error_html}</pre></div>'})
 
     async def _handle_system(self, data: dict[str, Any]) -> None:
         cmd = data.get("cmd", "")
@@ -402,4 +433,7 @@ if __name__ == "__main__":
         app["pico"] = PicoConnection(args.pico_port)
         print("Pico connected.")
     print(f"MARPLE Web REPL: http://localhost:{args.port}/")
-    web.run_app(app, port=args.port, print=None)
+    try:
+        web.run_app(app, port=args.port, print=None, handle_signals=True)
+    except KeyboardInterrupt:
+        pass
