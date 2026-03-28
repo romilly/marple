@@ -15,26 +15,32 @@ except ImportError:
 from aiohttp import web
 
 from marple.arraymodel import APLArray
+from marple.engine import Interpreter
+from marple.environment import Environment
 from marple.errors import APLError
-from marple.interpreter import default_env, interpret, _DfnBinding
 from marple.repl import format_result, _is_silent
 
 STATIC_DIR = Path(__file__).parent / "static"
 INPUT_INDENT = "      "
 
 
+def _is_dfn_binding(value: object) -> bool:
+    """Check if value is any kind of dfn binding."""
+    return hasattr(value, 'dfn') and hasattr(value, 'env')
+
+
 class WebSession:
-    """Wraps an interpreter environment for web use."""
+    """Wraps an interpreter for web use."""
 
     def __init__(self) -> None:
-        self.env: dict[str, Any] = default_env()
-        self.transcript: list[tuple[str, str]] = []  # (input, output_or_error)
+        self.interp = Interpreter()
+        self.transcript: list[tuple[str, str]] = []
 
     def evaluate(self, expr: str) -> str:
         """Evaluate an APL expression. Return an HTML fragment."""
         input_html = html.escape(INPUT_INDENT + expr)
         try:
-            result = interpret(expr, self.env)
+            result = self.interp.run(expr)
             if _is_silent(expr):
                 self.transcript.append((expr, ""))
                 return (
@@ -42,7 +48,7 @@ class WebSession:
                     f'<pre class="input">{input_html}</pre>'
                     f"</div>"
                 )
-            output = format_result(result, self.env)
+            output = format_result(result, self.interp.env)
             self.transcript.append((expr, output))
             output_html = html.escape(output)
             return (
@@ -71,33 +77,25 @@ class WebSession:
             parts.append(f'<pre class="output">{output_html}</pre>')
         return f'<div class="entry">{"".join(parts)}</div>'
 
-    def _user_names(self, type_filter: type) -> str:
-        names = sorted(
-            n for n in self.env
-            if not n.startswith("⎕") and not n.startswith("__")
-            and n not in ("⍵", "⍺", "∇")
-            and isinstance(self.env[n], type_filter)
-        )
-        return "  ".join(names)
-
     def _ws_clear(self, cmd: str) -> str:
-        self.env.clear()
-        self.env.update(default_env())
+        self.interp = Interpreter()
         return "CLEAR WS"
 
     def _ws_vars(self, cmd: str) -> str:
-        return self._user_names(APLArray)
+        names = self.interp.env.names_of_class(2)  # NC_ARRAY
+        return "  ".join(names)
 
     def _ws_fns(self, cmd: str) -> str:
-        return self._user_names(_DfnBinding)
+        names = self.interp.env.names_of_class(3)  # NC_FUNCTION
+        return "  ".join(names)
 
     def _ws_wsid(self, cmd: str) -> str:
         parts = cmd.split(None, 1)
         if len(parts) > 1:
-            self.env["⎕WSID"] = APLArray([len(parts[1])], list(parts[1]))
-            return parts[1]
-        wsid = self.env.get("⎕WSID")
-        return "".join(str(c) for c in wsid.data) if isinstance(wsid, APLArray) else "CLEAR WS"
+            name = parts[1].strip()
+            self.interp.env["⎕WSID"] = APLArray([len(name)], list(name))
+            return name
+        return "".join(str(c) for c in self.interp.env["⎕WSID"].data)
 
     _SYS_COMMANDS: dict[str, str] = {
         "clear": "_ws_clear", "vars": "_ws_vars",
@@ -116,12 +114,8 @@ class WebSession:
         """Return an HTML fragment listing variables and functions."""
         vars_list = []
         fns_list = []
-        for name in sorted(self.env):
-            if name.startswith("⎕") or name.startswith("__"):
-                continue
-            if name in ("⍵", "⍺", "∇"):
-                continue
-            val = self.env[name]
+        for name in self.interp.env.user_names():
+            val = self.interp.env[name]
             if isinstance(val, APLArray):
                 shape_str = " ".join(str(s) for s in val.shape) if val.shape else "scalar"
                 vars_list.append(
@@ -129,7 +123,7 @@ class WebSession:
                     f'{html.escape(name)} '
                     f'<span class="ws-shape">{shape_str}</span></div>'
                 )
-            elif isinstance(val, _DfnBinding):
+            elif _is_dfn_binding(val):
                 fns_list.append(
                     f'<div class="ws-item" data-name="{html.escape(name)}">'
                     f'{html.escape(name)}</div>'
@@ -167,11 +161,8 @@ class WebSession:
         path = os.path.join(sessions_dir, name + ".md")
         with open(path) as f:
             text = f.read()
-        # Reset environment (user can re-execute lines via click-to-edit)
-        self.env.clear()
-        self.env.update(default_env())
+        self.interp = Interpreter()
         self.transcript.clear()
-        # Parse markdown: inputs are indented, outputs are not
         fragments: list[str] = []
         in_code = False
         current_input: str | None = None
@@ -181,7 +172,6 @@ class WebSession:
                 in_code = True
                 continue
             if line.strip().startswith("```"):
-                # Flush any pending entry
                 if current_input is not None:
                     fragments.append(
                         self._format_entry(current_input, "\n".join(output_lines)))
@@ -191,7 +181,6 @@ class WebSession:
             if not in_code:
                 continue
             if line.startswith(INPUT_INDENT):
-                # New input — flush previous entry
                 if current_input is not None:
                     fragments.append(
                         self._format_entry(current_input, "\n".join(output_lines)))
@@ -199,7 +188,6 @@ class WebSession:
                 current_input = line[len(INPUT_INDENT):]
                 output_lines = []
             else:
-                # Output line
                 output_lines.append(line)
         return "".join(fragments)
 
