@@ -48,6 +48,10 @@ def _ast_contains(node: object, target_type: type) -> bool:
 
 class Node(ABC):
     """Abstract base for all AST nodes that can be evaluated."""
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return self.__dict__ == other.__dict__
     @abstractmethod
     def execute(self, ctx: object) -> object: ...
 
@@ -55,10 +59,6 @@ class Node(ABC):
 class Num(Node):
     def __init__(self, value: int | float) -> None:
         self.value = value
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Num):
-            return NotImplemented
-        return self.value == other.value
     def execute(self, ctx: object) -> APLArray:
         value = self.value
         if isinstance(value, float) and ctx.env.fr == 1287:  # type: ignore[union-attr]
@@ -70,10 +70,6 @@ class Num(Node):
 class Str(Node):
     def __init__(self, value: str) -> None:
         self.value = value
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Str):
-            return NotImplemented
-        return self.value == other.value
     def execute(self, ctx: object) -> APLArray:
         return APLArray([len(self.value)], list(self.value))
 
@@ -81,10 +77,6 @@ class Str(Node):
 class Vector(Node):
     def __init__(self, elements: list[Num]) -> None:
         self.elements = elements
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Vector):
-            return NotImplemented
-        return self.elements == other.elements
     def execute(self, ctx: object) -> APLArray:
         values = [el.value for el in self.elements]
         return APLArray([len(values)], list(values))
@@ -94,10 +86,6 @@ class MonadicFunc(Node):
     def __init__(self, function: str, operand: object) -> None:
         self.function = function
         self.operand = operand
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, MonadicFunc):
-            return NotImplemented
-        return self.function == other.function and self.operand == other.operand
     def execute(self, ctx: object) -> APLArray:
         operand = ctx.evaluate(self.operand)  # type: ignore[union-attr]
         return ctx.dispatch_monadic(self.function, operand)  # type: ignore[union-attr]
@@ -108,10 +96,6 @@ class DyadicFunc(Node):
         self.function = function
         self.left = left
         self.right = right
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, DyadicFunc):
-            return NotImplemented
-        return self.function == other.function and self.left == other.left and self.right == other.right
     def execute(self, ctx: object) -> APLArray:
         right = ctx.evaluate(self.right)  # type: ignore[union-attr]
         left = ctx.evaluate(self.left)  # type: ignore[union-attr]
@@ -122,10 +106,6 @@ class Assignment(Node):
     def __init__(self, name: str, value: object) -> None:
         self.name = name
         self.value = value
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Assignment):
-            return NotImplemented
-        return self.name == other.name and self.value == other.value
     def execute(self, ctx: object) -> APLArray:
         return ctx.assign(self.name, self.value)  # type: ignore[union-attr]
 
@@ -133,10 +113,6 @@ class Assignment(Node):
 class Var(Node):
     def __init__(self, name: str) -> None:
         self.name = name
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Var):
-            return NotImplemented
-        return self.name == other.name
     def execute(self, ctx: object) -> APLArray:
         if self.name not in ctx.env:  # type: ignore[union-attr]
             raise ValueError_(f"Undefined variable: {self.name}")
@@ -157,10 +133,6 @@ class DerivedFunc(Node):
         self.operator = operator
         self.function = function
         self.operand = operand
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, DerivedFunc):
-            return NotImplemented
-        return self.operator == other.operator and self.function == other.function and self.operand == other.operand
     def execute(self, ctx: object) -> APLArray:
         operand = ctx.evaluate(self.operand)  # type: ignore[union-attr]
         return ctx.apply_derived(self.operator, self.function, operand)  # type: ignore[union-attr]
@@ -175,10 +147,6 @@ class MonadicDopCall(Node):
         self.operand = operand    # ⍺⍺ (the left function/array)
         self.argument = argument  # ⍵ (the right argument)
         self.alpha = alpha        # ⍺ (left arg when derived verb used dyadically)
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, MonadicDopCall):
-            return NotImplemented
-        return self.op_name == other.op_name and self.operand == other.operand and self.argument == other.argument
     def execute(self, ctx: object) -> APLArray:
         from marple.dfn_binding import DfnBinding
         dop_val = ctx.evaluate(self.op_name)  # type: ignore[union-attr]
@@ -270,10 +238,6 @@ class OuterProduct:
 class SysVar(Node):
     def __init__(self, name: str) -> None:
         self.name = name
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, SysVar):
-            return NotImplemented
-        return self.name == other.name
     def execute(self, ctx: object) -> APLArray:
         return ctx.eval_sysvar(self.name)  # type: ignore[union-attr]
 
@@ -306,10 +270,6 @@ class FunctionRef(Node):
     """A reference to a primitive function glyph, used as a dop operand."""
     def __init__(self, glyph: str) -> None:
         self.glyph = glyph
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, FunctionRef):
-            return NotImplemented
-        return self.glyph == other.glyph
     def execute(self, ctx: object) -> object:
         return self
 
@@ -384,10 +344,6 @@ class AlphaDefault:
 class Dfn(Node):
     def __init__(self, body: list[object]) -> None:
         self.body = body
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Dfn):
-            return NotImplemented
-        return self.body == other.body
     def execute(self, ctx: object) -> object:
         return ctx.create_binding(self)  # type: ignore[union-attr]
 
@@ -396,10 +352,6 @@ class MonadicDfnCall(Node):
     def __init__(self, dfn: object, operand: object) -> None:
         self.dfn = dfn
         self.operand = operand
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, MonadicDfnCall):
-            return NotImplemented
-        return self.dfn == other.dfn and self.operand == other.operand
     def execute(self, ctx: object) -> APLArray:
         from marple.dfn_binding import DfnBinding
         if isinstance(self.dfn, SysVar):
@@ -420,10 +372,6 @@ class DyadicDfnCall(Node):
         self.dfn = dfn
         self.left = left
         self.right = right
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, DyadicDfnCall):
-            return NotImplemented
-        return self.dfn == other.dfn and self.left == other.left and self.right == other.right
     def execute(self, ctx: object) -> APLArray:
         from marple.dfn_binding import DfnBinding
         dfn_val = ctx.evaluate(self.dfn)  # type: ignore[union-attr]
@@ -437,10 +385,6 @@ class DyadicDfnCall(Node):
 class Program(Node):
     def __init__(self, statements: list[object]) -> None:
         self.statements = statements
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Program):
-            return NotImplemented
-        return self.statements == other.statements
     def execute(self, ctx: object) -> object:
         result: object = S(0)
         for stmt in self.statements:
