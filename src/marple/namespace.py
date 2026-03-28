@@ -54,7 +54,7 @@ def load_system_workspace(stdlib_path: str) -> Namespace:
 
     Walks subdirectories, loading each .apl file as a function definition.
     """
-    from marple.interpreter import default_env, interpret
+    from marple.engine import Interpreter
 
     root = Namespace("$")
     if not _isdir(stdlib_path):
@@ -71,11 +71,10 @@ def load_system_workspace(stdlib_path: str) -> Namespace:
                     with open(filepath) as f:
                         source = f.read().strip()
                     if source:
-                        env = default_env()
-                        result = interpret(source, env)
-                        if func_name in env:
-                            ns.register(func_name, env[func_name])
-                        else:
-                            ns.register(func_name, result)
+                        interp = Interpreter(io=1)
+                        interp.run(source)
+                        val = interp.env.get(func_name)
+                        if val is not None:
+                            ns.register(func_name, val)
             root.register(entry, ns)
     return root
