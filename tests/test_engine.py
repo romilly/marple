@@ -46,6 +46,12 @@ class TestAssignmentAndState:
         result = b.run("⎕NC 'x'")
         assert result == S(0)
 
+class TestSystemFunctions:
+    def test_quad_ts(self) -> None:
+        interp = Interpreter(io=1)
+        result = interp.run("⎕TS")
+        assert result.shape == [7]
+
     def test_dfn_definition(self) -> None:
         interp = Interpreter(io=1)
         interp.run("double←{⍵+⍵}")
