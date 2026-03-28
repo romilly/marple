@@ -16,6 +16,7 @@ from marple.monadic_functions import MonadicFunctionBinding
 from marple.operator_binding import DerivedFunctionBinding
 from marple.parser import (
     BoundOperator,
+    Dfn,
     FunctionRef,
     Node,
     RankDerived,
@@ -113,7 +114,7 @@ class Executor:
         self.env.bind_name(name, value, _name_class(value))
         return value if isinstance(value, APLArray) else S(0)
 
-    def create_binding(self, dfn_node: object) -> object:
+    def create_binding(self, dfn_node: Dfn) -> object:
         from marple.dfn_binding import DfnBinding
         # Store a reference to env, not a copy — names added later
         # (e.g. forward references) are visible at call time when
@@ -167,7 +168,7 @@ class Executor:
             return DerivedFunctionBinding().apply("/", func.function, omega)
         if isinstance(func, ScanOp):
             return DerivedFunctionBinding().apply("\\", func.function, omega)
-        if isinstance(func, BoundOperator):
+        if isinstance(func, BoundOperator) and isinstance(func.operator, str):
             return DerivedFunctionBinding().apply(
                 func.operator, func.left_operand, omega)
         raise DomainError(f"Expected function for rank, got {type(func)}")
