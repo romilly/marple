@@ -578,7 +578,7 @@ class Parser:
             return self._tokens[self._pos + 1]
         return None
 
-    def _eat(self, token_type: TokenType) -> Token:
+    def _eat(self, token_type: str) -> Token:
         token = self._current()
         if token.type != token_type:
             raise SyntaxError_(f"Expected {token_type}, got {token.type}")

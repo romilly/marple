@@ -35,7 +35,7 @@ class TokenType:
 
 
 class Token:
-    def __init__(self, type: TokenType, value: object) -> None:
+    def __init__(self, type: str, value: object) -> None:
         self.type = type
         self.value = value
     def __eq__(self, other: object) -> bool:
