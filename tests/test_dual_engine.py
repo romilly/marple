@@ -165,3 +165,23 @@ class TestOperators:
     def test_user_dop(self, engine: object) -> None:
         engine.run("twice←{⍺⍺ ⍺⍺ ⍵}")
         assert engine.run("(-)twice 5") == S(5)
+
+
+class TestDyadicFormat:
+    def test_dyadic_format_width(self, engine: object) -> None:
+        result = engine.run("5⍕42")
+        assert result.shape == [5]
+
+    def test_dyadic_format_width_precision(self, engine: object) -> None:
+        result = engine.run("8 2⍕3.14159")
+        chars = "".join(str(c) for c in result.data)
+        assert "3.14" in chars
+
+
+class TestDeal:
+    def test_deal(self, engine: object) -> None:
+        result = engine.run("3?10")
+        assert result.shape == [3]
+        values = [int(v) for v in result.data]
+        assert len(set(values)) == 3
+        assert all(1 <= v <= 10 for v in values)

@@ -8,7 +8,9 @@ from marple.arraymodel import APLArray, S
 
 if TYPE_CHECKING:
     from marple.environment import Environment
-from marple.errors import DomainError
+import random as _random
+
+from marple.errors import DomainError, LengthError
 from marple.functions import (
     add,
     subtract,
@@ -88,6 +90,8 @@ class DyadicFunctionBinding:
         "⍳": "_index_of",
         "∈": "_membership",
         "⌷": "_from",
+        "⍕": "_format",
+        "?": "_deal",
     }
 
     def __init__(self, env: Environment) -> None:
@@ -129,6 +133,33 @@ class DyadicFunctionBinding:
 
     def _from(self, left: APLArray, right: APLArray) -> APLArray:
         return from_array(left, right, self._env.io)
+
+    def _format(self, left: APLArray, right: APLArray) -> APLArray:
+        if left.is_scalar():
+            width = int(left.data[0])
+            precision = None
+        else:
+            width = int(left.data[0])
+            precision = int(left.data[1]) if len(left.data) > 1 else None
+        values = right.data if not right.is_scalar() else [right.data[0]]
+        result_chars: list[str] = []
+        for v in values:
+            if precision is not None:
+                formatted = f"{float(v):.{precision}f}"
+            else:
+                formatted = str(v)
+            padded = " " * max(0, width - len(formatted)) + formatted
+            result_chars.extend(list(padded))
+        return APLArray([len(result_chars)], result_chars)
+
+    def _deal(self, left: APLArray, right: APLArray) -> APLArray:
+        io = self._env.io
+        n = int(left.data[0])
+        m = int(right.data[0])
+        if n > m:
+            raise LengthError(f"Deal: cannot choose {n} from {m}")
+        result = _random.sample(range(io, m + io), n)
+        return APLArray([n], result)
 
     @classmethod
     def resolve(cls, glyph: str) -> object:
