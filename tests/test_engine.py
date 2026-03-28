@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from marple.arraymodel import S
+from marple.arraymodel import APLArray, S
 from marple.engine import Interpreter
 
 
@@ -20,3 +20,8 @@ class TestRun:
         interp = Interpreter(io=1)
         result = interp.run("2+3")
         assert result == S(5)
+
+    def test_run_iota_io1(self) -> None:
+        interp = Interpreter(io=1)
+        result = interp.run("⍳3")
+        assert result == APLArray([3], [1, 2, 3])
