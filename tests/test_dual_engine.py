@@ -239,6 +239,30 @@ class TestSystemFunctionsExtra:
             engine.run("⎕SIGNAL 3")
 
 
+class TestImport:
+    def test_import_function(self, engine: object) -> None:
+        engine.run("#import $::str::upper")
+        result = engine.run("upper 'hello'")
+        assert "".join(str(c) for c in result.data) == "HELLO"
+
+    def test_import_with_alias(self, engine: object) -> None:
+        engine.run("#import $::str::upper as up")
+        result = engine.run("up 'hello'")
+        assert "".join(str(c) for c in result.data) == "HELLO"
+
+
+class TestDyadicRank:
+    def test_dyadic_rank_scalar_vector(self, engine: object) -> None:
+        result = engine.run("10(+⍤0 1)1 2 3")
+        assert result == APLArray([3], [11, 12, 13])
+
+    def test_dyadic_rank_matrix(self, engine: object) -> None:
+        engine.run("A←2 3⍴⍳6")
+        engine.run("B←2 3⍴10 20 30 40 50 60")
+        result = engine.run("A(+⍤1)B")
+        assert result == APLArray([2, 3], [11, 22, 33, 44, 55, 66])
+
+
 class TestMissingNodes:
     def test_nabla_recursion(self, engine: object) -> None:
         engine.run("fact←{⍵≤1:1 ⋄ ⍵×∇ ⍵-1}")

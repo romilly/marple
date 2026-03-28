@@ -232,7 +232,39 @@ class Executor:
         raise DomainError(f"Expected function for rank, got {type(func)}")
 
     def apply_rank_dyadic(self, rank_node: object, left_node: object, right_node: object) -> APLArray:
-        raise DomainError("Dyadic rank not yet implemented")
+        from marple.errors import LengthError
+        from marple.parser import RankDerived
+        assert isinstance(rank_node, RankDerived)
+        alpha = self.evaluate(left_node)
+        omega = self.evaluate(right_node)
+        rank_spec_val = self.evaluate(rank_node.rank_spec)
+        _, b_rank, c_rank = resolve_rank_spec(rank_spec_val)
+        b = clamp_rank(b_rank, len(alpha.shape))
+        c = clamp_rank(c_rank, len(omega.shape))
+        left_frame, left_cells = decompose(alpha, b)
+        right_frame, right_cells = decompose(omega, c)
+        if left_frame == right_frame:
+            pairs = list(zip(left_cells, right_cells))
+            frame = left_frame
+        elif left_frame == []:
+            pairs = [(left_cells[0], rc) for rc in right_cells]
+            frame = right_frame
+        elif right_frame == []:
+            pairs = [(lc, right_cells[0]) for lc in left_cells]
+            frame = left_frame
+        else:
+            raise LengthError(f"Frame mismatch: {left_frame} vs {right_frame}")
+        results = [self._apply_func_dyadic(rank_node.function, lc, rc) for lc, rc in pairs]
+        return reassemble(frame, results)
+
+    def _apply_func_dyadic(self, func: object, alpha: APLArray, omega: APLArray) -> APLArray:
+        """Apply a function dyadically. Used by dyadic rank operator."""
+        from marple.parser import FunctionRef
+        if isinstance(func, str):
+            return DyadicFunctionBinding(self.env).apply(func, alpha, omega)
+        if isinstance(func, FunctionRef):
+            return DyadicFunctionBinding(self.env).apply(func.glyph, alpha, omega)
+        raise DomainError(f"Expected function for rank, got {type(func)}")
 
     # ── System functions ──
 
