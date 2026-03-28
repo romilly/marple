@@ -367,12 +367,12 @@ class Parser:
         raise SyntaxError_(f"Unknown operator in bound form: {op}")
 
     def _bound_monadic_reduce(self, bound: BoundOperator, arg_node: object) -> object:
+        assert isinstance(bound.operator, str)
         operand = bound.left_operand
-        op = bound.operator
         if (bound.left_cat == CAT_VERB
                 or isinstance(operand, (AlphaAlpha, OmegaOmega))):
-            return DerivedFunc(op, operand, arg_node)
-        return DyadicFunc(op, operand, arg_node)
+            return DerivedFunc(bound.operator, operand, arg_node)
+        return DyadicFunc(bound.operator, operand, arg_node)
 
     def _bound_monadic_rank(self, bound: BoundOperator, arg_node: object) -> object:
         rank_node = RankDerived(bound.left_operand, bound.right_operand)
@@ -429,6 +429,7 @@ class Parser:
 
     def _bound_dyadic_inner(self, bound: BoundOperator,
                             left_node: object, right_node: object) -> object:
+        assert bound.right_operand is not None
         return InnerProduct(bound.left_operand, bound.right_operand,
                             left_node, right_node)
 
@@ -438,12 +439,12 @@ class Parser:
 
     def _bound_dyadic_reduce(self, bound: BoundOperator,
                              left_node: object, right_node: object) -> object:
+        assert isinstance(bound.operator, str)
         operand = bound.left_operand
-        op = bound.operator
         if (bound.left_cat == CAT_VERB
                 or isinstance(operand, (AlphaAlpha, OmegaOmega))):
-            return DerivedFunc(op, operand, right_node)
-        return DyadicFunc(op, operand, right_node)
+            return DerivedFunc(bound.operator, operand, right_node)
+        return DyadicFunc(bound.operator, operand, right_node)
 
     def _apply_user_dop_dyadic(self, bound: BoundOperator,
                                left_node: object, right_node: object) -> object:
@@ -561,6 +562,8 @@ class Parser:
                 operand_node = stack[-2][1]
                 operand_cat = stack[-2][0]
                 adv_node = stack[-3][1]
+                assert isinstance(adv_node, (str, Var))
+                assert isinstance(operand_node, (str, Node, BoundOperator))
                 bound = BoundOperator(adv_node, operand_node, operand_cat)
                 stack[-3:-1] = [(CAT_VERB, bound)]
                 matched = True
@@ -574,6 +577,9 @@ class Parser:
                 conj_node = stack[-3][1]
                 right_operand = stack[-4][1]
                 right_cat = stack[-4][0]
+                assert isinstance(conj_node, (str, Var))
+                assert isinstance(left_operand, (str, Node, BoundOperator))
+                assert isinstance(right_operand, (str, Node, BoundOperator))
                 bound = BoundOperator(conj_node, left_operand, left_cat,
                                       right_operand, right_cat)
                 stack[-4:-1] = [(CAT_VERB, bound)]
@@ -649,10 +655,11 @@ class Parser:
     def _parse_dfn_statement(self) -> object:
         """Parse a statement inside a dfn, handling guards and ⍺← default."""
         # Check for ⍺← default
+        peek = self._peek()
         if (
             self._current().type == TokenType.ALPHA
-            and self._peek() is not None
-            and self._peek().type == TokenType.ASSIGN
+            and peek is not None
+            and peek.type == TokenType.ASSIGN
         ):
             self._eat(TokenType.ALPHA)
             self._eat(TokenType.ASSIGN)
