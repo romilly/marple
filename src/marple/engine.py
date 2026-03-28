@@ -376,6 +376,9 @@ class Interpreter:
         return APLArray([len(s)], list(s))
 
     def _eval_dfn(self, node: Dfn) -> APLArray:
+        # Store a reference to env, not a copy — names added later
+        # (e.g. forward references) are visible at call time when
+        # DfnBinding._make_env copies the dict.
         return DfnBinding(node, self.env, self)  # type: ignore[return-value]
 
     def _eval_omega(self, node: Omega) -> APLArray:
