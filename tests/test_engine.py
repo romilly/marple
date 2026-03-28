@@ -13,3 +13,10 @@ class TestConstruction:
     def test_construct_io_zero(self) -> None:
         interp = Interpreter(io=0)
         assert interp.env["⎕IO"] == S(0)
+
+
+class TestRun:
+    def test_run_scalar(self) -> None:
+        interp = Interpreter(io=1)
+        result = interp.run("2+3")
+        assert result == S(5)
