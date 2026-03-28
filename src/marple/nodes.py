@@ -21,6 +21,85 @@ def _product(*lists: list[int]) -> Generator[tuple[int, ...], None, None]:
             yield (item,) + rest
 
 
+def _inner_product(
+    reduce_fn: Any, apply_fn: Any, alpha: APLArray, omega: APLArray,
+) -> APLArray:
+    """Compute inner product: alpha reduce_fn.apply_fn omega."""
+    from marple.backend import to_list
+    from marple.errors import LengthError, RankError
+    # Vector . Vector
+    if len(alpha.shape) <= 1 and len(omega.shape) <= 1:
+        if len(alpha.data) != len(omega.data):
+            raise LengthError(f"Inner product length error: {len(alpha.data)} vs {len(omega.data)}")
+        paired = [apply_fn(S(a), S(b)) for a, b in zip(alpha.data, omega.data)]
+        result = paired[-1]
+        for i in range(len(paired) - 2, -1, -1):
+            result = reduce_fn(paired[i], result)
+        return result
+    # Matrix . Matrix
+    if len(alpha.shape) == 2 and len(omega.shape) == 2:
+        m, k1 = alpha.shape
+        k2, n = omega.shape
+        if k1 != k2:
+            raise LengthError(f"Inner product shape mismatch: {alpha.shape} vs {omega.shape}")
+        a_data = to_list(alpha.data)
+        b_data = to_list(omega.data)
+        result_data: list[object] = []
+        for i in range(m):
+            for j in range(n):
+                row = [a_data[i * k1 + p] for p in range(k1)]
+                col = [b_data[p * n + j] for p in range(k2)]
+                paired = [apply_fn(S(a), S(b)) for a, b in zip(row, col)]
+                val = paired[-1]
+                for idx in range(len(paired) - 2, -1, -1):
+                    val = reduce_fn(paired[idx], val)
+                result_data.append(val.data[0])
+        return APLArray([m, n], result_data)
+    # Vector . Matrix
+    if len(alpha.shape) == 1 and len(omega.shape) == 2:
+        k, n = omega.shape
+        if len(alpha.data) != k:
+            raise LengthError("Inner product shape mismatch")
+        result_data = []
+        for j in range(n):
+            col = [omega.data[p * n + j] for p in range(k)]
+            paired = [apply_fn(S(a), S(b)) for a, b in zip(alpha.data, col)]
+            val = paired[-1]
+            for idx in range(len(paired) - 2, -1, -1):
+                val = reduce_fn(paired[idx], val)
+            result_data.append(val.data[0])
+        return APLArray([n], result_data)
+    # Matrix . Vector
+    if len(alpha.shape) == 2 and len(omega.shape) == 1:
+        m, k1 = alpha.shape
+        if k1 != len(omega.data):
+            raise LengthError("Inner product shape mismatch")
+        a_data = to_list(alpha.data)
+        b_data = to_list(omega.data)
+        result_data = []
+        for i in range(m):
+            row = [a_data[i * k1 + p] for p in range(k1)]
+            paired = [apply_fn(S(a), S(b)) for a, b in zip(row, b_data)]
+            val = paired[-1]
+            for idx in range(len(paired) - 2, -1, -1):
+                val = reduce_fn(paired[idx], val)
+            result_data.append(val.data[0])
+        return APLArray([m], result_data)
+    raise RankError(f"Inner product not supported for shapes {alpha.shape} and {omega.shape}")
+
+
+def _outer_product(func: Any, alpha: APLArray, omega: APLArray) -> APLArray:
+    """Compute outer product: alpha ∘.func omega."""
+    result_data: list[object] = []
+    for a in alpha.data:
+        for b in omega.data:
+            result_data.append(func(S(a), S(b)).data[0])
+    result_shape = alpha.shape + omega.shape
+    if not result_shape:
+        return S(result_data[0])
+    return APLArray(result_shape, result_data)
+
+
 class ExecutionContext(Protocol):
     """Interface that AST nodes use to evaluate sub-expressions."""
     env: Any
@@ -33,6 +112,7 @@ class ExecutionContext(Protocol):
     def create_binding(self, dfn_node: object) -> object: ...
     def dispatch_sys_monadic(self, name: str, operand_node: object) -> APLArray: ...
     def apply_rank_monadic(self, rank_node: object, operand_node: object) -> APLArray: ...
+    def resolve_dyadic(self, fn: object) -> Any: ...
 
 
 class Node(ABC):
@@ -201,27 +281,31 @@ class IBeamDerived:
         return self.path == other.path
 
 
-class InnerProduct:
+class InnerProduct(Node):
     def __init__(self, left_fn: str | Node | BoundOperator, right_fn: str | Node | BoundOperator, left: object, right: object) -> None:
         self.left_fn = left_fn
         self.right_fn = right_fn
         self.left = left
         self.right = right
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, InnerProduct):
-            return NotImplemented
-        return self.left_fn == other.left_fn and self.right_fn == other.right_fn and self.left == other.left and self.right == other.right
+    def execute(self, ctx: ExecutionContext) -> APLArray:
+        from marple.backend import to_list
+        alpha = ctx.evaluate(self.left)
+        omega = ctx.evaluate(self.right)
+        reduce_fn = ctx.resolve_dyadic(self.left_fn)
+        apply_fn = ctx.resolve_dyadic(self.right_fn)
+        return _inner_product(reduce_fn, apply_fn, alpha, omega)
 
 
-class OuterProduct:
+class OuterProduct(Node):
     def __init__(self, function: str | Node | BoundOperator, left: object, right: object) -> None:
         self.function = function
         self.left = left
         self.right = right
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, OuterProduct):
-            return NotImplemented
-        return self.function == other.function and self.left == other.left and self.right == other.right
+    def execute(self, ctx: ExecutionContext) -> APLArray:
+        alpha = ctx.evaluate(self.left)
+        omega = ctx.evaluate(self.right)
+        func = ctx.resolve_dyadic(self.function)
+        return _outer_product(func, alpha, omega)
 
 
 class SysVar(Node):

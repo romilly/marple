@@ -168,3 +168,14 @@ class DyadicFunctionBinding:
         if func is not None:
             return func
         raise DomainError(f"Unknown function for operator: {glyph}")
+
+    def resolve_with_env(self, glyph: str) -> object:
+        """Return a callable for a glyph, including env-dependent functions."""
+        method_name = self._ENV_DEPENDENT.get(glyph)
+        if method_name is not None:
+            method = getattr(self, method_name)
+            return lambda a, o, _m=method: _m(a, o)
+        func = self._SIMPLE.get(glyph)
+        if func is not None:
+            return func
+        raise DomainError(f"Unknown function for operator: {glyph}")

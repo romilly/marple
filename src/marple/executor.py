@@ -110,6 +110,15 @@ class Executor:
     def dispatch_dyadic(self, glyph: str, left: APLArray, right: APLArray) -> APLArray:
         return DyadicFunctionBinding(self.env).apply(glyph, left, right)
 
+    def resolve_dyadic(self, fn: object) -> object:
+        """Resolve a function reference to a dyadic callable."""
+        from marple.parser import FunctionRef
+        glyph = fn.glyph if isinstance(fn, FunctionRef) else fn
+        if not isinstance(glyph, str):
+            raise DomainError(f"Expected function for operator, got {type(fn)}")
+        binding = DyadicFunctionBinding(self.env)
+        return binding.resolve_with_env(glyph)
+
     def apply_derived(self, operator: str, function: object, operand: APLArray) -> APLArray:
         return DerivedFunctionBinding().apply(operator, function, operand)
 

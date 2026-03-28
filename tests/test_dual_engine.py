@@ -167,6 +167,54 @@ class TestOperators:
         assert engine.run("(-)twice 5") == S(5)
 
 
+class TestProducts:
+    def test_inner_product(self, engine: object) -> None:
+        assert engine.run("1 2 3+.×4 5 6") == S(32)
+
+    def test_outer_product(self, engine: object) -> None:
+        result = engine.run("1 2 3∘.×4 5")
+        assert result == APLArray([3, 2], [4, 5, 8, 10, 12, 15])
+
+    def test_outer_product_addition(self, engine: object) -> None:
+        result = engine.run("1 2 3∘.+10 20")
+        assert result == APLArray([3, 2], [11, 21, 12, 22, 13, 23])
+
+    def test_matrix_multiply(self, engine: object) -> None:
+        result = engine.run("(2 2⍴1 2 3 4)+.×(2 2⍴5 6 7 8)")
+        assert result == APLArray([2, 2], [19, 22, 43, 50])
+
+    def test_matrix_multiply_non_square(self, engine: object) -> None:
+        engine.run("A←2 3⍴⍳6")
+        engine.run("B←3 2⍴⍳6")
+        result = engine.run("A+.×B")
+        assert result.shape == [2, 2]
+        assert list(result.data) == [22, 28, 49, 64]
+
+    def test_matrix_vector_inner(self, engine: object) -> None:
+        engine.run("M←2 3⍴⍳6")
+        result = engine.run("M+.×1 2 3")
+        assert result.shape == [2]
+        assert list(result.data) == [14, 32]
+
+    def test_vector_matrix_inner(self, engine: object) -> None:
+        engine.run("M←2 3⍴⍳6")
+        result = engine.run("1 2+.×M")
+        assert result.shape == [3]
+        assert list(result.data) == [9, 12, 15]
+
+    def test_outer_equality(self, engine: object) -> None:
+        result = engine.run("1 2 3∘.=1 3")
+        assert result == APLArray([3, 2], [1, 0, 0, 0, 0, 1])
+
+    def test_outer_multiplication_table(self, engine: object) -> None:
+        result = engine.run("(⍳3)∘.×⍳4")
+        assert result == APLArray([3, 4], [
+            1, 2, 3, 4,
+            2, 4, 6, 8,
+            3, 6, 9, 12,
+        ])
+
+
 class TestDyadicFormat:
     def test_dyadic_format_width(self, engine: object) -> None:
         result = engine.run("5⍕42")
