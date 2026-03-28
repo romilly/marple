@@ -88,3 +88,9 @@ class TestOperators:
         interp = Interpreter(io=1)
         result = interp.run("(+/⍤1) 3 4⍴⍳12")
         assert result == APLArray([3], [10, 26, 42])
+
+    def test_user_dop(self) -> None:
+        interp = Interpreter(io=1)
+        interp.run("twice←{⍺⍺ ⍺⍺ ⍵}")
+        result = interp.run("(-)twice 5")
+        assert result == S(5)

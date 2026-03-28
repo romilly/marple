@@ -26,6 +26,7 @@ from marple.parser import (
     DyadicFunc,
     FunctionRef,
     MonadicDfnCall,
+    MonadicDopCall,
     MonadicFunc,
     Num,
     Omega,
@@ -113,8 +114,10 @@ class Executor:
         DyadicFunc: "_eval_dyadic_func",
         Assignment: "_eval_assignment",
         DerivedFunc: "_eval_derived_func",
+        FunctionRef: "_eval_function_ref",
         Dfn: "_eval_dfn",
         MonadicDfnCall: "_eval_monadic_dfn_call",
+        MonadicDopCall: "_eval_monadic_dop_call",
         DyadicDfnCall: "_eval_dyadic_dfn_call",
         Program: "_eval_program",
         Omega: "_eval_omega",
@@ -210,6 +213,9 @@ class Executor:
         left = self._evaluate(node.left)
         return DyadicFunctionBinding(self.env).apply(node.function, left, right)
 
+    def _eval_function_ref(self, node: FunctionRef) -> APLArray:
+        return node  # type: ignore[return-value]
+
     def _eval_derived_func(self, node: DerivedFunc) -> APLArray:
         operand = self._evaluate(node.operand)
         return DerivedFunctionBinding().apply(node.operator, node.function, operand)
@@ -241,6 +247,8 @@ class Executor:
         operand = self._evaluate(node.operand)
         if isinstance(dfn_val, DfnBinding):
             return dfn_val.apply(operand)
+        if isinstance(dfn_val, FunctionRef):
+            return MonadicFunctionBinding(self.env).apply(dfn_val.glyph, operand)
         raise DomainError(f"Expected dfn, got {type(dfn_val)}")
 
     def _eval_dyadic_dfn_call(self, node: DyadicDfnCall) -> APLArray:
@@ -251,6 +259,16 @@ class Executor:
         if isinstance(dfn_val, DfnBinding):
             return dfn_val.apply(right, alpha=left)
         raise DomainError(f"Expected dfn, got {type(dfn_val)}")
+
+    def _eval_monadic_dop_call(self, node: MonadicDopCall) -> APLArray:
+        from marple.dfn_binding import DfnBinding
+        dop_val = self._evaluate(node.op_name)
+        if not isinstance(dop_val, DfnBinding):
+            raise DomainError(f"Expected operator, got {type(dop_val)}")
+        operand = self._evaluate(node.operand)
+        argument = self._evaluate(node.argument)
+        alpha = self._evaluate(node.alpha) if node.alpha is not None else None
+        return dop_val.apply(argument, alpha_alpha=operand, alpha=alpha)
 
     def _eval_program(self, node: Program) -> APLArray:
         from marple.dfn_binding import DfnBinding
