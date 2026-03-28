@@ -25,3 +25,8 @@ class TestRun:
         interp = Interpreter(io=1)
         result = interp.run("⍳3")
         assert result == APLArray([3], [1, 2, 3])
+
+    def test_run_iota_io0(self) -> None:
+        interp = Interpreter(io=0)
+        result = interp.run("⍳3")
+        assert result == APLArray([3], [0, 1, 2])
