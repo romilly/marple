@@ -104,15 +104,66 @@ _NAME_CLASS: dict[type, int] = {
 }
 
 
-class _DfnBinding:
+class DfnBinding:
     """A dfn or dop bound to the environment in which it was defined."""
 
-    def __init__(self, dfn: Dfn, env: dict[str, Any]) -> None:
+    def __init__(self, dfn: Dfn, env: dict[str, Any], interpreter: 'Interpreter') -> None:
         self.dfn = dfn
         self.env = env
+        self._interpreter = interpreter
+
+    def apply(
+        self,
+        omega: APLArray,
+        alpha: APLArray | None = None,
+        alpha_alpha: object | None = None,
+        omega_omega: object | None = None,
+    ) -> APLArray:
+        """Apply this dfn or dop to its arguments."""
+        saved_env = self._interpreter.env
+        self._interpreter.env = self._make_env(omega, alpha, alpha_alpha, omega_omega)
+        try:
+            return self._execute_body()
+        finally:
+            self._interpreter.env = saved_env
+
+    def _make_env(
+        self,
+        omega: APLArray,
+        alpha: APLArray | None,
+        alpha_alpha: object | None,
+        omega_omega: object | None,
+    ) -> dict[str, Any]:
+        """Build the local environment for this call."""
+        local_env: dict[str, Any] = dict(self.env)
+        local_env["⍵"] = omega
+        if alpha is not None:
+            local_env["⍺"] = alpha
+        if alpha_alpha is not None:
+            local_env["⍺⍺"] = alpha_alpha
+        if omega_omega is not None:
+            local_env["⍵⍵"] = omega_omega
+        local_env["∇"] = self
+        return local_env
+
+    def _execute_body(self) -> APLArray:
+        """Execute the dfn body statements."""
+        evaluate = self._interpreter._evaluate
+        result = S(0)
+        for stmt in self.dfn.body:
+            if isinstance(stmt, AlphaDefault):
+                if "⍺" not in self._interpreter.env:
+                    self._interpreter.env["⍺"] = evaluate(stmt.default)
+            elif isinstance(stmt, Guard):
+                cond = evaluate(stmt.condition)
+                if cond.data[0]:
+                    return evaluate(stmt.body)
+            else:
+                result = evaluate(stmt)
+        return result
 
 
-_NAME_CLASS[_DfnBinding] = NC_FUNCTION  # type: ignore[index]
+_NAME_CLASS[DfnBinding] = NC_FUNCTION  # type: ignore[index]
 
 
 def _ljust(s: str, width: int) -> str:
@@ -247,7 +298,7 @@ class Interpreter:
         result = self._evaluate(tree)
         if isinstance(tree, Assignment):
             self._track_dfn_source(tree.name, source)
-        if isinstance(result, _DfnBinding):
+        if isinstance(result, DfnBinding):
             return S(0)
         if isinstance(result, APLArray) and is_numeric_array(result.data):
             result = APLArray(list(result.shape), maybe_downcast(result.data, _DOWNCAST_CT))
@@ -256,7 +307,7 @@ class Interpreter:
     def _track_dfn_source(self, name: str, source: str) -> None:
         """Record source text for dfn/dop assignments (for workspace save)."""
         value = self.env.get(name)
-        if not isinstance(value, _DfnBinding):
+        if not isinstance(value, DfnBinding):
             return
         sources = self.env.setdefault("__sources__", {})
         sources[name] = source.strip()
@@ -325,7 +376,7 @@ class Interpreter:
         return APLArray([len(s)], list(s))
 
     def _eval_dfn(self, node: Dfn) -> APLArray:
-        return _DfnBinding(node, self.env)  # type: ignore[return-value]
+        return DfnBinding(node, self.env, self)  # type: ignore[return-value]
 
     def _eval_omega(self, node: Omega) -> APLArray:
         if "⍵" not in self.env:
@@ -401,74 +452,23 @@ class Interpreter:
             return self._dispatch_sys_monadic(node.dfn.name, node.operand)
         dfn_val = self._evaluate(node.dfn)
         operand = self._evaluate(node.operand)
-        if isinstance(dfn_val, _DfnBinding):
-            return self._apply_dfn(dfn_val, operand)
+        if isinstance(dfn_val, DfnBinding):
+            return dfn_val.apply(operand)
         raise DomainError(f"Expected dfn, got {type(dfn_val)}")
 
     def _eval_dyadic_dfn_call(self, node: DyadicDfnCall) -> APLArray:
         dfn_val = self._evaluate(node.dfn)
         right = self._evaluate(node.right)
         left = self._evaluate(node.left)
-        if isinstance(dfn_val, _DfnBinding):
-            return self._apply_dfn(dfn_val, right, alpha=left)
+        if isinstance(dfn_val, DfnBinding):
+            return dfn_val.apply(right, alpha=left)
         raise DomainError(f"Expected dfn, got {type(dfn_val)}")
 
     def _eval_program(self, node: Program) -> APLArray:
-        result: APLArray | _DfnBinding = S(0)
+        result: APLArray | DfnBinding = S(0)
         for stmt in node.statements:
             result = self._evaluate(stmt)
         return result if isinstance(result, APLArray) else S(0)
-
-    def _apply_dfn(
-        self,
-        binding: _DfnBinding,
-        omega: APLArray,
-        alpha: APLArray | None = None,
-        alpha_alpha: object | None = None,
-        omega_omega: object | None = None,
-    ) -> APLArray:
-        """Apply a dfn or dop binding to its arguments."""
-        saved_env = self.env
-        self.env = self._make_dfn_env(binding, omega, alpha, alpha_alpha, omega_omega)
-        try:
-            return self._execute_body(binding.dfn.body)
-        finally:
-            self.env = saved_env
-
-    def _make_dfn_env(
-        self,
-        binding: _DfnBinding,
-        omega: APLArray,
-        alpha: APLArray | None,
-        alpha_alpha: object | None,
-        omega_omega: object | None,
-    ) -> dict[str, Any]:
-        """Build the local environment for a dfn/dop call."""
-        local_env: dict[str, Any] = dict(binding.env)
-        local_env["⍵"] = omega
-        if alpha is not None:
-            local_env["⍺"] = alpha
-        if alpha_alpha is not None:
-            local_env["⍺⍺"] = alpha_alpha
-        if omega_omega is not None:
-            local_env["⍵⍵"] = omega_omega
-        local_env["∇"] = binding
-        return local_env
-
-    def _execute_body(self, statements: list[object]) -> APLArray:
-        """Execute a sequence of dfn body statements."""
-        result = S(0)
-        for stmt in statements:
-            if isinstance(stmt, AlphaDefault):
-                if "⍺" not in self.env:
-                    self.env["⍺"] = self._evaluate(stmt.default)
-            elif isinstance(stmt, Guard):
-                cond = self._evaluate(stmt.condition)
-                if cond.data[0]:
-                    return self._evaluate(stmt.body)
-            else:
-                result = self._evaluate(stmt)
-        return result
 
     # ── System functions ──
 
