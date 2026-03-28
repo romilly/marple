@@ -101,7 +101,7 @@ _SYS_FUNCTION_NAMES = (
 
 
 class _DfnBinding:
-    """A dfn paired with its defining environment."""
+    """A dfn or dop bound to the environment in which it was defined."""
 
     def __init__(self, dfn: Dfn, env: dict[str, Any]) -> None:
         self.dfn = dfn
@@ -368,7 +368,7 @@ class Interpreter:
         dfn_val = self._evaluate(node.dfn)
         operand = self._evaluate(node.operand)
         if isinstance(dfn_val, _DfnBinding):
-            return self._call_dfn(dfn_val, operand)
+            return self._apply_dfn(dfn_val, operand)
         raise DomainError(f"Expected dfn, got {type(dfn_val)}")
 
     def _eval_dyadic_dfn_call(self, node: DyadicDfnCall) -> APLArray:
@@ -376,7 +376,7 @@ class Interpreter:
         right = self._evaluate(node.right)
         left = self._evaluate(node.left)
         if isinstance(dfn_val, _DfnBinding):
-            return self._call_dfn(dfn_val, right, alpha=left)
+            return self._apply_dfn(dfn_val, right, alpha=left)
         raise DomainError(f"Expected dfn, got {type(dfn_val)}")
 
     def _eval_program(self, node: Program) -> APLArray:
@@ -385,17 +385,17 @@ class Interpreter:
             result = self._evaluate(stmt)
         return result if isinstance(result, APLArray) else S(0)
 
-    def _call_dfn(
+    def _apply_dfn(
         self,
-        closure: _DfnBinding,
+        binding: _DfnBinding,
         omega: APLArray,
         alpha: APLArray | None = None,
         alpha_alpha: object | None = None,
         omega_omega: object | None = None,
     ) -> APLArray:
-        """Execute a dfn with the given arguments."""
+        """Apply a dfn or dop binding to its arguments."""
         saved_env = self.env
-        local_env: dict[str, Any] = dict(closure.env)
+        local_env: dict[str, Any] = dict(binding.env)
         local_env["⍵"] = omega
         if alpha is not None:
             local_env["⍺"] = alpha
@@ -403,11 +403,11 @@ class Interpreter:
             local_env["⍺⍺"] = alpha_alpha
         if omega_omega is not None:
             local_env["⍵⍵"] = omega_omega
-        local_env["∇"] = closure
+        local_env["∇"] = binding
         self.env = local_env
         result = S(0)
         try:
-            for stmt in closure.dfn.body:
+            for stmt in binding.dfn.body:
                 if isinstance(stmt, AlphaDefault):
                     if "⍺" not in self.env:
                         self.env["⍺"] = self._evaluate(stmt.default)
