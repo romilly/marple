@@ -239,6 +239,20 @@ class TestSystemFunctionsExtra:
             engine.run("⎕SIGNAL 3")
 
 
+class TestDyadicSysFunctions:
+    def test_ea_traps_error(self, engine: object) -> None:
+        result = engine.run("'0' ⎕EA '1÷0'")
+        assert result == S(0)
+
+    def test_ea_no_error(self, engine: object) -> None:
+        result = engine.run("'99' ⎕EA '2+3'")
+        assert result == S(5)
+
+    def test_dyadic_dr_to_char(self, engine: object) -> None:
+        result = engine.run("80 ⎕DR 65 66 67")
+        assert list(result.data) == ["A", "B", "C"]
+
+
 class TestDyadicFormat:
     def test_dyadic_format_width(self, engine: object) -> None:
         result = engine.run("5⍕42")

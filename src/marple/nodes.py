@@ -113,6 +113,8 @@ class ExecutionContext(Protocol):
     def dispatch_sys_monadic(self, name: str, operand_node: object) -> APLArray: ...
     def apply_rank_monadic(self, rank_node: object, operand_node: object) -> APLArray: ...
     def resolve_dyadic(self, fn: object) -> Any: ...
+    def dispatch_sys_dyadic(self, name: str, left_node: object, right_node: object) -> APLArray: ...
+    def apply_rank_dyadic(self, rank_node: object, left_node: object, right_node: object) -> APLArray: ...
 
 
 class Node(ABC):
@@ -477,11 +479,17 @@ class DyadicDfnCall(Node):
         self.right = right
     def execute(self, ctx: ExecutionContext) -> APLArray:
         from marple.dfn_binding import DfnBinding
+        if isinstance(self.dfn, SysVar):
+            return ctx.dispatch_sys_dyadic(self.dfn.name, self.left, self.right)
+        if isinstance(self.dfn, RankDerived):
+            return ctx.apply_rank_dyadic(self.dfn, self.left, self.right)
         dfn_val = ctx.evaluate(self.dfn)
         right = ctx.evaluate(self.right)
         left = ctx.evaluate(self.left)
         if isinstance(dfn_val, DfnBinding):
             return dfn_val.apply(right, alpha=left)
+        if isinstance(dfn_val, FunctionRef):
+            return ctx.dispatch_dyadic(dfn_val.glyph, left, right)
         raise DomainError(f"Expected dfn, got {type(dfn_val)}")
 
 

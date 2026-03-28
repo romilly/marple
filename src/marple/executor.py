@@ -193,7 +193,15 @@ class Executor:
                 func.operator, func.left_operand, omega)
         raise DomainError(f"Expected function for rank, got {type(func)}")
 
+    def apply_rank_dyadic(self, rank_node: object, left_node: object, right_node: object) -> APLArray:
+        raise DomainError("Dyadic rank not yet implemented")
+
     # ── System functions ──
+
+    _DYADIC_SYS_FN_DISPATCH: dict[str, str] = {
+        "⎕EA": "_sys_ea",
+        "⎕DR": "_sys_dr_dyadic",
+    }
 
     def dispatch_sys_monadic(self, name: str, operand_node: object) -> APLArray:
         operand = self.evaluate(operand_node)
@@ -201,6 +209,14 @@ class Executor:
         if method_name is not None:
             return getattr(self, method_name)(operand)
         raise DomainError(f"Unknown system function: {name}")
+
+    def dispatch_sys_dyadic(self, name: str, left_node: object, right_node: object) -> APLArray:
+        method_name = self._DYADIC_SYS_FN_DISPATCH.get(name)
+        if method_name is not None:
+            left = self.evaluate(left_node)
+            right = self.evaluate(right_node)
+            return getattr(self, method_name)(left, right)
+        raise DomainError(f"Unknown dyadic system function: {name}")
 
     def _sys_nc(self, operand: APLArray) -> APLArray:
         return S(self.env.name_class(_apl_chars_to_str(operand.data)))
@@ -285,3 +301,38 @@ class Executor:
         }
         err_class = error_map.get(code, DomainError)
         raise err_class(f"Signalled by ⎕SIGNAL {code}")
+
+    def _sys_ea(self, left: APLArray, right: APLArray) -> APLArray:
+        """⎕EA: error-guarded execution. Try right; on error, execute left."""
+        from marple.errors import APLError
+        from marple.parser import parse
+        right_str = _apl_chars_to_str(right.data)
+        try:
+            tree = parse(right_str, self.env.class_dict())
+            return self.evaluate(tree)
+        except APLError as e:
+            self.env["⎕EN"] = S(e.code)
+            self.env["⎕DM"] = APLArray([len(str(e))], list(str(e)))
+            left_str = _apl_chars_to_str(left.data)
+            tree = parse(left_str, self.env.class_dict())
+            return self.evaluate(tree)
+
+    def _sys_dr_dyadic(self, left: APLArray, right: APLArray) -> APLArray:
+        """Dyadic ⎕DR: convert data representation."""
+        from marple.backend import to_list
+        target = int(left.data[0])
+        vals = to_list(right.data)
+        if target == 645:
+            new_data = [float(v) for v in vals]
+            return APLArray(list(right.shape), new_data)
+        if target in (323, 163, 83):
+            new_data = [int(round(v)) for v in vals]
+            return APLArray(list(right.shape), new_data)
+        if target == 11:
+            from marple.backend import to_bool_array
+            new_data = to_bool_array([int(bool(v)) for v in vals])
+            return APLArray(list(right.shape), new_data)
+        if target == 80:
+            new_data = [chr(int(v)) for v in vals]
+            return APLArray(list(right.shape), new_data)
+        raise DomainError("Invalid ⎕DR type code: " + str(target))
