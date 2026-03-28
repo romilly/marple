@@ -202,7 +202,7 @@ def _dyadic_format(alpha: APLArray, omega: APLArray) -> APLArray:
             formatted = f"{float(v):.{precision}f}"
         else:
             formatted = str(v)
-        formatted = formatted.rjust(width)
+        formatted = _rjust(formatted, width)
         result_chars.extend(list(formatted))
     return APLArray([len(result_chars)], result_chars)
 
@@ -243,6 +243,16 @@ def _call_dfn(
     except _GuardTriggered as g:
         return g.value
     return result
+
+
+def _ljust(s: str, width: int) -> str:
+    """Left-justify string to width. MicroPython-compatible."""
+    return s + " " * max(0, width - len(s))
+
+
+def _rjust(s: str, width: int) -> str:
+    """Right-justify string to width. MicroPython-compatible."""
+    return " " * max(0, width - len(s)) + s
 
 
 def _eval_num(node: Num, env: dict[str, Any]) -> APLArray:
@@ -1224,7 +1234,7 @@ def _sys_cr(operand: APLArray, env: dict[str, Any]) -> APLArray:
     max_len = max(len(l) for l in lines) if lines else 0
     flat: list[object] = []
     for line in lines:
-        flat.extend(list(line.ljust(max_len)))
+        flat.extend(list(_ljust(line, max_len)))
     return APLArray([len(lines), max_len], flat)
 
 
@@ -1277,7 +1287,7 @@ def _sys_nl(operand: APLArray, env: dict[str, Any]) -> APLArray:
     max_len = max(len(n) for n in names)
     chars: list[object] = []
     for n in names:
-        chars.extend(list(n.ljust(max_len)))
+        chars.extend(list(_ljust(n, max_len)))
     return APLArray([len(names), max_len], chars)
 
 
@@ -1314,7 +1324,7 @@ def _csv_import(operand: APLArray, env: dict[str, Any]) -> APLArray:
             max_len = max((len(v) for v in col_data), default=0)
             chars: list[object] = []
             for v in col_data:
-                chars.extend(list(v.ljust(max_len)))
+                chars.extend(list(_ljust(v, max_len)))
             env[col_name] = APLArray([len(col_data), max_len], chars)
         name_table[col_name] = NC_ARRAY
     env["__name_table__"] = name_table
@@ -1462,7 +1472,7 @@ def _format_one_value(code: str, width: int, decimals: int,
         return " " * width if width > 0 else ""
     if code == "A":
         text = value if isinstance(value, str) else str(value)
-        return text.ljust(width) if width > 0 else text
+        return _ljust(text, width) if width > 0 else text
     num = float(value) if not isinstance(value, (int, float)) else value
     if code == "I":
         text = str(int(num))
@@ -1476,7 +1486,7 @@ def _format_one_value(code: str, width: int, decimals: int,
     else:
         text = str(num)
     text = text.replace("-", "¯")
-    return text.rjust(width) if width > 0 else text
+    return _rjust(text, width) if width > 0 else text
 
 
 def _apply_g_pattern(pattern: str, value: object) -> str:
@@ -1535,7 +1545,7 @@ def _apply_group(group: _FmtGroup, value: APLArray | None,
         for r in range(group.repeat):
             ch = row_chars[r * group.width:(r + 1) * group.width]
             field = "".join(ch)
-            parts.append(field.ljust(group.width) if group.width > 0 else field)
+            parts.append(_ljust(field, group.width) if group.width > 0 else field)
         return "".join(parts)
     else:
         # Numeric: extract scalar for this row
@@ -1617,7 +1627,7 @@ def _dyadic_fmt(fmt_str: str, values: list[APLArray]) -> APLArray:
     max_width = max(len(r) for r in rows) if rows else 0
     all_chars: list[object] = []
     for r in rows:
-        all_chars.extend(list(r.ljust(max_width)))
+        all_chars.extend(list(_ljust(r, max_width)))
     return APLArray([len(rows), max_width], all_chars)
 
 
