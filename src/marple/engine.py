@@ -196,10 +196,36 @@ class Interpreter:
         effective_io = io if io is not None else get_default_io()
         self.env: dict[str, Any] = dict(_SYSTEM_DEFAULTS)
         self.env["⎕IO"] = S(effective_io)
-        self._eval_dispatch = self._init_eval_dispatch()
-        self._sysvar_dispatch = self._init_sysvar_dispatch()
-        self._sys_fn_dispatch = self._init_sys_fn_dispatch()
-        self._monadic_env_dispatch = self._init_monadic_env_dispatch()
+        self._eval_dispatch: dict[type, Any] = {
+            Num: self._eval_num,
+            Str: self._eval_str,
+            Vector: self._eval_vector,
+            Var: self._eval_var,
+            SysVar: self._eval_sysvar,
+            MonadicFunc: self._eval_monadic_func,
+            DyadicFunc: self._eval_dyadic_func,
+            Assignment: self._eval_assignment,
+            Dfn: self._eval_dfn,
+            MonadicDfnCall: self._eval_monadic_dfn_call,
+            DyadicDfnCall: self._eval_dyadic_dfn_call,
+            Program: self._eval_program,
+            Omega: self._eval_omega,
+            Alpha: self._eval_alpha,
+            AlphaAlpha: self._eval_alpha_alpha,
+        }
+        self._sysvar_dispatch: dict[str, Any] = {
+            "⎕TS": self._sysvar_ts,
+            "⎕VER": self._sysvar_ver,
+        }
+        self._sys_fn_dispatch: dict[str, Any] = {
+            "⎕NC": self._sys_nc,
+            "⎕EX": self._sys_ex,
+            "⎕NL": self._sys_nl,
+        }
+        self._monadic_env_dispatch: dict[str, Any] = {
+            "⍳": self._monadic_iota,
+            "≢": self._monadic_tally,
+        }
 
     def _get_io(self) -> int:
         return int(self.env["⎕IO"].data[0])
@@ -244,25 +270,6 @@ class Interpreter:
 
     # ── Eval dispatch ──
 
-    def _init_eval_dispatch(self) -> dict[type, Any]:
-        return {
-            Num: self._eval_num,
-            Str: self._eval_str,
-            Vector: self._eval_vector,
-            Var: self._eval_var,
-            SysVar: self._eval_sysvar,
-            MonadicFunc: self._eval_monadic_func,
-            DyadicFunc: self._eval_dyadic_func,
-            Assignment: self._eval_assignment,
-            Dfn: self._eval_dfn,
-            MonadicDfnCall: self._eval_monadic_dfn_call,
-            DyadicDfnCall: self._eval_dyadic_dfn_call,
-            Program: self._eval_program,
-            Omega: self._eval_omega,
-            Alpha: self._eval_alpha,
-            AlphaAlpha: self._eval_alpha_alpha,
-        }
-
     def _evaluate(self, node: object) -> APLArray:
         """Evaluate an AST node."""
         handler = self._eval_dispatch.get(type(node))
@@ -292,12 +299,6 @@ class Interpreter:
         if node.name not in self.env:
             raise ValueError_(f"Undefined variable: {node.name}")
         return self.env[node.name]  # type: ignore[return-value]
-
-    def _init_sysvar_dispatch(self) -> dict[str, Any]:
-        return {
-            "⎕TS": self._sysvar_ts,
-            "⎕VER": self._sysvar_ver,
-        }
 
     def _eval_sysvar(self, node: SysVar) -> APLArray:
         handler = self._sysvar_dispatch.get(node.name)
@@ -351,12 +352,6 @@ class Interpreter:
         right = self._evaluate(node.right)
         left = self._evaluate(node.left)
         return self._dispatch_dyadic(node.function, left, right)
-
-    def _init_monadic_env_dispatch(self) -> dict[str, Any]:
-        return {
-            "⍳": self._monadic_iota,
-            "≢": self._monadic_tally,
-        }
 
     def _monadic_iota(self, operand: APLArray) -> APLArray:
         io = self._get_io()
@@ -476,13 +471,6 @@ class Interpreter:
         return result
 
     # ── System functions ──
-
-    def _init_sys_fn_dispatch(self) -> dict[str, Any]:
-        return {
-            "⎕NC": self._sys_nc,
-            "⎕EX": self._sys_ex,
-            "⎕NL": self._sys_nl,
-        }
 
     def _dispatch_sys_monadic(self, name: str, operand_node: object) -> APLArray:
         operand = self._evaluate(operand_node)
