@@ -11,9 +11,23 @@ class PicoConnection:
     SENTINEL = "\x00"
 
     def __init__(self, port: str, baud: int = 115200, timeout: float = 10) -> None:
-        self.ser = serial.Serial(port, baud, timeout=timeout)
+        self.ser = self._connect(port, baud, timeout)
         time.sleep(1)
         self._drain()
+
+    @staticmethod
+    def _connect(port: str, baud: int, timeout: float) -> serial.Serial:
+        """Try the given port, then the alternate ACM port if it fails."""
+        try:
+            return serial.Serial(port, baud, timeout=timeout)
+        except serial.SerialException:
+            if "ACM0" in port:
+                alt = port.replace("ACM0", "ACM1")
+            elif "ACM1" in port:
+                alt = port.replace("ACM1", "ACM0")
+            else:
+                raise
+            return serial.Serial(alt, baud, timeout=timeout)
 
     def _drain(self) -> None:
         """Discard any buffered output from the Pico."""
