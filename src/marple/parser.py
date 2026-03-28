@@ -180,7 +180,14 @@ class MonadicDopCall(Node):
             return NotImplemented
         return self.op_name == other.op_name and self.operand == other.operand and self.argument == other.argument
     def execute(self, ctx: object) -> APLArray:
-        return ctx.apply_monadic_dop(self)  # type: ignore[union-attr]
+        from marple.dfn_binding import DfnBinding
+        dop_val = ctx.evaluate(self.op_name)  # type: ignore[union-attr]
+        if not isinstance(dop_val, DfnBinding):
+            raise DomainError(f"Expected operator, got {type(dop_val)}")
+        operand = ctx.evaluate(self.operand)  # type: ignore[union-attr]
+        argument = ctx.evaluate(self.argument)  # type: ignore[union-attr]
+        alpha = ctx.evaluate(self.alpha) if self.alpha is not None else None  # type: ignore[union-attr]
+        return dop_val.apply(argument, alpha_alpha=operand, alpha=alpha)
 
 
 class DyadicDopCall:
@@ -394,7 +401,18 @@ class MonadicDfnCall(Node):
             return NotImplemented
         return self.dfn == other.dfn and self.operand == other.operand
     def execute(self, ctx: object) -> APLArray:
-        return ctx.apply_monadic_call(self)  # type: ignore[union-attr]
+        from marple.dfn_binding import DfnBinding
+        if isinstance(self.dfn, SysVar):
+            return ctx.dispatch_sys_monadic(self.dfn.name, self.operand)  # type: ignore[union-attr]
+        if isinstance(self.dfn, RankDerived):
+            return ctx.apply_rank_monadic(self.dfn, self.operand)  # type: ignore[union-attr]
+        dfn_val = ctx.evaluate(self.dfn)  # type: ignore[union-attr]
+        operand = ctx.evaluate(self.operand)  # type: ignore[union-attr]
+        if isinstance(dfn_val, DfnBinding):
+            return dfn_val.apply(operand)
+        if isinstance(dfn_val, FunctionRef):
+            return ctx.dispatch_monadic(dfn_val.glyph, operand)  # type: ignore[union-attr]
+        raise DomainError(f"Expected dfn, got {type(dfn_val)}")
 
 
 class DyadicDfnCall(Node):
@@ -407,7 +425,13 @@ class DyadicDfnCall(Node):
             return NotImplemented
         return self.dfn == other.dfn and self.left == other.left and self.right == other.right
     def execute(self, ctx: object) -> APLArray:
-        return ctx.apply_dyadic_call(self)  # type: ignore[union-attr]
+        from marple.dfn_binding import DfnBinding
+        dfn_val = ctx.evaluate(self.dfn)  # type: ignore[union-attr]
+        right = ctx.evaluate(self.right)  # type: ignore[union-attr]
+        left = ctx.evaluate(self.left)  # type: ignore[union-attr]
+        if isinstance(dfn_val, DfnBinding):
+            return dfn_val.apply(right, alpha=left)
+        raise DomainError(f"Expected dfn, got {type(dfn_val)}")
 
 
 class Program(Node):

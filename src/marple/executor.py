@@ -17,14 +17,10 @@ from marple.operator_binding import DerivedFunctionBinding
 from marple.parser import (
     BoundOperator,
     FunctionRef,
-    MonadicDfnCall,
-    MonadicDopCall,
-    DyadicDfnCall,
     Node,
     RankDerived,
     ReduceOp,
     ScanOp,
-    SysVar,
 )
 from marple.symbol_table import NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN
 
@@ -132,39 +128,6 @@ class Executor:
             raise ValueError_(f"Undefined system variable: {name}")
         return self.env[name]
 
-    def apply_monadic_call(self, node: MonadicDfnCall) -> APLArray:
-        from marple.dfn_binding import DfnBinding
-        if isinstance(node.dfn, SysVar):
-            return self._dispatch_sys_monadic(node.dfn.name, node.operand)
-        if isinstance(node.dfn, RankDerived):
-            return self._apply_rank_monadic(node.dfn, node.operand)
-        dfn_val = self.evaluate(node.dfn)
-        operand = self.evaluate(node.operand)
-        if isinstance(dfn_val, DfnBinding):
-            return dfn_val.apply(operand)
-        if isinstance(dfn_val, FunctionRef):
-            return MonadicFunctionBinding(self.env).apply(dfn_val.glyph, operand)
-        raise DomainError(f"Expected dfn, got {type(dfn_val)}")
-
-    def apply_dyadic_call(self, node: DyadicDfnCall) -> APLArray:
-        from marple.dfn_binding import DfnBinding
-        dfn_val = self.evaluate(node.dfn)
-        right = self.evaluate(node.right)
-        left = self.evaluate(node.left)
-        if isinstance(dfn_val, DfnBinding):
-            return dfn_val.apply(right, alpha=left)
-        raise DomainError(f"Expected dfn, got {type(dfn_val)}")
-
-    def apply_monadic_dop(self, node: MonadicDopCall) -> APLArray:
-        from marple.dfn_binding import DfnBinding
-        dop_val = self.evaluate(node.op_name)
-        if not isinstance(dop_val, DfnBinding):
-            raise DomainError(f"Expected operator, got {type(dop_val)}")
-        operand = self.evaluate(node.operand)
-        argument = self.evaluate(node.argument)
-        alpha = self.evaluate(node.alpha) if node.alpha is not None else None
-        return dop_val.apply(argument, alpha_alpha=operand, alpha=alpha)
-
     # ── System variables ──
 
     def _sysvar_ts(self) -> APLArray:
@@ -185,16 +148,16 @@ class Executor:
 
     # ── Rank operator ──
 
-    def _apply_rank_monadic(self, rank_node: RankDerived, operand_node: object) -> APLArray:
+    def apply_rank_monadic(self, rank_node: RankDerived, operand_node: object) -> APLArray:
         omega = self.evaluate(operand_node)
         rank_spec_val = self.evaluate(rank_node.rank_spec)
         a, _, _ = resolve_rank_spec(rank_spec_val)
         k = clamp_rank(a, len(omega.shape))
         frame_shape, cells = decompose(omega, k)
-        results = [self._apply_func_monadic(rank_node.function, cell) for cell in cells]
+        results = [self.apply_func_monadic(rank_node.function, cell) for cell in cells]
         return reassemble(frame_shape, results)
 
-    def _apply_func_monadic(self, func: object, omega: APLArray) -> APLArray:
+    def apply_func_monadic(self, func: object, omega: APLArray) -> APLArray:
         """Apply a function monadically. Used by rank operator."""
         if isinstance(func, str):
             return MonadicFunctionBinding(self.env).apply(func, omega)
@@ -211,7 +174,7 @@ class Executor:
 
     # ── System functions ──
 
-    def _dispatch_sys_monadic(self, name: str, operand_node: object) -> APLArray:
+    def dispatch_sys_monadic(self, name: str, operand_node: object) -> APLArray:
         operand = self.evaluate(operand_node)
         method_name = self._SYS_FN_DISPATCH.get(name)
         if method_name is not None:
