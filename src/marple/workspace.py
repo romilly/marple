@@ -143,8 +143,7 @@ def load_workspace(env: Any, ws_dir: str,
     user_files = [f for f in files if not f.startswith("__") and f.endswith(".apl")]
 
     if evaluate is None:
-        from marple.interpreter import interpret
-        evaluate = lambda line: interpret(line, env)
+        raise ValueError("evaluate callable is required for load_workspace")
 
     for filename in sys_files + user_files:
         filepath = os.path.join(ws_dir, filename)
