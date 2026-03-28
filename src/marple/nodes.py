@@ -294,8 +294,8 @@ class InnerProduct(Node):
         self.right = right
     def execute(self, ctx: ExecutionContext) -> APLArray:
         from marple.backend import to_list
-        alpha = ctx.evaluate(self.left)
         omega = ctx.evaluate(self.right)
+        alpha = ctx.evaluate(self.left)
         reduce_fn = ctx.resolve_dyadic(self.left_fn)
         apply_fn = ctx.resolve_dyadic(self.right_fn)
         return _inner_product(reduce_fn, apply_fn, alpha, omega)
@@ -307,8 +307,8 @@ class OuterProduct(Node):
         self.left = left
         self.right = right
     def execute(self, ctx: ExecutionContext) -> APLArray:
-        alpha = ctx.evaluate(self.left)
         omega = ctx.evaluate(self.right)
+        alpha = ctx.evaluate(self.left)
         func = ctx.resolve_dyadic(self.function)
         return _outer_product(func, alpha, omega)
 

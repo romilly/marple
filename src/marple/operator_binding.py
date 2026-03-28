@@ -165,4 +165,6 @@ class DerivedFunctionBinding:
             return DyadicFunctionBinding.resolve(function)
         if isinstance(function, FunctionRef):
             return DyadicFunctionBinding.resolve(function.glyph)
+        if callable(function):
+            return function
         raise DomainError(f"Expected function for operator, got {type(function)}")

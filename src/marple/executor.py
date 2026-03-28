@@ -161,6 +161,15 @@ class Executor:
         raise DomainError(f"Undefined namespace: {parts[0]}")
 
     def apply_derived(self, operator: str, function: object, operand: APLArray) -> APLArray:
+        # If function is an AST node (e.g. Dfn), evaluate it first
+        from marple.dfn_binding import DfnBinding
+        from marple.parser import Node as ParserNode
+        if isinstance(function, ParserNode):
+            val = self.evaluate(function)
+            if isinstance(val, DfnBinding):
+                function = lambda a, o, _b=val: _b.apply(o, alpha=a)
+            elif isinstance(val, FunctionRef):
+                function = val.glyph
         return DerivedFunctionBinding().apply(operator, function, operand)
 
     def assign(self, name: str, value_node: object) -> APLArray:
@@ -232,6 +241,18 @@ class Executor:
         if isinstance(func, BoundOperator) and isinstance(func.operator, str):
             return DerivedFunctionBinding().apply(
                 func.operator, func.left_operand, omega)
+        # AST node (Var, Dfn, etc.) — evaluate to get the function value, then apply
+        from marple.dfn_binding import DfnBinding
+        from marple.parser import Node
+        if isinstance(func, Node):
+            val = self.evaluate(func)
+            if isinstance(val, DfnBinding):
+                return val.apply(omega)
+            if isinstance(val, FunctionRef):
+                return MonadicFunctionBinding(self.env).apply(val.glyph, omega)
+            if hasattr(val, 'dfn') and hasattr(val, 'env'):
+                binding = DfnBinding(getattr(val, 'dfn'), self.env)
+                return binding.apply(omega)
         raise DomainError(f"Expected function for rank, got {type(func)}")
 
     def apply_rank_dyadic(self, rank_node: object, left_node: object, right_node: object) -> APLArray:
@@ -267,6 +288,14 @@ class Executor:
             return DyadicFunctionBinding(self.env).apply(func, alpha, omega)
         if isinstance(func, FunctionRef):
             return DyadicFunctionBinding(self.env).apply(func.glyph, alpha, omega)
+        from marple.dfn_binding import DfnBinding
+        from marple.parser import Node
+        if isinstance(func, Node):
+            val = self.evaluate(func)
+            if isinstance(val, DfnBinding):
+                return val.apply(omega, alpha=alpha)
+            if isinstance(val, FunctionRef):
+                return DyadicFunctionBinding(self.env).apply(val.glyph, alpha, omega)
         raise DomainError(f"Expected function for rank, got {type(func)}")
 
     # ── System functions ──
