@@ -278,7 +278,12 @@ def _eval_sysvar(node: SysVar, env: dict[str, Any]) -> APLArray:
         import time
         now = time.time()
         t = time.localtime(now)
-        ms = int((now % 1) * 1000)
+        # time.time() returns int on MicroPython; use ticks_ms if available
+        frac = now % 1
+        if frac == 0 and hasattr(time, "ticks_ms"):
+            ms = time.ticks_ms() % 1000
+        else:
+            ms = int(frac * 1000)
         return APLArray([7], [t[0], t[1], t[2], t[3], t[4], t[5], ms])
     if node.name == "⎕VER":
         from marple import __version__
