@@ -1,5 +1,7 @@
 """Class-based APL interpreter for MARPLE."""
 
+from __future__ import annotations
+
 import time
 from typing import Any
 
@@ -99,72 +101,6 @@ _SYS_FUNCTION_NAMES = (
     "⎕CR", "⎕FX",
 )
 
-_NAME_CLASS: dict[type, int] = {
-    APLArray: NC_ARRAY,
-}
-
-
-class DfnBinding:
-    """A dfn or dop bound to the environment in which it was defined."""
-
-    def __init__(self, dfn: Dfn, env: dict[str, Any], interpreter: 'Interpreter') -> None:
-        self.dfn = dfn
-        self.env = env
-        self._interpreter = interpreter
-
-    def apply(
-        self,
-        omega: APLArray,
-        alpha: APLArray | None = None,
-        alpha_alpha: object | None = None,
-        omega_omega: object | None = None,
-    ) -> APLArray:
-        """Apply this dfn or dop to its arguments."""
-        saved_env = self._interpreter.env
-        self._interpreter.env = self._make_env(omega, alpha, alpha_alpha, omega_omega)
-        try:
-            return self._execute_body()
-        finally:
-            self._interpreter.env = saved_env
-
-    def _make_env(
-        self,
-        omega: APLArray,
-        alpha: APLArray | None,
-        alpha_alpha: object | None,
-        omega_omega: object | None,
-    ) -> dict[str, Any]:
-        """Build the local environment for this call."""
-        local_env: dict[str, Any] = dict(self.env)
-        local_env["⍵"] = omega
-        if alpha is not None:
-            local_env["⍺"] = alpha
-        if alpha_alpha is not None:
-            local_env["⍺⍺"] = alpha_alpha
-        if omega_omega is not None:
-            local_env["⍵⍵"] = omega_omega
-        local_env["∇"] = self
-        return local_env
-
-    def _execute_body(self) -> APLArray:
-        """Execute the dfn body statements."""
-        evaluate = self._interpreter._evaluate
-        result = S(0)
-        for stmt in self.dfn.body:
-            if isinstance(stmt, AlphaDefault):
-                if "⍺" not in self._interpreter.env:
-                    self._interpreter.env["⍺"] = evaluate(stmt.default)
-            elif isinstance(stmt, Guard):
-                cond = evaluate(stmt.condition)
-                if cond.data[0]:
-                    return evaluate(stmt.body)
-            else:
-                result = evaluate(stmt)
-        return result
-
-
-_NAME_CLASS[DfnBinding] = NC_FUNCTION  # type: ignore[index]
-
 
 def _ljust(s: str, width: int) -> str:
     return s + " " * max(0, width - len(s))
@@ -193,7 +129,12 @@ def _apl_chars_to_str(data: Any) -> str:
     return "".join(str(c) for c in data)
 
 
-class Interpreter:
+# ── Executor: shared evaluation logic ──
+
+class Executor:
+    """Base class providing AST evaluation, shared by Interpreter and DfnBinding."""
+
+    env: dict[str, Any]
 
     # ── Monadic primitives (no env needed) ──
     _MONADIC_SIMPLE: dict[str, object] = {
@@ -242,91 +183,57 @@ class Interpreter:
         "○": circular,
     }
 
-    def __init__(self, io: int | None = None) -> None:
-        from marple.config import get_default_io
-        effective_io = io if io is not None else get_default_io()
-        self.env: dict[str, Any] = dict(_SYSTEM_DEFAULTS)
-        self.env["⎕IO"] = S(effective_io)
-        self._eval_dispatch: dict[type, Any] = {
-            Num: self._eval_num,
-            Str: self._eval_str,
-            Vector: self._eval_vector,
-            Var: self._eval_var,
-            SysVar: self._eval_sysvar,
-            MonadicFunc: self._eval_monadic_func,
-            DyadicFunc: self._eval_dyadic_func,
-            Assignment: self._eval_assignment,
-            Dfn: self._eval_dfn,
-            MonadicDfnCall: self._eval_monadic_dfn_call,
-            DyadicDfnCall: self._eval_dyadic_dfn_call,
-            Program: self._eval_program,
-            Omega: self._eval_omega,
-            Alpha: self._eval_alpha,
-            AlphaAlpha: self._eval_alpha_alpha,
-        }
-        self._sysvar_dispatch: dict[str, Any] = {
-            "⎕TS": self._sysvar_ts,
-            "⎕VER": self._sysvar_ver,
-        }
-        self._sys_fn_dispatch: dict[str, Any] = {
-            "⎕NC": self._sys_nc,
-            "⎕EX": self._sys_ex,
-            "⎕NL": self._sys_nl,
-        }
-        self._monadic_env_dispatch: dict[str, Any] = {
-            "⍳": self._monadic_iota,
-            "≢": self._monadic_tally,
-        }
+    # ── String-keyed dispatch tables (class-level, shared) ──
+
+    _SYSVAR_DISPATCH: dict[str, str] = {
+        "⎕TS": "_sysvar_ts",
+        "⎕VER": "_sysvar_ver",
+    }
+
+    _SYS_FN_DISPATCH: dict[str, str] = {
+        "⎕NC": "_sys_nc",
+        "⎕EX": "_sys_ex",
+        "⎕NL": "_sys_nl",
+    }
+
+    _MONADIC_ENV_DISPATCH: dict[str, str] = {
+        "⍳": "_monadic_iota",
+        "≢": "_monadic_tally",
+    }
+
+    # ── Type-keyed eval dispatch (class-level, shared) ──
+
+    _EVAL_DISPATCH: dict[type, str] = {
+        Num: "_eval_num",
+        Str: "_eval_str",
+        Vector: "_eval_vector",
+        Var: "_eval_var",
+        SysVar: "_eval_sysvar",
+        MonadicFunc: "_eval_monadic_func",
+        DyadicFunc: "_eval_dyadic_func",
+        Assignment: "_eval_assignment",
+        Dfn: "_eval_dfn",
+        MonadicDfnCall: "_eval_monadic_dfn_call",
+        DyadicDfnCall: "_eval_dyadic_dfn_call",
+        Program: "_eval_program",
+        Omega: "_eval_omega",
+        Alpha: "_eval_alpha",
+        AlphaAlpha: "_eval_alpha_alpha",
+    }
+
+    # ── Core evaluation ──
+
+    def _evaluate(self, node: object) -> APLArray:
+        method_name = self._EVAL_DISPATCH.get(type(node))
+        if method_name is not None:
+            return getattr(self, method_name)(node)
+        raise DomainError(f"Unknown AST node: {type(node)}")
 
     def _get_io(self) -> int:
         return int(self.env["⎕IO"].data[0])
 
     def _get_ct(self) -> float:
         return float(self.env["⎕CT"].data[0])
-
-    # ── Top-level run ──
-
-    def run(self, source: str) -> APLArray:
-        """Parse and evaluate APL source code."""
-        name_table = self.env.get("__name_table__", {})
-        for qfn in _SYS_FUNCTION_NAMES:
-            name_table[qfn] = NC_FUNCTION
-        self.env["__name_table__"] = name_table
-        op_arity = self.env.get("__operator_arity__", {})
-        source = _newlines_to_diamonds(source)
-        tree = parse(source, name_table, op_arity)
-        result = self._evaluate(tree)
-        if isinstance(tree, Assignment):
-            self._track_dfn_source(tree.name, source)
-        if isinstance(result, DfnBinding):
-            return S(0)
-        if isinstance(result, APLArray) and is_numeric_array(result.data):
-            result = APLArray(list(result.shape), maybe_downcast(result.data, _DOWNCAST_CT))
-        return result
-
-    def _track_dfn_source(self, name: str, source: str) -> None:
-        """Record source text for dfn/dop assignments (for workspace save)."""
-        value = self.env.get(name)
-        if not isinstance(value, DfnBinding):
-            return
-        sources = self.env.setdefault("__sources__", {})
-        sources[name] = source.strip()
-        if "⍺⍺" not in source and "⍵⍵" not in source:
-            return
-        name_table = self.env.get("__name_table__", {})
-        name_table[name] = NC_OPERATOR
-        self.env["__name_table__"] = name_table
-        op_ar = self.env.setdefault("__operator_arity__", {})
-        op_ar[name] = 2 if "⍵⍵" in source else 1
-
-    # ── Eval dispatch ──
-
-    def _evaluate(self, node: object) -> APLArray:
-        """Evaluate an AST node."""
-        handler = self._eval_dispatch.get(type(node))
-        if handler is not None:
-            return handler(node)
-        raise DomainError(f"Unknown AST node: {type(node)}")
 
     # ── Literal evaluators ──
 
@@ -352,9 +259,9 @@ class Interpreter:
         return self.env[node.name]  # type: ignore[return-value]
 
     def _eval_sysvar(self, node: SysVar) -> APLArray:
-        handler = self._sysvar_dispatch.get(node.name)
-        if handler is not None:
-            return handler()
+        method_name = self._SYSVAR_DISPATCH.get(node.name)
+        if method_name is not None:
+            return getattr(self, method_name)()
         if node.name not in self.env:
             raise ValueError_(f"Undefined system variable: {node.name}")
         return self.env[node.name]
@@ -379,7 +286,7 @@ class Interpreter:
         # Store a reference to env, not a copy — names added later
         # (e.g. forward references) are visible at call time when
         # DfnBinding._make_env copies the dict.
-        return DfnBinding(node, self.env, self)  # type: ignore[return-value]
+        return DfnBinding(node, self.env)  # type: ignore[return-value]
 
     def _eval_omega(self, node: Omega) -> APLArray:
         if "⍵" not in self.env:
@@ -416,9 +323,9 @@ class Interpreter:
         return S(1) if operand.is_scalar() else S(operand.shape[0])
 
     def _dispatch_monadic(self, glyph: str, operand: APLArray) -> APLArray:
-        handler = self._monadic_env_dispatch.get(glyph)
-        if handler is not None:
-            return handler(operand)
+        method_name = self._MONADIC_ENV_DISPATCH.get(glyph)
+        if method_name is not None:
+            return getattr(self, method_name)(operand)
         func = self._MONADIC_SIMPLE.get(glyph)
         if func is not None:
             return func(operand)  # type: ignore[operator]
@@ -448,7 +355,7 @@ class Interpreter:
         self.env["__name_table__"] = name_table
         self.env[name] = value
 
-    # ── Dfn / dop application ──
+    # ── Dfn / dop calls ──
 
     def _eval_monadic_dfn_call(self, node: MonadicDfnCall) -> APLArray:
         if isinstance(node.dfn, SysVar):
@@ -477,9 +384,9 @@ class Interpreter:
 
     def _dispatch_sys_monadic(self, name: str, operand_node: object) -> APLArray:
         operand = self._evaluate(operand_node)
-        handler = self._sys_fn_dispatch.get(name)
-        if handler is not None:
-            return handler(operand)
+        method_name = self._SYS_FN_DISPATCH.get(name)
+        if method_name is not None:
+            return getattr(self, method_name)(operand)
         raise DomainError(f"Unknown system function: {name}")
 
     def _sys_nc(self, operand: APLArray) -> APLArray:
@@ -522,3 +429,113 @@ class Interpreter:
         for n in names:
             chars.extend(list(_ljust(n, max_len)))
         return APLArray([len(names), max_len], chars)
+
+
+# ── DfnBinding: a dfn/dop that can evaluate its own body ──
+
+class DfnBinding(Executor):
+    """A dfn or dop bound to the environment in which it was defined."""
+
+    def __init__(self, dfn: Dfn, defining_env: dict[str, Any]) -> None:
+        self.dfn = dfn
+        self.defining_env = defining_env
+        self.env = defining_env  # current env; swapped during apply
+
+    def apply(
+        self,
+        omega: APLArray,
+        alpha: APLArray | None = None,
+        alpha_alpha: object | None = None,
+        omega_omega: object | None = None,
+    ) -> APLArray:
+        """Apply this dfn or dop to its arguments."""
+        saved_env = self.env
+        self.env = self._make_env(omega, alpha, alpha_alpha, omega_omega)
+        try:
+            return self._execute_body()
+        finally:
+            self.env = saved_env
+
+    def _make_env(
+        self,
+        omega: APLArray,
+        alpha: APLArray | None,
+        alpha_alpha: object | None,
+        omega_omega: object | None,
+    ) -> dict[str, Any]:
+        """Build the local environment for this call."""
+        local_env: dict[str, Any] = dict(self.defining_env)
+        local_env["⍵"] = omega
+        if alpha is not None:
+            local_env["⍺"] = alpha
+        if alpha_alpha is not None:
+            local_env["⍺⍺"] = alpha_alpha
+        if omega_omega is not None:
+            local_env["⍵⍵"] = omega_omega
+        local_env["∇"] = self
+        return local_env
+
+    def _execute_body(self) -> APLArray:
+        """Execute the dfn body statements."""
+        result = S(0)
+        for stmt in self.dfn.body:
+            if isinstance(stmt, AlphaDefault):
+                if "⍺" not in self.env:
+                    self.env["⍺"] = self._evaluate(stmt.default)
+            elif isinstance(stmt, Guard):
+                cond = self._evaluate(stmt.condition)
+                if cond.data[0]:
+                    return self._evaluate(stmt.body)
+            else:
+                result = self._evaluate(stmt)
+        return result
+
+
+_NAME_CLASS: dict[type, int] = {
+    APLArray: NC_ARRAY,
+    DfnBinding: NC_FUNCTION,
+}
+
+
+# ── Interpreter: top-level entry point ──
+
+class Interpreter(Executor):
+
+    def __init__(self, io: int | None = None) -> None:
+        from marple.config import get_default_io
+        effective_io = io if io is not None else get_default_io()
+        self.env: dict[str, Any] = dict(_SYSTEM_DEFAULTS)
+        self.env["⎕IO"] = S(effective_io)
+
+    def run(self, source: str) -> APLArray:
+        """Parse and evaluate APL source code."""
+        name_table = self.env.get("__name_table__", {})
+        for qfn in _SYS_FUNCTION_NAMES:
+            name_table[qfn] = NC_FUNCTION
+        self.env["__name_table__"] = name_table
+        op_arity = self.env.get("__operator_arity__", {})
+        source = _newlines_to_diamonds(source)
+        tree = parse(source, name_table, op_arity)
+        result = self._evaluate(tree)
+        if isinstance(tree, Assignment):
+            self._track_dfn_source(tree.name, source)
+        if isinstance(result, DfnBinding):
+            return S(0)
+        if isinstance(result, APLArray) and is_numeric_array(result.data):
+            result = APLArray(list(result.shape), maybe_downcast(result.data, _DOWNCAST_CT))
+        return result
+
+    def _track_dfn_source(self, name: str, source: str) -> None:
+        """Record source text for dfn/dop assignments (for workspace save)."""
+        value = self.env.get(name)
+        if not isinstance(value, DfnBinding):
+            return
+        sources = self.env.setdefault("__sources__", {})
+        sources[name] = source.strip()
+        if "⍺⍺" not in source and "⍵⍵" not in source:
+            return
+        name_table = self.env.get("__name_table__", {})
+        name_table[name] = NC_OPERATOR
+        self.env["__name_table__"] = name_table
+        op_ar = self.env.setdefault("__operator_arity__", {})
+        op_ar[name] = 2 if "⍵⍵" in source else 1
