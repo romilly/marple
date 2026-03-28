@@ -1,8 +1,23 @@
 from abc import ABC, abstractmethod
+from typing import Any, Protocol
 
 from marple.arraymodel import APLArray, S
 from marple.errors import SyntaxError_, DomainError, ValueError_
 from marple.tokenizer import Token, TokenType, Tokenizer
+
+
+class ExecutionContext(Protocol):
+    """Interface that AST nodes use to evaluate sub-expressions."""
+    env: Any
+    def evaluate(self, node: object) -> APLArray: ...
+    def dispatch_monadic(self, glyph: str, operand: APLArray) -> APLArray: ...
+    def dispatch_dyadic(self, glyph: str, left: APLArray, right: APLArray) -> APLArray: ...
+    def apply_derived(self, operator: str, function: object, operand: APLArray) -> APLArray: ...
+    def assign(self, name: str, value_node: object) -> APLArray: ...
+    def eval_sysvar(self, name: str) -> APLArray: ...
+    def create_binding(self, dfn_node: object) -> object: ...
+    def dispatch_sys_monadic(self, name: str, operand_node: object) -> APLArray: ...
+    def apply_rank_monadic(self, rank_node: object, operand_node: object) -> APLArray: ...
 
 
 # ── Category constants for Iverson's stack-based parser ──
@@ -53,15 +68,15 @@ class Node(ABC):
             return NotImplemented
         return self.__dict__ == other.__dict__
     @abstractmethod
-    def execute(self, ctx: object) -> object: ...
+    def execute(self, ctx: ExecutionContext) -> object: ...
 
 
 class Num(Node):
     def __init__(self, value: int | float) -> None:
         self.value = value
-    def execute(self, ctx: object) -> APLArray:
+    def execute(self, ctx: ExecutionContext) -> APLArray:
         value = self.value
-        if isinstance(value, float) and ctx.env.fr == 1287:  # type: ignore[union-attr]
+        if isinstance(value, float) and ctx.env.fr == 1287:
             from decimal import Decimal
             value = Decimal(str(self.value))
         return S(value)
@@ -70,14 +85,14 @@ class Num(Node):
 class Str(Node):
     def __init__(self, value: str) -> None:
         self.value = value
-    def execute(self, ctx: object) -> APLArray:
+    def execute(self, ctx: ExecutionContext) -> APLArray:
         return APLArray([len(self.value)], list(self.value))
 
 
 class Vector(Node):
     def __init__(self, elements: list[Num]) -> None:
         self.elements = elements
-    def execute(self, ctx: object) -> APLArray:
+    def execute(self, ctx: ExecutionContext) -> APLArray:
         values = [el.value for el in self.elements]
         return APLArray([len(values)], list(values))
 
@@ -86,9 +101,9 @@ class MonadicFunc(Node):
     def __init__(self, function: str, operand: object) -> None:
         self.function = function
         self.operand = operand
-    def execute(self, ctx: object) -> APLArray:
-        operand = ctx.evaluate(self.operand)  # type: ignore[union-attr]
-        return ctx.dispatch_monadic(self.function, operand)  # type: ignore[union-attr]
+    def execute(self, ctx: ExecutionContext) -> APLArray:
+        operand = ctx.evaluate(self.operand)
+        return ctx.dispatch_monadic(self.function, operand)
 
 
 class DyadicFunc(Node):
@@ -96,27 +111,27 @@ class DyadicFunc(Node):
         self.function = function
         self.left = left
         self.right = right
-    def execute(self, ctx: object) -> APLArray:
-        right = ctx.evaluate(self.right)  # type: ignore[union-attr]
-        left = ctx.evaluate(self.left)  # type: ignore[union-attr]
-        return ctx.dispatch_dyadic(self.function, left, right)  # type: ignore[union-attr]
+    def execute(self, ctx: ExecutionContext) -> APLArray:
+        right = ctx.evaluate(self.right)
+        left = ctx.evaluate(self.left)
+        return ctx.dispatch_dyadic(self.function, left, right)
 
 
 class Assignment(Node):
     def __init__(self, name: str, value: object) -> None:
         self.name = name
         self.value = value
-    def execute(self, ctx: object) -> APLArray:
-        return ctx.assign(self.name, self.value)  # type: ignore[union-attr]
+    def execute(self, ctx: ExecutionContext) -> APLArray:
+        return ctx.assign(self.name, self.value)
 
 
 class Var(Node):
     def __init__(self, name: str) -> None:
         self.name = name
-    def execute(self, ctx: object) -> APLArray:
-        if self.name not in ctx.env:  # type: ignore[union-attr]
+    def execute(self, ctx: ExecutionContext) -> APLArray:
+        if self.name not in ctx.env:
             raise ValueError_(f"Undefined variable: {self.name}")
-        return ctx.env[self.name]  # type: ignore[union-attr]
+        return ctx.env[self.name]
 
 
 class QualifiedVar:
@@ -133,9 +148,9 @@ class DerivedFunc(Node):
         self.operator = operator
         self.function = function
         self.operand = operand
-    def execute(self, ctx: object) -> APLArray:
-        operand = ctx.evaluate(self.operand)  # type: ignore[union-attr]
-        return ctx.apply_derived(self.operator, self.function, operand)  # type: ignore[union-attr]
+    def execute(self, ctx: ExecutionContext) -> APLArray:
+        operand = ctx.evaluate(self.operand)
+        return ctx.apply_derived(self.operator, self.function, operand)
 
 
 class MonadicDopCall(Node):
@@ -147,14 +162,14 @@ class MonadicDopCall(Node):
         self.operand = operand    # ⍺⍺ (the left function/array)
         self.argument = argument  # ⍵ (the right argument)
         self.alpha = alpha        # ⍺ (left arg when derived verb used dyadically)
-    def execute(self, ctx: object) -> APLArray:
+    def execute(self, ctx: ExecutionContext) -> APLArray:
         from marple.dfn_binding import DfnBinding
-        dop_val = ctx.evaluate(self.op_name)  # type: ignore[union-attr]
+        dop_val = ctx.evaluate(self.op_name)
         if not isinstance(dop_val, DfnBinding):
             raise DomainError(f"Expected operator, got {type(dop_val)}")
-        operand = ctx.evaluate(self.operand)  # type: ignore[union-attr]
-        argument = ctx.evaluate(self.argument)  # type: ignore[union-attr]
-        alpha = ctx.evaluate(self.alpha) if self.alpha is not None else None  # type: ignore[union-attr]
+        operand = ctx.evaluate(self.operand)
+        argument = ctx.evaluate(self.argument)
+        alpha = ctx.evaluate(self.alpha) if self.alpha is not None else None
         return dop_val.apply(argument, alpha_alpha=operand, alpha=alpha)
 
 
@@ -238,8 +253,8 @@ class OuterProduct:
 class SysVar(Node):
     def __init__(self, name: str) -> None:
         self.name = name
-    def execute(self, ctx: object) -> APLArray:
-        return ctx.eval_sysvar(self.name)  # type: ignore[union-attr]
+    def execute(self, ctx: ExecutionContext) -> APLArray:
+        return ctx.eval_sysvar(self.name)
 
 
 class Index:
@@ -253,33 +268,33 @@ class Index:
 
 
 class Omega(Node):
-    def execute(self, ctx: object) -> APLArray:
-        if "⍵" not in ctx.env:  # type: ignore[union-attr]
+    def execute(self, ctx: ExecutionContext) -> APLArray:
+        if "⍵" not in ctx.env:
             raise ValueError_("⍵ used outside of dfn")
-        return ctx.env["⍵"]  # type: ignore[union-attr]
+        return ctx.env["⍵"]
 
 
 class Alpha(Node):
-    def execute(self, ctx: object) -> APLArray:
-        if "⍺" not in ctx.env:  # type: ignore[union-attr]
+    def execute(self, ctx: ExecutionContext) -> APLArray:
+        if "⍺" not in ctx.env:
             raise ValueError_("⍺ used outside of dfn")
-        return ctx.env["⍺"]  # type: ignore[union-attr]
+        return ctx.env["⍺"]
 
 
 class FunctionRef(Node):
     """A reference to a primitive function glyph, used as a dop operand."""
     def __init__(self, glyph: str) -> None:
         self.glyph = glyph
-    def execute(self, ctx: object) -> object:
+    def execute(self, ctx: ExecutionContext) -> object:
         return self
 
 
 class AlphaAlpha(Node):
     """⍺⍺ — left operand reference in a dop."""
-    def execute(self, ctx: object) -> object:
-        if "⍺⍺" not in ctx.env:  # type: ignore[union-attr]
+    def execute(self, ctx: ExecutionContext) -> object:
+        if "⍺⍺" not in ctx.env:
             raise ValueError_("⍺⍺ used outside of dop")
-        return ctx.env["⍺⍺"]  # type: ignore[union-attr]
+        return ctx.env["⍺⍺"]
 
 
 class OmegaOmega:
@@ -344,26 +359,26 @@ class AlphaDefault:
 class Dfn(Node):
     def __init__(self, body: list[object]) -> None:
         self.body = body
-    def execute(self, ctx: object) -> object:
-        return ctx.create_binding(self)  # type: ignore[union-attr]
+    def execute(self, ctx: ExecutionContext) -> object:
+        return ctx.create_binding(self)
 
 
 class MonadicDfnCall(Node):
     def __init__(self, dfn: object, operand: object) -> None:
         self.dfn = dfn
         self.operand = operand
-    def execute(self, ctx: object) -> APLArray:
+    def execute(self, ctx: ExecutionContext) -> APLArray:
         from marple.dfn_binding import DfnBinding
         if isinstance(self.dfn, SysVar):
-            return ctx.dispatch_sys_monadic(self.dfn.name, self.operand)  # type: ignore[union-attr]
+            return ctx.dispatch_sys_monadic(self.dfn.name, self.operand)
         if isinstance(self.dfn, RankDerived):
-            return ctx.apply_rank_monadic(self.dfn, self.operand)  # type: ignore[union-attr]
-        dfn_val = ctx.evaluate(self.dfn)  # type: ignore[union-attr]
-        operand = ctx.evaluate(self.operand)  # type: ignore[union-attr]
+            return ctx.apply_rank_monadic(self.dfn, self.operand)
+        dfn_val = ctx.evaluate(self.dfn)
+        operand = ctx.evaluate(self.operand)
         if isinstance(dfn_val, DfnBinding):
             return dfn_val.apply(operand)
         if isinstance(dfn_val, FunctionRef):
-            return ctx.dispatch_monadic(dfn_val.glyph, operand)  # type: ignore[union-attr]
+            return ctx.dispatch_monadic(dfn_val.glyph, operand)
         raise DomainError(f"Expected dfn, got {type(dfn_val)}")
 
 
@@ -372,11 +387,11 @@ class DyadicDfnCall(Node):
         self.dfn = dfn
         self.left = left
         self.right = right
-    def execute(self, ctx: object) -> APLArray:
+    def execute(self, ctx: ExecutionContext) -> APLArray:
         from marple.dfn_binding import DfnBinding
-        dfn_val = ctx.evaluate(self.dfn)  # type: ignore[union-attr]
-        right = ctx.evaluate(self.right)  # type: ignore[union-attr]
-        left = ctx.evaluate(self.left)  # type: ignore[union-attr]
+        dfn_val = ctx.evaluate(self.dfn)
+        right = ctx.evaluate(self.right)
+        left = ctx.evaluate(self.left)
         if isinstance(dfn_val, DfnBinding):
             return dfn_val.apply(right, alpha=left)
         raise DomainError(f"Expected dfn, got {type(dfn_val)}")
@@ -385,10 +400,10 @@ class DyadicDfnCall(Node):
 class Program(Node):
     def __init__(self, statements: list[object]) -> None:
         self.statements = statements
-    def execute(self, ctx: object) -> object:
+    def execute(self, ctx: ExecutionContext) -> object:
         result: object = S(0)
         for stmt in self.statements:
-            result = ctx.evaluate(stmt)  # type: ignore[union-attr]
+            result = ctx.evaluate(stmt)
         return result
 
 
@@ -916,7 +931,7 @@ class Parser:
         if (
             self._current().type == TokenType.ALPHA
             and self._peek() is not None
-            and self._peek().type == TokenType.ASSIGN  # type: ignore[union-attr]
+            and self._peek().type == TokenType.ASSIGN
         ):
             self._eat(TokenType.ALPHA)
             self._eat(TokenType.ASSIGN)
