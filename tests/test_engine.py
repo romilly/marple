@@ -30,3 +30,11 @@ class TestRun:
         interp = Interpreter(io=0)
         result = interp.run("⍳3")
         assert result == APLArray([3], [0, 1, 2])
+
+
+class TestAssignmentAndState:
+    def test_assignment_persists(self) -> None:
+        interp = Interpreter(io=1)
+        interp.run("x←5")
+        result = interp.run("x+1")
+        assert result == S(6)
