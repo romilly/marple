@@ -239,6 +239,21 @@ class TestSystemFunctionsExtra:
             engine.run("⎕SIGNAL 3")
 
 
+class TestFmt:
+    def test_monadic_fmt(self, engine: object) -> None:
+        result = engine.run("⎕FMT 42")
+        assert result.shape == [2]
+        assert list(result.data) == ["4", "2"]
+
+    def test_dyadic_fmt(self, engine: object) -> None:
+        result = engine.run("'I5' ⎕FMT 42")
+        assert result.shape == [1, 5]
+
+    def test_fmt_semicolons(self, engine: object) -> None:
+        result = engine.run("⎕FMT (1;2;3)")
+        assert "".join(str(c) for c in result.data) == "1 2 3"
+
+
 class TestSystemFunctionsCRFXDL:
     def test_cr(self, engine: object) -> None:
         engine.run("add←{⍺+⍵}")
