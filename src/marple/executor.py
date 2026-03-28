@@ -381,6 +381,7 @@ class Executor:
 
     def _sys_fmt_dyadic(self, left_node: object, right_node: object) -> APLArray:
         """Dyadic ⎕FMT — format with specification string."""
+        from marple.fmt import dyadic_fmt
         from marple.nodes import FmtArgs
         left = self.evaluate(left_node)
         fmt_str = _apl_chars_to_str(left.data)
@@ -389,43 +390,7 @@ class Executor:
         else:
             right = self.evaluate(right_node)
             values = [right]
-        return self._apply_fmt_spec(fmt_str, values)
-
-    def _apply_fmt_spec(self, fmt_str: str, values: list[APLArray]) -> APLArray:
-        """Apply a format specification to values. Handles I, F, E, A codes."""
-        import re
-        groups = re.findall(r'([IFEA])(\d+)(?:\.(\d+))?', fmt_str)
-        if not groups:
-            raise DomainError(f"Invalid format specification: {fmt_str}")
-        all_data = values[0].data if not values[0].is_scalar() else [values[0].data[0]]
-        n_vals = len(all_data)
-        n_cols = len(groups)
-        n_rows = (n_vals + n_cols - 1) // n_cols if n_cols > 0 else 1
-        row_width = sum(int(g[1]) for g in groups)
-        result_chars: list[object] = []
-        idx = 0
-        for _row in range(n_rows):
-            for code, width_s, dec_s in groups:
-                width = int(width_s)
-                decimals = int(dec_s) if dec_s else 0
-                if idx < n_vals:
-                    v = all_data[idx]
-                    idx += 1
-                else:
-                    v = 0
-                if code == "I":
-                    formatted = str(int(v))
-                elif code == "F":
-                    formatted = f"{float(v):.{decimals}f}"
-                elif code == "E":
-                    formatted = f"{float(v):.{decimals}E}"
-                elif code == "A":
-                    formatted = str(v)[:width]
-                else:
-                    formatted = str(v)
-                padded = " " * max(0, width - len(formatted)) + formatted
-                result_chars.extend(list(padded[:width]))
-        return APLArray([n_rows, row_width], result_chars)
+        return dyadic_fmt(fmt_str, values)
 
     def _sys_cr(self, operand: APLArray) -> APLArray:
         fn_name = _apl_chars_to_str(operand.data)

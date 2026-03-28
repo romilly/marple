@@ -240,18 +240,47 @@ class TestSystemFunctionsExtra:
 
 
 class TestFmt:
-    def test_monadic_fmt(self, engine: object) -> None:
+    def test_monadic_fmt_scalar(self, engine: object) -> None:
         result = engine.run("⎕FMT 42")
         assert result.shape == [2]
         assert list(result.data) == ["4", "2"]
 
-    def test_dyadic_fmt(self, engine: object) -> None:
+    def test_monadic_fmt_vector(self, engine: object) -> None:
+        result = engine.run("⎕FMT 1 2 3")
+        assert "".join(str(c) for c in result.data) == "1 2 3"
+
+    def test_dyadic_fmt_integer(self, engine: object) -> None:
         result = engine.run("'I5' ⎕FMT 42")
         assert result.shape == [1, 5]
+
+    def test_dyadic_fmt_fixed(self, engine: object) -> None:
+        result = engine.run("'F8.2' ⎕FMT 3.14159")
+        chars = "".join(str(c) for c in result.data)
+        assert "3.14" in chars
+
+    def test_dyadic_fmt_alpha(self, engine: object) -> None:
+        result = engine.run("'5A1' ⎕FMT 'hello'")
+        assert "".join(str(c) for c in result.data) == "hello"
 
     def test_fmt_semicolons(self, engine: object) -> None:
         result = engine.run("⎕FMT (1;2;3)")
         assert "".join(str(c) for c in result.data) == "1 2 3"
+
+    def test_fmt_text_insertion(self, engine: object) -> None:
+        result = engine.run("'I3,⊂ => ⊃,I3' ⎕FMT (1;2)")
+        chars = "".join(str(c) for c in result.data)
+        assert "=>" in chars
+
+    def test_fmt_g_pattern(self, engine: object) -> None:
+        result = engine.run("'G⊂99/99/9999⊃' ⎕FMT 3142025")
+        chars = "".join(str(c) for c in result.data)
+        assert chars.strip() == "03/14/2025"
+
+    def test_fmt_error_bad_spec(self, engine: object) -> None:
+        import pytest
+        from marple.errors import DomainError
+        with pytest.raises(DomainError):
+            engine.run("'Z5' ⎕FMT 42")
 
 
 class TestSystemFunctionsCRFXDL:
