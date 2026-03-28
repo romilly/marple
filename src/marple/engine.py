@@ -10,34 +10,8 @@ from marple.backend import (
     _DOWNCAST_CT, is_numeric_array, maybe_downcast,
 )
 from marple.errors import DomainError, ValueError_
-from marple.functions import (
-    add,
-    subtract,
-    multiply,
-    divide,
-    maximum,
-    minimum,
-    power,
-    logarithm,
-    residue,
-    logical_and,
-    logical_or,
-    circular,
-)
+from marple.dyadic_functions import DyadicFunctionBinding
 from marple.monadic_functions import MonadicFunctionBinding
-from marple.structural import (
-    catenate,
-    drop,
-    encode,
-    decode,
-    expand,
-    replicate,
-    replicate_first,
-    reshape,
-    rotate,
-    take,
-    matrix_divide,
-)
 from marple.parser import (
     Alpha,
     AlphaAlpha,
@@ -121,33 +95,6 @@ class Executor:
     """Base class providing AST evaluation, shared by Interpreter and DfnBinding."""
 
     env: dict[str, Any]
-
-    # ── Dyadic primitives (no env needed) ──
-    _DYADIC_SIMPLE: dict[str, object] = {
-        "+": add,
-        "-": subtract,
-        "×": multiply,
-        "÷": divide,
-        "⌈": maximum,
-        "⌊": minimum,
-        "*": power,
-        "⍟": logarithm,
-        "|": residue,
-        "∧": logical_and,
-        "∨": logical_or,
-        "⍴": reshape,
-        ",": catenate,
-        "↑": take,
-        "↓": drop,
-        "⌽": rotate,
-        "⊤": encode,
-        "⊥": decode,
-        "/": replicate,
-        "⌿": replicate_first,
-        "\\": expand,
-        "⌹": matrix_divide,
-        "○": circular,
-    }
 
     # ── String-keyed dispatch tables (class-level, shared) ──
 
@@ -273,13 +220,7 @@ class Executor:
     def _eval_dyadic_func(self, node: DyadicFunc) -> APLArray:
         right = self._evaluate(node.right)
         left = self._evaluate(node.left)
-        return self._dispatch_dyadic(node.function, left, right)
-
-    def _dispatch_dyadic(self, glyph: str, left: APLArray, right: APLArray) -> APLArray:
-        func = self._DYADIC_SIMPLE.get(glyph)
-        if func is not None:
-            return func(left, right)  # type: ignore[operator]
-        raise DomainError(f"Unknown dyadic function: {glyph}")
+        return DyadicFunctionBinding(self.env).apply(node.function, left, right)
 
     # ── Assignment ──
 
