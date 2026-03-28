@@ -71,3 +71,10 @@ class TestSystemFunctions:
         interp.run("double←{⍵+⍵}")
         result = interp.run("double 3")
         assert result == S(6)
+
+
+class TestOperators:
+    def test_reduce(self) -> None:
+        interp = Interpreter(io=1)
+        result = interp.run("+/⍳5")
+        assert result == S(15)

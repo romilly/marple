@@ -76,3 +76,11 @@ class DyadicFunctionBinding:
         if func is not None:
             return func(left, right)  # type: ignore[operator]
         raise DomainError(f"Unknown dyadic function: {glyph}")
+
+    @classmethod
+    def resolve(cls, glyph: str) -> object:
+        """Return the callable for a glyph, for use by operators."""
+        func = cls._SIMPLE.get(glyph)
+        if func is not None:
+            return func
+        raise DomainError(f"Unknown function for operator: {glyph}")

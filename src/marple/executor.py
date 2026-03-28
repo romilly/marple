@@ -12,11 +12,13 @@ from marple.backend import (
 from marple.errors import DomainError, ValueError_
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.monadic_functions import MonadicFunctionBinding
+from marple.operator_binding import DerivedFunctionBinding
 from marple.symbol_table import NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN
 from marple.parser import (
     Alpha,
     AlphaAlpha,
     Assignment,
+    DerivedFunc,
     Dfn,
     DyadicDfnCall,
     DyadicFunc,
@@ -104,6 +106,7 @@ class Executor:
         MonadicFunc: "_eval_monadic_func",
         DyadicFunc: "_eval_dyadic_func",
         Assignment: "_eval_assignment",
+        DerivedFunc: "_eval_derived_func",
         Dfn: "_eval_dfn",
         MonadicDfnCall: "_eval_monadic_dfn_call",
         DyadicDfnCall: "_eval_dyadic_dfn_call",
@@ -200,6 +203,10 @@ class Executor:
         right = self._evaluate(node.right)
         left = self._evaluate(node.left)
         return DyadicFunctionBinding(self.env).apply(node.function, left, right)
+
+    def _eval_derived_func(self, node: DerivedFunc) -> APLArray:
+        operand = self._evaluate(node.operand)
+        return DerivedFunctionBinding().apply(node.operator, node.function, operand)
 
     # ── Assignment ──
 
