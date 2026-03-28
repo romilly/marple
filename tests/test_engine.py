@@ -59,6 +59,13 @@ class TestSystemFunctions:
         result = interp.run("⎕NL 3")
         assert result.shape[0] == 2
 
+    def test_quad_ex(self) -> None:
+        interp = Interpreter(io=1)
+        interp.run("x←42")
+        interp.run("⎕EX 'x'")
+        result = interp.run("⎕NC 'x'")
+        assert result == S(0)
+
     def test_dfn_definition(self) -> None:
         interp = Interpreter(io=1)
         interp.run("double←{⍵+⍵}")
