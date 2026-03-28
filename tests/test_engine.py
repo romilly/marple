@@ -78,3 +78,8 @@ class TestOperators:
         interp = Interpreter(io=1)
         result = interp.run("+/⍳5")
         assert result == S(15)
+
+    def test_scan(self) -> None:
+        interp = Interpreter(io=1)
+        result = interp.run("+\\⍳5")
+        assert result == APLArray([5], [1, 3, 6, 10, 15])
