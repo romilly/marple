@@ -1,0 +1,75 @@
+"""Bracket indexing tests — new engine."""
+
+from marple.arraymodel import APLArray, S
+from marple.engine import Interpreter
+
+
+class TestVectorIndexing:
+    def test_single_element(self) -> None:
+        i = Interpreter(io=1)
+        i.run("v←10 20 30 40 50")
+        assert i.run("v[3]") == S(30)
+
+    def test_multiple_elements(self) -> None:
+        i = Interpreter(io=1)
+        i.run("v←10 20 30 40 50")
+        assert i.run("v[1 3 5]") == APLArray([3], [10, 30, 50])
+
+
+class TestIndexingPreservesShape:
+    def test_scalar_index(self) -> None:
+        i = Interpreter(io=1)
+        i.run("v←10 20 30")
+        result = i.run("v[2]")
+        assert result.shape == []
+
+    def test_vector_index(self) -> None:
+        i = Interpreter(io=1)
+        i.run("v←10 20 30 40 50")
+        result = i.run("v[2 4]")
+        assert result.shape == [2]
+
+    def test_matrix_index(self) -> None:
+        i = Interpreter(io=1)
+        i.run("v←10 20 30 40 50")
+        result = i.run("v[2 3⍴1 2 3 4 5 1]")
+        assert result.shape == [2, 3]
+        assert list(result.data) == [10, 20, 30, 40, 50, 10]
+
+    def test_string_index_with_matrix(self) -> None:
+        result = Interpreter(io=1).run("'abcde'[2 3⍴1 2 3 4 5 1]")
+        assert result.shape == [2, 3]
+        assert result.data == ['a', 'b', 'c', 'd', 'e', 'a']
+
+
+class TestMatrixIndexing:
+    def test_single_element(self) -> None:
+        i = Interpreter(io=1)
+        i.run("M←2 3⍴⍳6")
+        assert i.run("M[2;3]") == S(6)
+
+    def test_entire_row(self) -> None:
+        i = Interpreter(io=1)
+        i.run("M←2 3⍴⍳6")
+        assert i.run("M[1;]") == APLArray([3], [1, 2, 3])
+
+    def test_entire_column(self) -> None:
+        i = Interpreter(io=1)
+        i.run("M←2 3⍴⍳6")
+        assert i.run("M[;2]") == APLArray([2], [2, 5])
+
+
+class TestIndexOriginZero:
+    def test_indexing_with_io0(self) -> None:
+        i = Interpreter(io=0)
+        i.run("v←10 20 30")
+        assert i.run("v[0]") == S(10)
+
+    def test_grade_up_with_io0(self) -> None:
+        assert Interpreter(io=0).run("⍋3 1 4") == APLArray([3], [1, 0, 2])
+
+    def test_index_of_with_io0(self) -> None:
+        assert Interpreter(io=0).run("10 20 30⍳20") == S(1)
+
+    def test_index_of_not_found_with_io0(self) -> None:
+        assert Interpreter(io=0).run("10 20 30⍳99") == S(3)

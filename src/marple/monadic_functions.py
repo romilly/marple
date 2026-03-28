@@ -94,10 +94,12 @@ class MonadicFunctionBinding:
     def _roll(self, operand: APLArray) -> APLArray:
         """Monadic ?: roll. ?N → random int ⎕IO..N, ?0 → random float [0,1)."""
         io = self._env.io
-        n = int(operand.data[0])
-        if n == 0:
-            return S(_random.random())
-        return S(_random.randint(io, n - 1 + io))
+        def roll_one(v: object) -> object:
+            n = int(v)  # type: ignore[arg-type]
+            return _random.random() if n == 0 else _random.randint(io, n - 1 + io)
+        if operand.is_scalar():
+            return S(roll_one(operand.data[0]))
+        return APLArray(list(operand.shape), [roll_one(v) for v in operand.data])
 
     def _format(self, operand: APLArray) -> APLArray:
         from marple.formatting import format_num

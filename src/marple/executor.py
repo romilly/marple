@@ -169,7 +169,10 @@ class Executor:
         value = self.evaluate(value_node)
         if isinstance(value, APLArray) and is_numeric_array(value.data):
             value = APLArray(list(value.shape), maybe_downcast(value.data, _DOWNCAST_CT))
-        self.env.bind_name(name, value, _name_class(value))
+        if name.startswith("⎕"):
+            self.env[name] = value
+        else:
+            self.env.bind_name(name, value, _name_class(value))
         return value if isinstance(value, APLArray) else S(0)
 
     def create_binding(self, dfn_node: Dfn) -> object:
