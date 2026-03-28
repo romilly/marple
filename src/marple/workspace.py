@@ -2,18 +2,22 @@
 import os
 from datetime import datetime
 try:
-    from typing import Any
+    from typing import Any, Callable
 except ImportError:
     pass
 
 from marple.arraymodel import APLArray, S
 from marple.backend import to_list
-from marple.interpreter import _DfnBinding, interpret
+
+
+def _is_dfn_binding(value: object) -> bool:
+    """Check if value is any kind of dfn binding (old or new)."""
+    return hasattr(value, 'dfn') and hasattr(value, 'env')
 
 
 def _format_value(value: object) -> str | None:
     """Convert an APLArray value to APL source text."""
-    if isinstance(value, _DfnBinding):
+    if _is_dfn_binding(value):
         return None
     if not isinstance(value, APLArray):
         return None
@@ -101,7 +105,7 @@ def save_workspace(env: dict[str, Any], ws_dir: str) -> None:
             continue
         value = env[name]
         filename = _entity_filename(name)
-        if isinstance(value, _DfnBinding) and name in sources:
+        if _is_dfn_binding(value) and name in sources:
             written_files.add(filename)
             with open(os.path.join(ws_dir, filename), "w") as f:
                 f.write(f"{sources[name]}\n")
@@ -118,8 +122,13 @@ def save_workspace(env: dict[str, Any], ws_dir: str) -> None:
             os.unlink(os.path.join(ws_dir, existing))
 
 
-def load_workspace(env: dict[str, Any], ws_dir: str) -> None:
-    """Load workspace from a directory."""
+def load_workspace(env: Any, ws_dir: str,
+                    evaluate: Callable[[str], Any] | None = None) -> None:
+    """Load workspace from a directory.
+
+    If evaluate is provided, it's called to execute each line.
+    Otherwise falls back to the old interpreter.
+    """
     # Read .ws marker for WSID
     ws_file = os.path.join(ws_dir, ".ws")
     if os.path.isfile(ws_file):
@@ -133,12 +142,16 @@ def load_workspace(env: dict[str, Any], ws_dir: str) -> None:
     sys_files = [f for f in files if f.startswith("__") and f.endswith(".apl")]
     user_files = [f for f in files if not f.startswith("__") and f.endswith(".apl")]
 
+    if evaluate is None:
+        from marple.interpreter import interpret
+        evaluate = lambda line: interpret(line, env)
+
     for filename in sys_files + user_files:
         filepath = os.path.join(ws_dir, filename)
         with open(filepath) as f:
             line = f.read().strip()
             if line:
-                interpret(line, env)
+                evaluate(line)
 
 
 def list_workspaces(root: str) -> list[str]:

@@ -94,6 +94,15 @@ class Environment:
         """Return the raw sources mapping."""
         return self.symbols.sources()
 
+    def quad_var_names(self) -> list[str]:
+        """Return sorted list of quad variable names."""
+        return sorted(self._quad_vars.keys())
+
+    def user_names(self) -> list[str]:
+        """Return sorted list of user-defined names in the symbol table."""
+        return sorted(n for n in self.symbols._values.keys()
+                       if not n.startswith("__"))
+
     # ── Dict-like interface ──
     # Lookup order: quad vars, then symbols, then locals (⍵, ⍺, ∇, etc.)
 
