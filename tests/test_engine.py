@@ -39,6 +39,13 @@ class TestAssignmentAndState:
         result = interp.run("x+1")
         assert result == S(6)
 
+    def test_instances_isolated(self) -> None:
+        a = Interpreter(io=1)
+        b = Interpreter(io=1)
+        a.run("x←99")
+        result = b.run("⎕NC 'x'")
+        assert result == S(0)
+
     def test_dfn_definition(self) -> None:
         interp = Interpreter(io=1)
         interp.run("double←{⍵+⍵}")
