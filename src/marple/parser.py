@@ -1,3 +1,5 @@
+from typing import Callable
+
 from marple.errors import SyntaxError_
 from marple.nodes import (  # noqa: F401 — re-exported for backward compatibility
     Alpha,
@@ -280,7 +282,7 @@ class Parser:
         self._pos += 1
         items.append((CAT_NOUN, QualifiedVar(tok.value.split("::"))))
 
-    _ITEM_DISPATCH: dict[str, object] = {
+    _ITEM_DISPATCH: dict[str, Callable[['Parser', Token, list[tuple[int, object]]], None]] = {
         TokenType.LBRACE: _item_lbrace,
         TokenType.NUMBER: _item_number,
         TokenType.STRING: _item_string,
@@ -396,7 +398,7 @@ class Parser:
             return DyadicDopCall(bound.operator, op_operand, r_operand, arg_node)
         return MonadicDopCall(bound.operator, op_operand, arg_node)
 
-    _BOUND_MONADIC_DISPATCH: dict[str, object] = {
+    _BOUND_MONADIC_DISPATCH: dict[str, Callable[['Parser', BoundOperator, object], object]] = {
         "/": _bound_monadic_reduce,
         "\\": _bound_monadic_reduce,
         "⌿": _bound_monadic_reduce,
@@ -453,7 +455,7 @@ class Parser:
             return DyadicDopCall(bound.operator, op_operand, r_operand, right_node)
         return MonadicDopCall(bound.operator, op_operand, right_node, alpha=left_node)
 
-    _BOUND_DYADIC_DISPATCH: dict[str, object] = {
+    _BOUND_DYADIC_DISPATCH: dict[str, Callable[['Parser', BoundOperator, object, object], object]] = {
         "⍤": _bound_dyadic_rank,
         ".": _bound_dyadic_inner,
         "∘.": _bound_dyadic_outer,
