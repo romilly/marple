@@ -97,7 +97,15 @@ class Executor:
     # ── Callback methods for node execute() ──
 
     def dispatch_monadic(self, glyph: str, operand: APLArray) -> APLArray:
+        if glyph == "⍎":
+            return self._execute_string(operand)
         return MonadicFunctionBinding(self.env).apply(glyph, operand)
+
+    def _execute_string(self, operand: APLArray) -> APLArray:
+        from marple.parser import parse
+        source = "".join(str(c) for c in operand.data)
+        tree = parse(source, self.env.class_dict())
+        return self.evaluate(tree)
 
     def dispatch_dyadic(self, glyph: str, left: APLArray, right: APLArray) -> APLArray:
         return DyadicFunctionBinding(self.env).apply(glyph, left, right)

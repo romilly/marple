@@ -153,3 +153,33 @@ class TestDyadicStructural:
         interp = Interpreter(io=1)
         assert interp.run("(1 2 3)≢(1 2 4)") == S(1)
         assert interp.run("(1 2 3)≢(1 2 3)") == S(0)
+
+
+class TestMonadicMissing:
+    def test_grade_up(self) -> None:
+        interp = Interpreter(io=1)
+        result = interp.run("⍋3 1 4 1 5")
+        assert result == APLArray([5], [2, 4, 1, 3, 5])
+
+    def test_grade_down(self) -> None:
+        interp = Interpreter(io=1)
+        result = interp.run("⍒3 1 4 1 5")
+        assert result == APLArray([5], [5, 3, 1, 2, 4])
+
+    def test_roll(self) -> None:
+        interp = Interpreter(io=1)
+        result = interp.run("?0")
+        val = result.data[0]
+        assert isinstance(val, float)
+        assert 0.0 <= val < 1.0
+
+    def test_format(self) -> None:
+        interp = Interpreter(io=1)
+        result = interp.run("⍕42")
+        assert result.shape == [2]
+        assert list(result.data) == ["4", "2"]
+
+    def test_execute(self) -> None:
+        interp = Interpreter(io=1)
+        result = interp.run("⍎'2+3'")
+        assert result == S(5)

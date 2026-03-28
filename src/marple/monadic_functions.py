@@ -20,7 +20,11 @@ from marple.functions import (
     logical_not,
     pi_times,
 )
+import random as _random
+
 from marple.structural import (
+    grade_down,
+    grade_up,
     ravel,
     reverse,
     shape,
@@ -54,6 +58,10 @@ class MonadicFunctionBinding:
     _ENV_DEPENDENT: dict[str, str] = {
         "⍳": "_iota",
         "≢": "_tally",
+        "⍋": "_grade_up",
+        "⍒": "_grade_down",
+        "?": "_roll",
+        "⍕": "_format",
     }
 
     def __init__(self, env: Environment) -> None:
@@ -76,3 +84,26 @@ class MonadicFunctionBinding:
 
     def _tally(self, operand: APLArray) -> APLArray:
         return S(1) if operand.is_scalar() else S(operand.shape[0])
+
+    def _grade_up(self, operand: APLArray) -> APLArray:
+        return grade_up(operand, self._env.io)
+
+    def _grade_down(self, operand: APLArray) -> APLArray:
+        return grade_down(operand, self._env.io)
+
+    def _roll(self, operand: APLArray) -> APLArray:
+        """Monadic ?: roll. ?N → random int ⎕IO..N, ?0 → random float [0,1)."""
+        io = self._env.io
+        n = int(operand.data[0])
+        if n == 0:
+            return S(_random.random())
+        return S(_random.randint(io, n - 1 + io))
+
+    def _format(self, operand: APLArray) -> APLArray:
+        from marple.formatting import format_num
+        if operand.is_scalar():
+            s = format_num(operand.data[0])
+        else:
+            parts = [format_num(val) for val in operand.data]
+            s = " ".join(parts)
+        return APLArray([len(s)], list(s))
