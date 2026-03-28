@@ -208,7 +208,6 @@ class TestQuadFR:
         i.run("⎕FR←1287")
         assert i.run("⎕FR") == S(1287)
 
-    @pytest.mark.xfail(reason="New engine does not yet validate ⎕FR values")
     def test_invalid_fr(self) -> None:
         with pytest.raises(DomainError):
             Interpreter(io=1).run("⎕FR←999")
@@ -260,7 +259,6 @@ class TestCR:
         text = "".join(str(c) for c in result.data).rstrip()
         assert "⋄" in text
 
-    @pytest.mark.xfail(reason="Multi-line ⎕FX via matrix not yet supported")
     def test_cr_multi_line_via_fx(self) -> None:
         i = Interpreter(io=1)
         lines = ["abs←{", "  ⍵<0:-⍵", "  ⍵}"]
@@ -571,7 +569,6 @@ class TestFileIO:
 
 
 class TestCSV:
-    @pytest.mark.xfail(reason="⎕CSV not yet implemented in new engine")
     def test_csv_numeric_columns(self) -> None:
         import os
         import tempfile
@@ -589,7 +586,6 @@ class TestCSV:
         finally:
             os.unlink(path)
 
-    @pytest.mark.xfail(reason="⎕CSV not yet implemented in new engine")
     def test_csv_returns_row_count(self) -> None:
         import os
         import tempfile
@@ -603,7 +599,6 @@ class TestCSV:
         finally:
             os.unlink(path)
 
-    @pytest.mark.xfail(reason="⎕CSV not yet implemented in new engine")
     def test_csv_text_columns(self) -> None:
         import os
         import tempfile

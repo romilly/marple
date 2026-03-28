@@ -14,7 +14,7 @@ from marple.symbol_table import NC_FUNCTION, NC_OPERATOR
 _SYS_FUNCTION_NAMES = (
     "⎕EA", "⎕UCS", "⎕NC", "⎕EX", "⎕SIGNAL", "⎕DR",
     "⎕NREAD", "⎕NWRITE", "⎕NEXISTS", "⎕NDELETE",
-    "⎕CR", "⎕FX",
+    "⎕CR", "⎕FX", "⎕CSV",
 )
 
 

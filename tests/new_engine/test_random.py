@@ -18,7 +18,6 @@ class TestRoll:
         val = int(result.data[0])
         assert 1 <= val <= 6
 
-    @pytest.mark.xfail(reason="New engine does not yet re-seed RNG on ⎕RL assignment")
     def test_roll_deterministic(self) -> None:
         i = Interpreter(io=1)
         i.run("⎕RL←42")
@@ -78,7 +77,6 @@ class TestDeal:
         for v in result.data:
             assert 1 <= v <= 10
 
-    @pytest.mark.xfail(reason="New engine does not yet re-seed RNG on ⎕RL assignment")
     def test_deal_deterministic(self) -> None:
         i = Interpreter(io=1)
         i.run("⎕RL←42")

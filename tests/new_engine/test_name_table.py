@@ -30,14 +30,12 @@ class TestNameTableFundamentals:
         i.run("f←{⍵×2}")
         assert i.run("f 5") == S(10)
 
-    @pytest.mark.xfail(reason="New engine does not yet enforce class change errors")
     def test_class_change_error(self) -> None:
         i = Interpreter(io=1)
         i.run("f←{⍵+1}")
         with pytest.raises(ClassError):
             i.run("f←42")
 
-    @pytest.mark.xfail(reason="New engine does not yet enforce class change errors")
     def test_class_change_error_array_to_function(self) -> None:
         i = Interpreter(io=1)
         i.run("x←42")

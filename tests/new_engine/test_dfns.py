@@ -230,7 +230,6 @@ class TestDopApplication:
         text = "".join(str(c) for c in result.data)
         assert "⍺⍺" in text
 
-    @pytest.mark.xfail(reason="⎕FX does not yet classify dops as NC=4")
     def test_fx_dop(self) -> None:
         i = Interpreter(io=1)
         i.run("⎕FX 'twice←{⍺⍺ ⍺⍺ ⍵}'")

@@ -93,6 +93,7 @@ class Executor:
         "⎕CR": "_sys_cr",
         "⎕FX": "_sys_fx",
         "⎕DL": "_sys_dl",
+        "⎕CSV": "_sys_csv",
     }
 
     # ── Core evaluation ──
@@ -179,9 +180,21 @@ class Executor:
         if isinstance(value, APLArray) and is_numeric_array(value.data):
             value = APLArray(list(value.shape), maybe_downcast(value.data, _DOWNCAST_CT))
         if name.startswith("⎕"):
+            if name == "⎕FR" and isinstance(value, APLArray):
+                fr_val = int(value.data[0])
+                if fr_val not in (645, 1287):
+                    raise DomainError(f"⎕FR must be 645 or 1287, got {fr_val}")
+            if name == "⎕RL" and isinstance(value, APLArray):
+                import random as _random
+                _random.seed(int(value.data[0]))
             self.env[name] = value
         else:
-            self.env.bind_name(name, value, _name_class(value))
+            new_class = _name_class(value)
+            old_class = self.env.name_class(name)
+            if old_class != 0 and new_class != 0 and old_class != new_class:
+                from marple.errors import ClassError
+                raise ClassError(f"Cannot change class of '{name}' from {old_class} to {new_class}")
+            self.env.bind_name(name, value, new_class)
         return value if isinstance(value, APLArray) else S(0)
 
     def create_binding(self, dfn_node: Dfn) -> object:
@@ -495,6 +508,8 @@ class Executor:
             raise DomainError("Not a defined function: " + fn_name)
         if isinstance(source, list):
             lines = source
+        elif "\n" in source:
+            lines = source.split("\n")
         else:
             lines = [source]
         max_len = max(len(l) for l in lines) if lines else 0
@@ -531,6 +546,9 @@ class Executor:
         if not isinstance(val, DfnBinding):
             raise DomainError("⎕FX did not produce a function")
         self.env.set_source(fn_name, text.strip())
+        if "⍺⍺" in text or "⍵⍵" in text:
+            self.env.classify(fn_name, NC_OPERATOR)
+            self.env.set_operator_arity(fn_name, 2 if "⍵⍵" in text else 1)
         chars = list(fn_name)
         return APLArray([len(chars)], chars)
 
@@ -540,6 +558,45 @@ class Executor:
         t0 = _time.time()
         _time.sleep(secs)
         return S(_time.time() - t0)
+
+    def _sys_csv(self, operand: APLArray) -> APLArray:
+        import csv as _csv
+        path = _apl_chars_to_str(operand.data)
+        with open(path, newline="") as f:
+            reader = _csv.reader(f)
+            headers = next(reader)
+            col_names = []
+            for h in headers:
+                name = h.strip().replace(" ", "_")
+                name = "".join(c if c.isalnum() or c == "_" else "_" for c in name)
+                col_names.append(name)
+            columns: list[list[str]] = [[] for _ in col_names]
+            row_count = 0
+            for row in reader:
+                row_count += 1
+                for i, val in enumerate(row):
+                    if i < len(columns):
+                        columns[i].append(val.strip())
+        for col_name, col_data in zip(col_names, columns):
+            try:
+                nums: list[int | float] = []
+                for v in col_data:
+                    if "." in v:
+                        nums.append(float(v))
+                    else:
+                        nums.append(int(v))
+                self.env.bind_name(col_name, APLArray([len(nums)], nums), NC_ARRAY)
+            except (ValueError, TypeError):
+                max_len = max((len(v) for v in col_data), default=0)
+                chars: list[object] = []
+                for v in col_data:
+                    chars.extend(list(v.ljust(max_len)))
+                self.env.bind_name(
+                    col_name,
+                    APLArray([len(col_data), max_len], chars),
+                    NC_ARRAY,
+                )
+        return S(row_count)
 
     def _sys_nread(self, operand: APLArray) -> APLArray:
         path = _apl_chars_to_str(operand.data)
