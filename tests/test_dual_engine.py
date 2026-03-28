@@ -178,6 +178,41 @@ class TestDyadicFormat:
         assert "3.14" in chars
 
 
+class TestBracketIndex:
+    def test_vector_index(self, engine: object) -> None:
+        assert engine.run("(⍳5)[2]") == S(2)
+
+    def test_vector_multiple(self, engine: object) -> None:
+        engine.run("v←10 20 30 40 50")
+        assert engine.run("v[1 3 5]") == APLArray([3], [10, 30, 50])
+
+    def test_matrix_index(self, engine: object) -> None:
+        assert engine.run("(3 4⍴⍳12)[2;3]") == S(7)
+
+    def test_matrix_row(self, engine: object) -> None:
+        engine.run("M←2 3⍴⍳6")
+        assert engine.run("M[1;]") == APLArray([3], [1, 2, 3])
+
+    def test_matrix_column(self, engine: object) -> None:
+        result = engine.run("(2 3⍴⍳6)[;2]")
+        assert result == APLArray([2], [2, 5])
+
+    def test_scalar_index_shape(self, engine: object) -> None:
+        engine.run("v←10 20 30")
+        result = engine.run("v[2]")
+        assert result.shape == []
+
+    def test_matrix_index_shape(self, engine: object) -> None:
+        engine.run("v←10 20 30 40 50")
+        result = engine.run("v[2 3⍴1 2 3 4 5 1]")
+        assert result.shape == [2, 3]
+
+    def test_string_index(self, engine: object) -> None:
+        result = engine.run("'abcde'[2 3⍴1 2 3 4 5 1]")
+        assert result.shape == [2, 3]
+        assert result.data == ['a', 'b', 'c', 'd', 'e', 'a']
+
+
 class TestDeal:
     def test_deal(self, engine: object) -> None:
         result = engine.run("3?10")

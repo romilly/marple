@@ -5,8 +5,20 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Protocol
 
+from typing import Generator
+
 from marple.arraymodel import APLArray, S
 from marple.errors import DomainError, ValueError_
+
+
+def _product(*lists: list[int]) -> Generator[tuple[int, ...], None, None]:
+    """Simple replacement for itertools.product (MicroPython compatible)."""
+    if not lists:
+        yield ()
+        return
+    for item in lists[0]:
+        for rest in _product(*lists[1:]):
+            yield (item,) + rest
 
 
 class ExecutionContext(Protocol):
@@ -219,14 +231,42 @@ class SysVar(Node):
         return ctx.eval_sysvar(self.name)
 
 
-class Index:
+class Index(Node):
     def __init__(self, array: object, indices: list[object | None]) -> None:
         self.array = array
         self.indices = indices
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Index):
-            return NotImplemented
-        return self.array == other.array and self.indices == other.indices
+    def execute(self, ctx: ExecutionContext) -> APLArray:
+        from marple.backend import to_list
+        array = ctx.evaluate(self.array)
+        io = ctx.env.io
+        data = to_list(array.data)
+        axis_indices: list[list[int]] = []
+        idx_shapes: list[list[int]] = []
+        for axis, idx_node in enumerate(self.indices):
+            if idx_node is None:
+                axis_indices.append(list(range(array.shape[axis])))
+                idx_shapes.append([array.shape[axis]])
+            else:
+                idx = ctx.evaluate(idx_node)
+                vals = to_list(idx.data) if not idx.is_scalar() else [idx.data[0]]
+                axis_indices.append([int(v) - io for v in vals])
+                idx_shapes.append(idx.shape if not idx.is_scalar() else [])
+        for axis in range(len(self.indices), len(array.shape)):
+            axis_indices.append(list(range(array.shape[axis])))
+            idx_shapes.append([array.shape[axis]])
+        strides = [1] * len(array.shape)
+        for i in range(len(array.shape) - 2, -1, -1):
+            strides[i] = strides[i + 1] * array.shape[i + 1]
+        result: list[object] = []
+        for combo in _product(*axis_indices):
+            flat = sum(i * s for i, s in zip(combo, strides))
+            result.append(data[flat])
+        result_shape: list[int] = []
+        for s in idx_shapes:
+            result_shape.extend(s)
+        if not result_shape:
+            return S(result[0])
+        return APLArray(result_shape, result)
 
 
 class Omega(Node):
