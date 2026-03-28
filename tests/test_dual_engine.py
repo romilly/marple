@@ -239,6 +239,37 @@ class TestSystemFunctionsExtra:
             engine.run("⎕SIGNAL 3")
 
 
+class TestFileIO:
+    def test_nwrite_and_nread(self, engine: object, tmp_path: object) -> None:
+        import os
+        path = os.path.join(str(tmp_path), "test.txt")
+        engine.run(f"'hello' ⎕NWRITE '{path}'")
+        result = engine.run(f"⎕NREAD '{path}'")
+        assert "".join(str(c) for c in result.data) == "hello"
+
+    def test_nexists_true(self, engine: object, tmp_path: object) -> None:
+        import os
+        path = os.path.join(str(tmp_path), "exists.txt")
+        with open(path, "w") as f:
+            f.write("x")
+        result = engine.run(f"⎕NEXISTS '{path}'")
+        assert result == S(1)
+
+    def test_nexists_false(self, engine: object, tmp_path: object) -> None:
+        import os
+        path = os.path.join(str(tmp_path), "nope.txt")
+        result = engine.run(f"⎕NEXISTS '{path}'")
+        assert result == S(0)
+
+    def test_ndelete(self, engine: object, tmp_path: object) -> None:
+        import os
+        path = os.path.join(str(tmp_path), "deleteme.txt")
+        with open(path, "w") as f:
+            f.write("x")
+        engine.run(f"⎕NDELETE '{path}'")
+        assert not os.path.exists(path)
+
+
 class TestDyadicSysFunctions:
     def test_ea_traps_error(self, engine: object) -> None:
         result = engine.run("'0' ⎕EA '1÷0'")

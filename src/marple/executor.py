@@ -87,6 +87,9 @@ class Executor:
         "⎕UCS": "_sys_ucs",
         "⎕DR": "_sys_dr",
         "⎕SIGNAL": "_sys_signal",
+        "⎕NREAD": "_sys_nread",
+        "⎕NEXISTS": "_sys_nexists",
+        "⎕NDELETE": "_sys_ndelete",
     }
 
     # ── Core evaluation ──
@@ -201,6 +204,7 @@ class Executor:
     _DYADIC_SYS_FN_DISPATCH: dict[str, str] = {
         "⎕EA": "_sys_ea",
         "⎕DR": "_sys_dr_dyadic",
+        "⎕NWRITE": "_sys_nwrite",
     }
 
     def dispatch_sys_monadic(self, name: str, operand_node: object) -> APLArray:
@@ -336,3 +340,35 @@ class Executor:
             new_data = [chr(int(v)) for v in vals]
             return APLArray(list(right.shape), new_data)
         raise DomainError("Invalid ⎕DR type code: " + str(target))
+
+    def _sys_nread(self, operand: APLArray) -> APLArray:
+        path = _apl_chars_to_str(operand.data)
+        with open(path) as f:
+            text = f.read()
+        chars = list(text)
+        return APLArray([len(chars)], chars) if chars else APLArray([0], [])
+
+    def _sys_nexists(self, operand: APLArray) -> APLArray:
+        import os
+        path = _apl_chars_to_str(operand.data)
+        try:
+            os.stat(path)
+            return S(1)
+        except OSError:
+            return S(0)
+
+    def _sys_ndelete(self, operand: APLArray) -> APLArray:
+        import os
+        path = _apl_chars_to_str(operand.data)
+        try:
+            os.remove(path)
+        except OSError:
+            raise DomainError("File not found: " + path)
+        return S(0)
+
+    def _sys_nwrite(self, left: APLArray, right: APLArray) -> APLArray:
+        path = _apl_chars_to_str(right.data)
+        text = _apl_chars_to_str(left.data)
+        with open(path, "w") as f:
+            f.write(text)
+        return APLArray([0], [])
