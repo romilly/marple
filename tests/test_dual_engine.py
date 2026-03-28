@@ -141,6 +141,18 @@ class TestMonadicExtra:
 
 
 class TestDfns:
+    def test_identity(self, engine: object) -> None:
+        assert engine.run("{⍵}5") == S(5)
+
+    def test_inline_double(self, engine: object) -> None:
+        assert engine.run("{⍵+⍵}3") == S(6)
+
+    def test_inline_negate(self, engine: object) -> None:
+        assert engine.run("{-⍵}5") == S(-5)
+
+    def test_dfn_with_vector(self, engine: object) -> None:
+        assert engine.run("{⍵+1}1 2 3") == APLArray([3], [2, 3, 4])
+
     def test_simple_dfn(self, engine: object) -> None:
         engine.run("double←{⍵+⍵}")
         assert engine.run("double 3") == S(6)
@@ -149,10 +161,53 @@ class TestDfns:
         engine.run("add←{⍺+⍵}")
         assert engine.run("3 add 4") == S(7)
 
+    def test_dyadic_avg(self, engine: object) -> None:
+        engine.run("avg←{(⍺+⍵)÷2}")
+        assert engine.run("3 avg 5") == S(4.0)
+
     def test_guard(self, engine: object) -> None:
         engine.run("abs←{⍵≥0:⍵ ⋄ -⍵}")
         assert engine.run("abs 5") == S(5)
         assert engine.run("abs ¯3") == S(3)
+
+    def test_guard_single(self, engine: object) -> None:
+        assert engine.run("{⍵=0:42⋄⍵}0") == S(42)
+        assert engine.run("{⍵=0:42⋄⍵}5") == S(5)
+
+    def test_multiple_guards(self, engine: object) -> None:
+        engine.run("sign←{⍵>0:1⋄⍵<0:¯1⋄0}")
+        assert engine.run("sign 5") == S(1)
+        assert engine.run("sign ¯3") == S(-1)
+        assert engine.run("sign 0") == S(0)
+
+    def test_factorial(self, engine: object) -> None:
+        engine.run("fact←{⍵≤1:1⋄⍵×∇ ⍵-1}")
+        assert engine.run("fact 5") == S(120)
+
+    def test_fibonacci(self, engine: object) -> None:
+        engine.run("fib←{⍵=0:0⋄⍵=1:1⋄(∇ ⍵-1)+∇ ⍵-2}")
+        assert engine.run("fib 6") == S(8)
+
+    def test_default_alpha_monadic(self, engine: object) -> None:
+        engine.run("pad←{⍺←0⋄⍺,⍵}")
+        assert engine.run("pad 1 2 3") == APLArray([4], [0, 1, 2, 3])
+
+    def test_default_alpha_overridden(self, engine: object) -> None:
+        engine.run("pad←{⍺←0⋄⍺,⍵}")
+        assert engine.run("9 pad 1 2 3") == APLArray([4], [9, 1, 2, 3])
+
+    def test_newline_separated(self, engine: object) -> None:
+        engine.run("abs←{⍵<0:-⍵\n⍵}")
+        assert engine.run("abs ¯7") == S(7)
+        assert engine.run("abs 3") == S(3)
+
+    def test_nested_dfn_calls(self, engine: object) -> None:
+        engine.run("double←{⍵+⍵}")
+        engine.run("quad←{double double ⍵}")
+        assert engine.run("quad 3") == S(12)
+
+    def test_inline_dyadic(self, engine: object) -> None:
+        assert engine.run("3{⍺+⍵}4") == S(7)
 
 
 class TestOperators:
