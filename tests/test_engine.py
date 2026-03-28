@@ -9,3 +9,7 @@ class TestConstruction:
     def test_construct_default(self, _mock_io: object) -> None:
         interp = Interpreter()
         assert interp.env["⎕IO"] == S(1)
+
+    def test_construct_io_zero(self) -> None:
+        interp = Interpreter(io=0)
+        assert interp.env["⎕IO"] == S(0)
