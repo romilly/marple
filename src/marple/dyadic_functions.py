@@ -22,6 +22,12 @@ from marple.functions import (
     logical_and,
     logical_or,
     circular,
+    less_than,
+    less_equal,
+    equal,
+    greater_equal,
+    greater_than,
+    not_equal,
 )
 from marple.structural import (
     catenate,
@@ -67,15 +73,45 @@ class DyadicFunctionBinding:
         "○": circular,
     }
 
+    _CT_COMPARISONS: dict[str, str] = {
+        "<": "_less_than",
+        "≤": "_less_equal",
+        "=": "_equal",
+        "≥": "_greater_equal",
+        ">": "_greater_than",
+        "≠": "_not_equal",
+    }
+
     def __init__(self, env: Environment) -> None:
         self._env = env
 
     def apply(self, glyph: str, left: APLArray, right: APLArray) -> APLArray:
         """Apply a dyadic primitive function to left and right arguments."""
+        method_name = self._CT_COMPARISONS.get(glyph)
+        if method_name is not None:
+            return getattr(self, method_name)(left, right)
         func = self._SIMPLE.get(glyph)
         if func is not None:
             return func(left, right)  # type: ignore[operator]
         raise DomainError(f"Unknown dyadic function: {glyph}")
+
+    def _less_than(self, left: APLArray, right: APLArray) -> APLArray:
+        return less_than(left, right, self._env.ct)
+
+    def _less_equal(self, left: APLArray, right: APLArray) -> APLArray:
+        return less_equal(left, right, self._env.ct)
+
+    def _equal(self, left: APLArray, right: APLArray) -> APLArray:
+        return equal(left, right, self._env.ct)
+
+    def _greater_equal(self, left: APLArray, right: APLArray) -> APLArray:
+        return greater_equal(left, right, self._env.ct)
+
+    def _greater_than(self, left: APLArray, right: APLArray) -> APLArray:
+        return greater_than(left, right, self._env.ct)
+
+    def _not_equal(self, left: APLArray, right: APLArray) -> APLArray:
+        return not_equal(left, right, self._env.ct)
 
     @classmethod
     def resolve(cls, glyph: str) -> object:

@@ -94,3 +94,35 @@ class TestOperators:
         interp.run("twice←{⍺⍺ ⍺⍺ ⍵}")
         result = interp.run("(-)twice 5")
         assert result == S(5)
+
+
+class TestComparisons:
+    def test_less_than(self) -> None:
+        interp = Interpreter(io=1)
+        assert interp.run("2<3") == S(1)
+        assert interp.run("3<2") == S(0)
+
+    def test_less_equal(self) -> None:
+        interp = Interpreter(io=1)
+        assert interp.run("2≤2") == S(1)
+        assert interp.run("3≤2") == S(0)
+
+    def test_equal(self) -> None:
+        interp = Interpreter(io=1)
+        assert interp.run("2=2") == S(1)
+        assert interp.run("2=3") == S(0)
+
+    def test_greater_equal(self) -> None:
+        interp = Interpreter(io=1)
+        assert interp.run("3≥2") == S(1)
+        assert interp.run("2≥3") == S(0)
+
+    def test_greater_than(self) -> None:
+        interp = Interpreter(io=1)
+        assert interp.run("3>2") == S(1)
+        assert interp.run("2>3") == S(0)
+
+    def test_not_equal(self) -> None:
+        interp = Interpreter(io=1)
+        assert interp.run("2≠3") == S(1)
+        assert interp.run("2≠2") == S(0)
