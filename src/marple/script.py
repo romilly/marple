@@ -4,8 +4,8 @@ try:
 except ImportError:
     pass
 
+from marple.engine import Interpreter
 from marple.errors import APLError
-from marple.interpreter import default_env, interpret
 from marple.repl import format_result, _is_silent
 
 
@@ -18,7 +18,7 @@ def run_script(path: str) -> list[str]:
     Echoes each input line with the REPL prompt, followed by output.
     Stops on first error with an error message including line number.
     """
-    env = default_env()
+    interp = Interpreter()
     output: list[str] = []
     with open(path) as f:
         for lineno, line in enumerate(f, 1):
@@ -29,9 +29,9 @@ def run_script(path: str) -> list[str]:
             if line.startswith("⍝"):
                 continue
             try:
-                result = interpret(line, env)
+                result = interp.run(line)
                 if not _is_silent(line):
-                    output.append(format_result(result, env))
+                    output.append(format_result(result, interp.env))
             except APLError as e:
                 output.append(f"{e} at line {lineno}")
                 output.append(f"  {line}")
