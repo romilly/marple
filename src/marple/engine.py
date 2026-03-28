@@ -191,6 +191,7 @@ class Interpreter:
         effective_io = io if io is not None else get_default_io()
         self.env: dict[str, Any] = dict(_SYSTEM_DEFAULTS)
         self.env["⎕IO"] = S(effective_io)
+        self._dispatch = self._init_dispatch()
 
     def _get_io(self) -> int:
         return int(self.env["⎕IO"].data[0])
@@ -229,44 +230,30 @@ class Interpreter:
             result = APLArray(list(result.shape), maybe_downcast(result.data, _DOWNCAST_CT))
         return result
 
+    def _init_dispatch(self) -> dict[type, Any]:
+        return {
+            Num: self._eval_num,
+            Str: self._eval_str,
+            Vector: self._eval_vector,
+            Var: self._eval_var,
+            SysVar: self._eval_sysvar,
+            MonadicFunc: self._eval_monadic_func,
+            DyadicFunc: self._eval_dyadic_func,
+            Assignment: self._eval_assignment,
+            Dfn: self._eval_dfn,
+            MonadicDfnCall: self._eval_monadic_dfn_call,
+            DyadicDfnCall: self._eval_dyadic_dfn_call,
+            Program: self._eval_program,
+            Omega: self._eval_omega,
+            Alpha: self._eval_alpha,
+            AlphaAlpha: self._eval_alpha_alpha,
+        }
+
     def _evaluate(self, node: object) -> APLArray:
         """Evaluate an AST node."""
-        if isinstance(node, Num):
-            return self._eval_num(node)
-        if isinstance(node, Str):
-            return self._eval_str(node)
-        if isinstance(node, Vector):
-            return self._eval_vector(node)
-        if isinstance(node, Var):
-            return self._eval_var(node)
-        if isinstance(node, SysVar):
-            return self._eval_sysvar(node)
-        if isinstance(node, MonadicFunc):
-            return self._eval_monadic_func(node)
-        if isinstance(node, DyadicFunc):
-            return self._eval_dyadic_func(node)
-        if isinstance(node, Assignment):
-            return self._eval_assignment(node)
-        if isinstance(node, Dfn):
-            return _DfnBinding(node, self.env)  # type: ignore[return-value]
-        if isinstance(node, MonadicDfnCall):
-            return self._eval_monadic_dfn_call(node)
-        if isinstance(node, DyadicDfnCall):
-            return self._eval_dyadic_dfn_call(node)
-        if isinstance(node, Program):
-            return self._eval_program(node)
-        if isinstance(node, Omega):
-            if "⍵" not in self.env:
-                raise ValueError_("⍵ used outside of dfn")
-            return self.env["⍵"]
-        if isinstance(node, Alpha):
-            if "⍺" not in self.env:
-                raise ValueError_("⍺ used outside of dfn")
-            return self.env["⍺"]
-        if isinstance(node, AlphaAlpha):
-            if "⍺⍺" not in self.env:
-                raise ValueError_("⍺⍺ used outside of dop")
-            return self.env["⍺⍺"]  # type: ignore[return-value]
+        handler = self._dispatch.get(type(node))
+        if handler is not None:
+            return handler(node)
         raise DomainError(f"Unknown AST node: {type(node)}")
 
     def _eval_num(self, node: Num) -> APLArray:
@@ -307,6 +294,24 @@ class Interpreter:
         if node.name not in self.env:
             raise ValueError_(f"Undefined system variable: {node.name}")
         return self.env[node.name]
+
+    def _eval_dfn(self, node: Dfn) -> APLArray:
+        return _DfnBinding(node, self.env)  # type: ignore[return-value]
+
+    def _eval_omega(self, node: Omega) -> APLArray:
+        if "⍵" not in self.env:
+            raise ValueError_("⍵ used outside of dfn")
+        return self.env["⍵"]
+
+    def _eval_alpha(self, node: Alpha) -> APLArray:
+        if "⍺" not in self.env:
+            raise ValueError_("⍺ used outside of dfn")
+        return self.env["⍺"]
+
+    def _eval_alpha_alpha(self, node: AlphaAlpha) -> APLArray:
+        if "⍺⍺" not in self.env:
+            raise ValueError_("⍺⍺ used outside of dop")
+        return self.env["⍺⍺"]  # type: ignore[return-value]
 
     def _eval_monadic_func(self, node: MonadicFunc) -> APLArray:
         operand = self._evaluate(node.operand)
