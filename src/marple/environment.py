@@ -48,6 +48,32 @@ class Environment:
     def fr(self) -> int:
         return int(self._quad_vars["⎕FR"].data[0])
 
+    # ── Symbol table delegation ──
+
+    def bind_name(self, name: str, value: object, name_class: int) -> None:
+        """Store a user-defined name with its value and class."""
+        self.symbols.bind(name, value, name_class)
+
+    def classify(self, name: str, name_class: int) -> None:
+        """Set a name's class without storing a value (e.g. system functions)."""
+        self.symbols.classify(name, name_class)
+
+    def name_class(self, name: str) -> int:
+        """Return the name class of a name (0 if unknown)."""
+        return self.symbols.name_class(name)
+
+    def delete_name(self, name: str) -> bool:
+        """Remove a user-defined name. Returns True if it existed."""
+        return self.symbols.delete(name)
+
+    def names_of_class(self, nc: int) -> list[str]:
+        """Return sorted list of user names with the given class."""
+        return self.symbols.names_of_class(nc)
+
+    def class_dict(self) -> dict[str, int]:
+        """Return the raw name-class mapping (for parser compatibility)."""
+        return self.symbols.class_dict()
+
     # ── Dict-like interface ──
     # Lookup order: quad vars, then symbols, then locals (⍵, ⍺, ∇, etc.)
 

@@ -28,10 +28,10 @@ class Interpreter(Executor):
     def run(self, source: str) -> APLArray:
         """Parse and evaluate APL source code."""
         for qfn in _SYS_FUNCTION_NAMES:
-            self.env.symbols.classify(qfn, NC_FUNCTION)
+            self.env.classify(qfn, NC_FUNCTION)
         op_arity = self.env.get("__operator_arity__", {})
         source = _newlines_to_diamonds(source)
-        tree = parse(source, self.env.symbols.class_dict(), op_arity)
+        tree = parse(source, self.env.class_dict(), op_arity)
         result = self._evaluate(tree)
         if isinstance(tree, Assignment):
             self._track_dfn_source(tree.name, source)
@@ -43,13 +43,13 @@ class Interpreter(Executor):
 
     def _track_dfn_source(self, name: str, source: str) -> None:
         """Record source text for dfn/dop assignments (for workspace save)."""
-        value = self.env.symbols.get(name)
+        value = self.env.get(name)
         if not isinstance(value, DfnBinding):
             return
         sources = self.env.setdefault("__sources__", {})
         sources[name] = source.strip()
         if "⍺⍺" not in source and "⍵⍵" not in source:
             return
-        self.env.symbols.classify(name, NC_OPERATOR)
+        self.env.classify(name, NC_OPERATOR)
         op_ar = self.env.setdefault("__operator_arity__", {})
         op_ar[name] = 2 if "⍵⍵" in source else 1

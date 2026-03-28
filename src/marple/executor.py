@@ -214,7 +214,7 @@ class Executor:
 
     def _bind_name(self, name: str, value: object) -> None:
         """Store a value in the symbol table with its name class."""
-        self.env.symbols.bind(name, value, _name_class(value))
+        self.env.bind_name(name, value, _name_class(value))
 
     # ── Dfn / dop calls ──
 
@@ -254,7 +254,7 @@ class Executor:
         raise DomainError(f"Unknown system function: {name}")
 
     def _sys_nc(self, operand: APLArray) -> APLArray:
-        return S(self.env.symbols.name_class(_apl_chars_to_str(operand.data)))
+        return S(self.env.name_class(_apl_chars_to_str(operand.data)))
 
     def _sys_ex(self, operand: APLArray) -> APLArray:
         if len(operand.shape) == 2:
@@ -273,11 +273,11 @@ class Executor:
 
     def _expunge_name(self, name: str) -> APLArray:
         """Remove a single name from the symbol table."""
-        return S(1) if self.env.symbols.delete(name) else S(0)
+        return S(1) if self.env.delete_name(name) else S(0)
 
     def _sys_nl(self, operand: APLArray) -> APLArray:
         nc = int(operand.data[0])
-        names = self.env.symbols.names_of_class(nc)
+        names = self.env.names_of_class(nc)
         if not names:
             return APLArray([0, 0], [])
         max_len = max(len(n) for n in names)
