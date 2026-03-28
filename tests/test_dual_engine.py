@@ -239,6 +239,24 @@ class TestSystemFunctionsExtra:
             engine.run("⎕SIGNAL 3")
 
 
+class TestMissingNodes:
+    def test_nabla_recursion(self, engine: object) -> None:
+        engine.run("fact←{⍵≤1:1 ⋄ ⍵×∇ ⍵-1}")
+        assert engine.run("fact 5") == S(120)
+
+    def test_omega_omega(self, engine: object) -> None:
+        engine.run("swap←{⍵⍵ ⍺⍺ ⍵}")
+        assert engine.run("2(+swap -)5") == S(-5)
+
+    def test_dyadic_dop(self, engine: object) -> None:
+        engine.run("apply←{(⍺⍺ ⍵)⍵⍵(⍺⍺ ⍵)}")
+        assert engine.run("(-)apply(+) 3") == S(-3)
+
+    def test_qualified_var(self, engine: object) -> None:
+        result = engine.run("$::str::upper 'hello'")
+        assert "".join(str(c) for c in result.data) == "HELLO"
+
+
 class TestFmt:
     def test_monadic_fmt_scalar(self, engine: object) -> None:
         result = engine.run("⎕FMT 42")

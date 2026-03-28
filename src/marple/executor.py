@@ -128,6 +128,38 @@ class Executor:
         binding = DyadicFunctionBinding(self.env)
         return binding.resolve_with_env(glyph)
 
+    def call_ibeam(self, path: str, operand: APLArray) -> APLArray:
+        """Call a Python function via i-beam."""
+        import importlib
+        parts = path.rsplit(".", 1)
+        if len(parts) != 2:
+            raise DomainError(f"Invalid i-beam path: {path}")
+        module_name, func_name = parts
+        try:
+            mod = importlib.import_module(module_name)
+        except ImportError:
+            raise DomainError(f"Cannot import module: {module_name}")
+        func = getattr(mod, func_name, None)
+        if func is None:
+            raise DomainError(f"Function not found: {path}")
+        result = func(operand)
+        if not isinstance(result, APLArray):
+            raise DomainError(f"I-beam function must return APLArray: {path}")
+        return result
+
+    def resolve_qualified(self, parts: list[str]) -> object:
+        from marple.namespace import Namespace, load_system_workspace
+        if parts[0] == "$":
+            import marple.stdlib
+            f = marple.stdlib.__file__
+            stdlib_path = f[:f.rfind("/")] if "/" in f else f[:f.rfind("\\")]
+            sys_ws = load_system_workspace(stdlib_path)
+            result = sys_ws.resolve(parts[1:])
+            if result is None:
+                raise DomainError("Undefined: " + "::".join(parts))
+            return result
+        raise DomainError(f"Undefined namespace: {parts[0]}")
+
     def apply_derived(self, operator: str, function: object, operand: APLArray) -> APLArray:
         return DerivedFunctionBinding().apply(operator, function, operand)
 

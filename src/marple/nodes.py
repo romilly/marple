@@ -115,6 +115,8 @@ class ExecutionContext(Protocol):
     def resolve_dyadic(self, fn: object) -> Any: ...
     def dispatch_sys_dyadic(self, name: str, left_node: object, right_node: object) -> APLArray: ...
     def apply_rank_dyadic(self, rank_node: object, left_node: object, right_node: object) -> APLArray: ...
+    def resolve_qualified(self, parts: list[str]) -> object: ...
+    def call_ibeam(self, path: str, operand: APLArray) -> APLArray: ...
 
 
 class Node(ABC):
@@ -190,13 +192,11 @@ class Var(Node):
         return ctx.env[self.name]
 
 
-class QualifiedVar:
+class QualifiedVar(Node):
     def __init__(self, parts: list[str]) -> None:
         self.parts = parts
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, QualifiedVar):
-            return NotImplemented
-        return self.parts == other.parts
+    def execute(self, ctx: ExecutionContext) -> object:
+        return ctx.resolve_qualified(self.parts)
 
 
 class DerivedFunc(Node):
@@ -229,17 +229,22 @@ class MonadicDopCall(Node):
         return dop_val.apply(argument, alpha_alpha=operand, alpha=alpha)
 
 
-class DyadicDopCall:
+class DyadicDopCall(Node):
     """User-defined operator applied dyadically: left (operand op) right"""
     def __init__(self, op_name: object, operand: object, left: object, right: object) -> None:
         self.op_name = op_name
         self.operand = operand
         self.left = left
         self.right = right
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, DyadicDopCall):
-            return NotImplemented
-        return self.op_name == other.op_name and self.operand == other.operand and self.left == other.left and self.right == other.right
+    def execute(self, ctx: ExecutionContext) -> APLArray:
+        from marple.dfn_binding import DfnBinding
+        dop_val = ctx.evaluate(self.op_name)
+        if not isinstance(dop_val, DfnBinding):
+            raise DomainError(f"Expected operator, got {type(dop_val)}")
+        left_operand = ctx.evaluate(self.operand)    # ⍺⍺
+        right_operand = ctx.evaluate(self.left)      # ⍵⍵
+        argument = ctx.evaluate(self.right)           # ⍵
+        return dop_val.apply(argument, alpha_alpha=left_operand, omega_omega=right_operand)
 
 
 class RankDerived:
@@ -273,14 +278,12 @@ class ScanOp:
         return self.function == other.function
 
 
-class IBeamDerived:
+class IBeamDerived(Node):
     """I-beam derived function: ⌶'module.function'"""
     def __init__(self, path: str) -> None:
         self.path = path
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, IBeamDerived):
-            return NotImplemented
-        return self.path == other.path
+    def execute(self, ctx: ExecutionContext) -> object:
+        return self
 
 
 class InnerProduct(Node):
@@ -385,9 +388,12 @@ class AlphaAlpha(Node):
         return ctx.env["⍺⍺"]
 
 
-class OmegaOmega:
+class OmegaOmega(Node):
     """⍵⍵ — right operand reference in a dop."""
-    pass
+    def execute(self, ctx: ExecutionContext) -> object:
+        if "⍵⍵" not in ctx.env:
+            raise ValueError_("⍵⍵ used outside of dop")
+        return ctx.env["⍵⍵"]
 
 
 # CAT_EMPTY is a parser category constant needed by BoundOperator's default arg
@@ -423,8 +429,11 @@ class FmtArgs:
         return self.args == other.args
 
 
-class Nabla:
-    pass
+class Nabla(Node):
+    def execute(self, ctx: ExecutionContext) -> object:
+        if "∇" not in ctx.env:
+            raise ValueError_("∇ used outside of dfn")
+        return ctx.env["∇"]
 
 
 class Guard:
@@ -469,6 +478,12 @@ class MonadicDfnCall(Node):
             return dfn_val.apply(operand)
         if isinstance(dfn_val, FunctionRef):
             return ctx.dispatch_monadic(dfn_val.glyph, operand)
+        if isinstance(dfn_val, IBeamDerived):
+            return ctx.call_ibeam(dfn_val.path, operand)
+        # Old-style _DfnBinding from namespace system — wrap and apply
+        if hasattr(dfn_val, 'dfn') and hasattr(dfn_val, 'env'):
+            binding = DfnBinding(getattr(dfn_val, 'dfn'), ctx.env)
+            return binding.apply(operand)
         raise DomainError(f"Expected dfn, got {type(dfn_val)}")
 
 
