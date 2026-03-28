@@ -31,7 +31,7 @@ class Interpreter(Executor):
             self.env.classify(qfn, NC_FUNCTION)
         source = _newlines_to_diamonds(source)
         tree = parse(source, self.env.class_dict(), self.env.operator_arity_dict())
-        result = self._evaluate(tree)
+        result = self.evaluate(tree)
         if isinstance(tree, Assignment):
             self._track_dfn_source(tree.name, source)
         if isinstance(result, DfnBinding):

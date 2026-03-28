@@ -1,4 +1,5 @@
-from marple.errors import SyntaxError_
+from marple.arraymodel import APLArray, S
+from marple.errors import SyntaxError_, DomainError, ValueError_
 from marple.tokenizer import Token, TokenType, Tokenizer
 
 
@@ -50,6 +51,12 @@ class Num:
         if not isinstance(other, Num):
             return NotImplemented
         return self.value == other.value
+    def execute(self, ctx: object) -> APLArray:
+        value = self.value
+        if isinstance(value, float) and ctx.env.fr == 1287:  # type: ignore[union-attr]
+            from decimal import Decimal
+            value = Decimal(str(self.value))
+        return S(value)
 
 
 class Str:
@@ -59,6 +66,8 @@ class Str:
         if not isinstance(other, Str):
             return NotImplemented
         return self.value == other.value
+    def execute(self, ctx: object) -> APLArray:
+        return APLArray([len(self.value)], list(self.value))
 
 
 class Vector:
@@ -68,6 +77,9 @@ class Vector:
         if not isinstance(other, Vector):
             return NotImplemented
         return self.elements == other.elements
+    def execute(self, ctx: object) -> APLArray:
+        values = [el.value for el in self.elements]
+        return APLArray([len(values)], list(values))
 
 
 class MonadicFunc:
@@ -78,6 +90,9 @@ class MonadicFunc:
         if not isinstance(other, MonadicFunc):
             return NotImplemented
         return self.function == other.function and self.operand == other.operand
+    def execute(self, ctx: object) -> APLArray:
+        operand = ctx.evaluate(self.operand)  # type: ignore[union-attr]
+        return ctx.dispatch_monadic(self.function, operand)  # type: ignore[union-attr]
 
 
 class DyadicFunc:
@@ -89,6 +104,10 @@ class DyadicFunc:
         if not isinstance(other, DyadicFunc):
             return NotImplemented
         return self.function == other.function and self.left == other.left and self.right == other.right
+    def execute(self, ctx: object) -> APLArray:
+        right = ctx.evaluate(self.right)  # type: ignore[union-attr]
+        left = ctx.evaluate(self.left)  # type: ignore[union-attr]
+        return ctx.dispatch_dyadic(self.function, left, right)  # type: ignore[union-attr]
 
 
 class Assignment:
@@ -99,6 +118,8 @@ class Assignment:
         if not isinstance(other, Assignment):
             return NotImplemented
         return self.name == other.name and self.value == other.value
+    def execute(self, ctx: object) -> APLArray:
+        return ctx.assign(self.name, self.value)  # type: ignore[union-attr]
 
 
 class Var:
@@ -108,6 +129,10 @@ class Var:
         if not isinstance(other, Var):
             return NotImplemented
         return self.name == other.name
+    def execute(self, ctx: object) -> APLArray:
+        if self.name not in ctx.env:  # type: ignore[union-attr]
+            raise ValueError_(f"Undefined variable: {self.name}")
+        return ctx.env[self.name]  # type: ignore[union-attr]
 
 
 class QualifiedVar:
@@ -128,6 +153,9 @@ class DerivedFunc:
         if not isinstance(other, DerivedFunc):
             return NotImplemented
         return self.operator == other.operator and self.function == other.function and self.operand == other.operand
+    def execute(self, ctx: object) -> APLArray:
+        operand = ctx.evaluate(self.operand)  # type: ignore[union-attr]
+        return ctx.apply_derived(self.operator, self.function, operand)  # type: ignore[union-attr]
 
 
 class MonadicDopCall:
@@ -143,6 +171,8 @@ class MonadicDopCall:
         if not isinstance(other, MonadicDopCall):
             return NotImplemented
         return self.op_name == other.op_name and self.operand == other.operand and self.argument == other.argument
+    def execute(self, ctx: object) -> APLArray:
+        return ctx.apply_monadic_dop(self)  # type: ignore[union-attr]
 
 
 class DyadicDopCall:
@@ -229,6 +259,8 @@ class SysVar:
         if not isinstance(other, SysVar):
             return NotImplemented
         return self.name == other.name
+    def execute(self, ctx: object) -> APLArray:
+        return ctx.eval_sysvar(self.name)  # type: ignore[union-attr]
 
 
 class Index:
@@ -242,11 +274,17 @@ class Index:
 
 
 class Omega:
-    pass
+    def execute(self, ctx: object) -> APLArray:
+        if "⍵" not in ctx.env:  # type: ignore[union-attr]
+            raise ValueError_("⍵ used outside of dfn")
+        return ctx.env["⍵"]  # type: ignore[union-attr]
 
 
 class Alpha:
-    pass
+    def execute(self, ctx: object) -> APLArray:
+        if "⍺" not in ctx.env:  # type: ignore[union-attr]
+            raise ValueError_("⍺ used outside of dfn")
+        return ctx.env["⍺"]  # type: ignore[union-attr]
 
 
 class FunctionRef:
@@ -257,11 +295,16 @@ class FunctionRef:
         if not isinstance(other, FunctionRef):
             return NotImplemented
         return self.glyph == other.glyph
+    def execute(self, ctx: object) -> object:
+        return self
 
 
 class AlphaAlpha:
     """⍺⍺ — left operand reference in a dop."""
-    pass
+    def execute(self, ctx: object) -> object:
+        if "⍺⍺" not in ctx.env:  # type: ignore[union-attr]
+            raise ValueError_("⍺⍺ used outside of dop")
+        return ctx.env["⍺⍺"]  # type: ignore[union-attr]
 
 
 class OmegaOmega:
@@ -330,6 +373,8 @@ class Dfn:
         if not isinstance(other, Dfn):
             return NotImplemented
         return self.body == other.body
+    def execute(self, ctx: object) -> object:
+        return ctx.create_binding(self)  # type: ignore[union-attr]
 
 
 class MonadicDfnCall:
@@ -340,6 +385,8 @@ class MonadicDfnCall:
         if not isinstance(other, MonadicDfnCall):
             return NotImplemented
         return self.dfn == other.dfn and self.operand == other.operand
+    def execute(self, ctx: object) -> APLArray:
+        return ctx.apply_monadic_call(self)  # type: ignore[union-attr]
 
 
 class DyadicDfnCall:
@@ -351,6 +398,8 @@ class DyadicDfnCall:
         if not isinstance(other, DyadicDfnCall):
             return NotImplemented
         return self.dfn == other.dfn and self.left == other.left and self.right == other.right
+    def execute(self, ctx: object) -> APLArray:
+        return ctx.apply_dyadic_call(self)  # type: ignore[union-attr]
 
 
 class Program:
@@ -360,6 +409,8 @@ class Program:
         if not isinstance(other, Program):
             return NotImplemented
         return self.statements == other.statements
+    def execute(self, ctx: object) -> APLArray:
+        return ctx.execute_program(self)  # type: ignore[union-attr]
 
 
 class Parser:

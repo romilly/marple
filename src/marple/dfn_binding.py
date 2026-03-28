@@ -60,11 +60,11 @@ class DfnBinding(Executor):
         for stmt in self.dfn.body:
             if isinstance(stmt, AlphaDefault):
                 if "⍺" not in self.env:
-                    self.env["⍺"] = self._evaluate(stmt.default)
+                    self.env["⍺"] = self.evaluate(stmt.default)
             elif isinstance(stmt, Guard):
-                cond = self._evaluate(stmt.condition)
+                cond = self.evaluate(stmt.condition)
                 if cond.data[0]:
-                    return self._evaluate(stmt.body)
+                    return self.evaluate(stmt.body)
             else:
-                result = self._evaluate(stmt)
+                result = self.evaluate(stmt)
         return result

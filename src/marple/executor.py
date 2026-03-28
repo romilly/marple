@@ -9,40 +9,27 @@ from marple.arraymodel import APLArray, S
 from marple.backend import (
     _DOWNCAST_CT, is_numeric_array, maybe_downcast,
 )
+from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
 from marple.errors import DomainError, ValueError_
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.monadic_functions import MonadicFunctionBinding
 from marple.operator_binding import DerivedFunctionBinding
-from marple.symbol_table import NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN
-from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
 from marple.parser import (
-    Alpha,
-    AlphaAlpha,
-    Assignment,
     BoundOperator,
-    DerivedFunc,
-    Dfn,
-    DyadicDfnCall,
-    DyadicFunc,
     FunctionRef,
     MonadicDfnCall,
     MonadicDopCall,
-    MonadicFunc,
-    Num,
-    Omega,
+    DyadicDfnCall,
     Program,
     RankDerived,
     ReduceOp,
     ScanOp,
-    Str,
     SysVar,
-    Var,
-    Vector,
 )
+from marple.symbol_table import NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN
 
 if TYPE_CHECKING:
     from marple.environment import Environment
-
 
 _READONLY_QUADS = frozenset({"⎕A", "⎕D", "⎕TS", "⎕EN", "⎕DM"})
 
@@ -102,67 +89,90 @@ class Executor:
         "⎕NL": "_sys_nl",
     }
 
-    # ── Type-keyed eval dispatch (class-level, shared) ──
-
-    _EVAL_DISPATCH: dict[type, str] = {
-        Num: "_eval_num",
-        Str: "_eval_str",
-        Vector: "_eval_vector",
-        Var: "_eval_var",
-        SysVar: "_eval_sysvar",
-        MonadicFunc: "_eval_monadic_func",
-        DyadicFunc: "_eval_dyadic_func",
-        Assignment: "_eval_assignment",
-        DerivedFunc: "_eval_derived_func",
-        FunctionRef: "_eval_function_ref",
-        Dfn: "_eval_dfn",
-        MonadicDfnCall: "_eval_monadic_dfn_call",
-        MonadicDopCall: "_eval_monadic_dop_call",
-        DyadicDfnCall: "_eval_dyadic_dfn_call",
-        Program: "_eval_program",
-        Omega: "_eval_omega",
-        Alpha: "_eval_alpha",
-        AlphaAlpha: "_eval_alpha_alpha",
-    }
-
     # ── Core evaluation ──
 
-    def _evaluate(self, node: object) -> APLArray:
-        method_name = self._EVAL_DISPATCH.get(type(node))
-        if method_name is not None:
-            return getattr(self, method_name)(node)
+    def evaluate(self, node: object) -> APLArray:
+        """Evaluate an AST node by calling its execute method."""
+        if hasattr(node, 'execute'):
+            return node.execute(self)  # type: ignore[union-attr]
         raise DomainError(f"Unknown AST node: {type(node)}")
 
-    # ── Literal evaluators ──
+    # ── Callback methods for node execute() ──
 
-    def _eval_num(self, node: Num) -> APLArray:
-        value = node.value
-        if isinstance(value, float) and self.env.fr == 1287:
-            from decimal import Decimal
-            value = Decimal(str(node.value))
-        return S(value)
+    def dispatch_monadic(self, glyph: str, operand: APLArray) -> APLArray:
+        return MonadicFunctionBinding(self.env).apply(glyph, operand)
 
-    def _eval_str(self, node: Str) -> APLArray:
-        return APLArray([len(node.value)], list(node.value))
+    def dispatch_dyadic(self, glyph: str, left: APLArray, right: APLArray) -> APLArray:
+        return DyadicFunctionBinding(self.env).apply(glyph, left, right)
 
-    def _eval_vector(self, node: Vector) -> APLArray:
-        values = [el.value for el in node.elements]
-        return APLArray([len(values)], list(values))
+    def apply_derived(self, operator: str, function: object, operand: APLArray) -> APLArray:
+        return DerivedFunctionBinding().apply(operator, function, operand)
 
-    # ── Variable evaluators ──
+    def assign(self, name: str, value_node: object) -> APLArray:
+        if name in _READONLY_QUADS:
+            raise DomainError(f"Cannot assign to read-only system variable {name}")
+        value = self.evaluate(value_node)
+        if isinstance(value, APLArray) and is_numeric_array(value.data):
+            value = APLArray(list(value.shape), maybe_downcast(value.data, _DOWNCAST_CT))
+        self.env.bind_name(name, value, _name_class(value))
+        return value if isinstance(value, APLArray) else S(0)
 
-    def _eval_var(self, node: Var) -> APLArray:
-        if node.name not in self.env:
-            raise ValueError_(f"Undefined variable: {node.name}")
-        return self.env[node.name]  # type: ignore[return-value]
+    def create_binding(self, dfn_node: object) -> object:
+        from marple.dfn_binding import DfnBinding
+        # Store a reference to env, not a copy — names added later
+        # (e.g. forward references) are visible at call time when
+        # DfnBinding._make_env copies the env.
+        return DfnBinding(dfn_node, self.env)
 
-    def _eval_sysvar(self, node: SysVar) -> APLArray:
-        method_name = self._SYSVAR_DISPATCH.get(node.name)
+    def eval_sysvar(self, name: str) -> APLArray:
+        method_name = self._SYSVAR_DISPATCH.get(name)
         if method_name is not None:
             return getattr(self, method_name)()
-        if node.name not in self.env:
-            raise ValueError_(f"Undefined system variable: {node.name}")
-        return self.env[node.name]
+        if name not in self.env:
+            raise ValueError_(f"Undefined system variable: {name}")
+        return self.env[name]
+
+    def apply_monadic_call(self, node: MonadicDfnCall) -> APLArray:
+        from marple.dfn_binding import DfnBinding
+        if isinstance(node.dfn, SysVar):
+            return self._dispatch_sys_monadic(node.dfn.name, node.operand)
+        if isinstance(node.dfn, RankDerived):
+            return self._apply_rank_monadic(node.dfn, node.operand)
+        dfn_val = self.evaluate(node.dfn)
+        operand = self.evaluate(node.operand)
+        if isinstance(dfn_val, DfnBinding):
+            return dfn_val.apply(operand)
+        if isinstance(dfn_val, FunctionRef):
+            return MonadicFunctionBinding(self.env).apply(dfn_val.glyph, operand)
+        raise DomainError(f"Expected dfn, got {type(dfn_val)}")
+
+    def apply_dyadic_call(self, node: DyadicDfnCall) -> APLArray:
+        from marple.dfn_binding import DfnBinding
+        dfn_val = self.evaluate(node.dfn)
+        right = self.evaluate(node.right)
+        left = self.evaluate(node.left)
+        if isinstance(dfn_val, DfnBinding):
+            return dfn_val.apply(right, alpha=left)
+        raise DomainError(f"Expected dfn, got {type(dfn_val)}")
+
+    def apply_monadic_dop(self, node: MonadicDopCall) -> APLArray:
+        from marple.dfn_binding import DfnBinding
+        dop_val = self.evaluate(node.op_name)
+        if not isinstance(dop_val, DfnBinding):
+            raise DomainError(f"Expected operator, got {type(dop_val)}")
+        operand = self.evaluate(node.operand)
+        argument = self.evaluate(node.argument)
+        alpha = self.evaluate(node.alpha) if node.alpha is not None else None
+        return dop_val.apply(argument, alpha_alpha=operand, alpha=alpha)
+
+    def execute_program(self, node: Program) -> APLArray:
+        from marple.dfn_binding import DfnBinding
+        result: APLArray | DfnBinding = S(0)
+        for stmt in node.statements:
+            result = self.evaluate(stmt)
+        return result if isinstance(result, APLArray) else S(0)
+
+    # ── System variables ──
 
     def _sysvar_ts(self) -> APLArray:
         now = time.time()
@@ -180,108 +190,11 @@ class Executor:
         s = "MARPLE v" + __version__ + " on " + sys.platform
         return APLArray([len(s)], list(s))
 
-    def _eval_dfn(self, node: Dfn) -> APLArray:
-        from marple.dfn_binding import DfnBinding
-        # Store a reference to env, not a copy — names added later
-        # (e.g. forward references) are visible at call time when
-        # DfnBinding._make_env copies the env.
-        return DfnBinding(node, self.env)  # type: ignore[return-value]
-
-    def _eval_omega(self, node: Omega) -> APLArray:
-        if "⍵" not in self.env:
-            raise ValueError_("⍵ used outside of dfn")
-        return self.env["⍵"]
-
-    def _eval_alpha(self, node: Alpha) -> APLArray:
-        if "⍺" not in self.env:
-            raise ValueError_("⍺ used outside of dfn")
-        return self.env["⍺"]
-
-    def _eval_alpha_alpha(self, node: AlphaAlpha) -> APLArray:
-        if "⍺⍺" not in self.env:
-            raise ValueError_("⍺⍺ used outside of dop")
-        return self.env["⍺⍺"]  # type: ignore[return-value]
-
-    # ── Primitive function dispatch ──
-
-    def _eval_monadic_func(self, node: MonadicFunc) -> APLArray:
-        operand = self._evaluate(node.operand)
-        return MonadicFunctionBinding(self.env).apply(node.function, operand)
-
-    def _eval_dyadic_func(self, node: DyadicFunc) -> APLArray:
-        right = self._evaluate(node.right)
-        left = self._evaluate(node.left)
-        return DyadicFunctionBinding(self.env).apply(node.function, left, right)
-
-    def _eval_function_ref(self, node: FunctionRef) -> APLArray:
-        return node  # type: ignore[return-value]
-
-    def _eval_derived_func(self, node: DerivedFunc) -> APLArray:
-        operand = self._evaluate(node.operand)
-        return DerivedFunctionBinding().apply(node.operator, node.function, operand)
-
-    # ── Assignment ──
-
-    def _eval_assignment(self, node: Assignment) -> APLArray:
-        if node.name in _READONLY_QUADS:
-            raise DomainError(f"Cannot assign to read-only system variable {node.name}")
-        value = self._evaluate(node.value)
-        if isinstance(value, APLArray) and is_numeric_array(value.data):
-            value = APLArray(list(value.shape), maybe_downcast(value.data, _DOWNCAST_CT))
-        self._bind_name(node.name, value)
-        return value if isinstance(value, APLArray) else S(0)
-
-    def _bind_name(self, name: str, value: object) -> None:
-        """Store a value in the symbol table with its name class."""
-        self.env.bind_name(name, value, _name_class(value))
-
-    # ── Dfn / dop calls ──
-
-    def _eval_monadic_dfn_call(self, node: MonadicDfnCall) -> APLArray:
-        from marple.dfn_binding import DfnBinding
-        if isinstance(node.dfn, SysVar):
-            return self._dispatch_sys_monadic(node.dfn.name, node.operand)
-        if isinstance(node.dfn, RankDerived):
-            return self._apply_rank_monadic(node.dfn, node.operand)
-        dfn_val = self._evaluate(node.dfn)
-        operand = self._evaluate(node.operand)
-        if isinstance(dfn_val, DfnBinding):
-            return dfn_val.apply(operand)
-        if isinstance(dfn_val, FunctionRef):
-            return MonadicFunctionBinding(self.env).apply(dfn_val.glyph, operand)
-        raise DomainError(f"Expected dfn, got {type(dfn_val)}")
-
-    def _eval_dyadic_dfn_call(self, node: DyadicDfnCall) -> APLArray:
-        from marple.dfn_binding import DfnBinding
-        dfn_val = self._evaluate(node.dfn)
-        right = self._evaluate(node.right)
-        left = self._evaluate(node.left)
-        if isinstance(dfn_val, DfnBinding):
-            return dfn_val.apply(right, alpha=left)
-        raise DomainError(f"Expected dfn, got {type(dfn_val)}")
-
-    def _eval_monadic_dop_call(self, node: MonadicDopCall) -> APLArray:
-        from marple.dfn_binding import DfnBinding
-        dop_val = self._evaluate(node.op_name)
-        if not isinstance(dop_val, DfnBinding):
-            raise DomainError(f"Expected operator, got {type(dop_val)}")
-        operand = self._evaluate(node.operand)
-        argument = self._evaluate(node.argument)
-        alpha = self._evaluate(node.alpha) if node.alpha is not None else None
-        return dop_val.apply(argument, alpha_alpha=operand, alpha=alpha)
-
-    def _eval_program(self, node: Program) -> APLArray:
-        from marple.dfn_binding import DfnBinding
-        result: APLArray | DfnBinding = S(0)
-        for stmt in node.statements:
-            result = self._evaluate(stmt)
-        return result if isinstance(result, APLArray) else S(0)
-
     # ── Rank operator ──
 
     def _apply_rank_monadic(self, rank_node: RankDerived, operand_node: object) -> APLArray:
-        omega = self._evaluate(operand_node)
-        rank_spec_val = self._evaluate(rank_node.rank_spec)
+        omega = self.evaluate(operand_node)
+        rank_spec_val = self.evaluate(rank_node.rank_spec)
         a, _, _ = resolve_rank_spec(rank_spec_val)
         k = clamp_rank(a, len(omega.shape))
         frame_shape, cells = decompose(omega, k)
@@ -306,7 +219,7 @@ class Executor:
     # ── System functions ──
 
     def _dispatch_sys_monadic(self, name: str, operand_node: object) -> APLArray:
-        operand = self._evaluate(operand_node)
+        operand = self.evaluate(operand_node)
         method_name = self._SYS_FN_DISPATCH.get(name)
         if method_name is not None:
             return getattr(self, method_name)(operand)
