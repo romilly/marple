@@ -38,3 +38,9 @@ class TestAssignmentAndState:
         interp.run("x←5")
         result = interp.run("x+1")
         assert result == S(6)
+
+    def test_dfn_definition(self) -> None:
+        interp = Interpreter(io=1)
+        interp.run("double←{⍵+⍵}")
+        result = interp.run("double 3")
+        assert result == S(6)
