@@ -74,6 +74,26 @@ class Environment:
         """Return the raw name-class mapping (for parser compatibility)."""
         return self.symbols.class_dict()
 
+    def set_operator_arity(self, name: str, arity: int) -> None:
+        """Record the arity of a user-defined operator."""
+        self.symbols.set_operator_arity(name, arity)
+
+    def operator_arity_dict(self) -> dict[str, int]:
+        """Return the raw operator arity mapping (for parser compatibility)."""
+        return self.symbols.operator_arity_dict()
+
+    def set_source(self, name: str, source: str) -> None:
+        """Record the source text of a dfn/dop assignment."""
+        self.symbols.set_source(name, source)
+
+    def get_source(self, name: str) -> str | None:
+        """Return the source text for a name, or None."""
+        return self.symbols.get_source(name)
+
+    def sources(self) -> dict[str, str]:
+        """Return the raw sources mapping."""
+        return self.symbols.sources()
+
     # ── Dict-like interface ──
     # Lookup order: quad vars, then symbols, then locals (⍵, ⍺, ∇, etc.)
 
