@@ -12,6 +12,7 @@ from marple.backend import (
 from marple.errors import DomainError, ValueError_
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.monadic_functions import MonadicFunctionBinding
+from marple.symbol_table import NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN
 from marple.parser import (
     Alpha,
     AlphaAlpha,
@@ -33,12 +34,6 @@ from marple.parser import (
 if TYPE_CHECKING:
     from marple.environment import Environment
 
-
-# Name classes (following Dyalog ⎕NC convention)
-NC_UNKNOWN = 0
-NC_ARRAY = 2
-NC_FUNCTION = 3
-NC_OPERATOR = 4
 
 _READONLY_QUADS = frozenset({"⎕A", "⎕D", "⎕TS", "⎕EN", "⎕DM"})
 
@@ -218,11 +213,8 @@ class Executor:
         return value if isinstance(value, APLArray) else S(0)
 
     def _bind_name(self, name: str, value: object) -> None:
-        """Store a value in the environment and update the name table."""
-        name_table = self.env.get("__name_table__", {})
-        name_table[name] = _name_class(value)
-        self.env["__name_table__"] = name_table
-        self.env[name] = value
+        """Store a value in the symbol table with its name class."""
+        self.env.symbols.bind(name, value, _name_class(value))
 
     # ── Dfn / dop calls ──
 
@@ -262,8 +254,7 @@ class Executor:
         raise DomainError(f"Unknown system function: {name}")
 
     def _sys_nc(self, operand: APLArray) -> APLArray:
-        name_table = self.env.get("__name_table__", {})
-        return S(name_table.get(_apl_chars_to_str(operand.data), 0))
+        return S(self.env.symbols.name_class(_apl_chars_to_str(operand.data)))
 
     def _sys_ex(self, operand: APLArray) -> APLArray:
         if len(operand.shape) == 2:
@@ -281,19 +272,12 @@ class Executor:
         return S(count)
 
     def _expunge_name(self, name: str) -> APLArray:
-        """Remove a single name from the environment and name table."""
-        if name not in self.env:
-            return S(0)
-        del self.env[name]
-        name_table = self.env.get("__name_table__", {})
-        name_table.pop(name, None)
-        return S(1)
+        """Remove a single name from the symbol table."""
+        return S(1) if self.env.symbols.delete(name) else S(0)
 
     def _sys_nl(self, operand: APLArray) -> APLArray:
         nc = int(operand.data[0])
-        name_table = self.env.get("__name_table__", {})
-        names = sorted(n for n, c in name_table.items()
-                       if c == nc and not n.startswith("⎕") and not n.startswith("__"))
+        names = self.env.symbols.names_of_class(nc)
         if not names:
             return APLArray([0, 0], [])
         max_len = max(len(n) for n in names)
