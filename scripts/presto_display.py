@@ -16,6 +16,7 @@ class PrestoDisplay:
         self.display = self.presto.display
         self.font = apl_font
         self.max_lines = (480 - 8) // apl_font.CELL_H
+        self.max_chars = (480 - 8) // apl_font.CELL_W
         self.bg = self.display.create_pen(20, 20, 30)
         self.input_pen = self.display.create_pen(200, 200, 220)
         self.output_pen = self.display.create_pen(200, 220, 200)
@@ -27,6 +28,7 @@ class PrestoDisplay:
         self.presto.update()
 
     def _show_line(self, text: str, pen: int) -> None:
+        text = text[:self.max_chars]
         self._lines.append((text, pen))
         if len(self._lines) > self.max_lines:
             self._lines = self._lines[-self.max_lines:]
