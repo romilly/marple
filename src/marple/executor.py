@@ -561,22 +561,23 @@ class Executor:
 
     def _sys_csv(self, operand: APLArray) -> APLArray:
         import csv as _csv
+        import io as _io
         path = _apl_chars_to_str(operand.data)
-        with open(path, newline="") as f:
-            reader = _csv.reader(f)
-            headers = next(reader)
-            col_names = []
-            for h in headers:
-                name = h.strip().replace(" ", "_")
-                name = "".join(c if c.isalnum() or c == "_" else "_" for c in name)
-                col_names.append(name)
-            columns: list[list[str]] = [[] for _ in col_names]
-            row_count = 0
-            for row in reader:
-                row_count += 1
-                for i, val in enumerate(row):
-                    if i < len(columns):
-                        columns[i].append(val.strip())
+        text = self.env.fs.read_text(path)
+        reader = _csv.reader(_io.StringIO(text))
+        headers = next(reader)
+        col_names = []
+        for h in headers:
+            name = h.strip().replace(" ", "_")
+            name = "".join(c if c.isalnum() or c == "_" else "_" for c in name)
+            col_names.append(name)
+        columns: list[list[str]] = [[] for _ in col_names]
+        row_count = 0
+        for row in reader:
+            row_count += 1
+            for i, val in enumerate(row):
+                if i < len(columns):
+                    columns[i].append(val.strip())
         for col_name, col_data in zip(col_names, columns):
             try:
                 nums: list[int | float] = []
@@ -600,25 +601,18 @@ class Executor:
 
     def _sys_nread(self, operand: APLArray) -> APLArray:
         path = _apl_chars_to_str(operand.data)
-        with open(path) as f:
-            text = f.read()
+        text = self.env.fs.read_text(path)
         chars = list(text)
         return APLArray([len(chars)], chars) if chars else APLArray([0], [])
 
     def _sys_nexists(self, operand: APLArray) -> APLArray:
-        import os
         path = _apl_chars_to_str(operand.data)
-        try:
-            os.stat(path)
-            return S(1)
-        except OSError:
-            return S(0)
+        return S(1 if self.env.fs.exists(path) else 0)
 
     def _sys_ndelete(self, operand: APLArray) -> APLArray:
-        import os
         path = _apl_chars_to_str(operand.data)
         try:
-            os.remove(path)
+            self.env.fs.delete(path)
         except OSError:
             raise DomainError("File not found: " + path)
         return S(0)
@@ -626,6 +620,5 @@ class Executor:
     def _sys_nwrite(self, left: APLArray, right: APLArray) -> APLArray:
         path = _apl_chars_to_str(right.data)
         text = _apl_chars_to_str(left.data)
-        with open(path, "w") as f:
-            f.write(text)
+        self.env.fs.write_text(path, text)
         return APLArray([0], [])

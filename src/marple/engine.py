@@ -1,6 +1,13 @@
 """Class-based APL interpreter for MARPLE."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from marple.arraymodel import APLArray, S
+
+if TYPE_CHECKING:
+    from marple.ports.filesystem import FileSystem
 from marple.backend import (
     _DOWNCAST_CT, is_numeric_array, maybe_downcast,
 )
@@ -20,10 +27,11 @@ _SYS_FUNCTION_NAMES = (
 
 class Interpreter(Executor):
 
-    def __init__(self, io: int | None = None) -> None:
+    def __init__(self, io: int | None = None,
+                 fs: 'FileSystem | None' = None) -> None:
         from marple.config import get_default_io
         effective_io = io if io is not None else get_default_io()
-        self.env = Environment(io=effective_io)
+        self.env = Environment(io=effective_io, fs=fs)
 
     def run(self, source: str) -> APLArray:
         """Parse and evaluate APL source code."""

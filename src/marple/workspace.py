@@ -8,6 +8,7 @@ except ImportError:
 
 from marple.arraymodel import APLArray, S
 from marple.backend import to_list
+from marple.ports.filesystem import FileSystem
 
 
 def _is_dfn_binding(value: object) -> bool:
@@ -63,9 +64,17 @@ def _entity_filename(name: str) -> str:
     return f"{name}.apl"
 
 
-def save_workspace(env: dict[str, Any], ws_dir: str) -> None:
+def _default_fs() -> FileSystem:
+    from marple.adapters.os_filesystem import OsFileSystem
+    return OsFileSystem()
+
+
+def save_workspace(env: dict[str, Any], ws_dir: str,
+                   fs: FileSystem | None = None) -> None:
     """Save workspace to a directory with one file per entity."""
-    os.makedirs(ws_dir, exist_ok=True)
+    if fs is None:
+        fs = _default_fs()
+    fs.makedirs(ws_dir)
 
     # Write .ws marker
     wsid_val = env.get("⎕WSID", env.get("__wsid__", "CLEAR WS"))
@@ -73,8 +82,8 @@ def save_workspace(env: dict[str, Any], ws_dir: str) -> None:
         wsid = "".join(str(c) for c in wsid_val.data)
     else:
         wsid = str(wsid_val)
-    with open(os.path.join(ws_dir, ".ws"), "w") as f:
-        f.write(f"{wsid}\n{datetime.now().isoformat()}\n")
+    fs.write_text(os.path.join(ws_dir, ".ws"),
+                  f"{wsid}\n{datetime.now().isoformat()}\n")
 
     # Track which files we write so we can clean up stale ones
     written_files: set[str] = {".ws"}
@@ -94,8 +103,8 @@ def save_workspace(env: dict[str, Any], ws_dir: str) -> None:
                 if formatted is not None:
                     filename = _entity_filename(name)
                     written_files.add(filename)
-                    with open(os.path.join(ws_dir, filename), "w") as f:
-                        f.write(f"{name}←{formatted}\n")
+                    fs.write_text(os.path.join(ws_dir, filename),
+                                  f"{name}←{formatted}\n")
 
     # Save user definitions
     for name in sorted(env):
@@ -107,38 +116,40 @@ def save_workspace(env: dict[str, Any], ws_dir: str) -> None:
         filename = _entity_filename(name)
         if _is_dfn_binding(value) and name in sources:
             written_files.add(filename)
-            with open(os.path.join(ws_dir, filename), "w") as f:
-                f.write(f"{sources[name]}\n")
+            fs.write_text(os.path.join(ws_dir, filename),
+                          f"{sources[name]}\n")
         elif isinstance(value, APLArray):
             formatted = _format_value(value)
             if formatted is not None:
                 written_files.add(filename)
-                with open(os.path.join(ws_dir, filename), "w") as f:
-                    f.write(f"{name}←{formatted}\n")
+                fs.write_text(os.path.join(ws_dir, filename),
+                              f"{name}←{formatted}\n")
 
     # Remove stale .apl files
-    for existing in os.listdir(ws_dir):
+    for existing in fs.listdir(ws_dir):
         if existing.endswith(".apl") and existing not in written_files:
-            os.unlink(os.path.join(ws_dir, existing))
+            fs.delete(os.path.join(ws_dir, existing))
 
 
 def load_workspace(env: Any, ws_dir: str,
-                    evaluate: Callable[[str], Any] | None = None) -> None:
+                    evaluate: Callable[[str], Any] | None = None,
+                    fs: FileSystem | None = None) -> None:
     """Load workspace from a directory.
 
     If evaluate is provided, it's called to execute each line.
-    Otherwise falls back to the old interpreter.
     """
+    if fs is None:
+        fs = _default_fs()
     # Read .ws marker for WSID
     ws_file = os.path.join(ws_dir, ".ws")
-    if os.path.isfile(ws_file):
-        with open(ws_file) as f:
-            wsid = f.readline().strip()
-            env["__wsid__"] = wsid
-            env["⎕WSID"] = APLArray([len(wsid)], list(wsid))
+    if fs.is_file(ws_file):
+        text = fs.read_text(ws_file)
+        wsid = text.split("\n")[0].strip()
+        env["__wsid__"] = wsid
+        env["⎕WSID"] = APLArray([len(wsid)], list(wsid))
 
     # Collect .apl files, system vars first
-    files = sorted(os.listdir(ws_dir))
+    files = sorted(fs.listdir(ws_dir))
     sys_files = [f for f in files if f.startswith("__") and f.endswith(".apl")]
     user_files = [f for f in files if not f.startswith("__") and f.endswith(".apl")]
 
@@ -147,19 +158,20 @@ def load_workspace(env: Any, ws_dir: str,
 
     for filename in sys_files + user_files:
         filepath = os.path.join(ws_dir, filename)
-        with open(filepath) as f:
-            line = f.read().strip()
-            if line:
-                evaluate(line)
+        line = fs.read_text(filepath).strip()
+        if line:
+            evaluate(line)
 
 
-def list_workspaces(root: str) -> list[str]:
+def list_workspaces(root: str, fs: FileSystem | None = None) -> list[str]:
     """List workspace names under the given root directory."""
-    if not os.path.isdir(root):
+    if fs is None:
+        fs = _default_fs()
+    if not fs.is_dir(root):
         return []
     result = []
-    for name in sorted(os.listdir(root)):
+    for name in sorted(fs.listdir(root)):
         ws_dir = os.path.join(root, name)
-        if os.path.isdir(ws_dir) and os.path.isfile(os.path.join(ws_dir, ".ws")):
+        if fs.is_dir(ws_dir) and fs.is_file(os.path.join(ws_dir, ".ws")):
             result.append(name)
     return result
