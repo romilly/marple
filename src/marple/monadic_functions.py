@@ -15,6 +15,7 @@ from marple.functions import (
     ceiling,
     floor,
     exponential,
+    factorial,
     natural_log,
     absolute_value,
     logical_not,
@@ -55,6 +56,7 @@ class MonadicFunctionBinding:
         "⍉": transpose,
         "⌹": matrix_inverse,
         "○": pi_times,
+        "!": factorial,
     }
 
     _ENV_DEPENDENT: dict[str, str] = {

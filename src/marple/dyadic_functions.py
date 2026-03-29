@@ -13,6 +13,7 @@ import random as _random
 from marple.errors import DomainError, LengthError
 from marple.functions import (
     add,
+    binomial,
     subtract,
     multiply,
     divide,
@@ -78,6 +79,7 @@ class DyadicFunctionBinding:
         "\\": expand,
         "⌹": matrix_divide,
         "○": circular,
+        "!": binomial,
         "≡": lambda a, o: S(1 if a == o else 0),
         "≢": lambda a, o: S(0 if a == o else 1),
     }

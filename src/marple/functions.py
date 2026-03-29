@@ -155,6 +155,16 @@ def pi_times(omega: APLArray) -> APLArray:
     return _pervade_monadic(lambda x: math.pi * x, omega)
 
 
+def factorial(omega: APLArray) -> APLArray:
+    return _pervade_monadic(lambda x: math.gamma(x + 1), omega)
+
+
+def binomial(alpha: APLArray, omega: APLArray) -> APLArray:
+    def _binom(k: float, n: float) -> float:
+        return math.gamma(n + 1) / (math.gamma(k + 1) * math.gamma(n - k + 1))
+    return _pervade_dyadic(_binom, alpha, omega)
+
+
 _CIRCULAR: dict[int, Callable[[float], float]] = {
     0: lambda x: math.sqrt(1 - x * x),
     1: math.sin,
