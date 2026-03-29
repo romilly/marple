@@ -153,63 +153,119 @@ def catenate(alpha: APLArray, omega: APLArray) -> APLArray:
     return APLArray(new_shape, result)
 
 
+def _fill_element(omega: APLArray) -> object:
+    """Return the fill element: ' ' for character arrays, 0 for numeric."""
+    if len(omega.data) > 0 and isinstance(omega.data[0], str):
+        return " "
+    return 0
+
+
+def _take_axis(data: list[object], axis_len: int, n: int,
+               fill: object) -> tuple[list[object], int]:
+    """Take n items along one axis. Returns (new_data, new_axis_len)."""
+    abs_n = abs(n)
+    if n >= 0:
+        taken = data[:abs_n]
+        pad = [fill] * max(0, abs_n - axis_len)
+        return taken + pad, abs_n
+    else:
+        taken = data[max(0, axis_len + n):]
+        pad = [fill] * max(0, abs_n - axis_len)
+        return pad + taken, abs_n
+
+
 def take(alpha: APLArray, omega: APLArray) -> APLArray:
-    """Dyadic ↑: take along first axis."""
-    n = int(alpha.data[0])
+    """Dyadic ↑: take along each axis. Scalar left → first axis only."""
+    counts = [int(x) for x in alpha.data]
+    fill = _fill_element(omega)
+    # Pad counts to match rank (fewer counts → keep trailing axes)
+    while len(counts) < len(omega.shape):
+        counts.append(omega.shape[len(counts)])
     if len(omega.shape) <= 1:
+        n = counts[0]
         data = list(omega.data)
-        length = len(data)
-        if n >= 0:
-            result = data[:n] + [0] * max(0, n - length)
-        else:
-            result = [0] * max(0, -n - length) + data[n:]
-        return APLArray([abs(n)], result)
-    # Higher rank: take/pad rows along first axis
+        result, new_len = _take_axis(data, len(data), n, fill)
+        return APLArray([new_len], result)
+    # Multi-axis: take first axis, then recurse on inner
+    n = counts[0]
+    abs_n = abs(n)
     chunk = _first_axis_chunk_size(omega.shape)
     num_rows = omega.shape[0]
-    abs_n = abs(n)
     data = list(omega.data)
-    fill = [0] * chunk
-    result: list[object] = []
+    fill_row = [fill] * chunk
+    rows: list[list[object]] = []
     for r in range(abs_n):
-        if n >= 0:
-            src = r
-        else:
-            src = num_rows + n + r
+        src = r if n >= 0 else num_rows + n + r
         if 0 <= src < num_rows:
-            result.extend(data[src * chunk:(src + 1) * chunk])
+            rows.append(data[src * chunk:(src + 1) * chunk])
         else:
-            result.extend(fill)
+            rows.append(list(fill_row))
+    # If more axes to take, apply to each row
+    if len(counts) > 1:
+        inner_shape = list(omega.shape[1:])
+        inner_counts = counts[1:]
+        processed: list[object] = []
+        for row in rows:
+            inner = APLArray(list(inner_shape), row)
+            taken = take(APLArray([len(inner_counts)], inner_counts), inner)
+            processed.extend(taken.data)
+            inner_shape_out = list(taken.shape)
+        new_shape = [abs_n] + inner_shape_out
+        return APLArray(new_shape, processed)
     new_shape = list(omega.shape)
     new_shape[0] = abs_n
-    return APLArray(new_shape, result)
+    result_data: list[object] = []
+    for row in rows:
+        result_data.extend(row)
+    return APLArray(new_shape, result_data)
 
 
 def drop(alpha: APLArray, omega: APLArray) -> APLArray:
-    """Dyadic ↓: drop along first axis."""
-    n = int(alpha.data[0])
+    """Dyadic ↓: drop along each axis. Scalar left → first axis only."""
+    counts = [int(x) for x in alpha.data]
+    # Pad counts to match rank (fewer counts → keep trailing axes)
+    while len(counts) < len(omega.shape):
+        counts.append(0)
     if len(omega.shape) <= 1:
+        n = counts[0]
         data = list(omega.data)
         if n >= 0:
             result = data[n:]
         else:
-            result = data[:n]
+            result = data[:n] if n != 0 else data
         return APLArray([len(result)], result)
-    # Higher rank: drop rows along first axis
+    # Multi-axis: drop first axis, then recurse on inner
+    n = counts[0]
     chunk = _first_axis_chunk_size(omega.shape)
     num_rows = omega.shape[0]
     data = list(omega.data)
     if n >= 0:
         start = min(n, num_rows)
-        result = data[start * chunk:]
-        new_rows = num_rows - start
+        kept_rows = num_rows - start
     else:
-        end = max(num_rows + n, 0)
-        result = data[:end * chunk]
-        new_rows = end
+        start = 0
+        kept_rows = max(num_rows + n, 0)
+    rows: list[list[object]] = []
+    for r in range(kept_rows):
+        src = start + r if n >= 0 else r
+        rows.append(data[src * chunk:(src + 1) * chunk])
+    if len(counts) > 1:
+        inner_shape = list(omega.shape[1:])
+        inner_counts = counts[1:]
+        processed: list[object] = []
+        for row in rows:
+            inner = APLArray(list(inner_shape), row)
+            dropped = drop(APLArray([len(inner_counts)], inner_counts), inner)
+            processed.extend(dropped.data)
+            inner_shape_out = list(dropped.shape)
+        new_shape = [kept_rows] + (inner_shape_out if rows else inner_shape)
+        return APLArray(new_shape, processed)
     new_shape = list(omega.shape)
-    new_shape[0] = new_rows
-    return APLArray(new_shape, list(result))
+    new_shape[0] = kept_rows
+    result_data: list[object] = []
+    for row in rows:
+        result_data.extend(row)
+    return APLArray(new_shape, result_data)
 
 
 def rotate(alpha: APLArray, omega: APLArray) -> APLArray:
