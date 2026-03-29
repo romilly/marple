@@ -2,7 +2,7 @@ def _isdigit(ch):
     return "0" <= ch <= "9"
 
 def _isalpha(ch):
-    return ("a" <= ch <= "z") or ("A" <= ch <= "Z")
+    return ("a" <= ch <= "z") or ("A" <= ch <= "Z") or ch in "∆⍙"
 
 def _isalnum(ch):
     return _isdigit(ch) or _isalpha(ch)
