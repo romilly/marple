@@ -220,15 +220,9 @@ def grade_down(omega: APLArray, io: int = 1) -> APLArray:
     return APLArray([len(omega.data)], [i + io for i, _ in indexed])
 
 
-def encode(alpha: APLArray, omega: APLArray) -> APLArray:
-    """Dyadic ⊤: represent omega in the radix system given by alpha."""
-    if not omega.is_scalar():
-        raise RankError("Encode currently supports only scalar right argument")
-    radices = list(alpha.data)
-    n = int(omega.data[0])
-    result: list[object] = []
-    for _ in range(len(radices)):
-        result.append(0)
+def _encode_scalar(radices: list[object], n: int) -> list[int]:
+    """Encode a single integer in the given radix system."""
+    result = [0] * len(radices)
     for i in range(len(radices) - 1, -1, -1):
         r = int(radices[i])
         if r == 0:
@@ -237,7 +231,27 @@ def encode(alpha: APLArray, omega: APLArray) -> APLArray:
         else:
             result[i] = n % r
             n = n // r
-    return APLArray([len(radices)], result)
+    return result
+
+
+def encode(alpha: APLArray, omega: APLArray) -> APLArray:
+    """Dyadic ⊤: represent omega in the radix system given by alpha."""
+    radices = list(alpha.data)
+    if omega.is_scalar():
+        result = _encode_scalar(radices, int(omega.data[0]))
+        return APLArray([len(radices)], result)
+    # Vector right arg → matrix (radix_len × omega_len)
+    cols = len(omega.data)
+    rows = len(radices)
+    result: list[object] = []
+    for r in range(rows):
+        for c in range(cols):
+            result.append(0)
+    for c in range(cols):
+        col = _encode_scalar(radices, int(omega.data[c]))
+        for r in range(rows):
+            result[r * cols + c] = col[r]
+    return APLArray([rows, cols], result)
 
 
 def decode(alpha: APLArray, omega: APLArray) -> APLArray:

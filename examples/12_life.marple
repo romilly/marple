@@ -6,11 +6,12 @@
 ⍝ ── Shift helper: apply vertical and horizontal shift ──
 shift←{(1↑⍺)⊖(1↓⍺)⌽⍵}
 
-⍝ ── 8 neighbour offsets as an 8×2 matrix ──
-P←8 2⍴¯1 0 1 0 0 ¯1 0 1 ¯1 ¯1 ¯1 1 1 ¯1 1 1
+⍝ ── Generate 9 shift pairs from ⍳ and ⊤, subtract 1 ──
+P←(⍉3 3⊤(⍳9)-1)-1
+P
 
-⍝ ── Life step: sum neighbours, apply birth/survival rule ──
-life←{N←+⌿P(shift⍤1 2)⍵ ⋄ (N=3)∨⍵∧N=2}
+⍝ ── Life step: sum all 9 shifts, subtract self, apply rule ──
+life←{N←(+⌿P(shift⍤1 2)⍵)-⍵ ⋄ (N=3)∨⍵∧N=2}
 
 ⍝ ── Glider on 6×6 grid ──
 G←6 6⍴0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0

@@ -63,6 +63,36 @@ class TestLifeCompact:
         assert result == expected
 
 
+class TestLifeGenerated:
+    def test_generate_offsets(self) -> None:
+        """Generate all 9 shift pairs from encode and iota."""
+        i = Interpreter(io=1)
+        result = i.run("(⍉3 3⊤(⍳9)-1)-1")
+        assert result.shape == [9, 2]
+        pairs = [(int(result.data[r*2]), int(result.data[r*2+1])) for r in range(9)]
+        assert (0, 0) in pairs
+        assert (-1, -1) in pairs
+        assert (1, 1) in pairs
+
+    def test_generated_life_matches(self) -> None:
+        """Life using generated P matches hardcoded version."""
+        i = Interpreter(io=1)
+        i.run("G←6 6⍴0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0")
+        i.run("shift←{(1↑⍺)⊖(1↓⍺)⌽⍵}")
+        i.run("P←(⍉3 3⊤(⍳9)-1)-1")
+        i.run("life←{N←(+⌿P(shift⍤1 2)⍵)-⍵ ⋄ (N=3)∨⍵∧N=2}")
+        result = i.run("(life⍣4) G")
+        expected = APLArray([6, 6], [
+            0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+            0, 0, 0, 1, 0, 0,
+            0, 0, 0, 0, 1, 0,
+            0, 0, 1, 1, 1, 0,
+            0, 0, 0, 0, 0, 0,
+        ])
+        assert result == expected
+
+
 class TestLifeGlider:
     def test_glider_one_step(self) -> None:
         i = Interpreter(io=1)
