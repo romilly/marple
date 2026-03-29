@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import time
 
+_START_TIME = time.time()
+
 from typing import Any, TYPE_CHECKING
 
 from marple.arraymodel import APLArray, S
@@ -83,6 +85,7 @@ class Executor:
 
     _SYSVAR_DISPATCH: dict[str, str] = {
         "⎕TS": "_sysvar_ts",
+        "⎕AI": "_sysvar_ai",
         "⎕VER": "_sysvar_ver",
     }
 
@@ -225,12 +228,29 @@ class Executor:
     def _sysvar_ts(self) -> APLArray:
         now = time.time()
         t = time.localtime(now)
-        frac = now % 1
-        if frac == 0 and hasattr(time, "ticks_ms"):
-            ms = time.ticks_ms() % 1000  # type: ignore[attr-defined]
-        else:
-            ms = int(frac * 1000)
+        ms = int((now % 1) * 1000)
         return APLArray([7], [t[0], t[1], t[2], t[3], t[4], t[5], ms])
+
+    def _sysvar_ai(self) -> APLArray:
+        # 1: user ID
+        try:
+            import os
+            uid = os.getuid()
+        except AttributeError:
+            uid = 1000  # MicroPython
+        # 2: compute time (CPU ms)
+        try:
+            import resource
+            cpu_ms = int(resource.getrusage(resource.RUSAGE_SELF).ru_utime * 1000)
+        except (ImportError, AttributeError):
+            cpu_ms = 0  # MicroPython
+        # 3: connect time (ms since session start)
+        if hasattr(time, "ticks_ms"):
+            elapsed_ms = time.ticks_ms()  # type: ignore[attr-defined]
+        else:
+            elapsed_ms = int((time.time() - _START_TIME) * 1000)
+        # 4: keying time (not tracked)
+        return APLArray([4], [uid, cpu_ms, elapsed_ms, 0])
 
     def _sysvar_ver(self) -> APLArray:
         from marple import __version__
