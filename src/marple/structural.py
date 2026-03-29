@@ -205,6 +205,7 @@ def take(alpha: APLArray, omega: APLArray) -> APLArray:
         inner_shape = list(omega.shape[1:])
         inner_counts = counts[1:]
         processed: list[object] = []
+        inner_shape_out = inner_shape
         for row in rows:
             inner = APLArray(list(inner_shape), row)
             taken = take(APLArray([len(inner_counts)], inner_counts), inner)
@@ -253,12 +254,13 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
         inner_shape = list(omega.shape[1:])
         inner_counts = counts[1:]
         processed: list[object] = []
+        inner_shape_out = inner_shape
         for row in rows:
             inner = APLArray(list(inner_shape), row)
             dropped = drop(APLArray([len(inner_counts)], inner_counts), inner)
             processed.extend(dropped.data)
             inner_shape_out = list(dropped.shape)
-        new_shape = [kept_rows] + (inner_shape_out if rows else inner_shape)
+        new_shape = [kept_rows] + inner_shape_out
         return APLArray(new_shape, processed)
     new_shape = list(omega.shape)
     new_shape[0] = kept_rows

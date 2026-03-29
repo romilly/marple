@@ -7,7 +7,6 @@ except ImportError:
 from marple.engine import Interpreter
 from marple.errors import APLError
 from marple.ports.filesystem import FileSystem
-from marple.repl import format_result, _is_silent
 
 
 PROMPT = "      "
@@ -43,9 +42,9 @@ def run_script(path: str, fs: FileSystem | None = None) -> list[str]:
         if accum.count("{") > accum.count("}"):
             continue
         try:
-            result = interp.run(accum)
-            if not _is_silent(accum):
-                output.append(format_result(result, interp.env))
+            r = interp.execute(accum)
+            if not r.silent:
+                output.append(r.display_text)
         except APLError as e:
             output.append(f"{e} at line {start_lineno}")
             output.append(f"  {accum}")

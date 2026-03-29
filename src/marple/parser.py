@@ -836,3 +836,24 @@ def parse(source: str, name_table: dict[str, int] | None = None,
           operator_arity: dict[str, int] | None = None) -> object:
     tokens = Tokenizer(source).tokenize()
     return Parser(tokens, name_table, operator_arity).parse()
+
+
+def is_balanced(source: str) -> bool:
+    """Check if braces and brackets are balanced.
+
+    Returns True if the source has matching { } pairs.
+    Returns False if there are unclosed openers (incomplete input).
+    """
+    depth = 0
+    in_string = False
+    for ch in source:
+        if ch == "'" and not in_string:
+            in_string = True
+        elif ch == "'" and in_string:
+            in_string = False
+        elif not in_string:
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+    return depth == 0

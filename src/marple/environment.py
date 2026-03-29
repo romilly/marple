@@ -110,6 +110,23 @@ class Environment:
         return sorted(n for n in self.symbols._values.keys()
                        if not n.startswith("__"))
 
+    def list_variables(self) -> list[tuple[str, list[int]]]:
+        """Return sorted list of (name, shape) for all user variables."""
+        result = []
+        for name in self.names_of_class(2):  # NC_ARRAY
+            val = self.symbols.get(name)
+            if isinstance(val, APLArray):
+                result.append((name, list(val.shape)))
+        return result
+
+    def list_functions(self) -> list[tuple[str, str | None]]:
+        """Return sorted list of (name, source_or_None) for all user functions."""
+        result = []
+        for name in self.names_of_class(3):  # NC_FUNCTION
+            source = self.get_source(name)
+            result.append((name, source))
+        return result
+
     # ── Dict-like interface ──
     # Lookup order: quad vars, then symbols, then locals (⍵, ⍺, ∇, etc.)
 

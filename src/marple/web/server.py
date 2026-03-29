@@ -15,7 +15,7 @@ from marple.arraymodel import APLArray
 from marple.engine import Interpreter
 from marple.environment import Environment
 from marple.errors import APLError
-from marple.repl import format_result, _is_silent
+from marple.formatting import format_result
 
 STATIC_DIR = Path(__file__).parent / "static"
 INPUT_INDENT = "      "
@@ -37,15 +37,15 @@ class WebSession:
         """Evaluate an APL expression. Return an HTML fragment."""
         input_html = html.escape(INPUT_INDENT + expr)
         try:
-            result = self.interp.run(expr)
-            if _is_silent(expr):
+            r = self.interp.execute(expr)
+            if r.silent:
                 self.transcript.append((expr, ""))
                 return (
                     f'<div class="entry">'
                     f'<pre class="input">{input_html}</pre>'
                     f"</div>"
                 )
-            output = format_result(result, self.interp.env)
+            output = r.display_text
             self.transcript.append((expr, output))
             output_html = html.escape(output)
             return (
@@ -66,100 +66,14 @@ class WebSession:
 
     def system_command(self, cmd: str) -> str:
         """Execute a system command. Return an HTML fragment."""
+        from marple.system_commands import run_system_command
         input_html = html.escape(INPUT_INDENT + cmd)
-        output = self._run_system_command(cmd)
+        output, _ = run_system_command(self.interp, cmd)
         parts = [f'<pre class="input">{input_html}</pre>']
         if output:
             output_html = html.escape(output)
             parts.append(f'<pre class="output">{output_html}</pre>')
         return f'<div class="entry">{"".join(parts)}</div>'
-
-    def _ws_clear(self, cmd: str) -> str:
-        self.interp = Interpreter()
-        return "CLEAR WS"
-
-    def _ws_vars(self, cmd: str) -> str:
-        names = self.interp.env.names_of_class(2)  # NC_ARRAY
-        return "  ".join(names)
-
-    def _ws_fns(self, cmd: str) -> str:
-        names = self.interp.env.names_of_class(3)  # NC_FUNCTION
-        return "  ".join(names)
-
-    def _ws_wsid(self, cmd: str) -> str:
-        parts = cmd.split(None, 1)
-        if len(parts) > 1:
-            name = parts[1].strip()
-            self.interp.env["⎕WSID"] = APLArray([len(name)], list(name))
-            return name
-        return "".join(str(c) for c in self.interp.env["⎕WSID"].data)
-
-    def _ws_save(self, cmd: str) -> str:
-        import os
-        from marple.workspace import save_workspace
-        from marple.config import get_workspaces_dir
-        parts = cmd.split(None, 1)
-        if len(parts) > 1:
-            name = parts[1].strip()
-            self.interp.env["⎕WSID"] = APLArray([len(name)], list(name))
-        wsid = "".join(str(c) for c in self.interp.env["⎕WSID"].data)
-        if wsid == "CLEAR WS":
-            return "ERROR: No workspace ID set. Use )WSID name first."
-        ws_root = get_workspaces_dir()
-        env_dict: dict[str, object] = {}
-        for name in self.interp.env.quad_var_names():
-            env_dict[name] = self.interp.env[name]
-        for name in self.interp.env.user_names():
-            env_dict[name] = self.interp.env[name]
-        env_dict["__sources__"] = self.interp.env.sources()
-        env_dict["__wsid__"] = wsid
-        try:
-            save_workspace(env_dict, os.path.join(ws_root, wsid))
-            return f"{wsid} SAVED"
-        except Exception as e:
-            return f"ERROR: {e}"
-
-    def _ws_load(self, cmd: str) -> str:
-        import os
-        from marple.workspace import load_workspace
-        from marple.config import get_workspaces_dir
-        parts = cmd.split(None, 1)
-        if len(parts) < 2:
-            return "ERROR: )LOAD requires a workspace name"
-        name = parts[1].strip()
-        ws_root = get_workspaces_dir()
-        ws_dir = os.path.join(ws_root, name)
-        if not os.path.isdir(ws_dir):
-            return f"ERROR: Workspace not found: {name}"
-        self.interp = Interpreter()
-        try:
-            load_workspace(self.interp.env, ws_dir, evaluate=self.interp.run)
-            wsid = "".join(str(c) for c in self.interp.env["⎕WSID"].data)
-            return wsid
-        except Exception as e:
-            return f"ERROR: {e}"
-
-    def _ws_lib(self, cmd: str) -> str:
-        from marple.workspace import list_workspaces
-        from marple.config import get_workspaces_dir
-        ws_root = get_workspaces_dir()
-        workspaces = list_workspaces(ws_root)
-        return "  ".join(workspaces) if workspaces else "(none)"
-
-    _SYS_COMMANDS: dict[str, str] = {
-        "clear": "_ws_clear", "vars": "_ws_vars",
-        "fns": "_ws_fns", "wsid": "_ws_wsid",
-        "save": "_ws_save", "load": "_ws_load",
-        "lib": "_ws_lib",
-    }
-
-    def _run_system_command(self, cmd: str) -> str:
-        """Execute a system command and return the output string."""
-        word = cmd[1:].split()[0].lower() if cmd[1:].strip() else ""
-        method_name = self._SYS_COMMANDS.get(word)
-        if method_name is not None:
-            return getattr(self, method_name)(cmd)
-        return f"Unknown command: {cmd}"
 
     def workspace_fragment(self) -> str:
         """Return an HTML fragment listing variables and functions."""

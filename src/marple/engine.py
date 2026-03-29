@@ -1,15 +1,26 @@
 """Class-based APL interpreter for MARPLE."""
 
+from dataclasses import dataclass
+
 from marple.arraymodel import APLArray, S
 from marple.backend import (
     _DOWNCAST_CT, is_numeric_array, maybe_downcast,
 )
 from marple.dfn_binding import DfnBinding
 from marple.environment import Environment
+from marple.formatting import format_result
 from marple.ports.filesystem import FileSystem
 from marple.executor import Executor, _newlines_to_diamonds
-from marple.parser import Assignment, parse
+from marple.parser import Assignment, Program, parse
 from marple.symbol_table import NC_FUNCTION, NC_OPERATOR
+
+
+@dataclass
+class EvalResult:
+    """Result of evaluating an APL expression."""
+    value: APLArray
+    silent: bool
+    display_text: str
 
 
 _SYS_FUNCTION_NAMES = (
@@ -43,6 +54,34 @@ class Interpreter(Executor):
         if isinstance(result, APLArray) and is_numeric_array(result.data):
             result = APLArray(list(result.shape), maybe_downcast(result.data, _DOWNCAST_CT))
         return result
+
+    def execute(self, source: str) -> EvalResult:
+        """Evaluate APL source and return a structured result.
+
+        Preferred entry point for all interfaces (REPL, web, Jupyter).
+        """
+        silent = self._is_silent(source)
+        value = self.run(source)
+        if silent:
+            return EvalResult(value=value, silent=True, display_text="")
+        text = format_result(value, self.env)
+        return EvalResult(value=value, silent=False, display_text=text)
+
+    def _is_silent(self, source: str) -> bool:
+        """Check if source is a comment, bare assignment, or directive."""
+        stripped = source.strip()
+        if stripped.startswith("#") or stripped.startswith("⍝"):
+            return True
+        try:
+            tree = parse(stripped)
+        except Exception:
+            return False
+        if isinstance(tree, Assignment):
+            return True
+        if isinstance(tree, Program):
+            return (len(tree.statements) > 0
+                    and isinstance(tree.statements[-1], Assignment))
+        return False
 
     def _handle_import(self, source: str) -> APLArray:
         """Handle #import directive."""
