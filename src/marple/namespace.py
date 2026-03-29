@@ -3,10 +3,7 @@ from __future__ import annotations
 
 import os
 
-try:
-    from typing import Any
-except ImportError:
-    pass
+from typing import Any
 
 
 def _isdir(path):

@@ -63,6 +63,8 @@ mpremote \
     cp $DEPLOY_TMP/marple/stdlib/str/lower.apl :marple/stdlib/str/lower.apl + \
     cp $DEPLOY_TMP/marple/stdlib/str/trim.apl :marple/stdlib/str/trim.apl + \
     cp $DEPLOY_TMP/marple/stdlib/str/upper.apl :marple/stdlib/str/upper.apl + \
+    cp pico_stubs/abc.py :abc.py + \
+    cp pico_stubs/typing.py :typing.py + \
     cp data/incoming/apl_font.py :apl_font.py + \
     cp scripts/presto_display.py :presto_display.py + \
     cp scripts/pico_eval.py :main.py + \

@@ -4,10 +4,7 @@ from __future__ import annotations
 
 import time
 
-try:
-    from typing import Any, TYPE_CHECKING
-except ImportError:
-    TYPE_CHECKING = False
+from typing import Any, TYPE_CHECKING
 
 from marple.arraymodel import APLArray, S
 from marple.backend import (

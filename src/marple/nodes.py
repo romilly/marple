@@ -2,17 +2,8 @@
 
 from __future__ import annotations
 
-try:
-    from abc import ABC, abstractmethod
-except ImportError:
-    class ABC: pass  # type: ignore[no-redef]
-    def abstractmethod(f):  # type: ignore[no-redef]
-        return f
-
-try:
-    from typing import Any, Protocol, Generator
-except ImportError:
-    Protocol = object  # type: ignore[assignment,misc]
+from abc import ABC, abstractmethod
+from typing import Any, Protocol, Generator
 
 from marple.arraymodel import APLArray, S
 from marple.errors import DomainError, ValueError_

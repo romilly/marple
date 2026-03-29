@@ -1,9 +1,6 @@
 """Dyadic ⎕FMT format specification parsing and application for MARPLE."""
 
-try:
-    from typing import Any
-except ImportError:
-    pass
+from typing import Any
 
 from marple.arraymodel import APLArray, S
 from marple.errors import DomainError

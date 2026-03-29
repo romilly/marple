@@ -1,9 +1,6 @@
 """APL environment (workspace state) for MARPLE."""
 
-try:
-    from typing import Any
-except ImportError:
-    pass
+from typing import Any
 
 from marple.arraymodel import APLArray, S
 from marple.ports.filesystem import FileSystem

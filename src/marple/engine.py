@@ -6,6 +6,7 @@ from marple.backend import (
 )
 from marple.dfn_binding import DfnBinding
 from marple.environment import Environment
+from marple.ports.filesystem import FileSystem
 from marple.executor import Executor, _newlines_to_diamonds
 from marple.parser import Assignment, parse
 from marple.symbol_table import NC_FUNCTION, NC_OPERATOR
@@ -21,7 +22,7 @@ _SYS_FUNCTION_NAMES = (
 class Interpreter(Executor):
 
     def __init__(self, io: int | None = None,
-                 fs: object | None = None) -> None:
+                 fs: FileSystem | None = None) -> None:
         from marple.config import get_default_io
         effective_io = io if io is not None else get_default_io()
         self.env = Environment(io=effective_io, fs=fs)

@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-try:
-    from typing import TYPE_CHECKING
-except ImportError:
-    TYPE_CHECKING = False
+from typing import TYPE_CHECKING
 
 from marple.arraymodel import APLArray, S
 
