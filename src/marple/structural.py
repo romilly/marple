@@ -36,18 +36,25 @@ def reverse(omega: APLArray) -> APLArray:
     return APLArray(list(omega.shape), result)
 
 
+def _first_axis_chunk_size(shape: list[int]) -> int:
+    """Product of all axes except the first."""
+    size = 1
+    for s in shape[1:]:
+        size *= s
+    return size
+
+
 def reverse_first(omega: APLArray) -> APLArray:
     """Monadic ⊖: reverse along first axis."""
     if len(omega.shape) <= 1:
         return APLArray(list(omega.shape), list(reversed(omega.data)))
-    # Matrix: reverse row order
-    row_len = omega.shape[-1]
+    chunk = _first_axis_chunk_size(omega.shape)
+    n = omega.shape[0]
     data = list(omega.data)
-    num_rows = len(data) // row_len
     result: list[object] = []
-    for r in range(num_rows - 1, -1, -1):
-        start = r * row_len
-        result.extend(data[start:start + row_len])
+    for r in range(n - 1, -1, -1):
+        start = r * chunk
+        result.extend(data[start:start + chunk])
     return APLArray(list(omega.shape), result)
 
 
@@ -176,16 +183,15 @@ def rotate_first(alpha: APLArray, omega: APLArray) -> APLArray:
     n = int(alpha.data[0])
     if len(omega.shape) <= 1:
         return rotate(alpha, omega)
-    # Matrix: rotate row order
-    row_len = omega.shape[-1]
+    chunk = _first_axis_chunk_size(omega.shape)
+    num_chunks = omega.shape[0]
     data = list(omega.data)
-    num_rows = len(data) // row_len
-    n = n % num_rows if num_rows else 0
+    n = n % num_chunks if num_chunks else 0
     result: list[object] = []
-    for r in range(num_rows):
-        src = (r + n) % num_rows
-        start = src * row_len
-        result.extend(data[start:start + row_len])
+    for r in range(num_chunks):
+        src = (r + n) % num_chunks
+        start = src * chunk
+        result.extend(data[start:start + chunk])
     return APLArray(list(omega.shape), result)
 
 
