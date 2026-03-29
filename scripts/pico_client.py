@@ -17,9 +17,26 @@ BAUD = 115200
 SENTINEL = "\x00"
 
 
+_PICO_REPLACEMENTS = {
+    "\u2014": "-",   # em dash
+    "\u2013": "-",   # en dash
+    "\u2018": "'",   # left single quote
+    "\u2019": "'",   # right single quote
+    "\u201c": '"',   # left double quote
+    "\u201d": '"',   # right double quote
+}
+
+
+def _pico_safe(text: str) -> str:
+    """Replace characters the Pico font can't render."""
+    for char, replacement in _PICO_REPLACEMENTS.items():
+        text = text.replace(char, replacement)
+    return text
+
+
 def send_and_receive(ser: serial.Serial, expr: str) -> list[str]:
     """Send an expression and collect response lines until sentinel."""
-    encoded = expr.encode("utf-8").hex()
+    encoded = _pico_safe(expr).encode("utf-8").hex()
     ser.write((encoded + "\r\n").encode("ascii"))
     ser.flush()
 

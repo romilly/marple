@@ -1,7 +1,7 @@
 ⎕VER
 ⍝ ═══════════════════════════════════════════════════
 ⍝ Conway's Game of Life in MARPLE
-⍝ No nested arrays — just rank, reduce, and rotate
+⍝ No nested arrays - just rank, reduce, and rotate
 ⍝ ═══════════════════════════════════════════════════
 
 ⍝ ── The grid: a glider on 6×6 ──
@@ -28,7 +28,7 @@ P
 
 ⍝ ── Step 4: apply all 9 shifts at once using rank ──
 ⍝ shift⍤1 2 applies shift with each row of P (rank 1) to G (rank 2)
-⍝ Result is 9×6×6 — nine shifted copies stacked
+⍝ Result is 9×6×6 - nine shifted copies stacked
 ⍴P(shift⍤1 2)G
 
 ⍝ ── Step 5: sum the shifted copies ──
