@@ -33,6 +33,12 @@ def run_script(path: str, fs: FileSystem | None = None) -> list[str]:
         output.append(f"{PROMPT}{line}")
         if line.startswith("⍝") and not accum:
             continue
+        if line.startswith(")") and not accum:
+            from marple.system_commands import run_system_command
+            cmd_output, _ = run_system_command(interp, line)
+            if cmd_output:
+                output.append(cmd_output)
+            continue
         if accum:
             accum += "\n" + line
         else:

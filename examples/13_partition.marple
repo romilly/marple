@@ -1,0 +1,55 @@
+⎕VER
+⍝ ═════════════════════════════════
+⍝ Bob Smith's Partition Functions
+⍝ ═════════════════════════════════
+
+)LOAD partfns
+
+⍝ ── Test data ──
+P←1 0 0 1 1 0 0 0 1 0
+V←1 2 3 4 5 6 7 8 9 10
+B←1 0 1 0 1 0 1 0 1 0
+
+⍝ ── N∆: shift and compare ──
+⍝ First element in each run
+(≠ N∆) 0 0 1 1 1 0 0 1 1 1
+
+⍝ First differences
+(- N∆) 1 3 6 10 15
+
+⍝ ── Partitioned plus reduce ──
+⍝ Sum within each partition
+P pplred V
+
+⍝ ── Partitioned plus scan ──
+⍝ Running sum within partitions
+P pplscan V
+
+⍝ ── Partitioned not-equal scan ──
+P pnescan B
+
+⍝ ── Partitioned or scan ──
+P porscan B
+
+⍝ ── Partitioned and scan ──
+P pandscan B
+
+⍝ ── Partitioned reverse ──
+P preverse V
+
+⍝ ── Identity: (- N∆) and +\ ──
+⍝ First differences then scan
+⍝ gives back the original
++\(- N∆) 1 3 6 10 15
+
+⍝ ── Accumulate by account ──
+ACCT←3 1 2 3 1 2
+AMT←10 20 30 40 50 60
+ORD←⍋ACCT
+SA←ACCT[ORD]
+SV←AMT[ORD]
+PV←(≠ N∆) SA
+⍝ Distinct accounts
+PV/SA
+⍝ Totals per account
+PV pplred SV
