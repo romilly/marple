@@ -28,14 +28,14 @@ try:
 except (ImportError, OSError):
     pass  # No WiFi — RTC will be unset
 
-from marple.interpreter import interpret, default_env
+from marple.engine import Interpreter
 from marple.repl import format_result, _is_silent
 from marple.errors import APLError
 import marple
 
 SENTINEL = "\x00"
 
-env = default_env()
+interp = Interpreter()
 
 # Optional Presto LCD display
 try:
@@ -63,11 +63,11 @@ while True:
     if lcd:
         lcd.show_input(line)
     try:
-        result = interpret(line, env)
+        result = interp.run(line)
         if _is_silent(line):
             print(SENTINEL)
         else:
-            output = format_result(result, env)
+            output = format_result(result, interp.env)
             print(output)
             print(SENTINEL)
             if lcd:

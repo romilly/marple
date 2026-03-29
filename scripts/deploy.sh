@@ -14,23 +14,43 @@ mpremote rm :main.py 2>/dev/null || true
 echo "Deploying marple to Pico 2..."
 mpremote \
     mkdir :marple + \
+    mkdir :marple/ports + \
+    mkdir :marple/adapters + \
     mkdir :marple/stdlib + \
     mkdir :marple/stdlib/str + \
     cp src/marple/__init__.py :marple/__init__.py + \
     cp src/marple/arraymodel.py :marple/arraymodel.py + \
     cp src/marple/backend.py :marple/backend.py + \
     cp src/marple/cells.py :marple/cells.py + \
+    cp src/marple/config.py :marple/config.py + \
+    cp src/marple/dfn_binding.py :marple/dfn_binding.py + \
+    cp src/marple/dyadic_functions.py :marple/dyadic_functions.py + \
+    cp src/marple/engine.py :marple/engine.py + \
+    cp src/marple/environment.py :marple/environment.py + \
     cp src/marple/errors.py :marple/errors.py + \
+    cp src/marple/executor.py :marple/executor.py + \
+    cp src/marple/fmt.py :marple/fmt.py + \
+    cp src/marple/formatting.py :marple/formatting.py + \
     cp src/marple/functions.py :marple/functions.py + \
     cp src/marple/glyphs.py :marple/glyphs.py + \
-    cp src/marple/interpreter.py :marple/interpreter.py + \
+    cp src/marple/monadic_functions.py :marple/monadic_functions.py + \
+    cp src/marple/namespace.py :marple/namespace.py + \
+    cp src/marple/nodes.py :marple/nodes.py + \
+    cp src/marple/operator_binding.py :marple/operator_binding.py + \
     cp src/marple/parser.py :marple/parser.py + \
     cp src/marple/repl.py :marple/repl.py + \
+    cp src/marple/script.py :marple/script.py + \
     cp src/marple/structural.py :marple/structural.py + \
+    cp src/marple/symbol_table.py :marple/symbol_table.py + \
     cp src/marple/terminal.py :marple/terminal.py + \
     cp src/marple/tokenizer.py :marple/tokenizer.py + \
-    cp src/marple/namespace.py :marple/namespace.py + \
-    cp src/marple/formatting.py :marple/formatting.py + \
+    cp src/marple/workspace.py :marple/workspace.py + \
+    cp src/marple/ports/__init__.py :marple/ports/__init__.py + \
+    cp src/marple/ports/console.py :marple/ports/console.py + \
+    cp src/marple/ports/filesystem.py :marple/ports/filesystem.py + \
+    cp src/marple/adapters/__init__.py :marple/adapters/__init__.py + \
+    cp src/marple/adapters/os_filesystem.py :marple/adapters/os_filesystem.py + \
+    cp src/marple/adapters/terminal_console.py :marple/adapters/terminal_console.py + \
     cp src/marple/stdlib/__init__.py :marple/stdlib/__init__.py + \
     cp src/marple/stdlib/str_impl.py :marple/stdlib/str_impl.py + \
     cp src/marple/stdlib/str/lower.apl :marple/stdlib/str/lower.apl + \
