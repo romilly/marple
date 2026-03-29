@@ -25,23 +25,34 @@ def run_script(path: str, fs: FileSystem | None = None) -> list[str]:
     interp = Interpreter(fs=fs)
     output: list[str] = []
     text = fs.read_text(path)
+    accum = ""
+    start_lineno = 1
     for lineno, line in enumerate(text.splitlines(), 1):
         line = line.strip()
         if not line:
             continue
         output.append(f"{PROMPT}{line}")
-        if line.startswith("⍝"):
+        if line.startswith("⍝") and not accum:
+            continue
+        if accum:
+            accum += "\n" + line
+        else:
+            accum = line
+            start_lineno = lineno
+        # Check if braces are balanced
+        if accum.count("{") > accum.count("}"):
             continue
         try:
-            result = interp.run(line)
-            if not _is_silent(line):
+            result = interp.run(accum)
+            if not _is_silent(accum):
                 output.append(format_result(result, interp.env))
         except APLError as e:
-            output.append(f"{e} at line {lineno}")
-            output.append(f"  {line}")
+            output.append(f"{e} at line {start_lineno}")
+            output.append(f"  {accum}")
             break
         except Exception as e:
-            output.append(f"ERROR at line {lineno}: {e}")
-            output.append(f"  {line}")
+            output.append(f"ERROR at line {start_lineno}: {e}")
+            output.append(f"  {accum}")
             break
+        accum = ""
     return output

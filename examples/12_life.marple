@@ -1,55 +1,64 @@
 ⎕VER
-⍝ ═══════════════════════════════════════════════════
+⍝ ═════════════════════════════════
 ⍝ Conway's Game of Life in MARPLE
-⍝ No nested arrays - just rank, reduce, and rotate
-⍝ ═══════════════════════════════════════════════════
+⍝ No nested arrays - just rank,
+⍝ reduce, and rotate
+⍝ ═════════════════════════════════
 
-⍝ ── The grid: a glider on 6×6 ──
+⍝ ── A glider on 6×6 ──
 G←6 6⍴0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 G
 
-⍝ ── Step 1: shifting the grid ──
-⍝ ⌽ rotates columns (last axis), ⊖ rotates rows (first axis)
+⍝ ── Step 1: shifting ──
+⍝ ⌽ rotates last axis
+⍝ ⊖ rotates first axis
 1⌽G
 1⊖G
 
-⍝ ── Step 2: a dfn that applies both shifts ──
-⍝ Takes a 2-element left arg: vertical and horizontal shift
+⍝ ── Step 2: a shift dfn ──
+⍝ 2-element left arg:
+⍝ vertical + horizontal shift
 shift←{(1↑⍺)⊖(1↓⍺)⌽⍵}
 1 ¯1 shift G
 
-⍝ ── Step 3: generate all 9 shift pairs ──
+⍝ ── Step 3: 9 shift pairs ──
 ⍝ ⎕IO←0 so ⍳9 gives 0..8
-⍝ Encode in base 3 3 gives two-digit base-3 representation
-⍝ Subtract 1 to shift from 0,1,2 to ¯1,0,1
+⍝ Encode in base 3 3, sub 1
 ⎕IO←0
 P←(⍉3 3⊤⍳9)-1
 P
 
-⍝ ── Step 4: apply all 9 shifts at once using rank ──
-⍝ shift⍤1 2 applies shift with each row of P (rank 1) to G (rank 2)
-⍝ Result is 9×6×6 - nine shifted copies stacked
+⍝ ── Step 4: apply with rank ──
+⍝ shift⍤1 2: each row of P
+⍝ (rank 1) to G (rank 2)
+⍝ Result: 9×6×6
 ⍴P(shift⍤1 2)G
 
-⍝ ── Step 5: sum the shifted copies ──
-⍝ +⌿ sums along the first axis: 9×6×6 → 6×6
-⍝ Subtract the grid itself (the 0,0 shift counted the cell)
+⍝ ── Step 5: sum + subtract ──
+⍝ +⌿ sums first axis
+⍝ Subtract the cell itself
 N←(+⌿P(shift⍤1 2)G)-G
 N
 
-⍝ ── Step 6: apply the Life rule ──
-⍝ Birth: exactly 3 neighbours. Survival: alive AND exactly 2 neighbours.
+⍝ ── Step 6: the Life rule ──
+⍝ Birth: N=3
+⍝ Survive: alive ∧ N=2
 (N=3)∨G∧N=2
 
-⍝ ── Put it all together in one dfn ──
+⍝ ── All in one dfn ──
 ⎕IO←1
-life←{⎕IO←0 ⋄ s←{(1↑⍺)⊖(1↓⍺)⌽⍵} ⋄ P←(⍉3 3⊤⍳9)-1 ⋄ N←(+⌿P(s⍤1 2)⍵)-⍵ ⋄ (N=3)∨⍵∧N=2}
+life←{⎕IO←0
+  s←{(1↑⍺)⊖(1↓⍺)⌽⍵}
+  P←(⍉3 3⊤⍳9)-1
+  N←(+⌿P(s⍤1 2)⍵)-⍵
+  (N=3)∨⍵∧N=2}
 
-⍝ ── Run with the power operator ──
+⍝ ── Power operator! ──
 G
 (life⍣1) G
 (life⍣2) G
 (life⍣3) G
 (life⍣4) G
 
-⍝ The glider moves one cell down-right every 4 generations!
+⍝ Glider moves down-right
+⍝ every 4 generations!
