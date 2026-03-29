@@ -1,17 +1,55 @@
 ⎕VER
 ⍝ ═══════════════════════════════════════════════════
-⍝ Conway's Game of Life — one self-contained dfn
+⍝ Conway's Game of Life in MARPLE
+⍝ No nested arrays — just rank, reduce, and rotate
 ⍝ ═══════════════════════════════════════════════════
 
-⍝ ── Life in a single dfn ──
-life←{⎕IO←0 ⋄ s←{(1↑⍺)⊖(1↓⍺)⌽⍵} ⋄ P←(⍉3 3⊤⍳9)-1 ⋄ N←(+⌿P(s⍤1 2)⍵)-⍵ ⋄ (N=3)∨⍵∧N=2}
-
-⍝ ── Glider on 6×6 grid ──
+⍝ ── The grid: a glider on 6×6 ──
 G←6 6⍴0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 G
 
-⍝ ── 4 generations — glider moves down-right ──
+⍝ ── Step 1: shifting the grid ──
+⍝ ⌽ rotates columns (last axis), ⊖ rotates rows (first axis)
+1⌽G
+1⊖G
+
+⍝ ── Step 2: a dfn that applies both shifts ──
+⍝ Takes a 2-element left arg: vertical and horizontal shift
+shift←{(1↑⍺)⊖(1↓⍺)⌽⍵}
+1 ¯1 shift G
+
+⍝ ── Step 3: generate all 9 shift pairs ──
+⍝ ⎕IO←0 so ⍳9 gives 0..8
+⍝ Encode in base 3 3 gives two-digit base-3 representation
+⍝ Subtract 1 to shift from 0,1,2 to ¯1,0,1
+⎕IO←0
+P←(⍉3 3⊤⍳9)-1
+P
+
+⍝ ── Step 4: apply all 9 shifts at once using rank ──
+⍝ shift⍤1 2 applies shift with each row of P (rank 1) to G (rank 2)
+⍝ Result is 9×6×6 — nine shifted copies stacked
+⍴P(shift⍤1 2)G
+
+⍝ ── Step 5: sum the shifted copies ──
+⍝ +⌿ sums along the first axis: 9×6×6 → 6×6
+⍝ Subtract the grid itself (the 0,0 shift counted the cell)
+N←(+⌿P(shift⍤1 2)G)-G
+N
+
+⍝ ── Step 6: apply the Life rule ──
+⍝ Birth: exactly 3 neighbours. Survival: alive AND exactly 2 neighbours.
+(N=3)∨G∧N=2
+
+⍝ ── Put it all together in one dfn ──
+⎕IO←1
+life←{⎕IO←0 ⋄ s←{(1↑⍺)⊖(1↓⍺)⌽⍵} ⋄ P←(⍉3 3⊤⍳9)-1 ⋄ N←(+⌿P(s⍤1 2)⍵)-⍵ ⋄ (N=3)∨⍵∧N=2}
+
+⍝ ── Run with the power operator ──
+G
 (life⍣1) G
 (life⍣2) G
 (life⍣3) G
 (life⍣4) G
+
+⍝ The glider moves one cell down-right every 4 generations!
