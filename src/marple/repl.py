@@ -11,10 +11,7 @@ from marple.arraymodel import APLArray
 from marple.engine import Interpreter
 from marple.errors import APLError
 from marple.parser import Assignment, Program, parse
-try:
-    from marple.terminal import read_line
-except ImportError:
-    read_line = None  # type: ignore[assignment]
+from marple.ports.console import Console
 try:
     from marple.workspace import save_workspace, load_workspace, list_workspaces
 except ImportError:
@@ -94,26 +91,26 @@ def _is_silent(line: str) -> bool:
     return False
 
 
-def _cmd_off(line: str, interp: Interpreter) -> bool:
+def _cmd_off(line: str, interp: Interpreter, console: Console) -> bool:
     return True
 
-def _cmd_clear(line: str, interp: Interpreter) -> bool:
+def _cmd_clear(line: str, interp: Interpreter, console: Console) -> bool:
     interp.env = type(interp.env)(io=1)
-    print("CLEAR WS")
+    console.writeln("CLEAR WS")
     return False
 
-def _cmd_wsid(line: str, interp: Interpreter) -> bool:
+def _cmd_wsid(line: str, interp: Interpreter, console: Console) -> bool:
     parts = line.split(None, 1)
     if len(parts) > 1:
         name = parts[1].strip()
         interp.env["⎕WSID"] = APLArray([len(name)], list(name))
-        print(name)
+        console.writeln(name)
     else:
         wsid = "".join(str(c) for c in interp.env["⎕WSID"].data)
-        print(wsid)
+        console.writeln(wsid)
     return False
 
-def _cmd_fns(line: str, interp: Interpreter) -> bool:
+def _cmd_fns(line: str, interp: Interpreter, console: Console) -> bool:
     parts = line.split(None, 1)
     if len(parts) > 1:
         ns_name = parts[1].strip()
@@ -126,37 +123,36 @@ def _cmd_fns(line: str, interp: Interpreter) -> bool:
             ns_parts = ns_name.split("::")[1:] if "::" in ns_name else []
             ns = sys_ws.resolve(ns_parts) if ns_parts else sys_ws
             if ns is not None and hasattr(ns, "list_names"):
-                print("  ".join(ns.list_names()))
+                console.writeln("  ".join(ns.list_names()))
             else:
-                print(f"Namespace not found: {ns_name}")
+                console.writeln(f"Namespace not found: {ns_name}")
         else:
-            print(f"Namespace not found: {ns_name}")
+            console.writeln(f"Namespace not found: {ns_name}")
     else:
         names = interp.env.names_of_class(3)  # NC_FUNCTION
-        print("  ".join(names) if names else "")
+        console.writeln("  ".join(names) if names else "")
     return False
 
-def _cmd_vars(line: str, interp: Interpreter) -> bool:
+def _cmd_vars(line: str, interp: Interpreter, console: Console) -> bool:
     names = interp.env.names_of_class(2)  # NC_ARRAY
-    print("  ".join(names) if names else "")
+    console.writeln("  ".join(names) if names else "")
     return False
 
-def _cmd_lib(line: str, interp: Interpreter) -> bool:
+def _cmd_lib(line: str, interp: Interpreter, console: Console) -> bool:
     workspaces = list_workspaces(WORKSPACES_ROOT)
-    print("  ".join(workspaces) if workspaces else "(none)")
+    console.writeln("  ".join(workspaces) if workspaces else "(none)")
     return False
 
-def _cmd_save(line: str, interp: Interpreter) -> bool:
+def _cmd_save(line: str, interp: Interpreter, console: Console) -> bool:
     parts = line.split(None, 1)
     if len(parts) > 1:
         name = parts[1].strip()
         interp.env["⎕WSID"] = APLArray([len(name)], list(name))
     wsid = "".join(str(c) for c in interp.env["⎕WSID"].data)
     if wsid == "CLEAR WS":
-        print("ERROR: No workspace ID set. Use )WSID name first.")
+        console.writeln("ERROR: No workspace ID set. Use )WSID name first.")
         return False
     try:
-        # Build dict for save_workspace
         env_dict: dict[str, object] = {}
         for name in interp.env.quad_var_names():
             env_dict[name] = interp.env[name]
@@ -165,29 +161,29 @@ def _cmd_save(line: str, interp: Interpreter) -> bool:
         env_dict["__sources__"] = interp.env.sources()
         env_dict["__wsid__"] = wsid
         save_workspace(env_dict, os.path.join(WORKSPACES_ROOT, wsid))
-        print(f"{wsid} SAVED")
+        console.writeln(f"{wsid} SAVED")
     except Exception as e:
-        print(f"ERROR: {e}")
+        console.writeln(f"ERROR: {e}")
     return False
 
-def _cmd_load(line: str, interp: Interpreter) -> bool:
+def _cmd_load(line: str, interp: Interpreter, console: Console) -> bool:
     parts = line.split(None, 1)
     if len(parts) < 2:
-        print("ERROR: )LOAD requires a workspace name")
+        console.writeln("ERROR: )LOAD requires a workspace name")
         return False
     name = parts[1].strip()
     ws_dir = os.path.join(WORKSPACES_ROOT, name)
     if not os.path.isdir(ws_dir):
-        print(f"ERROR: Workspace not found: {name}")
+        console.writeln(f"ERROR: Workspace not found: {name}")
         return False
     from marple.environment import Environment
     interp.env = Environment(io=1)
     try:
         load_workspace(interp.env, ws_dir, evaluate=interp.run)
         wsid = "".join(str(c) for c in interp.env["⎕WSID"].data)
-        print(wsid)
+        console.writeln(wsid)
     except Exception as e:
-        print(f"ERROR: {e}")
+        console.writeln(f"ERROR: {e}")
     return False
 
 
@@ -203,18 +199,44 @@ _SYSTEM_COMMANDS: dict[str, Any] = {
 }
 
 
-def _handle_system_command(line: str, interp: Interpreter) -> bool:
+def _handle_system_command(line: str, interp: Interpreter, console: Console) -> bool:
     """Handle a )command. Returns True if REPL should exit."""
     cmd = line[1:].split()[0].lower() if line[1:].strip() else ""
     handler = _SYSTEM_COMMANDS.get(cmd)
     if handler is not None:
-        return handler(line, interp)
-    print(f"Unknown command: {line}")
+        return handler(line, interp, console)
+    console.writeln(f"Unknown command: {line}")
     return False
 
 
+def run_repl(interp: Interpreter, console: Console) -> None:
+    """Run the REPL loop using the given Console for I/O."""
+    from marple import __version__ as ver
+    console.writeln(f"MARPLE v{ver} - Mini APL in Python")
+    console.writeln("CLEAR WS")
+    console.writeln("")
+    while True:
+        line = console.read_line("      ")
+        if line is None:
+            break
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith(")"):
+            if _handle_system_command(line, interp, console):
+                break
+            continue
+        try:
+            result = interp.run(line)
+            if not _is_silent(line):
+                console.writeln(format_result(result, interp.env))
+        except APLError as e:
+            console.writeln(str(e))
+        except Exception as e:
+            console.writeln(f"ERROR: {e}")
+
+
 def main() -> None:
-    # Check for script mode: marple script.marple
     if len(sys.argv) > 1:
         from marple.script import run_script
         path = sys.argv[1]
@@ -222,37 +244,10 @@ def main() -> None:
             print(line)
         return
 
+    from marple.adapters.terminal_console import TerminalConsole
     interp = Interpreter()
-    from marple import __version__ as ver
-    print(f"MARPLE v{ver} - Mini APL in Python")
-    print("CLEAR WS\n")
-    use_terminal = read_line is not None and sys.stdin.isatty()
-    while True:
-        if use_terminal:
-            line = read_line()
-        else:
-            try:
-                line = input("      ")
-            except (EOFError, KeyboardInterrupt):
-                print()
-                break
-        if line is None:
-            break
-        line = line.strip()
-        if not line:
-            continue
-        if line.startswith(")"):
-            if _handle_system_command(line, interp):
-                break
-            continue
-        try:
-            result = interp.run(line)
-            if not _is_silent(line):
-                print(format_result(result, interp.env))
-        except APLError as e:
-            print(e)
-        except Exception as e:
-            print(f"ERROR: {e}")
+    console = TerminalConsole()
+    run_repl(interp, console)
 
 
 if __name__ == "__main__":
