@@ -1,0 +1,23 @@
+⎕VER
+⍝ ═══════════════════════════════════════════════════
+⍝ Conway's Game of Life — using rank and reduce
+⍝ ═══════════════════════════════════════════════════
+
+⍝ ── Shift helper: apply vertical and horizontal shift ──
+shift←{(1↑⍺)⊖(1↓⍺)⌽⍵}
+
+⍝ ── 8 neighbour offsets as an 8×2 matrix ──
+P←8 2⍴¯1 0 1 0 0 ¯1 0 1 ¯1 ¯1 ¯1 1 1 ¯1 1 1
+
+⍝ ── Life step: sum neighbours, apply birth/survival rule ──
+life←{N←+⌿P(shift⍤1 2)⍵ ⋄ (N=3)∨⍵∧N=2}
+
+⍝ ── Glider on 6×6 grid ──
+G←6 6⍴0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+G
+
+⍝ ── 4 generations — glider moves down-right ──
+(life⍣1) G
+(life⍣2) G
+(life⍣3) G
+(life⍣4) G
