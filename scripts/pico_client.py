@@ -20,6 +20,8 @@ SENTINEL = "\x00"
 _PICO_REPLACEMENTS = {
     "\u2014": "-",   # em dash
     "\u2013": "-",   # en dash
+    "\u2500": "-",   # box drawings light horizontal
+    "\u2550": "=",   # box drawings double horizontal
     "\u2018": "'",   # left single quote
     "\u2019": "'",   # right single quote
     "\u201c": '"',   # left double quote
