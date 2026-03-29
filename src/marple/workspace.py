@@ -162,6 +162,13 @@ def load_workspace(env: Any, ws_dir: str,
         if line:
             evaluate(line)
 
+    # Execute latent expression if present
+    lx = env.get("⎕LX") if hasattr(env, 'get') else env.get("⎕LX")
+    if lx is not None and isinstance(lx, APLArray) and len(lx.data) > 0:
+        lx_text = "".join(str(c) for c in lx.data)
+        if lx_text.strip():
+            evaluate(lx_text)
+
 
 def list_workspaces(root: str, fs: FileSystem | None = None) -> list[str]:
     """List workspace names under the given root directory."""

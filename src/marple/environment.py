@@ -18,6 +18,7 @@ _QUAD_DEFAULTS: dict[str, APLArray] = {
     "⎕WSID": APLArray([8], list("CLEAR WS")),
     "⎕RL": S(1),
     "⎕FR": S(645),
+    "⎕LX": APLArray([0], []),
 }
 
 
