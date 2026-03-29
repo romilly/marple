@@ -34,7 +34,7 @@ class TestRankMonadic:
         i = Interpreter(io=1)
         i.run("M←2 3⍴⍳6")
         result = i.run("(⌽⍤2) M")
-        assert result == APLArray([2, 3], [6, 5, 4, 3, 2, 1])
+        assert result == APLArray([2, 3], [3, 2, 1, 6, 5, 4])
 
     def test_negative_rank(self) -> None:
         i = Interpreter(io=1)

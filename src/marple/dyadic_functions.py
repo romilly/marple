@@ -44,6 +44,7 @@ from marple.structural import (
     replicate_first,
     reshape,
     rotate,
+    rotate_first,
     take,
     matrix_divide,
 )
@@ -69,6 +70,7 @@ class DyadicFunctionBinding:
         "↑": take,
         "↓": drop,
         "⌽": rotate,
+        "⊖": rotate_first,
         "⊤": encode,
         "⊥": decode,
         "/": replicate,

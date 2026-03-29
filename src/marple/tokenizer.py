@@ -46,7 +46,7 @@ class Token:
         return f"Token(type={self.type}, value={self.value!r})"
 
 
-FUNCTION_GLYPHS = set("+-×÷⌈⌊*⍟|<≤=≥>≠∧∨~⍴⍳,↑↓⌽⍉⍋⍒⊤⊥⍎⍕⌹○⌷≡≢∈?")
+FUNCTION_GLYPHS = set("+-×÷⌈⌊*⍟|<≤=≥>≠∧∨~⍴⍳,↑↓⌽⊖⍉⍋⍒⊤⊥⍎⍕⌹○⌷≡≢∈?")
 
 SINGLE_CHAR_TOKENS: dict[str, Token] = {
     "(": Token(TokenType.LPAREN, "("),

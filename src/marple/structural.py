@@ -22,7 +22,33 @@ def ravel(omega: APLArray) -> APLArray:
 
 
 def reverse(omega: APLArray) -> APLArray:
-    return APLArray(list(omega.shape), list(reversed(omega.data)))
+    """Monadic ⌽: reverse along last axis."""
+    if len(omega.shape) <= 1:
+        return APLArray(list(omega.shape), list(reversed(omega.data)))
+    # Matrix: reverse each row
+    rows, cols = omega.shape[0], omega.shape[-1]
+    row_len = cols
+    data = list(omega.data)
+    result: list[object] = []
+    for r in range(len(data) // row_len):
+        start = r * row_len
+        result.extend(reversed(data[start:start + row_len]))
+    return APLArray(list(omega.shape), result)
+
+
+def reverse_first(omega: APLArray) -> APLArray:
+    """Monadic ⊖: reverse along first axis."""
+    if len(omega.shape) <= 1:
+        return APLArray(list(omega.shape), list(reversed(omega.data)))
+    # Matrix: reverse row order
+    row_len = omega.shape[-1]
+    data = list(omega.data)
+    num_rows = len(data) // row_len
+    result: list[object] = []
+    for r in range(num_rows - 1, -1, -1):
+        start = r * row_len
+        result.extend(data[start:start + row_len])
+    return APLArray(list(omega.shape), result)
 
 
 # Dyadic structural functions
@@ -124,13 +150,42 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
 
 
 def rotate(alpha: APLArray, omega: APLArray) -> APLArray:
+    """Dyadic ⌽: rotate along last axis."""
     n = int(alpha.data[0])
+    if len(omega.shape) <= 1:
+        data = list(omega.data)
+        length = len(data)
+        if length == 0:
+            return APLArray(list(omega.shape), [])
+        n = n % length
+        return APLArray(list(omega.shape), data[n:] + data[:n])
+    # Matrix: rotate each row
+    row_len = omega.shape[-1]
     data = list(omega.data)
-    length = len(data)
-    if length == 0:
-        return APLArray(list(omega.shape), [])
-    n = n % length
-    result = data[n:] + data[:n]
+    result: list[object] = []
+    for r in range(len(data) // row_len):
+        start = r * row_len
+        row = data[start:start + row_len]
+        k = n % row_len if row_len else 0
+        result.extend(row[k:] + row[:k])
+    return APLArray(list(omega.shape), result)
+
+
+def rotate_first(alpha: APLArray, omega: APLArray) -> APLArray:
+    """Dyadic ⊖: rotate along first axis."""
+    n = int(alpha.data[0])
+    if len(omega.shape) <= 1:
+        return rotate(alpha, omega)
+    # Matrix: rotate row order
+    row_len = omega.shape[-1]
+    data = list(omega.data)
+    num_rows = len(data) // row_len
+    n = n % num_rows if num_rows else 0
+    result: list[object] = []
+    for r in range(num_rows):
+        src = (r + n) % num_rows
+        start = src * row_len
+        result.extend(data[start:start + row_len])
     return APLArray(list(omega.shape), result)
 
 
