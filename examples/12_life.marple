@@ -1,17 +1,10 @@
 ⎕VER
 ⍝ ═══════════════════════════════════════════════════
-⍝ Conway's Game of Life — using rank and reduce
+⍝ Conway's Game of Life — one self-contained dfn
 ⍝ ═══════════════════════════════════════════════════
 
-⍝ ── Shift helper: apply vertical and horizontal shift ──
-shift←{(1↑⍺)⊖(1↓⍺)⌽⍵}
-
-⍝ ── Generate 9 shift pairs from ⍳ and ⊤, subtract 1 ──
-P←(⍉3 3⊤(⍳9)-1)-1
-P
-
-⍝ ── Life step: sum all 9 shifts, subtract self, apply rule ──
-life←{N←(+⌿P(shift⍤1 2)⍵)-⍵ ⋄ (N=3)∨⍵∧N=2}
+⍝ ── Life in a single dfn ──
+life←{s←{(1↑⍺)⊖(1↓⍺)⌽⍵} ⋄ P←(⍉3 3⊤(⍳9)-1)-1 ⋄ N←(+⌿P(s⍤1 2)⍵)-⍵ ⋄ (N=3)∨⍵∧N=2}
 
 ⍝ ── Glider on 6×6 grid ──
 G←6 6⍴0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0

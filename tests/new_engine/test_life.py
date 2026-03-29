@@ -93,11 +93,29 @@ class TestLifeGenerated:
         assert result == expected
 
 
+class TestLifeSelfContained:
+    def test_self_contained_life(self) -> None:
+        """Life as a single self-contained dfn."""
+        i = Interpreter(io=1)
+        i.run("G←6 6⍴0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0")
+        i.run("life←{s←{(1↑⍺)⊖(1↓⍺)⌽⍵} ⋄ P←(⍉3 3⊤(⍳9)-1)-1 ⋄ N←(+⌿P(s⍤1 2)⍵)-⍵ ⋄ (N=3)∨⍵∧N=2}")
+        result = i.run("(life⍣4) G")
+        expected = APLArray([6, 6], [
+            0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+            0, 0, 0, 1, 0, 0,
+            0, 0, 0, 0, 1, 0,
+            0, 0, 1, 1, 1, 0,
+            0, 0, 0, 0, 0, 0,
+        ])
+        assert result == expected
+
+
 class TestLifeGlider:
     def test_glider_one_step(self) -> None:
         i = Interpreter(io=1)
         i.run("G←6 6⍴0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0")
-        i.run("life←{N←(1⊖⍵)+(¯1⊖⍵)+(1⌽⍵)+(¯1⌽⍵)+(1⊖1⌽⍵)+(1⊖¯1⌽⍵)+(¯1⊖1⌽⍵)+(¯1⊖¯1⌽⍵) ⋄ (N=3)∨⍵∧N=2}")
+        i.run("life←{s←{(1↑⍺)⊖(1↓⍺)⌽⍵} ⋄ P←(⍉3 3⊤(⍳9)-1)-1 ⋄ N←(+⌿P(s⍤1 2)⍵)-⍵ ⋄ (N=3)∨⍵∧N=2}")
         result = i.run("life G")
         expected = APLArray([6, 6], [
             0, 0, 0, 0, 0, 0,
@@ -113,7 +131,7 @@ class TestLifeGlider:
         """After 4 steps the glider moves down-right by 1."""
         i = Interpreter(io=1)
         i.run("G←6 6⍴0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0")
-        i.run("life←{N←(1⊖⍵)+(¯1⊖⍵)+(1⌽⍵)+(¯1⌽⍵)+(1⊖1⌽⍵)+(1⊖¯1⌽⍵)+(¯1⊖1⌽⍵)+(¯1⊖¯1⌽⍵) ⋄ (N=3)∨⍵∧N=2}")
+        i.run("life←{s←{(1↑⍺)⊖(1↓⍺)⌽⍵} ⋄ P←(⍉3 3⊤(⍳9)-1)-1 ⋄ N←(+⌿P(s⍤1 2)⍵)-⍵ ⋄ (N=3)∨⍵∧N=2}")
         result = i.run("(life⍣4) G")
         expected = APLArray([6, 6], [
             0, 0, 0, 0, 0, 0,
