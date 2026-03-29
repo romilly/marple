@@ -73,17 +73,29 @@ def run_interactive(ser: serial.Serial) -> None:
 
 
 def run_script(ser: serial.Serial, path: str, pause: float = 0.5) -> None:
-    """Send a .marple script file line by line."""
+    """Send a .marple script file line by line.
+
+    Multi-line dfns (unbalanced braces) are accumulated and
+    sent as a single newline-joined expression.
+    """
     with open(path) as f:
         lines = [line.rstrip("\n") for line in f]
+    accum = ""
     for line in lines:
         stripped = line.strip()
         if not stripped:
             continue
         print(f"      {stripped}")
-        response = send_and_receive(ser, stripped)
+        if accum:
+            accum += "\n" + stripped
+        else:
+            accum = stripped
+        if accum.count("{") > accum.count("}"):
+            continue
+        response = send_and_receive(ser, accum)
         if response:
             print("\n".join(response))
+        accum = ""
         time.sleep(pause)
 
 
