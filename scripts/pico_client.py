@@ -64,9 +64,6 @@ def run_script(ser: serial.Serial, path: str, pause: float = 0.5) -> None:
         if not stripped:
             continue
         print(f"      {stripped}")
-        if stripped.startswith("⍝"):
-            time.sleep(pause)
-            continue
         response = send_and_receive(ser, stripped)
         if response:
             print("\n".join(response))
