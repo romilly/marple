@@ -1,0 +1,48 @@
+⎕VER
+⍝ ═══════════════════════════════════════════════════
+⍝ MARPLE Demo 11: Power Operator & Tail Recursion
+⍝ ═══════════════════════════════════════════════════
+
+⍝ ── Power operator: apply f repeatedly ──
+double←{⍵×2}
+(double⍣0) 1
+(double⍣1) 1
+(double⍣10) 1
+
+⍝ ── Conditional application ──
+neg←{-⍵}
+(neg⍣1) 42
+(neg⍣0) 42
+
+⍝ ── Reverse twice is identity ──
+(⌽⍣2) 1 2 3 4 5
+
+⍝ ── Fixed-point: the golden ratio ──
+phi←{1+÷⍵}
+(phi⍣≡) 1
+
+⍝ ── Newton's method for square root ──
+sqrt←{0.5×⍵+⍺÷⍵}
+2(sqrt⍣≡) 1
+
+⍝ ═══════════════════════════════════════════════════
+⍝ Tail Call Optimisation
+⍝ ═══════════════════════════════════════════════════
+
+⍝ ── GCD with dyadic tail recursion ──
+gcd←{⍵=0:⍺ ⋄ ⍵ ∇ ⍵|⍺}
+12 gcd 8
+123456789 gcd 987654321
+
+⍝ ── Sum 1..100 with accumulator ──
+sum←{⍺←0 ⋄ ⍵=0:⍺ ⋄ (⍺+⍵)∇ ⍵-1}
+sum 100
+
+⍝ ── Deep recursion — no stack overflow! ──
+count←{⍵=0:0 ⋄ ∇ ⍵-1}
+count 10000
+
+⍝ ── Factorial with accumulator ──
+fact←{⍺←1 ⋄ ⍵=0:⍺ ⋄ (⍺×⍵)∇ ⍵-1}
+fact 10
+fact 20
