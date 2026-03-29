@@ -10,3 +10,4 @@ How-to guides are **task-oriented** — each one answers a specific "How do I...
 - **[Namespaces and Imports](namespaces/organise-code.md)** — organising and importing code
 - **[Calling Python from APL](python-ffi/using-ibeam.md)** — the i-beam FFI
 - **[Performance](performance/numpy-backend.md)** — backends and optimisation tips
+- **[Jupyter Notebook](jupyter.md)** — using MARPLE in Jupyter with HTML output, glyph input, and workspaces

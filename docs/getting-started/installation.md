@@ -2,7 +2,13 @@
 
 ## Requirements
 
-MARPLE requires Python 3.10 or later. It has no mandatory external dependencies — NumPy is optional but recommended for performance on large arrays.
+MARPLE requires Python 3.10 or later. It runs on **Linux**, **macOS**, and **Windows**.
+
+- **All platforms**: interpreter, PRIDE web IDE, Jupyter kernel, script runner
+- **Linux/macOS**: terminal REPL with live backtick-to-glyph input
+- **Windows**: terminal REPL works but without live glyph translation — use PRIDE or Jupyter for glyph input
+
+NumPy is optional but recommended for performance on large arrays.
 
 We recommend using [uv](https://docs.astral.sh/uv/getting-started/installation/) for fast, reliable Python package management.
 
@@ -58,6 +64,18 @@ MARPLE detects NumPy at startup — no configuration needed. To force pure-Pytho
 ```bash
 MARPLE_BACKEND=none marple
 ```
+
+## Jupyter Notebook
+
+To use MARPLE in Jupyter Notebook or JupyterLab:
+
+```bash
+uv pip install marple-lang[jupyter]
+marple-jupyter-install
+jupyter notebook
+```
+
+Select **MARPLE (APL)** as the kernel when creating a new notebook. See the [Jupyter guide](../how-to/jupyter.md) for details.
 
 ## For development
 

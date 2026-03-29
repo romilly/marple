@@ -63,6 +63,8 @@ MARPLE runs on the Raspberry Pi Pico 2 via MicroPython, with tail call optimizat
 
 ## Quick start
 
+MARPLE runs on **Linux**, **macOS**, and **Windows** with Python 3.10+. The interpreter, PRIDE web IDE, and Jupyter kernel work on all platforms. The terminal REPL uses backtick-to-glyph input on Linux/macOS; on Windows, use PRIDE or Jupyter for glyph input.
+
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/) if you don't have it, then:
 
 ```bash
