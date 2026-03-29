@@ -2,6 +2,30 @@
 
 All notable changes to MARPLE are documented here.
 
+## [0.5.8] — 2026-03-29
+
+### Added
+- **Jupyter kernel** — `pip install marple-lang[jupyter]`, HTML table output, tab completion, Shift+Tab inspection, backtick translation, system commands, multi-line dfns, language bar (classic Notebook)
+- **`Interpreter.execute()`** — returns `EvalResult(value, silent, display_text)`, unified entry point for all interfaces
+- **`system_commands.py`** — shared dispatcher returning strings, used by REPL, web server, and Jupyter
+- **`Environment.list_variables()` / `list_functions()`** — workspace introspection without magic constants
+- **`parser.is_balanced()`** — brace-balance check for multi-line input detection
+- **Factorial (`!`)** — monadic `!n` (factorial via gamma), dyadic `k!n` (binomial coefficient)
+- **⎕AI** — account information: user ID, CPU time (ms), connect time (ms), keying time
+- **Multi-axis take/drop** — `2 3↑M` takes 2 rows and 3 cols, with space fill for character arrays
+
+### Changed
+- `format_result` moved from `repl.py` to `formatting.py` (proper home)
+- `format_result` handles rank-3+ arrays (2D slices separated by blank lines)
+- REPL and web server use shared system command dispatcher (no duplication)
+- `pyproject.toml`: requires-python bumped to >=3.10, `[jupyter]` optional dependency added
+
+### Fixed
+- Take/drop on matrices: operate along first axis (was operating on flat data)
+- Catenate on matrices: joins along last axis (was joining flat data)
+- Error message for system function without argument (e.g. `⎕CR` alone)
+- ⎕TS milliseconds: honest 0 on MicroPython instead of misleading ticks_ms value
+
 ## [0.5.2] — 2026-03-29
 
 ### Added

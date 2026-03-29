@@ -1,6 +1,6 @@
 # marple
 
-Mini APL in Python Language Experiment. An APL interpreter with the rank and power operators, tail call optimization, namespaces, hexagonal architecture, and MicroPython support. Uses APL arrays (shape + flat data) as the internal data model. Inspired by Rodrigo Girão Serrão's [RGSPL](https://github.com/rodrigogiraoserrao/RGSPL) and Iverson's [Dictionary of APL](https://www.jsoftware.com/papers/APLDictionary.htm).
+Mini APL in Python Language Experiment. An APL interpreter with the rank and power operators, tail call optimization, namespaces, hexagonal architecture, Jupyter kernel, and MicroPython support. Uses APL arrays (shape + flat data) as the internal data model. Inspired by Rodrigo Girão Serrão's [RGSPL](https://github.com/rodrigogiraoserrao/RGSPL) and Iverson's [Dictionary of APL](https://www.jsoftware.com/papers/APLDictionary.htm).
 
 ## Documentation
 
@@ -50,13 +50,16 @@ MARPLE runs on the Raspberry Pi Pico 2 via MicroPython, with tail call optimizat
 - **Numeric type system** — automatic upcast/downcast prevents integer overflow; boolean uint8 for comparisons
 - **Matrices** — reshape, transpose, bracket indexing (`M[r;c]` any rank, index shape preserved), matrix inverse (`⌹`)
 - **Numpy backend** — automatic vectorization, with pure-Python fallback for MicroPython
+- **Factorial and binomial** — `!n` (factorial), `k!n` (binomial coefficient)
+- **⎕AI** — account information: user ID, CPU time, connect time, keying time
 - **Hexagonal architecture** — Console and FileSystem ports with real and test adapters
+- **Jupyter kernel** — `pip install marple-lang[jupyter]` for Notebook/Lab/Console with HTML tables, tab completion, and backtick glyph input
 - **PRIDE web IDE** — browser-based IDE over WebSocket with language bar, workspace panel, click-to-re-edit, session save/load, workspace save/load
 - **Pico web bridge** — evaluate APL on a connected Pico from the browser (`--pico-port /dev/ttyACM0`)
 - **Presto LCD mirror** — scrolling REPL display on the Pimoroni Presto's 480x480 touchscreen
 - **Terminal REPL** — live backtick→glyph input, workspace save/load, APL-style formatting
 - **Script runner** — `marple script.marple` with multi-line dfn support
-- **759 tests**, pyright strict, 87% code coverage
+- **825 tests**, pyright strict, 0 errors
 
 ## Quick start
 
@@ -70,7 +73,7 @@ marple
 ```
 
 ```
-MARPLE v0.5.2 - Mini APL in Python
+MARPLE v0.5.8 - Mini APL in Python
 CLEAR WS
 
       ⍳5
@@ -115,6 +118,23 @@ python -m marple.web.server --pico-port /dev/ttyACM0
 ```
 
 A Local/Pico toggle appears in the header bar. Switch to Pico mode to send expressions to the Pico over USB serial.
+
+### Jupyter Notebook
+
+```bash
+pip install marple-lang[jupyter]
+marple-jupyter-install
+jupyter notebook
+```
+
+Select **MARPLE (APL)** as the kernel. Features:
+- HTML table output for arrays (vectors, matrices, rank-3+ slices)
+- Backtick-to-glyph translation (`` `r `` → `⍴`)
+- Tab completion for workspace names
+- Shift+Tab introspection (shape, source)
+- System commands (`)vars`, `)load`, etc.) in cells
+- Multi-line dfn support
+- Language bar in classic Notebook (via `lb.js`)
 
 ### Running scripts
 
@@ -223,7 +243,10 @@ MARPLE uses hexagonal architecture with ports and adapters for testable I/O:
 | `workspace.py` | Directory-based workspace persistence |
 | `config.py` | User configuration (~/.marple/config.ini) |
 | `stdlib/` | Standard library: string functions |
+| `system_commands.py` | Shared system command dispatcher |
 | `web/server.py` | PRIDE web IDE server (aiohttp + WebSocket) |
+| `jupyter/kernel.py` | Jupyter kernel (wraps Interpreter.execute) |
+| `jupyter/html_render.py` | APLArray → HTML table conversion |
 | `pico_stubs/` | MicroPython stub modules for abc and typing |
 
 ## References
