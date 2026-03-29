@@ -7,10 +7,7 @@ Usage:
 import html
 import json
 from pathlib import Path
-try:
-    from typing import Any
-except ImportError:
-    pass
+from typing import Any
 
 from aiohttp import web
 
@@ -212,7 +209,7 @@ class WebSession:
         )
 
 
-async def handle_index(request: web.Request) -> web.Response:
+async def handle_index(request: web.Request) -> web.StreamResponse:
     path = STATIC_DIR / "desktop.html"
     return web.FileResponse(path)
 

@@ -12,10 +12,7 @@ from marple.engine import Interpreter
 from marple.errors import APLError
 from marple.parser import Assignment, Program, parse
 from marple.ports.console import Console
-try:
-    from marple.workspace import save_workspace, load_workspace, list_workspaces
-except ImportError:
-    save_workspace = load_workspace = list_workspaces = None  # type: ignore[assignment]
+from marple.workspace import save_workspace, load_workspace, list_workspaces
 
 try:
     WORKSPACES_ROOT = os.environ.get("MARPLE_WORKSPACES", "workspaces")
