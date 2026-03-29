@@ -115,6 +115,8 @@ class ExecutionContext(Protocol):
     def resolve_dyadic(self, fn: object) -> Any: ...
     def dispatch_sys_dyadic(self, name: str, left_node: object, right_node: object) -> APLArray: ...
     def apply_rank_dyadic(self, rank_node: object, left_node: object, right_node: object) -> APLArray: ...
+    def apply_power_monadic(self, power_node: object, operand_node: object) -> APLArray: ...
+    def apply_power_dyadic(self, power_node: object, left_node: object, right_node: object) -> APLArray: ...
     def resolve_qualified(self, parts: list[str]) -> object: ...
     def call_ibeam(self, path: str, operand: APLArray) -> APLArray: ...
 
@@ -256,6 +258,13 @@ class RankDerived:
         if not isinstance(other, RankDerived):
             return NotImplemented
         return self.function == other.function and self.rank_spec == other.rank_spec
+
+
+class PowerDerived:
+    """Unapplied power-derived function: f⍣g"""
+    def __init__(self, function: object, right_operand: object) -> None:
+        self.function = function
+        self.right_operand = right_operand
 
 
 class ReduceOp:
@@ -472,6 +481,8 @@ class MonadicDfnCall(Node):
             return ctx.dispatch_sys_monadic(self.dfn.name, self.operand)
         if isinstance(self.dfn, RankDerived):
             return ctx.apply_rank_monadic(self.dfn, self.operand)
+        if isinstance(self.dfn, PowerDerived):
+            return ctx.apply_power_monadic(self.dfn, self.operand)
         dfn_val = ctx.evaluate(self.dfn)
         operand = ctx.evaluate(self.operand)
         if isinstance(dfn_val, DfnBinding):
@@ -498,6 +509,8 @@ class DyadicDfnCall(Node):
             return ctx.dispatch_sys_dyadic(self.dfn.name, self.left, self.right)
         if isinstance(self.dfn, RankDerived):
             return ctx.apply_rank_dyadic(self.dfn, self.left, self.right)
+        if isinstance(self.dfn, PowerDerived):
+            return ctx.apply_power_dyadic(self.dfn, self.left, self.right)
         dfn_val = ctx.evaluate(self.dfn)
         right = ctx.evaluate(self.right)
         left = ctx.evaluate(self.left)

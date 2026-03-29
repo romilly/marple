@@ -316,6 +316,87 @@ class Executor:
                 return DyadicFunctionBinding(self.env).apply(val.glyph, alpha, omega)
         raise DomainError(f"Expected function for rank, got {type(func)}")
 
+    # ── Power operator ──
+
+    def apply_power_monadic(self, power_node: object, operand_node: object) -> APLArray:
+        from marple.dfn_binding import DfnBinding
+        from marple.parser import PowerDerived
+        assert isinstance(power_node, PowerDerived)
+        omega = self.evaluate(operand_node)
+        right_op = power_node.right_operand
+        right_val = self._resolve_power_operand(right_op)
+        if isinstance(right_val, APLArray) and right_val.is_scalar():
+            n = int(right_val.data[0])
+            if n < 0:
+                raise DomainError("DOMAIN ERROR: inverse (⍣ with negative) not supported")
+            result = omega
+            for _ in range(n):
+                result = self.apply_func_monadic(power_node.function, result)
+            return result
+        if isinstance(right_val, (DfnBinding, FunctionRef)):
+            prev = omega
+            while True:
+                curr = self.apply_func_monadic(power_node.function, prev)
+                test = self._apply_func_dyadic_or_match(right_val, curr, prev)
+                if test.data[0]:
+                    return curr
+                prev = curr
+        raise DomainError("⍣ right operand must be integer or function")
+
+    def apply_power_dyadic(self, power_node: object, left_node: object,
+                           right_node: object) -> APLArray:
+        from marple.dfn_binding import DfnBinding
+        from marple.parser import PowerDerived
+        assert isinstance(power_node, PowerDerived)
+        alpha = self.evaluate(left_node)
+        omega = self.evaluate(right_node)
+        right_op = power_node.right_operand
+        right_val = self._resolve_power_operand(right_op)
+        if isinstance(right_val, APLArray) and right_val.is_scalar():
+            n = int(right_val.data[0])
+            if n < 0:
+                raise DomainError("DOMAIN ERROR: inverse (⍣ with negative) not supported")
+            result = omega
+            for _ in range(n):
+                result = self._apply_func_dyadic(power_node.function, alpha, result)
+            return result
+        if isinstance(right_val, (DfnBinding, FunctionRef)):
+            prev = omega
+            while True:
+                curr = self._apply_func_dyadic(power_node.function, alpha, prev)
+                test = self._apply_func_dyadic_or_match(right_val, curr, prev)
+                if test.data[0]:
+                    return curr
+                prev = curr
+        raise DomainError("⍣ right operand must be integer or function")
+
+    def _resolve_power_operand(self, right_op: object) -> object:
+        """Resolve the right operand of ⍣ — may be a glyph string, AST node, or value."""
+        from marple.dfn_binding import DfnBinding
+        if isinstance(right_op, str):
+            # Primitive glyph like ≡ or =
+            return FunctionRef(right_op)
+        if isinstance(right_op, FunctionRef):
+            return right_op
+        result = self.evaluate(right_op)
+        if isinstance(result, (DfnBinding, FunctionRef)):
+            return result
+        return result
+
+    def _apply_func_dyadic_or_match(self, func: object, left: APLArray,
+                                     right: APLArray) -> APLArray:
+        """Apply a dyadic function for convergence test. Handles FunctionRef for ≡ and =."""
+        from marple.dfn_binding import DfnBinding
+        if isinstance(func, FunctionRef):
+            if func.glyph == "≡":
+                return S(1 if left == right else 0)
+            if func.glyph == "=":
+                return S(1 if left.data[0] == right.data[0] else 0)
+            return DyadicFunctionBinding(self.env).apply(func.glyph, left, right)
+        if isinstance(func, DfnBinding):
+            return func.apply(right, alpha=left)
+        raise DomainError("⍣ convergence function must be a function")
+
     # ── System functions ──
 
     _DYADIC_SYS_FN_DISPATCH: dict[str, str] = {
