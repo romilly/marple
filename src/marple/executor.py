@@ -27,6 +27,7 @@ from marple.symbol_table import NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN
 
 if TYPE_CHECKING:
     from marple.environment import Environment
+    from marple.ports.filesystem import FileSystem
 
 _READONLY_QUADS = frozenset({"⎕A", "⎕D", "⎕TS", "⎕EN", "⎕DM"})
 
@@ -72,6 +73,10 @@ class Executor:
     """Base class providing AST evaluation, shared by Interpreter and DfnBinding."""
 
     env: Environment
+
+    @property
+    def fs(self) -> 'FileSystem':
+        return self.env.fs
 
     # ── String-keyed dispatch tables (class-level, shared) ──
 
@@ -563,7 +568,7 @@ class Executor:
         import csv as _csv
         import io as _io
         path = _apl_chars_to_str(operand.data)
-        text = self.env.fs.read_text(path)
+        text = self.fs.read_text(path)
         reader = _csv.reader(_io.StringIO(text))
         headers = next(reader)
         col_names = []
@@ -601,18 +606,18 @@ class Executor:
 
     def _sys_nread(self, operand: APLArray) -> APLArray:
         path = _apl_chars_to_str(operand.data)
-        text = self.env.fs.read_text(path)
+        text = self.fs.read_text(path)
         chars = list(text)
         return APLArray([len(chars)], chars) if chars else APLArray([0], [])
 
     def _sys_nexists(self, operand: APLArray) -> APLArray:
         path = _apl_chars_to_str(operand.data)
-        return S(1 if self.env.fs.exists(path) else 0)
+        return S(1 if self.fs.exists(path) else 0)
 
     def _sys_ndelete(self, operand: APLArray) -> APLArray:
         path = _apl_chars_to_str(operand.data)
         try:
-            self.env.fs.delete(path)
+            self.fs.delete(path)
         except OSError:
             raise DomainError("File not found: " + path)
         return S(0)
@@ -620,5 +625,5 @@ class Executor:
     def _sys_nwrite(self, left: APLArray, right: APLArray) -> APLArray:
         path = _apl_chars_to_str(right.data)
         text = _apl_chars_to_str(left.data)
-        self.env.fs.write_text(path, text)
+        self.fs.write_text(path, text)
         return APLArray([0], [])
