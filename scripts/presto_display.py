@@ -15,23 +15,31 @@ class PrestoDisplay:
         self.presto = Presto(full_res=True)
         self.display = self.presto.display
         self.font = apl_font
-        self.y = 4
-        self.max_y = 480 - apl_font.CELL_H
+        self.max_lines = (480 - 8) // apl_font.CELL_H
         self.bg = self.display.create_pen(20, 20, 30)
         self.input_pen = self.display.create_pen(200, 200, 220)
         self.output_pen = self.display.create_pen(200, 220, 200)
         self.error_pen = self.display.create_pen(220, 100, 100)
         self.banner_pen = self.display.create_pen(100, 200, 100)
+        self._lines: list[tuple[str, int]] = []
         self.display.set_pen(self.bg)
         self.display.clear()
         self.presto.update()
 
     def _show_line(self, text: str, pen: int) -> None:
-        if self.y > self.max_y:
-            self._scroll()
-        self.display.set_pen(pen)
-        self.font.draw_text(self.display, text, 4, self.y)
-        self.y += self.font.CELL_H
+        self._lines.append((text, pen))
+        if len(self._lines) > self.max_lines:
+            self._lines = self._lines[-self.max_lines:]
+        self._redraw()
+
+    def _redraw(self) -> None:
+        self.display.set_pen(self.bg)
+        self.display.clear()
+        y = 4
+        for text, pen in self._lines:
+            self.display.set_pen(pen)
+            self.font.draw_text(self.display, text, 4, y)
+            y += self.font.CELL_H
         self.presto.update()
 
     def show_input(self, expr: str) -> None:
@@ -46,8 +54,3 @@ class PrestoDisplay:
 
     def show_banner(self, text: str) -> None:
         self._show_line(text, self.banner_pen)
-
-    def _scroll(self) -> None:
-        self.display.set_pen(self.bg)
-        self.display.clear()
-        self.y = 4
