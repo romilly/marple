@@ -131,29 +131,85 @@ def membership(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
 
 
 def catenate(alpha: APLArray, omega: APLArray) -> APLArray:
-    left = list(alpha.data) if not alpha.is_scalar() else [alpha.data[0]]
-    right = list(omega.data) if not omega.is_scalar() else [omega.data[0]]
-    return APLArray([len(left) + len(right)], left + right)
+    """Dyadic ,: catenate along last axis."""
+    if alpha.is_scalar() and omega.is_scalar():
+        return APLArray([2], [alpha.data[0], omega.data[0]])
+    if len(alpha.shape) <= 1 and len(omega.shape) <= 1:
+        left = list(alpha.data) if not alpha.is_scalar() else [alpha.data[0]]
+        right = list(omega.data) if not omega.is_scalar() else [omega.data[0]]
+        return APLArray([len(left) + len(right)], left + right)
+    # Higher rank: catenate along last axis
+    a_shape = list(alpha.shape) if not alpha.is_scalar() else [1]
+    o_shape = list(omega.shape) if not omega.is_scalar() else [1]
+    a_cols = a_shape[-1]
+    o_cols = o_shape[-1]
+    a_rows = len(alpha.data) // a_cols
+    result: list[object] = []
+    for r in range(a_rows):
+        result.extend(alpha.data[r * a_cols:(r + 1) * a_cols])
+        result.extend(omega.data[r * o_cols:(r + 1) * o_cols])
+    new_shape = list(a_shape)
+    new_shape[-1] = a_cols + o_cols
+    return APLArray(new_shape, result)
 
 
 def take(alpha: APLArray, omega: APLArray) -> APLArray:
+    """Dyadic ↑: take along first axis."""
     n = int(alpha.data[0])
+    if len(omega.shape) <= 1:
+        data = list(omega.data)
+        length = len(data)
+        if n >= 0:
+            result = data[:n] + [0] * max(0, n - length)
+        else:
+            result = [0] * max(0, -n - length) + data[n:]
+        return APLArray([abs(n)], result)
+    # Higher rank: take/pad rows along first axis
+    chunk = _first_axis_chunk_size(omega.shape)
+    num_rows = omega.shape[0]
+    abs_n = abs(n)
     data = list(omega.data)
-    if n >= 0:
-        result = data[:n]
-    else:
-        result = data[n:]
-    return APLArray([abs(n)], result)
+    fill = [0] * chunk
+    result: list[object] = []
+    for r in range(abs_n):
+        if n >= 0:
+            src = r
+        else:
+            src = num_rows + n + r
+        if 0 <= src < num_rows:
+            result.extend(data[src * chunk:(src + 1) * chunk])
+        else:
+            result.extend(fill)
+    new_shape = list(omega.shape)
+    new_shape[0] = abs_n
+    return APLArray(new_shape, result)
 
 
 def drop(alpha: APLArray, omega: APLArray) -> APLArray:
+    """Dyadic ↓: drop along first axis."""
     n = int(alpha.data[0])
+    if len(omega.shape) <= 1:
+        data = list(omega.data)
+        if n >= 0:
+            result = data[n:]
+        else:
+            result = data[:n]
+        return APLArray([len(result)], result)
+    # Higher rank: drop rows along first axis
+    chunk = _first_axis_chunk_size(omega.shape)
+    num_rows = omega.shape[0]
     data = list(omega.data)
     if n >= 0:
-        result = data[n:]
+        start = min(n, num_rows)
+        result = data[start * chunk:]
+        new_rows = num_rows - start
     else:
-        result = data[:n]
-    return APLArray([len(result)], result)
+        end = max(num_rows + n, 0)
+        result = data[:end * chunk]
+        new_rows = end
+    new_shape = list(omega.shape)
+    new_shape[0] = new_rows
+    return APLArray(new_shape, list(result))
 
 
 def rotate(alpha: APLArray, omega: APLArray) -> APLArray:
@@ -224,7 +280,7 @@ def _encode_scalar(radices: list[object], n: int) -> list[int]:
     """Encode a single integer in the given radix system."""
     result = [0] * len(radices)
     for i in range(len(radices) - 1, -1, -1):
-        r = int(radices[i])
+        r = int(radices[i])  # type: ignore[arg-type]
         if r == 0:
             result[i] = n
             n = 0
@@ -238,8 +294,8 @@ def encode(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⊤: represent omega in the radix system given by alpha."""
     radices = list(alpha.data)
     if omega.is_scalar():
-        result = _encode_scalar(radices, int(omega.data[0]))
-        return APLArray([len(radices)], result)
+        encoded = _encode_scalar(radices, int(omega.data[0]))
+        return APLArray([len(radices)], list(encoded))
     # Vector right arg → matrix (radix_len × omega_len)
     cols = len(omega.data)
     rows = len(radices)
