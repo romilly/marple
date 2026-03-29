@@ -6,7 +6,11 @@ from marple.arraymodel import APLArray, S
 from marple.backend import is_numeric_array, maybe_upcast, np, to_list
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.errors import DomainError
-from marple.functions import add, multiply, maximum, minimum
+from marple.functions import (
+    add, subtract, multiply, divide, maximum, minimum,
+    logical_and, logical_or,
+    equal, not_equal, less_than, less_equal, greater_than, greater_equal,
+)
 from marple.parser import FunctionRef
 
 
@@ -19,6 +23,23 @@ _UFUNC_MAP: dict[object, str] = {
 }
 
 _COMMUTATIVE = {add, multiply, maximum, minimum}
+
+_IDENTITY_ELEMENTS: dict[object, int | float] = {
+    add: 0,
+    subtract: 0,
+    multiply: 1,
+    divide: 1,
+    maximum: float("-inf"),
+    minimum: float("inf"),
+    logical_and: 1,
+    logical_or: 0,
+    equal: 1,
+    not_equal: 0,
+    less_than: 0,
+    less_equal: 1,
+    greater_than: 0,
+    greater_equal: 1,
+}
 
 
 def _reduce_vector(
@@ -39,6 +60,9 @@ def _reduce(
     """Reduce along the last axis."""
     data = omega.data
     if len(data) == 0:
+        identity = _IDENTITY_ELEMENTS.get(func)
+        if identity is not None:
+            return S(identity)
         raise DomainError("Cannot reduce empty array")
     if func in _COMMUTATIVE:
         ufunc_name = _UFUNC_MAP.get(func)

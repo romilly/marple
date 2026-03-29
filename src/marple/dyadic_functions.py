@@ -165,10 +165,24 @@ class DyadicFunctionBinding:
         result = _random.sample(range(io, m + io), n)
         return APLArray([n], result)
 
+    # Comparison functions for operator use (reduce/scan)
+    # ct defaults to 0, so they work with 2 args
+    _OPERATOR_COMPARISONS: dict[str, object] = {
+        "<": less_than,
+        "≤": less_equal,
+        "=": equal,
+        "≥": greater_equal,
+        ">": greater_than,
+        "≠": not_equal,
+    }
+
     @classmethod
     def resolve(cls, glyph: str) -> object:
         """Return the callable for a glyph, for use by operators."""
         func = cls._SIMPLE.get(glyph)
+        if func is not None:
+            return func
+        func = cls._OPERATOR_COMPARISONS.get(glyph)
         if func is not None:
             return func
         raise DomainError(f"Unknown function for operator: {glyph}")
