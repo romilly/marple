@@ -11,7 +11,7 @@ from marple.backend import (
     _DOWNCAST_CT, is_numeric_array, maybe_downcast,
 )
 from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
-from marple.errors import DomainError, ValueError_
+from marple.errors import DomainError, SyntaxError_, ValueError_
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.monadic_functions import MonadicFunctionBinding
 from marple.operator_binding import DerivedFunctionBinding
@@ -215,6 +215,8 @@ class Executor:
         if method_name is not None:
             return getattr(self, method_name)()
         if name not in self.env:
+            if name in self._SYS_FN_DISPATCH or name in self._DYADIC_SYS_FN_DISPATCH:
+                raise SyntaxError_(f"{name} is a system function — it requires an argument")
             raise ValueError_(f"Undefined system variable: {name}")
         return self.env[name]
 
