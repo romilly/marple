@@ -142,7 +142,12 @@ def main() -> None:
                             args.width, args.height, args.url)
 
     if not args.webm_only:
-        convert_to_mp4(webm_path, args.output)
+        if convert_to_mp4(webm_path, args.output):
+            Path(webm_path).unlink(missing_ok=True)
+            # Clean up empty video directory
+            video_dir = Path(webm_path).parent
+            if video_dir.exists() and not any(video_dir.iterdir()):
+                video_dir.rmdir()
 
 
 if __name__ == "__main__":

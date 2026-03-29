@@ -143,3 +143,5 @@ WIFI_CONFIG.py
 
 # PRIDE saved sessions
 sessions/
+
+.fake.pride_videos/
