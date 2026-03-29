@@ -167,7 +167,10 @@ def load_workspace(env: Any, ws_dir: str,
     if lx is not None and isinstance(lx, APLArray) and len(lx.data) > 0:
         lx_text = "".join(str(c) for c in lx.data)
         if lx_text.strip():
-            evaluate(lx_text)
+            result = evaluate(lx_text)
+            if isinstance(result, APLArray):
+                return result
+    return None
 
 
 def list_workspaces(root: str, fs: FileSystem | None = None) -> list[str]:

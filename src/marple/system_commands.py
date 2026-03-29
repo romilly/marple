@@ -109,9 +109,13 @@ def _cmd_load(interp: Interpreter, line: str) -> tuple[str, bool]:
     from marple.environment import Environment
     interp.env = Environment(io=1)
     try:
-        load_workspace(interp.env, ws_dir, evaluate=interp.run)
+        from marple.formatting import format_result
+        lx_result = load_workspace(interp.env, ws_dir, evaluate=interp.run)
         wsid = "".join(str(c) for c in interp.env["⎕WSID"].data)
-        return wsid, False
+        output = wsid
+        if lx_result is not None:
+            output += "\n" + format_result(lx_result, interp.env)
+        return output, False
     except Exception as e:
         return f"ERROR: {e}", False
 
