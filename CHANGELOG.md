@@ -2,6 +2,62 @@
 
 All notable changes to MARPLE are documented here.
 
+## [0.5.2] — 2026-03-29
+
+### Added
+- **Power operator** (`⍣`) — `(f⍣n)` iterates n times, `(f⍣≡)` iterates to fixed point, custom convergence functions
+- **Tail call optimization** — `∇` self-calls in tail position run in constant stack space; essential for Pico's 8KB stack
+- **First-axis rotate/reverse** (`⊖`) — monadic reverse and dyadic rotate along first axis, any rank
+- **⎕CSV** — `⎕CSV 'file.csv'` reads columns into named variables
+- **Console port** — hexagonal architecture: `Console` ABC with `TerminalConsole` and `FakeConsole` adapters
+- **FileSystem port** — `FileSystem` ABC with `OsFileSystem` and `FakeFileSystem` adapters
+- **Localised system variables** — `⎕IO←0` inside a dfn does not leak to the caller
+- **Multi-line dfns** in script runner and pico_client (lines accumulated until braces balance)
+- **Conway's Game of Life** — single self-contained dfn using rank, reduce, encode
+- **`life` workspace** — `life`, `shift`, `show`, `glider` ready to `)LOAD`
+- **⍣ in PRIDE language bar** — backtick `P` mapping
+- **)SAVE, )LOAD, )LIB** in PRIDE web IDE
+- **Pico stubs** — `pico_stubs/abc.py` and `pico_stubs/typing.py` for MicroPython compatibility
+- **pico_client --script** — run .marple files on the Pico from the workstation
+- 185 recovered tests from old interpreter, 759 total
+
+### Fixed
+- **⌽ on matrices** — now operates along last axis (was reversing flat data)
+- **⊖ and ⌽ for rank 3+** — chunk size uses product of trailing axes, not just last
+- **Encode (⊤)** — supports vector right argument (produces matrix)
+- **⎕RL assignment** re-seeds the RNG for deterministic roll/deal
+- **⎕FX** classifies dops as NC=4 operators
+- **⎕FR** validation — rejects values other than 645 or 1287
+- **⎕CR** splits multi-line sources into matrix rows
+- **ClassError** on name class change (function→array, array→function)
+- **Infinity** in downcast — no longer crashes on overflow
+- **Presto display** scrolls instead of clearing when full
+- **Presto display** truncates long lines to fit 480px
+- **Error message** when system function (⎕CR, ⎕FX etc.) used without argument
+- **All pyright errors** resolved (was 7, now 0)
+- **Pico deploy** updated for new engine architecture
+- **Environment.copy()** copies quad vars (was sharing reference)
+
+### Changed
+- Hexagonal architecture: REPL uses Console port, file I/O uses FileSystem port
+- Deploy script strips `from __future__ import annotations` for MicroPython
+- pico_eval.py uses `Interpreter` class instead of deleted `interpret()`
+- pico_client substitutes unsupported Unicode chars (em dash, box drawings) for Pico font
+- README fully rewritten for v0.5.2
+
+## [0.5.0] — 2026-03-28
+
+### Changed
+- **Class-based engine** replaces monolithic `interpreter.py`:
+  - `engine.py` — `Interpreter(Executor)` with `run()` method
+  - `executor.py` — base AST evaluator
+  - `nodes.py` — AST nodes with `execute(ctx)` methods
+  - `dfn_binding.py` — dfn/dop evaluation
+  - `environment.py` — workspace state with `SymbolTable`
+  - `monadic_functions.py`, `dyadic_functions.py` — function dispatch
+  - `operator_binding.py` — reduce, scan operators
+- Old `interpreter.py` deleted
+
 ## [0.3.6] — 2026-03-23
 
 ### Added
