@@ -9,7 +9,7 @@ description = "Mini APL in Python Language Experiment. Uses numpy arrays with Py
 authors = [{name = "Romilly Cocking", email = "romilly.cocking@gmail.com"}]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers", 
@@ -25,13 +25,16 @@ dependencies = ["aiohttp>=3.9"]
 
 [project.scripts]
 marple = "marple.repl:main"
+marple-jupyter-install = "marple.jupyter.install:install_kernel"
 
 [project.optional-dependencies]
+jupyter = ["ipykernel>=6.0", "jupyter_client>=7.0"]
 test = [
     "pytest>=7.0.0",
     "pytest-cov",
     "pyright",
     "PyHamcrest",
+    "pytest-asyncio",
 ]
 
 [project.urls]
@@ -43,7 +46,7 @@ Issues = "https://github.com/romilly/marple/issues"
 where = ["src"]
 
 [tool.setuptools.package-data]
-marple = ["web/static/*.html", "stdlib/**/*.apl"]
+marple = ["web/static/*.html", "stdlib/**/*.apl", "jupyter/resources/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

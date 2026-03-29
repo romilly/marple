@@ -1,0 +1,6 @@
+{
+    "argv": ["python", "-m", "marple.jupyter", "-f", "{connection_file}"],
+    "display_name": "MARPLE (APL)",
+    "language": "apl",
+    "interrupt_mode": "signal"
+}
