@@ -94,9 +94,63 @@ class WebSession:
             return name
         return "".join(str(c) for c in self.interp.env["⎕WSID"].data)
 
+    def _ws_save(self, cmd: str) -> str:
+        import os
+        from marple.workspace import save_workspace
+        from marple.config import get_workspaces_dir
+        parts = cmd.split(None, 1)
+        if len(parts) > 1:
+            name = parts[1].strip()
+            self.interp.env["⎕WSID"] = APLArray([len(name)], list(name))
+        wsid = "".join(str(c) for c in self.interp.env["⎕WSID"].data)
+        if wsid == "CLEAR WS":
+            return "ERROR: No workspace ID set. Use )WSID name first."
+        ws_root = get_workspaces_dir()
+        env_dict: dict[str, object] = {}
+        for name in self.interp.env.quad_var_names():
+            env_dict[name] = self.interp.env[name]
+        for name in self.interp.env.user_names():
+            env_dict[name] = self.interp.env[name]
+        env_dict["__sources__"] = self.interp.env.sources()
+        env_dict["__wsid__"] = wsid
+        try:
+            save_workspace(env_dict, os.path.join(ws_root, wsid))
+            return f"{wsid} SAVED"
+        except Exception as e:
+            return f"ERROR: {e}"
+
+    def _ws_load(self, cmd: str) -> str:
+        import os
+        from marple.workspace import load_workspace
+        from marple.config import get_workspaces_dir
+        parts = cmd.split(None, 1)
+        if len(parts) < 2:
+            return "ERROR: )LOAD requires a workspace name"
+        name = parts[1].strip()
+        ws_root = get_workspaces_dir()
+        ws_dir = os.path.join(ws_root, name)
+        if not os.path.isdir(ws_dir):
+            return f"ERROR: Workspace not found: {name}"
+        self.interp = Interpreter()
+        try:
+            load_workspace(self.interp.env, ws_dir, evaluate=self.interp.run)
+            wsid = "".join(str(c) for c in self.interp.env["⎕WSID"].data)
+            return wsid
+        except Exception as e:
+            return f"ERROR: {e}"
+
+    def _ws_lib(self, cmd: str) -> str:
+        from marple.workspace import list_workspaces
+        from marple.config import get_workspaces_dir
+        ws_root = get_workspaces_dir()
+        workspaces = list_workspaces(ws_root)
+        return "  ".join(workspaces) if workspaces else "(none)"
+
     _SYS_COMMANDS: dict[str, str] = {
         "clear": "_ws_clear", "vars": "_ws_vars",
         "fns": "_ws_fns", "wsid": "_ws_wsid",
+        "save": "_ws_save", "load": "_ws_load",
+        "lib": "_ws_lib",
     }
 
     def _run_system_command(self, cmd: str) -> str:
