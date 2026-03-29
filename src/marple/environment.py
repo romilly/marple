@@ -1,6 +1,9 @@
 """APL environment (workspace state) for MARPLE."""
 
-from typing import Any
+try:
+    from typing import Any
+except ImportError:
+    pass
 
 from marple.arraymodel import APLArray, S
 from marple.ports.filesystem import FileSystem
@@ -159,9 +162,8 @@ class Environment:
         Quad vars, symbols, and locals are all copied so that
         assignments inside a dfn do not leak to the caller.
         """
-        new = Environment.__new__(Environment)
+        new = Environment(fs=self.fs)
         new._quad_vars = dict(self._quad_vars)
         new.symbols = self.symbols.copy()
         new._locals = dict(self._locals)
-        new.fs = self.fs
         return new

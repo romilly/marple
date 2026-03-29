@@ -1,6 +1,11 @@
 """Console port — abstract interface for REPL I/O."""
 
-from abc import ABC, abstractmethod
+try:
+    from abc import ABC, abstractmethod
+except ImportError:
+    class ABC: pass  # type: ignore[no-redef]
+    def abstractmethod(f):  # type: ignore[no-redef]
+        return f
 
 
 class Console(ABC):

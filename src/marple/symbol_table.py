@@ -1,6 +1,9 @@
 """Symbol table for user-defined names in MARPLE."""
 
-from typing import Any
+try:
+    from typing import Any
+except ImportError:
+    pass
 
 # Name classes (following Dyalog ⎕NC convention)
 NC_UNKNOWN = 0

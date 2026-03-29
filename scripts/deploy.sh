@@ -7,6 +7,13 @@ set -e
 # Remove __pycache__ dirs before deploying
 find src/marple -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
+# Strip lines MicroPython can't handle
+echo "Preparing MicroPython-safe copies..."
+DEPLOY_TMP=$(mktemp -d)
+cp -r src/marple "$DEPLOY_TMP/"
+find "$DEPLOY_TMP/marple" -name '*.py' -exec sed -i '/^from __future__ import annotations$/d' {} +
+trap "rm -rf $DEPLOY_TMP" EXIT
+
 echo "Cleaning Pico filesystem..."
 mpremote rm -r :marple 2>/dev/null || true
 mpremote rm :main.py 2>/dev/null || true
@@ -18,44 +25,44 @@ mpremote \
     mkdir :marple/adapters + \
     mkdir :marple/stdlib + \
     mkdir :marple/stdlib/str + \
-    cp src/marple/__init__.py :marple/__init__.py + \
-    cp src/marple/arraymodel.py :marple/arraymodel.py + \
-    cp src/marple/backend.py :marple/backend.py + \
-    cp src/marple/cells.py :marple/cells.py + \
-    cp src/marple/config.py :marple/config.py + \
-    cp src/marple/dfn_binding.py :marple/dfn_binding.py + \
-    cp src/marple/dyadic_functions.py :marple/dyadic_functions.py + \
-    cp src/marple/engine.py :marple/engine.py + \
-    cp src/marple/environment.py :marple/environment.py + \
-    cp src/marple/errors.py :marple/errors.py + \
-    cp src/marple/executor.py :marple/executor.py + \
-    cp src/marple/fmt.py :marple/fmt.py + \
-    cp src/marple/formatting.py :marple/formatting.py + \
-    cp src/marple/functions.py :marple/functions.py + \
-    cp src/marple/glyphs.py :marple/glyphs.py + \
-    cp src/marple/monadic_functions.py :marple/monadic_functions.py + \
-    cp src/marple/namespace.py :marple/namespace.py + \
-    cp src/marple/nodes.py :marple/nodes.py + \
-    cp src/marple/operator_binding.py :marple/operator_binding.py + \
-    cp src/marple/parser.py :marple/parser.py + \
-    cp src/marple/repl.py :marple/repl.py + \
-    cp src/marple/script.py :marple/script.py + \
-    cp src/marple/structural.py :marple/structural.py + \
-    cp src/marple/symbol_table.py :marple/symbol_table.py + \
-    cp src/marple/terminal.py :marple/terminal.py + \
-    cp src/marple/tokenizer.py :marple/tokenizer.py + \
-    cp src/marple/workspace.py :marple/workspace.py + \
-    cp src/marple/ports/__init__.py :marple/ports/__init__.py + \
-    cp src/marple/ports/console.py :marple/ports/console.py + \
-    cp src/marple/ports/filesystem.py :marple/ports/filesystem.py + \
-    cp src/marple/adapters/__init__.py :marple/adapters/__init__.py + \
-    cp src/marple/adapters/os_filesystem.py :marple/adapters/os_filesystem.py + \
-    cp src/marple/adapters/terminal_console.py :marple/adapters/terminal_console.py + \
-    cp src/marple/stdlib/__init__.py :marple/stdlib/__init__.py + \
-    cp src/marple/stdlib/str_impl.py :marple/stdlib/str_impl.py + \
-    cp src/marple/stdlib/str/lower.apl :marple/stdlib/str/lower.apl + \
-    cp src/marple/stdlib/str/trim.apl :marple/stdlib/str/trim.apl + \
-    cp src/marple/stdlib/str/upper.apl :marple/stdlib/str/upper.apl + \
+    cp $DEPLOY_TMP/marple/__init__.py :marple/__init__.py + \
+    cp $DEPLOY_TMP/marple/arraymodel.py :marple/arraymodel.py + \
+    cp $DEPLOY_TMP/marple/backend.py :marple/backend.py + \
+    cp $DEPLOY_TMP/marple/cells.py :marple/cells.py + \
+    cp $DEPLOY_TMP/marple/config.py :marple/config.py + \
+    cp $DEPLOY_TMP/marple/dfn_binding.py :marple/dfn_binding.py + \
+    cp $DEPLOY_TMP/marple/dyadic_functions.py :marple/dyadic_functions.py + \
+    cp $DEPLOY_TMP/marple/engine.py :marple/engine.py + \
+    cp $DEPLOY_TMP/marple/environment.py :marple/environment.py + \
+    cp $DEPLOY_TMP/marple/errors.py :marple/errors.py + \
+    cp $DEPLOY_TMP/marple/executor.py :marple/executor.py + \
+    cp $DEPLOY_TMP/marple/fmt.py :marple/fmt.py + \
+    cp $DEPLOY_TMP/marple/formatting.py :marple/formatting.py + \
+    cp $DEPLOY_TMP/marple/functions.py :marple/functions.py + \
+    cp $DEPLOY_TMP/marple/glyphs.py :marple/glyphs.py + \
+    cp $DEPLOY_TMP/marple/monadic_functions.py :marple/monadic_functions.py + \
+    cp $DEPLOY_TMP/marple/namespace.py :marple/namespace.py + \
+    cp $DEPLOY_TMP/marple/nodes.py :marple/nodes.py + \
+    cp $DEPLOY_TMP/marple/operator_binding.py :marple/operator_binding.py + \
+    cp $DEPLOY_TMP/marple/parser.py :marple/parser.py + \
+    cp $DEPLOY_TMP/marple/repl.py :marple/repl.py + \
+    cp $DEPLOY_TMP/marple/script.py :marple/script.py + \
+    cp $DEPLOY_TMP/marple/structural.py :marple/structural.py + \
+    cp $DEPLOY_TMP/marple/symbol_table.py :marple/symbol_table.py + \
+    cp $DEPLOY_TMP/marple/terminal.py :marple/terminal.py + \
+    cp $DEPLOY_TMP/marple/tokenizer.py :marple/tokenizer.py + \
+    cp $DEPLOY_TMP/marple/workspace.py :marple/workspace.py + \
+    cp $DEPLOY_TMP/marple/ports/__init__.py :marple/ports/__init__.py + \
+    cp $DEPLOY_TMP/marple/ports/console.py :marple/ports/console.py + \
+    cp $DEPLOY_TMP/marple/ports/filesystem.py :marple/ports/filesystem.py + \
+    cp $DEPLOY_TMP/marple/adapters/__init__.py :marple/adapters/__init__.py + \
+    cp $DEPLOY_TMP/marple/adapters/os_filesystem.py :marple/adapters/os_filesystem.py + \
+    cp $DEPLOY_TMP/marple/adapters/terminal_console.py :marple/adapters/terminal_console.py + \
+    cp $DEPLOY_TMP/marple/stdlib/__init__.py :marple/stdlib/__init__.py + \
+    cp $DEPLOY_TMP/marple/stdlib/str_impl.py :marple/stdlib/str_impl.py + \
+    cp $DEPLOY_TMP/marple/stdlib/str/lower.apl :marple/stdlib/str/lower.apl + \
+    cp $DEPLOY_TMP/marple/stdlib/str/trim.apl :marple/stdlib/str/trim.apl + \
+    cp $DEPLOY_TMP/marple/stdlib/str/upper.apl :marple/stdlib/str/upper.apl + \
     cp data/incoming/apl_font.py :apl_font.py + \
     cp scripts/presto_display.py :presto_display.py + \
     cp scripts/pico_eval.py :main.py + \

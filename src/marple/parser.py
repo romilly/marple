@@ -1,4 +1,7 @@
-from typing import Callable
+try:
+    from typing import Callable
+except ImportError:
+    pass
 
 from marple.errors import SyntaxError_
 from marple.nodes import (  # noqa: F401 — re-exported for backward compatibility

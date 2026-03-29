@@ -1,6 +1,9 @@
 """Operator bindings (reduce, scan) for MARPLE."""
 
-from typing import Any, Callable
+try:
+    from typing import Any, Callable
+except ImportError:
+    pass
 
 from marple.arraymodel import APLArray, S
 from marple.backend import is_numeric_array, maybe_upcast, np, to_list

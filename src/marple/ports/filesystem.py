@@ -1,6 +1,11 @@
 """FileSystem port — abstract interface for file I/O."""
 
-from abc import ABC, abstractmethod
+try:
+    from abc import ABC, abstractmethod
+except ImportError:
+    class ABC: pass  # type: ignore[no-redef]
+    def abstractmethod(f):  # type: ignore[no-redef]
+        return f
 
 
 class FileSystem(ABC):
