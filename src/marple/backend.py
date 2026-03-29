@@ -150,6 +150,9 @@ def maybe_downcast(data: Any, ct: float) -> Any:
         return data
     if data.size == 0:
         return data
+    # Non-finite values (inf, nan) can't be downcast
+    if not np.all(np.isfinite(data)):
+        return data
     # Vectorised check: are all values close to whole numbers?
     rounded = np.round(data)
     diff = np.abs(data - rounded)
