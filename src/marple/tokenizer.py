@@ -159,6 +159,9 @@ class Tokenizer:
                 break
             if ch == "'":
                 tokens.append(self._read_string())
+            elif ch == "⍞":
+                tokens.append(Token(TokenType.SYSVAR, "⍞"))
+                self._advance()
             elif ch == "⎕":
                 self._advance()
                 name = ""

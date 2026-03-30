@@ -87,6 +87,8 @@ class Executor:
         "⎕TS": "_sysvar_ts",
         "⎕AI": "_sysvar_ai",
         "⎕VER": "_sysvar_ver",
+        "⍞": "_sysvar_quote_quad",
+        "⎕": "_sysvar_quad",
     }
 
     _SYS_FN_DISPATCH: dict[str, str] = {
@@ -140,13 +142,14 @@ class Executor:
 
     def call_ibeam(self, path: str, operand: APLArray) -> APLArray:
         """Call a Python function via i-beam."""
-        import importlib
         parts = path.rsplit(".", 1)
         if len(parts) != 2:
             raise DomainError(f"Invalid i-beam path: {path}")
         module_name, func_name = parts
         try:
-            mod = importlib.import_module(module_name)
+            mod = __import__(module_name)
+            for part in module_name.split(".")[1:]:
+                mod = getattr(mod, part)
         except ImportError:
             raise DomainError(f"Cannot import module: {module_name}")
         func = getattr(mod, func_name, None)
@@ -186,6 +189,8 @@ class Executor:
         if name in _READONLY_QUADS:
             raise DomainError(f"Cannot assign to read-only system variable {name}")
         value = self.evaluate(value_node)
+        if name in ("⎕", "⍞"):
+            return self._io_assign(name, value)
         if isinstance(value, APLArray) and is_numeric_array(value.data):
             value = APLArray(list(value.shape), maybe_downcast(value.data, _DOWNCAST_CT))
         if name.startswith("⎕"):
@@ -205,6 +210,23 @@ class Executor:
                 raise ClassError(f"Cannot change class of '{name}' from {old_class} to {new_class}")
             self.env.bind_name(name, value, new_class)
         return value if isinstance(value, APLArray) else S(0)
+
+    def _io_assign(self, name: str, value: APLArray) -> APLArray:
+        """Handle ⎕← (output with newline) and ⍞← (prompt, read, return prompt+response)."""
+        if self.env.console is None:
+            raise DomainError("Console not available for I/O")
+        from marple.formatting import format_result
+        text = format_result(value, self.env)
+        if name == "⎕":
+            self.env.console.writeln(text)
+            return value
+        # ⍞← : display prompt, read input, return response only (Dyalog style)
+        line = self.env.console.read_line(text)
+        if line is None:
+            raise DomainError("⍞ input not available — use the terminal REPL for interactive input")
+        self.env.console.writeln(text + line)
+        response_chars: list[object] = list(line)
+        return APLArray([len(response_chars)], response_chars)
 
     def create_binding(self, dfn_node: Dfn) -> object:
         from marple.dfn_binding import DfnBinding
@@ -257,6 +279,28 @@ class Executor:
         import sys
         s = "MARPLE v" + __version__ + " on " + sys.platform
         return APLArray([len(s)], list(s))
+
+    def _sysvar_quad(self) -> APLArray:
+        """⎕ — prompt, read, parse, and evaluate input as APL."""
+        if self.env.console is None:
+            raise DomainError("Console not available for I/O")
+        line = self.env.console.read_line("⎕:")
+        if line is None:
+            raise DomainError("⎕ input not available — use the terminal REPL for interactive input")
+        self.env.console.writeln("⎕:" + line)
+        from marple.parser import parse
+        tree = parse(line, self.env.class_dict())
+        return self.evaluate(tree)
+
+    def _sysvar_quote_quad(self) -> APLArray:
+        """⍞ — read a line of character input (no prompt)."""
+        if self.env.console is None:
+            raise DomainError("Console not available for I/O")
+        line = self.env.console.read_line("")
+        if line is None:
+            raise DomainError("⍞ input not available — use the terminal REPL for interactive input")
+        self.env.console.writeln(line)
+        return APLArray([len(line)], list(line))
 
     # ── Rank operator ──
 

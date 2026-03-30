@@ -29,7 +29,6 @@ except (ImportError, OSError):
     pass  # No WiFi — RTC will be unset
 
 from marple.engine import Interpreter
-from marple.repl import format_result, _is_silent
 from marple.errors import APLError
 import marple
 
@@ -63,15 +62,14 @@ while True:
     if lcd:
         lcd.show_input(line)
     try:
-        result = interp.run(line)
-        if _is_silent(line):
+        r = interp.execute(line)
+        if r.silent:
             print(SENTINEL)
         else:
-            output = format_result(result, interp.env)
-            print(output)
+            print(r.display_text)
             print(SENTINEL)
             if lcd:
-                lcd.show_output(output)
+                lcd.show_output(r.display_text)
     except APLError as e:
         print("ERROR: " + str(e))
         print(SENTINEL)

@@ -1,7 +1,5 @@
 """Class-based APL interpreter for MARPLE."""
 
-from dataclasses import dataclass
-
 from marple.arraymodel import APLArray, S
 from marple.backend import (
     _DOWNCAST_CT, is_numeric_array, maybe_downcast,
@@ -9,18 +7,20 @@ from marple.backend import (
 from marple.dfn_binding import DfnBinding
 from marple.environment import Environment
 from marple.formatting import format_result
+from marple.ports.console import Console
 from marple.ports.filesystem import FileSystem
 from marple.executor import Executor, _newlines_to_diamonds
 from marple.parser import Assignment, Program, parse
 from marple.symbol_table import NC_FUNCTION, NC_OPERATOR
 
 
-@dataclass
 class EvalResult:
     """Result of evaluating an APL expression."""
-    value: APLArray
-    silent: bool
-    display_text: str
+
+    def __init__(self, value: APLArray, silent: bool, display_text: str) -> None:
+        self.value = value
+        self.silent = silent
+        self.display_text = display_text
 
 
 _SYS_FUNCTION_NAMES = (
@@ -33,10 +33,11 @@ _SYS_FUNCTION_NAMES = (
 class Interpreter(Executor):
 
     def __init__(self, io: int | None = None,
-                 fs: FileSystem | None = None) -> None:
+                 fs: FileSystem | None = None,
+                 console: 'Console | None' = None) -> None:
         from marple.config import get_default_io
         effective_io = io if io is not None else get_default_io()
-        self.env = Environment(io=effective_io, fs=fs)
+        self.env = Environment(io=effective_io, fs=fs, console=console)
 
     def run(self, source: str) -> APLArray:
         """Parse and evaluate APL source code."""

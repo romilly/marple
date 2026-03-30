@@ -3,6 +3,7 @@
 import pytest
 from unittest.mock import MagicMock
 
+from marple.adapters.buffered_console import BufferedConsole
 from marple.engine import Interpreter
 from marple.jupyter.kernel import MARPLEKernel
 
@@ -12,7 +13,8 @@ def kernel() -> MARPLEKernel:
     k = MARPLEKernel.instance()
     k.send_response = MagicMock()  # type: ignore[method-assign]
     k.execution_count = 1
-    k.interp = Interpreter(io=1)
+    k._console = BufferedConsole()
+    k.interp = Interpreter(io=1, console=k._console)
     k._css_sent = True  # skip CSS injection for cleaner test output
     return k
 
@@ -101,6 +103,22 @@ class TestCompletion:
         result = await kernel.do_complete('alph', 4)
         assert 'alpha' in result['matches']
         assert 'alphabet' in result['matches']
+
+
+class TestQuadIO:
+    @pytest.mark.asyncio
+    async def test_quad_assign_sends_stream(self, kernel: MARPLEKernel) -> None:
+        result = await kernel.do_execute('⎕←42', silent=False)
+        assert result['status'] == 'ok'
+        calls = _stream_calls(kernel)
+        assert any('42' in c[0][2]['text'] for c in calls)  # type: ignore[index]
+
+    @pytest.mark.asyncio
+    async def test_quote_quad_assign_errors_without_input(self, kernel: MARPLEKernel) -> None:
+        """⍞← requires interactive input, which Jupyter doesn't support yet."""
+        result = await kernel.do_execute("⍞←'hello'", silent=False)
+        assert result['status'] == 'error'
+        assert 'input not available' in str(result.get('evalue', ''))
 
 
 class TestIsComplete:

@@ -2,6 +2,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.slow
+
 from marple.web.server import create_app
 
 

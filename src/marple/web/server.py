@@ -4,6 +4,7 @@ Usage:
     python -m marple.web.server [--port PORT]
 """
 
+import asyncio
 import html
 import json
 from pathlib import Path
@@ -11,6 +12,7 @@ from typing import Any
 
 from aiohttp import web
 
+from marple.adapters.pride_console import PrideConsole
 from marple.arraymodel import APLArray
 from marple.engine import Interpreter
 from marple.environment import Environment
@@ -30,22 +32,25 @@ class WebSession:
     """Wraps an interpreter for web use."""
 
     def __init__(self) -> None:
-        self.interp = Interpreter()
+        self._console = PrideConsole()
+        self.interp = Interpreter(console=self._console)
         self.transcript: list[tuple[str, str]] = []
 
     def evaluate(self, expr: str) -> str:
         """Evaluate an APL expression. Return an HTML fragment."""
         input_html = html.escape(INPUT_INDENT + expr)
+        self._console.clear()
         try:
             r = self.interp.execute(expr)
-            if r.silent:
+            console_output = self._console.output
+            if r.silent and not console_output:
                 self.transcript.append((expr, ""))
                 return (
                     f'<div class="entry">'
                     f'<pre class="input">{input_html}</pre>'
                     f"</div>"
                 )
-            output = r.display_text
+            output = console_output + r.display_text if not r.silent else console_output.rstrip("\n")
             self.transcript.append((expr, output))
             output_html = html.escape(output)
             return (
@@ -126,7 +131,8 @@ class WebSession:
         path = os.path.join(sessions_dir, name + ".md")
         with open(path) as f:
             text = f.read()
-        self.interp = Interpreter()
+        self._console = PrideConsole()
+        self.interp = Interpreter(console=self._console)
         self.transcript.clear()
         fragments: list[str] = []
         in_code = False
@@ -187,8 +193,9 @@ async def handle_health(request: web.Request) -> web.Response:
 
 
 async def handle_config(request: web.Request) -> web.Response:
+    from marple import __version__
     has_pico = request.app.get("pico") is not None
-    return web.json_response({"pico_available": has_pico})
+    return web.json_response({"pico_available": has_pico, "version": __version__})
 
 
 async def handle_workspace(request: web.Request) -> web.Response:
@@ -248,6 +255,7 @@ class WSHandler:
             "mode": self._handle_mode,
             "eval": self._handle_eval,
             "system": self._handle_system,
+            "input_response": self._handle_input_response,
             "save_session": self._handle_save_session,
             "load_session": self._handle_load_session,
             "list_sessions": self._handle_list_sessions,
@@ -274,7 +282,6 @@ class WSHandler:
             await self.ws.send_json({"type": "error", "message": "Invalid mode: " + str(new_mode)})
 
     async def _handle_eval(self, data: dict[str, Any]) -> None:
-        import asyncio
         expr = data.get("expr", "")
         if self.mode == "pico" and self.pico is not None:
             try:
@@ -286,15 +293,38 @@ class WSHandler:
             fragment = _pico_eval_html(expr, result_text)
             await self.ws.send_json({"type": "result", "html": fragment})
         else:
-            try:
-                fragment = self.session.evaluate(expr)
-                await self.ws.send_json({"type": "result", "html": fragment})
-                await self.ws.send_json({"type": "workspace", "html": self.session.workspace_fragment()})
-            except Exception as e:
-                error_html = html.escape(str(e))
-                await self.ws.send_json({"type": "result", "html":
-                    f'<div class="entry"><pre class="input">      {html.escape(expr)}</pre>'
-                    f'<pre class="error">{error_html}</pre></div>'})
+            # Fire-and-forget: eval runs in background so the message loop
+            # stays free to deliver input_response messages.
+            asyncio.ensure_future(self._eval_with_input(expr))
+
+    async def _handle_input_response(self, data: dict[str, Any]) -> None:
+        text = data.get("text", "")
+        self.session._console.provide_input(text)
+
+    async def _eval_with_input(self, expr: str) -> None:
+        """Run evaluate in a thread, polling for input requests."""
+        console = self.session._console
+        loop = asyncio.get_event_loop()
+        eval_future = loop.run_in_executor(None, self.session.evaluate, expr)
+
+        while not eval_future.done():
+            prompt = await loop.run_in_executor(
+                None, console.wait_for_prompt, 0.1)
+            if prompt is not None:
+                await self.ws.send_json({
+                    "type": "input_request",
+                    "prompt": prompt,
+                })
+
+        try:
+            fragment = eval_future.result()
+            await self.ws.send_json({"type": "result", "html": fragment})
+            await self.ws.send_json({"type": "workspace", "html": self.session.workspace_fragment()})
+        except Exception as e:
+            error_html = html.escape(str(e))
+            await self.ws.send_json({"type": "result", "html":
+                f'<div class="entry"><pre class="input">      {html.escape(expr)}</pre>'
+                f'<pre class="error">{error_html}</pre></div>'})
 
     async def _handle_system(self, data: dict[str, Any]) -> None:
         cmd = data.get("cmd", "")

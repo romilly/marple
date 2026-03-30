@@ -4,6 +4,7 @@ try:
 except ImportError:
     pass
 
+from marple.adapters.buffered_console import BufferedConsole
 from marple.engine import Interpreter
 from marple.errors import APLError
 from marple.ports.filesystem import FileSystem
@@ -21,7 +22,8 @@ def run_script(path: str, fs: FileSystem | None = None) -> list[str]:
     if fs is None:
         from marple.adapters.os_filesystem import OsFileSystem
         fs = OsFileSystem()
-    interp = Interpreter(fs=fs)
+    console = BufferedConsole()
+    interp = Interpreter(fs=fs, console=console)
     output: list[str] = []
     text = fs.read_text(path)
     accum = ""
@@ -48,7 +50,11 @@ def run_script(path: str, fs: FileSystem | None = None) -> list[str]:
         if accum.count("{") > accum.count("}"):
             continue
         try:
+            console.clear()
             r = interp.execute(accum)
+            console_output = console.output
+            if console_output:
+                output.append(console_output.rstrip("\n"))
             if not r.silent:
                 output.append(r.display_text)
         except APLError as e:

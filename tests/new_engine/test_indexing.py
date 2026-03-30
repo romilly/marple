@@ -63,6 +63,42 @@ class TestIndexingPreservesShape:
         assert result.data == ['a', 'b', 'c', 'd', 'e', 'a']
 
 
+class TestStringBracketIndexWithFunction:
+    """Bracket indexing on a string literal binds tighter than function application."""
+
+    def test_shape_of_string_bracket_index(self) -> None:
+        i = Interpreter(io=1)
+        result = i.run("⍴' *'[1 2 1]")
+        assert result == APLArray([1], [3])
+
+    def test_shape_of_string_bracket_index_matrix(self) -> None:
+        i = Interpreter(io=1)
+        result = i.run("⍴' *'[2 2⍴1 2 1 2]")
+        assert result == APLArray([2], [2, 2])
+
+
+class TestNumericBracketIndexWithFunction:
+    """Bracket indexing on a numeric vector binds tighter than function application."""
+
+    def test_shape_of_numeric_bracket_index(self) -> None:
+        i = Interpreter(io=1)
+        i.run("v←10 20 30 40 50")
+        result = i.run("⍴v[2 3]")
+        assert result == APLArray([1], [2])
+
+    def test_shape_of_paren_vector_bracket_index(self) -> None:
+        """⍴(1 2 3 4 5)[2 3] should give 2, not error."""
+        i = Interpreter(io=1)
+        result = i.run("⍴(1 2 3 4 5)[2 3]")
+        assert result == APLArray([1], [2])
+
+    def test_shape_of_literal_vector_bracket_index(self) -> None:
+        """⍴1 2 3 4 5[2 3] — bracket binds to the whole vector."""
+        i = Interpreter(io=1)
+        result = i.run("⍴1 2 3 4 5[2 3]")
+        assert result == APLArray([1], [2])
+
+
 class TestMatrixIndexing:
     def test_single_element(self) -> None:
         i = Interpreter(io=1)

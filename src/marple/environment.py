@@ -3,6 +3,7 @@
 from typing import Any
 
 from marple.arraymodel import APLArray, S
+from marple.ports.console import Console
 from marple.ports.filesystem import FileSystem
 from marple.symbol_table import SymbolTable
 
@@ -26,10 +27,12 @@ class Environment:
     """APL workspace environment — variables, system settings, and name table."""
 
     def __init__(self, io: int | None = None,
-                 fs: FileSystem | None = None) -> None:
+                 fs: FileSystem | None = None,
+                 console: 'Console | None' = None) -> None:
         self._quad_vars: dict[str, APLArray] = dict(_QUAD_DEFAULTS)
         self.symbols = SymbolTable()
         self._locals: dict[str, Any] = {}
+        self.console: Console | None = console
         if io is not None:
             self._quad_vars["⎕IO"] = S(io)
         if fs is not None:
@@ -177,7 +180,7 @@ class Environment:
         Quad vars, symbols, and locals are all copied so that
         assignments inside a dfn do not leak to the caller.
         """
-        new = Environment(fs=self.fs)
+        new = Environment(fs=self.fs, console=self.console)
         new._quad_vars = dict(self._quad_vars)
         new.symbols = self.symbols.copy()
         new._locals = dict(self._locals)

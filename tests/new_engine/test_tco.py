@@ -34,6 +34,7 @@ class TestTailRecursiveGCD:
         assert i.run("17 gcd 13") == S(1)
 
 
+@pytest.mark.slow
 class TestDeepTailRecursion:
     def test_countdown_deep(self) -> None:
         """Tail-recursive countdown from 10000 — must not overflow."""

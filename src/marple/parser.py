@@ -171,6 +171,19 @@ class Parser:
                     break
                 items.append((CAT_RP, None))
                 self._pos += 1
+                # (expr)[idx] — bracket index binds to parenthesised expression
+                if (paren_depth == 0
+                        and self._pos < len(self._tokens)
+                        and self._current().type == TokenType.LBRACKET):
+                    # Reduce the paren group we just closed, then apply [idx]
+                    lp_pos = len(items) - 1
+                    while lp_pos >= 0 and items[lp_pos][0] != CAT_LP:
+                        lp_pos -= 1
+                    if lp_pos >= 0:
+                        paren_items = items[lp_pos + 1:-1]  # between LP and RP
+                        inner = self._stack_parse(paren_items)
+                        node = self._parse_bracket_index(inner)
+                        items[lp_pos:] = [(CAT_NOUN, node)]
                 continue
 
             handler = self._ITEM_DISPATCH.get(tok.type)
@@ -187,13 +200,18 @@ class Parser:
         items.append((cat, dfn))
 
     def _item_number(self, tok: Token, items: list[tuple[int, object]]) -> None:
-        node = self._parse_array()
+        node: object = self._parse_array()
+        if self._current().type == TokenType.LBRACKET:
+            node = self._parse_bracket_index(node)
         items.append((CAT_NOUN, node))
 
     def _item_string(self, tok: Token, items: list[tuple[int, object]]) -> None:
         self._pos += 1
         assert isinstance(tok.value, str)
-        items.append((CAT_NOUN, Str(tok.value)))
+        node: object = Str(tok.value)
+        if self._current().type == TokenType.LBRACKET:
+            node = self._parse_bracket_index(node)
+        items.append((CAT_NOUN, node))
 
     def _item_function(self, tok: Token, items: list[tuple[int, object]]) -> None:
         self._pos += 1

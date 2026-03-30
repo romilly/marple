@@ -327,6 +327,7 @@ class TestFX:
             Interpreter(io=1).run("⎕FX 'not a function'")
 
 
+@pytest.mark.slow
 class TestDL:
     def test_dl(self) -> None:
         result = Interpreter(io=1).run("⎕DL 0.01")

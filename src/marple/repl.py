@@ -52,8 +52,8 @@ def main() -> None:
         return
 
     from marple.adapters.terminal_console import TerminalConsole
-    interp = Interpreter()
     console = TerminalConsole()
+    interp = Interpreter(console=console)
     run_repl(interp, console)
 
 

@@ -3,6 +3,7 @@
 from ipykernel.kernelbase import Kernel
 
 from marple import __version__
+from marple.adapters.buffered_console import BufferedConsole
 from marple.engine import Interpreter
 from marple.errors import APLError
 from marple.glyphs import expand_glyphs
@@ -24,7 +25,8 @@ class MARPLEKernel(Kernel):
 
     def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
-        self.interp = Interpreter(io=1)
+        self._console = BufferedConsole()
+        self.interp = Interpreter(io=1, console=self._console)
         self._css_sent = False
 
     async def do_execute(  # type: ignore[override]
@@ -46,7 +48,14 @@ class MARPLEKernel(Kernel):
             return await self._handle_system_command(code, silent)
 
         try:
+            self._console.clear()
             r = self.interp.execute(code)
+            console_output = self._console.output
+            if not silent and console_output:
+                self.send_response(self.iopub_socket, 'stream', {
+                    'name': 'stdout',
+                    'text': console_output,
+                })
             if not silent and not r.silent:
                 html = aplarray_to_html(r.value)
                 self.send_response(self.iopub_socket, 'execute_result', {

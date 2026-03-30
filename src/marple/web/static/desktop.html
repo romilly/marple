@@ -100,7 +100,8 @@
 <body>
     <div class="header-bar d-flex justify-content-between align-items-center">
         <span class="d-flex align-items-center gap-3">
-            <strong>PRIDE</strong>
+            <strong style="color:#ffdd44;">PRIDE</strong>
+            <span id="version-label" style="font-size:0.8em; color:#ffdd44;"></span>
             <div class="dropdown">
                 <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
                         type="button" data-bs-toggle="dropdown" style="font-size:0.85em;">
@@ -125,7 +126,7 @@
                     <input type="radio" name="mode" value="pico"> Pico
                 </label>
             </span>
-            <span id="ws-status" style="font-size:0.8em; color:#666;">connecting...</span>
+            <span id="ws-status" style="font-size:0.8em; color:#ffdd44;">connecting...</span>
         </span>
     </div>
     <div class="row g-0 main-row">
@@ -153,6 +154,8 @@
     // State
     const history = [];
     let historyPos = -1;
+    let inputMode = false;
+    let inputPrompt = '';
 
     // Click to re-edit: click any input line to copy it to the input area
     function attachInputClickHandlers() {
@@ -174,11 +177,11 @@
         ws = new WebSocket(proto + '//' + location.host + '/ws');
         ws.onopen = function() {
             wsStatus.textContent = 'connected';
-            wsStatus.style.color = '#4a4';
+            wsStatus.style.color = '#ffdd44';
         };
         ws.onclose = function() {
             wsStatus.textContent = 'disconnected';
-            wsStatus.style.color = '#a44';
+            wsStatus.style.color = '#ff6644';
             setTimeout(connectWS, 2000);
         };
         var messageHandlers = {
@@ -224,6 +227,16 @@
             },
             session_list: function(msg) {
                 showLoadDialog(msg.sessions);
+            },
+            input_request: function(msg) {
+                inputMode = true;
+                inputPrompt = msg.prompt || '';
+                input.value = inputPrompt;
+                input.placeholder = '⍞ input — type here and press Enter';
+                input.style.backgroundColor = '#1a1a2e';
+                input.style.color = '#ffdd44';
+                input.setSelectionRange(inputPrompt.length, inputPrompt.length);
+                input.focus();
             },
             error: function(msg) {
                 session.insertAdjacentHTML('beforeend',
@@ -321,10 +334,42 @@
             }
             return;
         }
+        // In input mode, prevent deleting into the prompt
+        if (inputMode && (e.key === 'Backspace' || e.key === 'Delete')) {
+            if (input.selectionStart <= inputPrompt.length) {
+                e.preventDefault();
+                return;
+            }
+        }
+        // In input mode, prevent cursor moving into prompt
+        if (inputMode && (e.key === 'Home' || e.key === 'ArrowLeft')) {
+            if (input.selectionStart <= inputPrompt.length) {
+                e.preventDefault();
+                return;
+            }
+        }
+
         // Submit
         if (e.key !== 'Enter') return;
         if (e.shiftKey) return;
         e.preventDefault();
+
+        // Input mode: send response to ⍞/⎕ input request
+        if (inputMode) {
+            const fullText = input.value;
+            const response = fullText.substring(inputPrompt.length);
+            input.value = '';
+            input.style.height = 'auto';
+            input.style.backgroundColor = '';
+            input.style.color = '';
+            input.placeholder = 'APL expression';
+            inputMode = false;
+            inputPrompt = '';
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({type: 'input_response', text: response}));
+            }
+            return;
+        }
 
         const raw = input.value.trim();
         if (!raw) return;
@@ -334,12 +379,18 @@
         history.push(raw);
         historyPos = -1;
 
-        if (ws && ws.readyState === WebSocket.OPEN) {
+        function sendMessage(text) {
             if (text.startsWith(')')) {
                 ws.send(JSON.stringify({type: 'system', cmd: text}));
             } else {
                 ws.send(JSON.stringify({type: 'eval', expr: text}));
             }
+        }
+
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            sendMessage(text);
+        } else if (ws && ws.readyState === WebSocket.CONNECTING) {
+            ws.addEventListener('open', function() { sendMessage(text); }, {once: true});
         } else {
             session.insertAdjacentHTML('beforeend',
                 '<div class="entry">' +
@@ -362,6 +413,10 @@
     fetch('/config').then(function(r) { return r.json(); }).then(function(cfg) {
         if (cfg.pico_available) {
             modeToggle.style.display = '';
+        }
+        if (cfg.version) {
+            document.title = 'PRIDE — MARPLE v' + cfg.version;
+            document.getElementById('version-label').textContent = 'v' + cfg.version;
         }
     }).catch(function() {});
 
