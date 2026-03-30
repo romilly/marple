@@ -37,6 +37,11 @@ def _cmd_wsid(interp: Interpreter, line: str) -> tuple[str, bool]:
     return "".join(str(c) for c in interp.env["⎕WSID"].data), False
 
 
+def _cmd_ops(interp: Interpreter, line: str) -> tuple[str, bool]:
+    names = [name for name, _ in interp.env.list_operators()]
+    return "  ".join(names), False
+
+
 def _cmd_fns(interp: Interpreter, line: str) -> tuple[str, bool]:
     parts = line.split(None, 1)
     if len(parts) > 1:
@@ -129,6 +134,7 @@ _COMMANDS: dict[str, _CmdFn] = {
     "clear": _cmd_clear,
     "wsid": _cmd_wsid,
     "fns": _cmd_fns,
+    "ops": _cmd_ops,
     "vars": _cmd_vars,
     "lib": _cmd_lib,
     "save": _cmd_save,

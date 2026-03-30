@@ -131,6 +131,14 @@ class Environment:
             result.append((name, source))
         return result
 
+    def list_operators(self) -> list[tuple[str, str | None]]:
+        """Return sorted list of (name, source_or_None) for all user operators."""
+        result = []
+        for name in self.names_of_class(4):  # NC_OPERATOR
+            source = self.get_source(name)
+            result.append((name, source))
+        return result
+
     # ── Dict-like interface ──
     # Lookup order: quad vars, then symbols, then locals (⍵, ⍺, ∇, etc.)
 

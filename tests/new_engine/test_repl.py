@@ -86,6 +86,19 @@ class TestReplSystemCommands:
         run_repl(Interpreter(io=1), console)
         assert any("double" in l for l in console.output_lines)
 
+    def test_fns_excludes_operators(self) -> None:
+        console = FakeConsole(["double←{⍵+⍵}", "twice←{⍺⍺ ⍺⍺ ⍵}", ")FNS"])
+        run_repl(Interpreter(io=1), console)
+        fns_line = [l for l in console.output_lines if "double" in l][0]
+        assert "twice" not in fns_line
+
+    def test_ops(self) -> None:
+        console = FakeConsole(["double←{⍵+⍵}", "twice←{⍺⍺ ⍺⍺ ⍵}", ")OPS"])
+        run_repl(Interpreter(io=1), console)
+        ops_line = [l for l in console.output_lines if "twice" in l]
+        assert len(ops_line) > 0
+        assert "double" not in ops_line[0]
+
     def test_unknown_command(self) -> None:
         console = FakeConsole([")NOPE"])
         run_repl(Interpreter(io=1), console)
