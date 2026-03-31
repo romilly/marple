@@ -183,11 +183,10 @@ class TestSystemCommandsConfig:
 class TestReplConfig:
     """REPL entry point creates DesktopConfig by default."""
 
-    def test_repl_uses_desktop_config(self) -> None:
-        from marple.adapters.desktop_config import DesktopConfig
+    def test_interpreter_defaults_to_default_config(self) -> None:
         from marple.engine import Interpreter
         interp = Interpreter()
-        assert isinstance(interp.config, DesktopConfig)
+        assert isinstance(interp.config, DefaultConfig)
 
     def test_pico_can_use_pico_config(self) -> None:
         from marple.adapters.pico_config import PicoConfig

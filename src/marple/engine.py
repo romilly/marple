@@ -38,8 +38,8 @@ class Interpreter(Executor):
                  console: 'Console | None' = None,
                  config: 'Config | None' = None) -> None:
         if config is None:
-            from marple.adapters.desktop_config import DesktopConfig
-            config = DesktopConfig()
+            from marple.adapters.default_config import DefaultConfig
+            config = DefaultConfig()
         self.config = config
         effective_io = io if io is not None else config.get_default_io()
         self.env = Environment(io=effective_io, fs=fs, console=console)

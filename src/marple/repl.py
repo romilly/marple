@@ -51,9 +51,10 @@ def main() -> None:
             print(line)
         return
 
+    from marple.adapters.desktop_config import DesktopConfig
     from marple.adapters.terminal_console import TerminalConsole
     console = TerminalConsole()
-    interp = Interpreter(console=console)
+    interp = Interpreter(console=console, config=DesktopConfig())
     run_repl(interp, console)
 
 

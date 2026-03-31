@@ -391,8 +391,9 @@ async def handle_ws(request: web.Request) -> web.WebSocketResponse:
 
 
 def create_app() -> web.Application:
+    from marple.adapters.desktop_config import DesktopConfig
     app = web.Application()
-    app["session"] = WebSession()
+    app["session"] = WebSession(config=DesktopConfig())
     app.router.add_get("/", handle_index)
     app.router.add_get("/health", handle_health)
     app.router.add_get("/config", handle_config)
