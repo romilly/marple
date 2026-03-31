@@ -166,6 +166,24 @@ class TestSystemCommandsConfig:
         assert (ws_dir / "testws").is_dir()
 
 
+class TestReplConfig:
+    """REPL entry point creates DesktopConfig by default."""
+
+    def test_repl_uses_desktop_config(self) -> None:
+        from marple.adapters.desktop_config import DesktopConfig
+        from marple.engine import Interpreter
+        interp = Interpreter()
+        assert isinstance(interp.config, DesktopConfig)
+
+    def test_pico_can_use_pico_config(self) -> None:
+        from marple.adapters.pico_config import PicoConfig
+        from marple.engine import Interpreter
+        cfg = PicoConfig({"io": 0})
+        interp = Interpreter(config=cfg)
+        assert isinstance(interp.config, PicoConfig)
+        assert interp.env.io == 0
+
+
 @pytest.mark.slow
 class TestWebServerConfig:
     """Web server uses config for sessions directory."""
