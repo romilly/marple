@@ -4,8 +4,6 @@ import time
 
 import serial
 
-INPUT_REQUEST = "\x01"
-
 
 class PicoConnection:
     """Wraps a serial connection to a Pico running MARPLE."""
@@ -59,13 +57,6 @@ class PicoConnection:
             if line == self.SENTINEL:
                 break
             if line == encoded:
-                continue
-            if line.startswith(INPUT_REQUEST):
-                prompt = line[len(INPUT_REQUEST):]
-                response = input(prompt)
-                hex_response = response.encode("utf-8").hex()
-                self.ser.write((hex_response + "\r\n").encode("ascii"))
-                self.ser.flush()
                 continue
             lines.append(line)
         return "\n".join(lines)
