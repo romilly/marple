@@ -133,3 +133,34 @@ class TestInterpreterConfig:
         cfg = FakeConfig()
         interp = Interpreter(config=cfg)
         assert interp.config is cfg
+
+
+class TestSystemCommandsConfig:
+    """System commands use config for workspace directory."""
+
+    def test_lib_uses_config_workspaces_dir(self, tmp_path: object) -> None:
+        from pathlib import Path
+        from marple.engine import Interpreter
+        from marple.system_commands import run_system_command
+        ws_dir = Path(str(tmp_path)) / "ws"
+        ws_dir.mkdir()
+        (ws_dir / "myws").mkdir()
+        (ws_dir / "myws" / ".ws").write_text("")
+        cfg = FakeConfig(workspaces_dir=str(ws_dir))
+        interp = Interpreter(config=cfg)
+        output, _ = run_system_command(interp, ")lib")
+        assert "myws" in output
+
+    def test_save_uses_config_workspaces_dir(self, tmp_path: object) -> None:
+        from pathlib import Path
+        from marple.engine import Interpreter
+        from marple.system_commands import run_system_command
+        ws_dir = Path(str(tmp_path)) / "ws"
+        ws_dir.mkdir()
+        cfg = FakeConfig(workspaces_dir=str(ws_dir))
+        interp = Interpreter(config=cfg)
+        interp.run("x←42")
+        run_system_command(interp, ")wsid testws")
+        output, _ = run_system_command(interp, ")save")
+        assert "SAVED" in output
+        assert (ws_dir / "testws").is_dir()

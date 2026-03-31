@@ -69,15 +69,13 @@ def _cmd_vars(interp: Interpreter, line: str) -> tuple[str, bool]:
 
 def _cmd_lib(interp: Interpreter, line: str) -> tuple[str, bool]:
     from marple.workspace import list_workspaces
-    from marple.config import get_workspaces_dir
-    ws_root = get_workspaces_dir()
+    ws_root = interp.config.get_workspaces_dir()
     workspaces = list_workspaces(ws_root)
     return "  ".join(workspaces) if workspaces else "(none)", False
 
 
 def _cmd_save(interp: Interpreter, line: str) -> tuple[str, bool]:
     from marple.workspace import save_workspace
-    from marple.config import get_workspaces_dir
     parts = line.split(None, 1)
     if len(parts) > 1:
         name = parts[1].strip()
@@ -85,7 +83,7 @@ def _cmd_save(interp: Interpreter, line: str) -> tuple[str, bool]:
     wsid = "".join(str(c) for c in interp.env["⎕WSID"].data)
     if wsid == "CLEAR WS":
         return "ERROR: No workspace ID set. Use )WSID name first.", False
-    ws_root = get_workspaces_dir()
+    ws_root = interp.config.get_workspaces_dir()
     env_dict: dict[str, object] = {}
     for name in interp.env.quad_var_names():
         env_dict[name] = interp.env[name]
@@ -102,12 +100,11 @@ def _cmd_save(interp: Interpreter, line: str) -> tuple[str, bool]:
 
 def _cmd_load(interp: Interpreter, line: str) -> tuple[str, bool]:
     from marple.workspace import load_workspace
-    from marple.config import get_workspaces_dir
     parts = line.split(None, 1)
     if len(parts) < 2:
         return "ERROR: )LOAD requires a workspace name", False
     name = parts[1].strip()
-    ws_root = get_workspaces_dir()
+    ws_root = interp.config.get_workspaces_dir()
     ws_dir = os.path.join(ws_root, name)
     if not os.path.isdir(ws_dir):
         return f"ERROR: Workspace not found: {name}", False
