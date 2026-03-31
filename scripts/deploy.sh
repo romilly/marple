@@ -47,6 +47,7 @@ mpremote \
     cp $DEPLOY_TMP/marple/structural.py :marple/structural.py + \
     cp $DEPLOY_TMP/marple/symbol_table.py :marple/symbol_table.py + \
     cp $DEPLOY_TMP/marple/terminal.py :marple/terminal.py + \
+    cp $DEPLOY_TMP/marple/system_commands.py :marple/system_commands.py + \
     cp $DEPLOY_TMP/marple/tokenizer.py :marple/tokenizer.py + \
     cp $DEPLOY_TMP/marple/workspace.py :marple/workspace.py + \
     cp $DEPLOY_TMP/marple/ports/__init__.py :marple/ports/__init__.py + \

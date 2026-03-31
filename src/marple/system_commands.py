@@ -121,11 +121,7 @@ def _cmd_load(interp: Interpreter, line: str) -> tuple[str, bool]:
         return f"ERROR: {e}", False
 
 
-from typing import Callable
-
-_CmdFn = Callable[[Interpreter, str], tuple[str, bool]]
-
-_COMMANDS: dict[str, _CmdFn] = {
+_COMMANDS: dict[str, object] = {
     "off": _cmd_off,
     "clear": _cmd_clear,
     "wsid": _cmd_wsid,

@@ -203,3 +203,19 @@ class TestPicoIndexingShape:
         pico.eval_silent("r←1 2 3")
         pico.eval_silent("s←1 2 3")
         assert pico.eval("⍴' *'[1+r∘.=s]") == "3 3"
+
+
+class TestPicoSystemCommands:
+    def test_save_load_and_lib(self, pico):
+        pico.eval(")clear")
+        pico.eval_silent("x←42")
+        pico.eval(")wsid e2e_test")
+        result = pico.eval(")save")
+        assert "SAVED" in result
+        # Clear and reload
+        pico.eval(")clear")
+        result = pico.eval(")lib")
+        assert "e2e_test" in result
+        result = pico.eval(")load e2e_test")
+        assert "e2e_test" in result
+        assert pico.eval("x") == "42"

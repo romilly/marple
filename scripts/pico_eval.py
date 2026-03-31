@@ -67,6 +67,17 @@ while True:
         line = raw  # fallback: treat as plain ASCII
     if lcd:
         lcd.show_input(line)
+    if line.startswith(")"):
+        from marple.system_commands import run_system_command
+        output, should_exit = run_system_command(interp, line)
+        if output:
+            print(output)
+            if lcd:
+                lcd.show_output(output)
+        print(SENTINEL)
+        if should_exit:
+            break
+        continue
     try:
         r = interp.execute(line)
         if r.silent:

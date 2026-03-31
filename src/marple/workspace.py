@@ -1,6 +1,4 @@
 
-import os
-from datetime import datetime
 try:
     from typing import Any, Callable
 except ImportError:
@@ -82,8 +80,7 @@ def save_workspace(env: dict[str, Any], ws_dir: str,
         wsid = "".join(str(c) for c in wsid_val.data)
     else:
         wsid = str(wsid_val)
-    fs.write_text(os.path.join(ws_dir, ".ws"),
-                  f"{wsid}\n{datetime.now().isoformat()}\n")
+    fs.write_text(ws_dir + "/" + ".ws", wsid + "\n")
 
     # Track which files we write so we can clean up stale ones
     written_files: set[str] = {".ws"}
@@ -103,7 +100,7 @@ def save_workspace(env: dict[str, Any], ws_dir: str,
                 if formatted is not None:
                     filename = _entity_filename(name)
                     written_files.add(filename)
-                    fs.write_text(os.path.join(ws_dir, filename),
+                    fs.write_text(ws_dir + "/" + filename,
                                   f"{name}←{formatted}\n")
 
     # Save user definitions
@@ -116,19 +113,19 @@ def save_workspace(env: dict[str, Any], ws_dir: str,
         filename = _entity_filename(name)
         if _is_dfn_binding(value) and name in sources:
             written_files.add(filename)
-            fs.write_text(os.path.join(ws_dir, filename),
+            fs.write_text(ws_dir + "/" + filename,
                           f"{sources[name]}\n")
         elif isinstance(value, APLArray):
             formatted = _format_value(value)
             if formatted is not None:
                 written_files.add(filename)
-                fs.write_text(os.path.join(ws_dir, filename),
+                fs.write_text(ws_dir + "/" + filename,
                               f"{name}←{formatted}\n")
 
     # Remove stale .apl files
     for existing in fs.listdir(ws_dir):
         if existing.endswith(".apl") and existing not in written_files:
-            fs.delete(os.path.join(ws_dir, existing))
+            fs.delete(ws_dir + "/" + existing)
 
 
 def load_workspace(env: Any, ws_dir: str,
@@ -141,7 +138,7 @@ def load_workspace(env: Any, ws_dir: str,
     if fs is None:
         fs = _default_fs()
     # Read .ws marker for WSID
-    ws_file = os.path.join(ws_dir, ".ws")
+    ws_file = ws_dir + "/" + ".ws"
     if fs.is_file(ws_file):
         text = fs.read_text(ws_file)
         wsid = text.split("\n")[0].strip()
@@ -157,7 +154,7 @@ def load_workspace(env: Any, ws_dir: str,
         raise ValueError("evaluate callable is required for load_workspace")
 
     for filename in sys_files + user_files:
-        filepath = os.path.join(ws_dir, filename)
+        filepath = ws_dir + "/" + filename
         line = fs.read_text(filepath).strip()
         if line:
             evaluate(line)
@@ -181,7 +178,7 @@ def list_workspaces(root: str, fs: FileSystem | None = None) -> list[str]:
         return []
     result = []
     for name in sorted(fs.listdir(root)):
-        ws_dir = os.path.join(root, name)
-        if fs.is_dir(ws_dir) and fs.is_file(os.path.join(ws_dir, ".ws")):
+        ws_dir = root + "/" + name
+        if fs.is_dir(ws_dir) and fs.is_file(ws_dir + "/" + ".ws"):
             result.append(name)
     return result
