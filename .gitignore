@@ -144,4 +144,7 @@ WIFI_CONFIG.py
 # PRIDE saved sessions
 sessions/
 
+# Saved workspaces
+workspaces/
+
 .fake.pride_videos/
