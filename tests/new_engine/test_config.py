@@ -5,6 +5,7 @@ import os
 import pytest
 
 from marple.adapters.desktop_config import DesktopConfig
+from marple.adapters.pico_config import PicoConfig
 from marple.ports.config import Config
 from tests.adapters.fake_config import FakeConfig
 
@@ -84,3 +85,29 @@ class TestFakeConfig:
         assert cfg.get_default_io() == 1
         assert cfg.get_workspaces_dir() == "workspaces"
         assert cfg.get_sessions_dir() == "sessions"
+
+
+class TestPicoConfig:
+    """PicoConfig reads from a Python dict."""
+
+    def test_reads_io_from_dict(self) -> None:
+        cfg = PicoConfig({"io": 0})
+        assert cfg.get_default_io() == 0
+
+    def test_reads_workspaces_from_dict(self) -> None:
+        cfg = PicoConfig({"workspaces": "/data/ws"})
+        assert cfg.get_workspaces_dir() == "/data/ws"
+
+    def test_reads_sessions_from_dict(self) -> None:
+        cfg = PicoConfig({"sessions": "/data/sess"})
+        assert cfg.get_sessions_dir() == "/data/sess"
+
+    def test_defaults_when_empty_dict(self) -> None:
+        cfg = PicoConfig({})
+        assert cfg.get_default_io() == 1
+        assert cfg.get_workspaces_dir() == "workspaces"
+        assert cfg.get_sessions_dir() == "sessions"
+
+    def test_defaults_when_no_dict(self) -> None:
+        cfg = PicoConfig()
+        assert cfg.get_default_io() == 1
