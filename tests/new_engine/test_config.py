@@ -111,3 +111,25 @@ class TestPicoConfig:
     def test_defaults_when_no_dict(self) -> None:
         cfg = PicoConfig()
         assert cfg.get_default_io() == 1
+
+
+class TestInterpreterConfig:
+    """Interpreter uses Config for default settings."""
+
+    def test_interpreter_uses_config_io(self) -> None:
+        from marple.engine import Interpreter
+        cfg = FakeConfig(io=0)
+        interp = Interpreter(config=cfg)
+        assert interp.env.io == 0
+
+    def test_interpreter_io_param_overrides_config(self) -> None:
+        from marple.engine import Interpreter
+        cfg = FakeConfig(io=0)
+        interp = Interpreter(io=1, config=cfg)
+        assert interp.env.io == 1
+
+    def test_interpreter_stores_config(self) -> None:
+        from marple.engine import Interpreter
+        cfg = FakeConfig()
+        interp = Interpreter(config=cfg)
+        assert interp.config is cfg
