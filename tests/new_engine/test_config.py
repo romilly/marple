@@ -4,6 +4,7 @@ import os
 
 import pytest
 
+from marple.adapters.default_config import DefaultConfig
 from marple.adapters.desktop_config import DesktopConfig
 from marple.adapters.pico_config import PicoConfig
 from marple.ports.config import Config
@@ -25,6 +26,19 @@ class TestConfigABC:
 
     def test_has_get_sessions_dir(self) -> None:
         assert hasattr(Config, "get_sessions_dir")
+
+
+class TestDefaultConfig:
+    """DefaultConfig returns hardcoded defaults with no platform dependencies."""
+
+    def test_default_io(self) -> None:
+        assert DefaultConfig().get_default_io() == 1
+
+    def test_default_workspaces(self) -> None:
+        assert DefaultConfig().get_workspaces_dir() == "workspaces"
+
+    def test_default_sessions(self) -> None:
+        assert DefaultConfig().get_sessions_dir() == "sessions"
 
 
 class TestDesktopConfig:
