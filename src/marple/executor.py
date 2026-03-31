@@ -1,12 +1,11 @@
 """Executor: shared AST evaluation logic for the MARPLE interpreter."""
 
-from __future__ import annotations
 
 import time
 
 _START_TIME = time.time()
 
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 from marple.arraymodel import APLArray, S
 from marple.backend import (
@@ -28,9 +27,8 @@ from marple.parser import (
 )
 from marple.symbol_table import NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN
 
-if TYPE_CHECKING:
-    from marple.environment import Environment
-    from marple.ports.filesystem import FileSystem
+from marple.environment import Environment
+from marple.ports.filesystem import FileSystem
 
 _READONLY_QUADS = frozenset({"⎕A", "⎕D", "⎕TS", "⎕EN", "⎕DM"})
 

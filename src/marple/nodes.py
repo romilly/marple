@@ -1,6 +1,5 @@
 """AST node classes for MARPLE."""
 
-from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Any, Protocol, Generator
@@ -200,7 +199,7 @@ class QualifiedVar(Node):
 
 
 class DerivedFunc(Node):
-    def __init__(self, operator: str, function: str | Node | BoundOperator, operand: object) -> None:
+    def __init__(self, operator: str, function, operand: object) -> None:
         self.operator = operator
         self.function = function
         self.operand = operand
@@ -294,7 +293,7 @@ class IBeamDerived(Node):
 
 
 class InnerProduct(Node):
-    def __init__(self, left_fn: str | Node | BoundOperator, right_fn: str | Node | BoundOperator, left: object, right: object) -> None:
+    def __init__(self, left_fn, right_fn, left: object, right: object) -> None:
         self.left_fn = left_fn
         self.right_fn = right_fn
         self.left = left
@@ -309,7 +308,7 @@ class InnerProduct(Node):
 
 
 class OuterProduct(Node):
-    def __init__(self, function: str | Node | BoundOperator, left: object, right: object) -> None:
+    def __init__(self, function, left: object, right: object) -> None:
         self.function = function
         self.left = left
         self.right = right
@@ -410,8 +409,8 @@ CAT_EMPTY = 8
 class BoundOperator:
     """Operator bound to operand(s), not yet applied to argument."""
     def __init__(self, operator: str | Var,
-                 left_operand: str | Node | BoundOperator, left_cat: int,
-                 right_operand: str | Node | BoundOperator | None = None,
+                 left_operand, left_cat: int,
+                 right_operand=None,
                  right_cat: int = CAT_EMPTY) -> None:
         self.operator = operator
         self.left_operand = left_operand

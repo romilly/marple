@@ -1,15 +1,11 @@
 """DfnBinding: a dfn/dop that can evaluate its own body."""
 
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
 
 from marple.arraymodel import APLArray, S
 from marple.executor import Executor
 from marple.parser import AlphaDefault, Dfn, Guard
 
-if TYPE_CHECKING:
-    from marple.environment import Environment
+from marple.environment import Environment
 
 
 class _TailCall:

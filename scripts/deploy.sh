@@ -7,11 +7,9 @@ set -e
 # Remove __pycache__ dirs before deploying
 find src/marple -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
-# Strip lines MicroPython can't handle
-echo "Preparing MicroPython-safe copies..."
+echo "Preparing deployment copies..."
 DEPLOY_TMP=$(mktemp -d)
 cp -r src/marple "$DEPLOY_TMP/"
-find "$DEPLOY_TMP/marple" -name '*.py' -exec sed -i '/^from __future__ import annotations$/d' {} +
 trap "rm -rf $DEPLOY_TMP" EXIT
 
 echo "Cleaning Pico filesystem..."

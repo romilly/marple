@@ -1,13 +1,12 @@
 """Dyadic primitive function dispatch for MARPLE."""
 
-from __future__ import annotations
 
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 from marple.arraymodel import APLArray, S
 
-if TYPE_CHECKING:
-    from marple.environment import Environment
+#if TYPE_CHECKING:
+from marple.environment import Environment
 import random as _random
 
 from marple.errors import DomainError, LengthError

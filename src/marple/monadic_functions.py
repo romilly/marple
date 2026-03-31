@@ -1,13 +1,10 @@
 """Monadic primitive function dispatch for MARPLE."""
 
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
 
 from marple.arraymodel import APLArray, S
 
-if TYPE_CHECKING:
-    from marple.environment import Environment
+
+from marple.environment import Environment
 from marple.errors import DomainError
 from marple.functions import (
     negate,
