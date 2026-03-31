@@ -39,6 +39,20 @@ def test_no_configparser_in_pico_config() -> None:
             raise AssertionError("pico_config.py imports configparser — breaks MicroPython")
 
 
+def test_no_os_path_in_system_commands() -> None:
+    """system_commands.py must not use os.path — MicroPython doesn't have it."""
+    import ast
+    with open("src/marple/system_commands.py") as f:
+        source = f.read()
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Attribute):
+            if (isinstance(node.value.value, ast.Name) and
+                    node.value.value.id == "os" and node.value.attr == "path"):
+                raise AssertionError(
+                    f"system_commands.py uses os.path.{node.attr} — breaks MicroPython")
+
+
 def test_no_os_path_in_os_filesystem() -> None:
     """os_filesystem.py must not use os.path — MicroPython doesn't have it."""
     import ast

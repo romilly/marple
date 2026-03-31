@@ -3,7 +3,6 @@
 Returns strings instead of printing — usable by REPL, web server, and Jupyter.
 """
 
-import os
 
 from marple.arraymodel import APLArray
 from marple.engine import Interpreter
@@ -92,7 +91,7 @@ def _cmd_save(interp: Interpreter, line: str) -> tuple[str, bool]:
     env_dict["__sources__"] = interp.env.sources()
     env_dict["__wsid__"] = wsid
     try:
-        save_workspace(env_dict, os.path.join(ws_root, wsid))
+        save_workspace(env_dict, ws_root + "/" + wsid)
         return f"{wsid} SAVED", False
     except Exception as e:
         return f"ERROR: {e}", False
@@ -105,8 +104,8 @@ def _cmd_load(interp: Interpreter, line: str) -> tuple[str, bool]:
         return "ERROR: )LOAD requires a workspace name", False
     name = parts[1].strip()
     ws_root = interp.config.get_workspaces_dir()
-    ws_dir = os.path.join(ws_root, name)
-    if not os.path.isdir(ws_dir):
+    ws_dir = ws_root + "/" + name
+    if not interp.env.fs.is_dir(ws_dir):
         return f"ERROR: Workspace not found: {name}", False
     from marple.environment import Environment
     interp.env = Environment(io=1)
