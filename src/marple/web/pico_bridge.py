@@ -10,30 +10,39 @@ class PicoConnection:
 
     SENTINEL = "\x00"
 
-    def __init__(self, port: str, baud: int = 115200, timeout: float = 10) -> None:
+    def __init__(self, port: str, baud: int = 115200, timeout: float = 60) -> None:
         self.ser = self._connect(port, baud, timeout)
-        time.sleep(1)
-        self._drain()
+        self._wait_ready()
 
     @staticmethod
     def _connect(port: str, baud: int, timeout: float) -> serial.Serial:
-        """Try the given port, then the alternate ACM port if it fails."""
-        try:
-            return serial.Serial(port, baud, timeout=timeout)
-        except serial.SerialException:
-            if "ACM0" in port:
-                alt = port.replace("ACM0", "ACM1")
-            elif "ACM1" in port:
-                alt = port.replace("ACM1", "ACM0")
-            else:
-                raise
-            return serial.Serial(alt, baud, timeout=timeout)
+        """Connect to the Pico, retrying until the port appears."""
+        ports = [port]
+        if "ACM0" in port:
+            ports.append(port.replace("ACM0", "ACM1"))
+        elif "ACM1" in port:
+            ports.append(port.replace("ACM1", "ACM0"))
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            for p in ports:
+                try:
+                    return serial.Serial(p, baud, timeout=timeout)
+                except serial.SerialException:
+                    pass
+            time.sleep(0.5)
+        raise serial.SerialException(f"Could not connect to Pico on {port}")
 
-    def _drain(self) -> None:
-        """Discard any buffered output from the Pico."""
-        while self.ser.in_waiting:
-            self.ser.read(self.ser.in_waiting)
-            time.sleep(0.1)
+    READY = "\x02"
+
+    def _wait_ready(self) -> None:
+        """Wait for the Pico to send its ready signal after boot."""
+        while True:
+            raw = self.ser.readline()
+            if not raw:
+                raise TimeoutError("Pico did not send ready signal")
+            line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
+            if line == self.READY:
+                return
 
     def eval(self, expr: str) -> str:
         """Send an APL expression and return the response text.
