@@ -15,6 +15,7 @@ from aiohttp import web
 from marple.adapters.pride_console import PrideConsole
 from marple.arraymodel import APLArray
 from marple.engine import Interpreter
+from marple.ports.config import Config
 from marple.environment import Environment
 from marple.errors import APLError
 from marple.formatting import format_result
@@ -31,9 +32,9 @@ def _is_dfn_binding(value: object) -> bool:
 class WebSession:
     """Wraps an interpreter for web use."""
 
-    def __init__(self) -> None:
+    def __init__(self, config: 'Config | None' = None) -> None:
         self._console = PrideConsole()
-        self.interp = Interpreter(console=self._console)
+        self.interp = Interpreter(console=self._console, config=config)
         self.transcript: list[tuple[str, str]] = []
 
     def evaluate(self, expr: str) -> str:
@@ -132,7 +133,7 @@ class WebSession:
         with open(path) as f:
             text = f.read()
         self._console = PrideConsole()
-        self.interp = Interpreter(console=self._console)
+        self.interp = Interpreter(console=self._console, config=self.interp.config)
         self.transcript.clear()
         fragments: list[str] = []
         in_code = False
@@ -249,7 +250,7 @@ class WSHandler:
         self.ws = ws
         self.session: WebSession = app["session"]
         self.pico = app.get("pico")
-        self.sessions_dir: str = app.get("sessions_dir", "sessions")
+        self.sessions_dir: str = app.get("sessions_dir", self.session.interp.config.get_sessions_dir())
         self.mode = "local"
         self._dispatch: dict[str, Any] = {
             "mode": self._handle_mode,

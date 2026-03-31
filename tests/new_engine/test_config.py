@@ -164,3 +164,19 @@ class TestSystemCommandsConfig:
         output, _ = run_system_command(interp, ")save")
         assert "SAVED" in output
         assert (ws_dir / "testws").is_dir()
+
+
+@pytest.mark.slow
+class TestWebServerConfig:
+    """Web server uses config for sessions directory."""
+
+    def test_ws_handler_uses_config_sessions_dir(self, tmp_path: object) -> None:
+        from pathlib import Path
+        from marple.web.server import WebSession
+        sessions = Path(str(tmp_path)) / "sess"
+        sessions.mkdir()
+        cfg = FakeConfig(sessions_dir=str(sessions))
+        session = WebSession(config=cfg)
+        session.interp.run("x←42")
+        session.save_session("test1", session.interp.config.get_sessions_dir())
+        assert (sessions / "test1.md").is_file()
