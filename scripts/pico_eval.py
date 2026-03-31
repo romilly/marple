@@ -29,6 +29,7 @@ except (ImportError, OSError):
     pass  # No WiFi — RTC will be unset
 
 from marple.adapters.pico_config import PicoConfig
+from marple.adapters.pico_console import PicoConsole
 from marple.engine import Interpreter
 from marple.errors import APLError
 import marple
@@ -40,7 +41,7 @@ try:
 except ImportError:
     _pico_settings = {}
 
-interp = Interpreter(config=PicoConfig(_pico_settings))
+interp = Interpreter(config=PicoConfig(_pico_settings), console=PicoConsole())
 
 # Optional Presto LCD display
 try:

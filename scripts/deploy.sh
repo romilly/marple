@@ -57,6 +57,7 @@ mpremote \
     cp $DEPLOY_TMP/marple/adapters/__init__.py :marple/adapters/__init__.py + \
     cp $DEPLOY_TMP/marple/adapters/default_config.py :marple/adapters/default_config.py + \
     cp $DEPLOY_TMP/marple/adapters/buffered_console.py :marple/adapters/buffered_console.py + \
+    cp $DEPLOY_TMP/marple/adapters/pico_console.py :marple/adapters/pico_console.py + \
     cp $DEPLOY_TMP/marple/adapters/os_filesystem.py :marple/adapters/os_filesystem.py + \
     cp $DEPLOY_TMP/marple/adapters/pico_config.py :marple/adapters/pico_config.py + \
     cp $DEPLOY_TMP/marple/adapters/terminal_console.py :marple/adapters/terminal_console.py + \
