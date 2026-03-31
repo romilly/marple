@@ -53,11 +53,13 @@ mpremote \
     cp $DEPLOY_TMP/marple/tokenizer.py :marple/tokenizer.py + \
     cp $DEPLOY_TMP/marple/workspace.py :marple/workspace.py + \
     cp $DEPLOY_TMP/marple/ports/__init__.py :marple/ports/__init__.py + \
+    cp $DEPLOY_TMP/marple/ports/config.py :marple/ports/config.py + \
     cp $DEPLOY_TMP/marple/ports/console.py :marple/ports/console.py + \
     cp $DEPLOY_TMP/marple/ports/filesystem.py :marple/ports/filesystem.py + \
     cp $DEPLOY_TMP/marple/adapters/__init__.py :marple/adapters/__init__.py + \
     cp $DEPLOY_TMP/marple/adapters/buffered_console.py :marple/adapters/buffered_console.py + \
     cp $DEPLOY_TMP/marple/adapters/os_filesystem.py :marple/adapters/os_filesystem.py + \
+    cp $DEPLOY_TMP/marple/adapters/pico_config.py :marple/adapters/pico_config.py + \
     cp $DEPLOY_TMP/marple/adapters/terminal_console.py :marple/adapters/terminal_console.py + \
     cp $DEPLOY_TMP/marple/stdlib/__init__.py :marple/stdlib/__init__.py + \
     cp $DEPLOY_TMP/marple/stdlib/str_impl.py :marple/stdlib/str_impl.py + \
@@ -69,6 +71,7 @@ mpremote \
     cp data/incoming/apl_font.py :apl_font.py + \
     cp scripts/presto_display.py :presto_display.py + \
     cp scripts/pico_eval.py :main.py + \
+    cp scripts/marple_config.py :marple_config.py + \
     cp scripts/WIFI_CONFIG.py :WIFI_CONFIG.py + \
     reset
 echo "Deployed. Pico will run eval loop on restart."

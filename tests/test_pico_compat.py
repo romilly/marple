@@ -28,6 +28,17 @@ def test_no_importlib_in_executor() -> None:
                     raise AssertionError("executor.py imports importlib — breaks MicroPython")
 
 
+def test_no_configparser_in_pico_config() -> None:
+    """pico_config.py must not use configparser — MicroPython doesn't have it."""
+    import ast
+    with open("src/marple/adapters/pico_config.py") as f:
+        source = f.read()
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module == "configparser":
+            raise AssertionError("pico_config.py imports configparser — breaks MicroPython")
+
+
 def test_no_os_path_in_os_filesystem() -> None:
     """os_filesystem.py must not use os.path — MicroPython doesn't have it."""
     import ast

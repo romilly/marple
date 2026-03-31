@@ -28,13 +28,19 @@ try:
 except (ImportError, OSError):
     pass  # No WiFi — RTC will be unset
 
+from marple.adapters.pico_config import PicoConfig
 from marple.engine import Interpreter
 from marple.errors import APLError
 import marple
 
 SENTINEL = "\x00"
 
-interp = Interpreter()
+try:
+    from marple_config import settings as _pico_settings  # type: ignore[import-not-found]
+except ImportError:
+    _pico_settings = {}
+
+interp = Interpreter(config=PicoConfig(_pico_settings))
 
 # Optional Presto LCD display
 try:
