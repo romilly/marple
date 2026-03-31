@@ -27,7 +27,6 @@ mpremote \
     cp $DEPLOY_TMP/marple/arraymodel.py :marple/arraymodel.py + \
     cp $DEPLOY_TMP/marple/backend.py :marple/backend.py + \
     cp $DEPLOY_TMP/marple/cells.py :marple/cells.py + \
-    cp $DEPLOY_TMP/marple/config.py :marple/config.py + \
     cp $DEPLOY_TMP/marple/dfn_binding.py :marple/dfn_binding.py + \
     cp $DEPLOY_TMP/marple/dyadic_functions.py :marple/dyadic_functions.py + \
     cp $DEPLOY_TMP/marple/engine.py :marple/engine.py + \
