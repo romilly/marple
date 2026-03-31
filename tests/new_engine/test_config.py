@@ -6,6 +6,7 @@ import pytest
 
 from marple.adapters.desktop_config import DesktopConfig
 from marple.ports.config import Config
+from tests.adapters.fake_config import FakeConfig
 
 
 class TestConfigABC:
@@ -61,3 +62,25 @@ class TestDesktopConfig:
         p.write_text("[other]\nfoo = bar\n")
         cfg = DesktopConfig(str(p))
         assert cfg.get_default_io() == 1
+
+
+class TestFakeConfig:
+    """FakeConfig returns constructor arguments."""
+
+    def test_returns_specified_io(self) -> None:
+        cfg = FakeConfig(io=0)
+        assert cfg.get_default_io() == 0
+
+    def test_returns_specified_workspaces(self) -> None:
+        cfg = FakeConfig(workspaces_dir="/tmp/ws")
+        assert cfg.get_workspaces_dir() == "/tmp/ws"
+
+    def test_returns_specified_sessions(self) -> None:
+        cfg = FakeConfig(sessions_dir="/tmp/sess")
+        assert cfg.get_sessions_dir() == "/tmp/sess"
+
+    def test_defaults(self) -> None:
+        cfg = FakeConfig()
+        assert cfg.get_default_io() == 1
+        assert cfg.get_workspaces_dir() == "workspaces"
+        assert cfg.get_sessions_dir() == "sessions"
