@@ -1,6 +1,6 @@
 # Development dependencies
 
-pytest
-coverage
-pyright
-PyHamcrest
+pytest==9.0.2
+coverage==7.13.5
+pyright==1.1.408
+PyHamcrest==2.1.0

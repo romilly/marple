@@ -51,6 +51,12 @@ Playwright tests must verify **actual visible output**, not just DOM state. Chec
 
 Never leave test processes running in the background. If a test hangs, kill it immediately — stuck processes can interfere with subsequent testing and the user's PRIDE server.
 
+## Dependencies
+
+**Always pin dependencies to exact versions** (`==`) in `pyproject.toml`, `requirements.txt`, and `requirements-test.txt`. Never use `>=` or `~=` ranges. This protects against supply-chain injection attacks where a compromised new release could be pulled in automatically.
+
+When adding or upgrading a dependency, specify the exact version you have verified.
+
 ## Core Architecture
 
 ### Key Components
