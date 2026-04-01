@@ -85,6 +85,7 @@ class Executor:
         "⎕TS": "_sysvar_ts",
         "⎕AI": "_sysvar_ai",
         "⎕VER": "_sysvar_ver",
+        "⎕WA": "_sysvar_wa",
         "⍞": "_sysvar_quote_quad",
         "⎕": "_sysvar_quad",
     }
@@ -277,6 +278,15 @@ class Executor:
         import sys
         s = "MARPLE v" + __version__ + " on " + sys.platform
         return APLArray([len(s)], list(s))
+
+    def _sysvar_wa(self) -> APLArray:
+        """⎕WA — workspace available (free memory in bytes)."""
+        import sys
+        if sys.implementation.name == "micropython":
+            import gc  # type: ignore[import-not-found]
+            gc.collect()
+            return APLArray([], [gc.mem_free()])
+        return APLArray([], [2**31 - 1])
 
     def _sysvar_quad(self) -> APLArray:
         """⎕ — prompt, read, parse, and evaluate input as APL."""

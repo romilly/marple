@@ -136,6 +136,16 @@ class TestSystemFunctions:
         assert result.shape[0] == 2
 
 
+class TestWA:
+    def test_wa_returns_scalar_integer(self) -> None:
+        result = Interpreter(io=1).run("⎕WA")
+        assert result.shape == []
+        assert int(result.data[0]) == result.data[0]
+
+    def test_wa_greater_than_zero(self) -> None:
+        assert Interpreter(io=1).run("⎕WA").data[0] > 0
+
+
 class TestEA:
     def test_ea_traps_error(self) -> None:
         assert Interpreter(io=1).run("'0' ⎕EA '1÷0'") == S(0)
