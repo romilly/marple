@@ -645,15 +645,15 @@ class Parser:
                 else:
                     break
 
-        # Extract result — should be END + result on stack
-        # Find the result (skip END markers)
-        result_node = None
-        for cat, node in stack:
-            if cat != CAT_END and node is not None:
-                result_node = node
-        if result_node is None:
+        # Extract result — should be END + single result on stack
+        results = [(cat, node) for cat, node in stack if cat != CAT_END and node is not None]
+        if len(results) == 0:
             return Num(0)
-        return result_node
+        if len(results) > 1:
+            raise SyntaxError_(
+                "Expression could not be fully parsed"
+            )
+        return results[0][1]
 
     def _current(self) -> Token:
         return self._tokens[self._pos]

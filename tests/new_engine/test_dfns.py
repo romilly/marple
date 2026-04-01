@@ -4,6 +4,7 @@ import pytest
 
 from marple.arraymodel import APLArray, S
 from marple.engine import Interpreter
+from marple.errors import SyntaxError_
 
 
 class TestBasicDfns:
@@ -264,5 +265,5 @@ class TestDopApplication:
         assert i.run("((double) twice 5)-3") == S(17)
 
     def test_alpha_alpha_outside_dop(self) -> None:
-        result = Interpreter(io=1).run("{⍺⍺+⍵} 5")
-        assert result == S(0)
+        with pytest.raises(SyntaxError_):
+            Interpreter(io=1).run("{⍺⍺+⍵} 5")

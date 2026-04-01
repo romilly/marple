@@ -206,7 +206,7 @@ class TestPicoIndexingShape:
 
 
 class TestPicoSystemCommands:
-    def test_save_load_and_lib(self, pico):
+    def test_save_load_drop_and_lib(self, pico):
         pico.eval(")clear")
         pico.eval_silent("x←42")
         pico.eval(")wsid e2e_test")
@@ -219,3 +219,8 @@ class TestPicoSystemCommands:
         result = pico.eval(")load e2e_test")
         assert "e2e_test" in result
         assert pico.eval("x") == "42"
+        # Drop and verify it's gone
+        result = pico.eval(")drop e2e_test")
+        assert "DROPPED" in result
+        result = pico.eval(")lib")
+        assert "e2e_test" not in result

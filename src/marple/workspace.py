@@ -97,7 +97,7 @@ def save_workspace(env: dict[str, Any], ws_dir: str,
             value = env[name]
             if isinstance(value, APLArray):
                 formatted = _format_value(value)
-                if formatted is not None:
+                if formatted is not None and formatted != "":
                     filename = _entity_filename(name)
                     written_files.add(filename)
                     fs.write_text(ws_dir + "/" + filename,

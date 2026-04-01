@@ -8,6 +8,7 @@ from marple.adapters.buffered_console import BufferedConsole
 from marple.engine import Interpreter
 from marple.errors import APLError
 from marple.ports.filesystem import FileSystem
+from marple.repl import process_line
 
 
 PROMPT = "      "
@@ -35,35 +36,24 @@ def run_script(path: str, fs: FileSystem | None = None) -> list[str]:
         output.append(f"{PROMPT}{line}")
         if line.startswith("⍝") and not accum:
             continue
-        if line.startswith(")") and not accum:
-            from marple.system_commands import run_system_command
-            cmd_output, _ = run_system_command(interp, line)
-            if cmd_output:
-                output.append(cmd_output)
-            continue
-        if accum:
-            accum += "\n" + line
-        else:
-            accum = line
+        if not accum:
             start_lineno = lineno
-        # Check if braces are balanced
-        if accum.count("{") > accum.count("}"):
-            continue
         try:
             console.clear()
-            r = interp.execute(accum)
+            accum, result, should_exit = process_line(line, accum, interp)
             console_output = console.output
             if console_output:
                 output.append(console_output.rstrip("\n"))
-            if not r.silent:
-                output.append(r.display_text)
+            if result:
+                output.append(result)
+            if should_exit:
+                break
         except APLError as e:
             output.append(f"{e} at line {start_lineno}")
-            output.append(f"  {accum}")
+            output.append(f"  {accum or line}")
             break
         except Exception as e:
             output.append(f"ERROR at line {start_lineno}: {e}")
-            output.append(f"  {accum}")
+            output.append(f"  {accum or line}")
             break
-        accum = ""
     return output

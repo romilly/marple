@@ -45,3 +45,8 @@ class FileSystem(ABC):
     def listdir(self, path: str) -> list[str]:
         """List entries in a directory."""
         ...
+
+    @abstractmethod
+    def delete_dir(self, path: str) -> None:
+        """Delete a directory and all its contents."""
+        ...

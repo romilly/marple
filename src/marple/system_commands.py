@@ -70,7 +70,7 @@ def _cmd_lib(interp: Interpreter, line: str) -> tuple[str, bool]:
     from marple.workspace import list_workspaces
     ws_root = interp.config.get_workspaces_dir()
     workspaces = list_workspaces(ws_root)
-    return "  ".join(workspaces) if workspaces else "(none)", False
+    return "  ".join(workspaces), False
 
 
 def _cmd_save(interp: Interpreter, line: str) -> tuple[str, bool]:
@@ -121,6 +121,22 @@ def _cmd_load(interp: Interpreter, line: str) -> tuple[str, bool]:
         return f"ERROR: {e}", False
 
 
+def _cmd_drop(interp: Interpreter, line: str) -> tuple[str, bool]:
+    parts = line.split(None, 1)
+    if len(parts) < 2:
+        return "ERROR: )DROP requires a workspace name", False
+    name = parts[1].strip()
+    ws_root = interp.config.get_workspaces_dir()
+    ws_dir = ws_root + "/" + name
+    if not interp.env.fs.is_dir(ws_dir):
+        return f"ERROR: Workspace not found: {name}", False
+    try:
+        interp.env.fs.delete_dir(ws_dir)
+        return f"{name} DROPPED", False
+    except Exception as e:
+        return f"ERROR: {e}", False
+
+
 _COMMANDS: dict[str, object] = {
     "off": _cmd_off,
     "clear": _cmd_clear,
@@ -131,4 +147,5 @@ _COMMANDS: dict[str, object] = {
     "lib": _cmd_lib,
     "save": _cmd_save,
     "load": _cmd_load,
+    "drop": _cmd_drop,
 }

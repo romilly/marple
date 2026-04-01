@@ -61,3 +61,12 @@ class FakeFileSystem(FileSystem):
                 if rest and "/" not in rest:
                     entries.add(rest)
         return sorted(entries)
+
+    def delete_dir(self, path: str) -> None:
+        prefix = path.rstrip("/") + "/"
+        to_remove = [p for p in self._files if p.startswith(prefix)]
+        for p in to_remove:
+            del self._files[p]
+        to_remove_dirs = [d for d in self._dirs if d == path or d.startswith(prefix)]
+        for d in to_remove_dirs:
+            self._dirs.discard(d)

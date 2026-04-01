@@ -58,6 +58,14 @@ class TestReplComments:
         assert not any("0" == l.strip() for l in lines if "MARPLE" not in l and "CLEAR" not in l)
 
 
+class TestReplMultiLine:
+    def test_multiline_dfn(self) -> None:
+        """REPL should accumulate lines until braces are balanced."""
+        console = FakeConsole(["double←{", "⍵+⍵", "}", "double 7"])
+        run_repl(Interpreter(io=1), console)
+        assert "14" in console.output_lines
+
+
 class TestReplSystemCommands:
     def test_off_exits(self) -> None:
         console = FakeConsole([")OFF"])

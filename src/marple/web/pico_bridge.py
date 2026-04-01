@@ -32,17 +32,26 @@ class PicoConnection:
             time.sleep(0.5)
         raise serial.SerialException(f"Could not connect to Pico on {port}")
 
-    READY = "\x02"
+    PROBE_RETRIES = 12  # ~60s total with 5s readline timeout
 
     def _wait_ready(self) -> None:
-        """Wait for the Pico to send its ready signal after boot."""
-        while True:
-            raw = self.ser.readline()
-            if not raw:
-                raise TimeoutError("Pico did not send ready signal")
-            line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
-            if line == self.READY:
-                return
+        """Probe the Pico until the eval loop responds.
+
+        Sends an empty line and waits for the sentinel. Retries to handle
+        the case where the Pico is still booting when the probe is sent.
+        """
+        for _ in range(self.PROBE_RETRIES):
+            self.ser.reset_input_buffer()
+            self.ser.write(b"\r\n")
+            self.ser.flush()
+            while True:
+                raw = self.ser.readline()
+                if not raw:
+                    break  # readline timeout — retry probe
+                line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
+                if line == self.SENTINEL:
+                    return
+        raise TimeoutError("Pico did not respond to probe")
 
     def eval(self, expr: str) -> str:
         """Send an APL expression and return the response text.

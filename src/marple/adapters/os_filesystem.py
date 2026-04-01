@@ -53,3 +53,12 @@ class OsFileSystem(FileSystem):
 
     def listdir(self, path: str) -> list[str]:
         return os.listdir(path)
+
+    def delete_dir(self, path: str) -> None:
+        for entry in os.listdir(path):
+            full = path + "/" + entry
+            if self.is_dir(full):
+                self.delete_dir(full)
+            else:
+                os.remove(full)
+        os.rmdir(path)

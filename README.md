@@ -32,7 +32,7 @@ marple
 ```
 
 ```
-MARPLE v0.5.26 - Mini APL in Python
+MARPLE v0.5.43 - Mini APL in Python
 CLEAR WS
 
       ⍳5
@@ -149,6 +149,7 @@ In the PRIDE web IDE, you can click glyphs in the language bar at the top of the
 | `)save [name]` | Save workspace |
 | `)load name` | Load workspace |
 | `)lib` | List saved workspaces |
+| `)drop name` | Delete a saved workspace |
 | `)fns [ns]` | List defined functions |
 | `)ops [ns]` | List defined operators |
 | `)vars` | List defined variables |

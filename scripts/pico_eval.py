@@ -52,9 +52,6 @@ try:
 except ImportError:
     lcd = None
 
-READY = "\x02"
-print(READY)
-
 while True:
     try:
         raw = input()

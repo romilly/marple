@@ -329,9 +329,19 @@ class WSHandler:
 
     async def _handle_system(self, data: dict[str, Any]) -> None:
         cmd = data.get("cmd", "")
-        fragment = self.session.system_command(cmd)
-        await self.ws.send_json({"type": "result", "html": fragment})
-        await self.ws.send_json({"type": "workspace", "html": self.session.workspace_fragment()})
+        if self.mode == "pico" and self.pico is not None:
+            try:
+                result_text = await asyncio.get_event_loop().run_in_executor(
+                    None, self.pico.eval, cmd
+                )
+            except Exception as e:
+                result_text = "ERROR: " + str(e)
+            fragment = _pico_eval_html(cmd, result_text)
+            await self.ws.send_json({"type": "result", "html": fragment})
+        else:
+            fragment = self.session.system_command(cmd)
+            await self.ws.send_json({"type": "result", "html": fragment})
+            await self.ws.send_json({"type": "workspace", "html": self.session.workspace_fragment()})
 
     async def _handle_save_session(self, data: dict[str, Any]) -> None:
         name = data.get("name", "")

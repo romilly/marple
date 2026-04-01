@@ -246,6 +246,23 @@ async def test_ws_delete_nonexistent(aiohttp_client, app, tmp_path):
     await ws.close()
 
 
+async def test_ws_pico_system_command_goes_to_pico(aiohttp_client, app_with_pico):
+    """In pico mode, system commands must be sent to the Pico, not run locally."""
+    client = await aiohttp_client(app_with_pico)
+    ws = await client.ws_connect("/ws")
+    # Switch to pico mode
+    await ws.send_json({"type": "mode", "mode": "pico"})
+    await ws.receive_json()  # mode_changed
+    # Send a system command
+    await ws.send_json({"type": "system", "cmd": ")vars"})
+    msg = await ws.receive_json()
+    assert msg["type"] == "result"
+    # Verify it was sent to the Pico
+    pico = app_with_pico["pico"]
+    assert pico.last_expr == ")vars"
+    await ws.close()
+
+
 async def test_ws_pico_then_local(aiohttp_client, app_with_pico):
     client = await aiohttp_client(app_with_pico)
     ws = await client.ws_connect("/ws")
