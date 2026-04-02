@@ -519,33 +519,8 @@ class Executor:
         return APLArray(list(operand.shape), [chr(int(x)) for x in data])
 
     def _sys_dr(self, operand: APLArray) -> APLArray:
-        from marple.backend import is_numeric_array, to_list, _is_float_dtype
-        if len(operand.data) > 0 and isinstance(to_list(operand.data)[0], str):
-            return S(80)
-        if is_numeric_array(operand.data):
-            dtype_str = str(operand.data.dtype)
-            if "uint8" in dtype_str:
-                return S(11)
-            if "int8" in dtype_str:
-                return S(83)
-            if "int16" in dtype_str:
-                return S(163)
-            if "int32" in dtype_str:
-                return S(323)
-            if "int64" in dtype_str:
-                return S(645)
-            if _is_float_dtype(operand.data):
-                return S(645)
-        vals = to_list(operand.data)
-        if vals:
-            v = vals[0]
-            if isinstance(v, str):
-                return S(80)
-            if isinstance(v, float):
-                return S(645)
-            if isinstance(v, int):
-                return S(323)
-        return S(0)
+        from marple.backend import data_type_code
+        return S(data_type_code(operand.data))
 
     def _sys_signal(self, operand: APLArray) -> APLArray:
         from marple.errors import (
@@ -577,20 +552,19 @@ class Executor:
 
     def _sys_dr_dyadic(self, left: APLArray, right: APLArray) -> APLArray:
         """Dyadic ⎕DR: convert data representation."""
-        from marple.backend import to_list
+        from marple.backend import to_list, to_bool_array
         target = int(left.data[0])
         vals = to_list(right.data)
         if target == 645:
             new_data = [float(v) for v in vals]
             return APLArray(list(right.shape), new_data)
-        if target in (323, 163, 83):
+        if target in (643, 323, 163, 83):
             new_data = [int(round(v)) for v in vals]
             return APLArray(list(right.shape), new_data)
-        if target == 11:
-            from marple.backend import to_bool_array
+        if target == 81:
             new_data = to_bool_array([int(bool(v)) for v in vals])
             return APLArray(list(right.shape), new_data)
-        if target == 80:
+        if target == 320:
             new_data = [chr(int(v)) for v in vals]
             return APLArray(list(right.shape), new_data)
         raise DomainError("Invalid ⎕DR type code: " + str(target))

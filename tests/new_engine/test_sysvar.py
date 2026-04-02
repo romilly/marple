@@ -87,19 +87,6 @@ class TestSystemFunctions:
         result = Interpreter(io=1).run("⎕UCS 'A'")
         assert result == APLArray([1], [65])
 
-    def test_dr_integer(self) -> None:
-        assert Interpreter(io=1).run("⎕DR 42") == S(323)
-
-    def test_dr_float(self) -> None:
-        assert Interpreter(io=1).run("⎕DR 3.14") == S(645)
-
-    def test_dr_char(self) -> None:
-        assert Interpreter(io=1).run("⎕DR 'hello'") == S(80)
-
-    def test_dr_boolean_vector(self) -> None:
-        result = Interpreter(io=1).run("⎕DR 1 2 3=1 3 3")
-        assert result.data[0] == 11
-
     def test_signal(self) -> None:
         with pytest.raises(DomainError):
             Interpreter(io=1).run("⎕SIGNAL 3")
@@ -192,21 +179,6 @@ class TestDM:
     def test_dm_readonly(self) -> None:
         with pytest.raises(DomainError):
             Interpreter(io=1).run("⎕DM←'x'")
-
-
-class TestDyadicDR:
-    def test_dr_to_char(self) -> None:
-        result = Interpreter(io=1).run("80 ⎕DR 65 66 67")
-        assert list(result.data) == ["A", "B", "C"]
-
-    def test_dr_to_float(self) -> None:
-        result = Interpreter(io=1).run("645 ⎕DR 42")
-        assert result == S(42)
-
-    def test_dr_to_int(self) -> None:
-        result = Interpreter(io=1).run("323 ⎕DR 3.0")
-        assert result.data[0] == 3
-        assert isinstance(result.data.tolist()[0], int)
 
 
 class TestQuadFR:

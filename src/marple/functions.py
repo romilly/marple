@@ -64,7 +64,10 @@ def _pervade_dyadic(
     a_data = to_list(alpha.data)
     b_data = to_list(omega.data)
     if alpha.is_scalar() and omega.is_scalar():
-        return APLArray([], [f(a_data[0], b_data[0])])
+        result = [f(a_data[0], b_data[0])]
+        if bool_result:
+            result = to_bool_array(result)
+        return APLArray([], result)
     if alpha.is_scalar():
         a = a_data[0]
         data = to_bool_array([f(a, x) for x in b_data]) if bool_result else [f(a, x) for x in b_data]

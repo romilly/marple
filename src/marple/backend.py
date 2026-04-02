@@ -168,3 +168,28 @@ def maybe_downcast(data: Any, ct: float) -> Any:
     if np.all(np.abs(int_arr) <= np.iinfo(np.int32).max):
         return int_arr.astype(np.int32)
     return int_arr
+
+
+def data_type_code(data: Any) -> int:
+    """Return the ⎕DR type code for the given data.
+
+    Encoding: first digits = bit width, last digit = type
+    (0=char, 1=boolean, 3=signed int, 5=float, 7=decimal, 9=complex).
+    """
+    if is_numeric_array(data):
+        dtype_str = str(data.dtype)
+        if "uint8" in dtype_str:
+            return 81
+        if "int8" in dtype_str and "int16" not in dtype_str and "int32" not in dtype_str and "int64" not in dtype_str:
+            return 83
+        if "int16" in dtype_str:
+            return 163
+        if "int32" in dtype_str:
+            return 323
+        if "int64" in dtype_str:
+            return 643
+        if _is_float_dtype(data):
+            return 645
+    if isinstance(data, list) and data and isinstance(data[0], str):
+        return 320
+    return 323
