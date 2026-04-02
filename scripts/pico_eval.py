@@ -29,6 +29,7 @@ except (ImportError, OSError):
 
 from marple.adapters.pico_config import PicoConfig
 from marple.adapters.pico_console import PicoConsole
+from marple.adapters.pico_timer import PicoTimer
 from marple.engine import Interpreter
 from marple.repl import run_repl
 import marple
@@ -51,5 +52,5 @@ try:
 except ImportError:
     pass
 
-interp = Interpreter(config=PicoConfig(_pico_settings), console=console)
+interp = Interpreter(config=PicoConfig(_pico_settings), console=console, timer=PicoTimer())
 run_repl(interp, console, banner=False)

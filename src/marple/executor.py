@@ -1,10 +1,6 @@
 """Executor: shared AST evaluation logic for the MARPLE interpreter."""
 
 
-import time
-
-_START_TIME = time.time()
-
 from typing import Any
 
 from marple.arraymodel import APLArray, S
@@ -247,31 +243,12 @@ class Executor:
     # ── System variables ──
 
     def _sysvar_ts(self) -> APLArray:
-        now = time.time()
-        t = time.localtime(now)
-        ms = int((now % 1) * 1000)
-        return APLArray([7], [t[0], t[1], t[2], t[3], t[4], t[5], ms])
+        ts = self.env.timer.timestamp()
+        return APLArray([7], ts)
 
     def _sysvar_ai(self) -> APLArray:
-        # 1: user ID
-        try:
-            import os
-            uid = os.getuid()
-        except AttributeError:
-            uid = 1000  # MicroPython
-        # 2: compute time (CPU ms)
-        try:
-            import resource
-            cpu_ms = int(resource.getrusage(resource.RUSAGE_SELF).ru_utime * 1000)
-        except (ImportError, AttributeError):
-            cpu_ms = 0  # MicroPython
-        # 3: connect time (ms since session start)
-        if hasattr(time, "ticks_ms"):
-            elapsed_ms = time.ticks_ms()  # type: ignore[attr-defined]
-        else:
-            elapsed_ms = int((time.time() - _START_TIME) * 1000)
-        # 4: keying time (not tracked)
-        return APLArray([4], [uid, cpu_ms, elapsed_ms, 0])
+        timer = self.env.timer
+        return APLArray([4], [timer.user_id(), timer.cpu_ms(), timer.elapsed_ms(), 0])
 
     def _sysvar_ver(self) -> APLArray:
         from marple import __version__
@@ -714,11 +691,9 @@ class Executor:
         return APLArray([len(chars)], chars)
 
     def _sys_dl(self, operand: APLArray) -> APLArray:
-        import time as _time
         secs = float(operand.data[0])
-        t0 = _time.time()
-        _time.sleep(secs)
-        return S(_time.time() - t0)
+        elapsed = self.env.timer.sleep(secs)
+        return S(elapsed)
 
     def _sys_csv(self, operand: APLArray) -> APLArray:
         import csv as _csv

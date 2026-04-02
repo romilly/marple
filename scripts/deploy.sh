@@ -51,12 +51,15 @@ mpremote \
     cp $SRC/ports/config.py :marple/ports/config.py + \
     cp $SRC/ports/console.py :marple/ports/console.py + \
     cp $SRC/ports/filesystem.py :marple/ports/filesystem.py + \
+    cp $SRC/ports/timer.py :marple/ports/timer.py + \
     cp $SRC/adapters/__init__.py :marple/adapters/__init__.py + \
     cp $SRC/adapters/default_config.py :marple/adapters/default_config.py + \
     cp $SRC/adapters/buffered_console.py :marple/adapters/buffered_console.py + \
     cp $SRC/adapters/pico_console.py :marple/adapters/pico_console.py + \
     cp $SRC/adapters/os_filesystem.py :marple/adapters/os_filesystem.py + \
     cp $SRC/adapters/pico_config.py :marple/adapters/pico_config.py + \
+    cp $SRC/adapters/pico_timer.py :marple/adapters/pico_timer.py + \
+    cp $SRC/adapters/desktop_timer.py :marple/adapters/desktop_timer.py + \
     cp $SRC/adapters/terminal_console.py :marple/adapters/terminal_console.py + \
     cp $SRC/adapters/presto_console.py :marple/adapters/presto_console.py + \
     cp $SRC/stdlib/__init__.py :marple/stdlib/__init__.py + \

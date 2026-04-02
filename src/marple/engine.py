@@ -10,6 +10,7 @@ from marple.formatting import format_result
 from marple.ports.config import Config
 from marple.ports.console import Console
 from marple.ports.filesystem import FileSystem
+from marple.ports.timer import Timer
 from marple.executor import Executor, _newlines_to_diamonds
 from marple.parser import Assignment, Program, parse
 from marple.symbol_table import NC_FUNCTION, NC_OPERATOR
@@ -36,13 +37,17 @@ class Interpreter(Executor):
     def __init__(self, io: int | None = None,
                  fs: FileSystem | None = None,
                  console: 'Console | None' = None,
-                 config: 'Config | None' = None) -> None:
+                 config: 'Config | None' = None,
+                 timer: 'Timer | None' = None) -> None:
         if config is None:
             from marple.adapters.default_config import DefaultConfig
             config = DefaultConfig()
+        if timer is None:
+            from marple.adapters.desktop_timer import DesktopTimer
+            timer = DesktopTimer()
         self.config = config
         effective_io = io if io is not None else config.get_default_io()
-        self.env = Environment(io=effective_io, fs=fs, console=console)
+        self.env = Environment(io=effective_io, fs=fs, console=console, timer=timer)
 
     def run(self, source: str) -> APLArray:
         """Parse and evaluate APL source code."""

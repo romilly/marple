@@ -5,6 +5,7 @@ from typing import Any
 from marple.arraymodel import APLArray, S
 from marple.ports.console import Console
 from marple.ports.filesystem import FileSystem
+from marple.ports.timer import Timer
 from marple.symbol_table import SymbolTable
 
 
@@ -28,7 +29,8 @@ class Environment:
 
     def __init__(self, io: int | None = None,
                  fs: FileSystem | None = None,
-                 console: 'Console | None' = None) -> None:
+                 console: 'Console | None' = None,
+                 timer: 'Timer | None' = None) -> None:
         self._quad_vars: dict[str, APLArray] = dict(_QUAD_DEFAULTS)
         self.symbols = SymbolTable()
         self._locals: dict[str, Any] = {}
@@ -40,6 +42,11 @@ class Environment:
         else:
             from marple.adapters.os_filesystem import OsFileSystem
             self.fs = OsFileSystem()
+        if timer is not None:
+            self.timer = timer
+        else:
+            from marple.adapters.desktop_timer import DesktopTimer
+            self.timer = DesktopTimer()
 
     # ── System variable properties ──
 
@@ -188,7 +195,7 @@ class Environment:
         Quad vars, symbols, and locals are all copied so that
         assignments inside a dfn do not leak to the caller.
         """
-        new = Environment(fs=self.fs, console=self.console)
+        new = Environment(fs=self.fs, console=self.console, timer=self.timer)
         new._quad_vars = dict(self._quad_vars)
         new.symbols = self.symbols.copy()
         new._locals = dict(self._locals)
