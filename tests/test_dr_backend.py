@@ -52,11 +52,43 @@ class TestMonadicDRViaInterpreter:
 
 
 class TestScalarComparisonReturnsBoolean:
-    def test_scalar_equal_is_boolean(self) -> None:
+    def test_equal(self) -> None:
         assert Interpreter(io=1).run("⎕DR 1=1") == S(81)
 
-    def test_scalar_less_than_is_boolean(self) -> None:
+    def test_less_than(self) -> None:
         assert Interpreter(io=1).run("⎕DR 1<2") == S(81)
+
+    def test_less_equal(self) -> None:
+        assert Interpreter(io=1).run("⎕DR 1≤2") == S(81)
+
+    def test_greater_equal(self) -> None:
+        assert Interpreter(io=1).run("⎕DR 2≥1") == S(81)
+
+    def test_greater_than(self) -> None:
+        assert Interpreter(io=1).run("⎕DR 2>1") == S(81)
+
+    def test_not_equal(self) -> None:
+        assert Interpreter(io=1).run("⎕DR 1≠2") == S(81)
+
+
+class TestVectorComparisonReturnsBoolean:
+    def test_equal(self) -> None:
+        assert Interpreter(io=1).run("⎕DR 1 2 3=1 3 3") == S(81)
+
+    def test_less_than(self) -> None:
+        assert Interpreter(io=1).run("⎕DR 1 2 3<2 2 2") == S(81)
+
+    def test_less_equal(self) -> None:
+        assert Interpreter(io=1).run("⎕DR 1 2 3≤2 2 2") == S(81)
+
+    def test_greater_equal(self) -> None:
+        assert Interpreter(io=1).run("⎕DR 1 2 3≥2 2 2") == S(81)
+
+    def test_greater_than(self) -> None:
+        assert Interpreter(io=1).run("⎕DR 1 2 3>2 2 2") == S(81)
+
+    def test_not_equal(self) -> None:
+        assert Interpreter(io=1).run("⎕DR 1 2 3≠1 3 3") == S(81)
 
 
 class TestDyadicDRViaInterpreter:
