@@ -1,102 +1,84 @@
+"""GlyphLineEditor — platform-independent line editor with backtick→glyph translation."""
 
-import os
-import sys
-import tty
-import termios
+try:
+    from typing import Callable
+except ImportError:
+    pass
 
 from marple.glyphs import GLYPH_MAP
-
-PROMPT = "      "
-
-
-def _read_char(fd: int) -> str:
-    """Read one complete UTF-8 character from the file descriptor."""
-    b = os.read(fd, 1)
-    if not b:
-        return ""
-    first = b[0]
-    if first < 0x80:
-        return b.decode("utf-8")
-    # Multi-byte UTF-8: determine length from first byte
-    if first < 0xC0:
-        return b.decode("utf-8", errors="replace")
-    if first < 0xE0:
-        remaining = 1
-    elif first < 0xF0:
-        remaining = 2
-    else:
-        remaining = 3
-    for _ in range(remaining):
-        b += os.read(fd, 1)
-    return b.decode("utf-8", errors="replace")
+from marple.ports.char_source import CharSource
 
 
-def read_line() -> str | None:
-    """Read a line with live backtick→glyph translation.
+class GlyphLineEditor:
+    """Line editor with backtick→APL glyph translation.
 
-    Returns the line on Enter, empty string on empty Enter,
-    or None on Ctrl-D (EOF).
+    Takes a CharSource (raw character input) and a write callable (output).
+    Platform-independent — the CharSource handles platform-specific raw input.
     """
-    fd = sys.stdin.fileno()
-    old = termios.tcgetattr(fd)
-    buf: list[str] = []
-    backtick = False
-    try:
-        tty.setraw(fd)
-        sys.stdout.write(PROMPT)
-        sys.stdout.flush()
-        while True:
-            ch = _read_char(fd)
-            if not ch or ch == "\x04":  # Ctrl-D
-                sys.stdout.write("\r\n")
-                sys.stdout.flush()
-                return None
-            if ch == "\x03":  # Ctrl-C
-                sys.stdout.write("\r\n")
-                sys.stdout.flush()
-                buf.clear()
-                return ""
-            if ch == "\x1b":  # Escape sequence — skip it
-                # Read and discard the rest of the escape sequence
-                next_b = os.read(fd, 1)
-                if next_b == b"[":
-                    # CSI sequence: read until final byte (0x40-0x7E)
-                    while True:
-                        seq_b = os.read(fd, 1)
-                        if seq_b and 0x40 <= seq_b[0] <= 0x7E:
-                            break
-                continue
-            if ch in ("\r", "\n"):  # Enter
-                sys.stdout.write("\r\n")
-                sys.stdout.flush()
-                return "".join(buf)
-            if ch == "\x7f" or ch == "\x08":  # Backspace
-                if buf:
-                    buf.pop()
-                    line = "".join(buf)
-                    sys.stdout.write("\r" + PROMPT + line + " \r" + PROMPT + line)
-                    sys.stdout.flush()
-                continue
-            if backtick:
-                backtick = False
+
+    def __init__(self, source: CharSource, write: 'Callable[[str], None]') -> None:
+        self._source = source
+        self._write = write
+
+    def read_line(self, prompt: str) -> str | None:
+        """Read a line with live backtick→glyph translation.
+
+        Returns the line on Enter, empty string on Ctrl-C,
+        or None on EOF/Ctrl-D.
+        """
+        buf: list[str] = []
+        backtick = False
+        self._source.start()
+        try:
+            self._write(prompt)
+            while True:
+                ch = self._source.read_char()
+                if not ch or ch == "\x04":  # EOF or Ctrl-D
+                    self._write("\r\n")
+                    return None
+                if ch == "\x03":  # Ctrl-C
+                    self._write("\r\n")
+                    return ""
+                if ch == "\x1b":  # Escape sequence — discard
+                    self._discard_escape()
+                    continue
+                if ch in ("\r", "\n"):  # Enter
+                    self._write("\r\n")
+                    return "".join(buf)
+                if ch == "\x7f" or ch == "\x08":  # Backspace
+                    if buf:
+                        buf.pop()
+                        line = "".join(buf)
+                        self._write("\r" + prompt + line + " \r" + prompt + line)
+                    continue
+                if backtick:
+                    backtick = False
+                    if ch == "`":
+                        buf.append("`")
+                        self._write("`")
+                    elif ch in GLYPH_MAP:
+                        glyph = GLYPH_MAP[ch]
+                        buf.append(glyph)
+                        self._write(glyph)
+                    else:
+                        buf.append("`")
+                        buf.append(ch)
+                        self._write("`" + ch)
+                    continue
                 if ch == "`":
-                    buf.append("`")
-                    sys.stdout.write("`")
-                elif ch in GLYPH_MAP:
-                    glyph = GLYPH_MAP[ch]
-                    buf.append(glyph)
-                    sys.stdout.write(glyph)
-                else:
-                    buf.append("`")
-                    buf.append(ch)
-                    sys.stdout.write("`" + ch)
-                sys.stdout.flush()
-                continue
-            if ch == "`":
-                backtick = True
-                continue
-            buf.append(ch)
-            sys.stdout.write(ch)
-            sys.stdout.flush()
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+                    backtick = True
+                    continue
+                buf.append(ch)
+                self._write(ch)
+        finally:
+            self._source.stop()
+
+    def _discard_escape(self) -> None:
+        """Read and discard an escape sequence."""
+        ch = self._source.read_char()
+        if ch == "[":
+            # CSI sequence: read until final byte (0x40-0x7E)
+            while True:
+                seq_ch = self._source.read_char()
+                if not seq_ch or (0x40 <= ord(seq_ch) <= 0x7E):
+                    break
