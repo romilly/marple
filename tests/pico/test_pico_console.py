@@ -55,28 +55,25 @@ class TestPicoConsoleReadLine:
 
 
 class TestPicoConsoleSentinel:
-    def test_sentinel_after_writeln_then_read(self) -> None:
-        """Sentinel sent before next read when writeln was called."""
+    def test_sentinel_before_second_read(self) -> None:
+        """Sentinel always sent before second and subsequent reads."""
         hex_first = "322b33"  # "2+3"
         hex_second = "332b34"  # "3+4"
         inp = FakeInput([hex_first, hex_second])
         out = io.StringIO()
         console = PicoConsole(input=inp, output=out)
-        console.read_line("")  # reads "2+3"
-        console.writeln("5")  # output — sets needs_sentinel
-        console.read_line("")  # sends sentinel before reading "3+4"
-        output = out.getvalue()
-        assert output.count(SENTINEL) == 1
+        console.read_line("")  # first read — no sentinel
+        assert SENTINEL not in out.getvalue()
+        console.read_line("")  # second read — sentinel sent
+        assert out.getvalue().count(SENTINEL) == 1
 
-    def test_no_sentinel_without_output(self) -> None:
-        """No sentinel if nothing was written between reads."""
-        hex_first = "322b33"
-        hex_second = "332b34"
-        inp = FakeInput([hex_first, hex_second])
+    def test_no_sentinel_on_first_read(self) -> None:
+        """First read never sends a sentinel."""
+        hex_expr = "322b33"
+        inp = FakeInput([hex_expr])
         out = io.StringIO()
         console = PicoConsole(input=inp, output=out)
-        console.read_line("")  # reads "2+3"
-        console.read_line("")  # no writeln between — no sentinel
+        console.read_line("")
         assert SENTINEL not in out.getvalue()
 
     def test_sentinel_after_empty_line(self) -> None:
@@ -88,6 +85,18 @@ class TestPicoConsoleSentinel:
         console.read_line("")  # reads empty line — sets needs_sentinel
         console.read_line("")  # sends sentinel, reads "2+3"
         assert out.getvalue().count(SENTINEL) == 1
+
+    def test_sentinel_after_silent_expression(self) -> None:
+        """Silent expression (no writeln) must still produce a sentinel."""
+        hex_comment = "e28dd120636f6d6d656e74"  # "⍝ comment"
+        hex_expr = "322b33"  # "2+3"
+        inp = FakeInput([hex_comment, hex_expr])
+        out = io.StringIO()
+        console = PicoConsole(input=inp, output=out)
+        console.read_line("")  # reads "⍝ comment"
+        # No writeln — this is a silent expression
+        console.read_line("")  # should send sentinel before reading "2+3"
+        assert SENTINEL in out.getvalue()
 
 
 class TestPicoConsoleWrite:

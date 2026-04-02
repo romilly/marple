@@ -23,23 +23,21 @@ class PicoConsole(Console):
     def __init__(self, input: object = None, output: object = None) -> None:
         self._input = input if input is not None else sys.stdin
         self._output = output if output is not None else sys.stdout
-        self._needs_sentinel = False
+        self._first_read = True
 
     def _println(self, text: str) -> None:
         """Write a line using print() to self._output for reliable serial output."""
         print(text, file=self._output)
 
     def read_line(self, prompt: str) -> str | None:
-        if self._needs_sentinel:
+        if not self._first_read:
             self._println(SENTINEL)
-            self._needs_sentinel = False
+        self._first_read = False
         raw = self._input.readline()
         if not raw:
             return None
         raw = raw.strip()
         if not raw:
-            # Empty line — mark that a sentinel is needed, return empty
-            self._needs_sentinel = True
             return ""
         try:
             return bytes.fromhex(raw).decode("utf-8")
@@ -51,4 +49,3 @@ class PicoConsole(Console):
 
     def writeln(self, text: str) -> None:
         self._println(text)
-        self._needs_sentinel = True
