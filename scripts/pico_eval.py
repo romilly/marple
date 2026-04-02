@@ -1,11 +1,10 @@
 """Pico-side eval loop. Deploy to Pico as main.py.
 
-Reads APL expressions from stdin (USB serial), evaluates them,
-prints results. Protocol: one line in, one or more lines out,
-terminated by a sentinel line "\\x00" (null byte).
+Uses the standard REPL loop with PicoConsole for serial I/O.
+PicoConsole handles hex decoding and sentinel framing.
 
-If running on a Pimoroni Presto, also mirrors the session
-to the 480x480 LCD using the APL bitmap font.
+If running on a Pimoroni Presto, wraps the console with
+PrestoConsole to mirror the session to the 480x480 LCD.
 """
 import sys
 import time
@@ -31,70 +30,26 @@ except (ImportError, OSError):
 from marple.adapters.pico_config import PicoConfig
 from marple.adapters.pico_console import PicoConsole
 from marple.engine import Interpreter
-from marple.errors import APLError
+from marple.repl import run_repl
 import marple
-
-SENTINEL = "\x00"
 
 try:
     from marple_config import settings as _pico_settings  # type: ignore[import-not-found]
 except ImportError:
     _pico_settings = {}
 
-interp = Interpreter(config=PicoConfig(_pico_settings), console=PicoConsole())
+console = PicoConsole()
 
-# Optional Presto LCD display
+# Optional Presto LCD display — wrap console if available
 try:
     from presto_display import PrestoDisplay  # type: ignore[import-not-found]
+    from marple.adapters.presto_console import PrestoConsole  # type: ignore[import-not-found]
     lcd = PrestoDisplay()
     lcd.show_banner("MARPLE v" + marple.__version__)
     lcd.show_banner("CLEAR WS")
+    console = PrestoConsole(console, lcd)
 except ImportError:
-    lcd = None
+    pass
 
-while True:
-    try:
-        raw = input()
-    except EOFError:
-        break
-    raw = raw.strip()
-    if not raw:
-        print(SENTINEL)
-        continue
-    # Decode hex-encoded UTF-8 from workstation
-    try:
-        line = bytes.fromhex(raw).decode("utf-8")
-    except (ValueError, UnicodeDecodeError):
-        line = raw  # fallback: treat as plain ASCII
-    if lcd:
-        lcd.show_input(line)
-    if line.startswith(")"):
-        from marple.system_commands import run_system_command
-        output, should_exit = run_system_command(interp, line)
-        if output:
-            print(output)
-            if lcd:
-                lcd.show_output(output)
-        print(SENTINEL)
-        if should_exit:
-            break
-        continue
-    try:
-        r = interp.execute(line)
-        if r.silent:
-            print(SENTINEL)
-        else:
-            print(r.display_text)
-            print(SENTINEL)
-            if lcd:
-                lcd.show_output(r.display_text)
-    except APLError as e:
-        print("ERROR: " + str(e))
-        print(SENTINEL)
-        if lcd:
-            lcd.show_error(str(e))
-    except Exception as e:
-        print("ERROR: " + str(e))
-        print(SENTINEL)
-        if lcd:
-            lcd.show_error(str(e))
+interp = Interpreter(config=PicoConfig(_pico_settings), console=console)
+run_repl(interp, console, banner=False)

@@ -40,7 +40,7 @@ class TestWaitReady:
         # Should not raise
         conn._wait_ready()
         # Should have sent an empty line as probe
-        assert any(b"\r\n" in w for w in fake._written)
+        assert any(b"\n" in w for w in fake._written)
 
     def test_ready_after_boot_messages(self) -> None:
         """Should skip boot messages and succeed when sentinel arrives."""

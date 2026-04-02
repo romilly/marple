@@ -1,28 +1,54 @@
-"""PicoConsole — Console adapter for Pico serial I/O."""
+"""PicoConsole — Console adapter for Pico serial I/O.
+
+Handles hex-encoded UTF-8 input and sentinel framing for the
+serial protocol used by PicoConnection on the host.
+"""
 
 import sys
 
 from marple.ports.console import Console
 
 
-class PicoConsole(Console):
-    """Console adapter that reads/writes via streams (default: stdin/stdout).
+SENTINEL = "\x00"
 
-    Supports ⎕← output. Interactive input (⎕/⍞ read) is not available
-    over the serial protocol — use PRIDE with --pico-port instead.
+
+class PicoConsole(Console):
+    """Console adapter for Pico serial I/O.
+
+    read_line: reads hex-encoded UTF-8 from input, sends sentinel
+    before each read (except the first) to signal response complete.
+    writeln/write: writes text to output.
     """
 
     def __init__(self, input: object = None, output: object = None) -> None:
         self._input = input if input is not None else sys.stdin
         self._output = output if output is not None else sys.stdout
+        self._needs_sentinel = False
+
+    def _println(self, text: str) -> None:
+        """Write a line using print() to self._output for reliable serial output."""
+        print(text, file=self._output)
 
     def read_line(self, prompt: str) -> str | None:
-        return None
+        if self._needs_sentinel:
+            self._println(SENTINEL)
+            self._needs_sentinel = False
+        raw = self._input.readline()
+        if not raw:
+            return None
+        raw = raw.strip()
+        if not raw:
+            # Empty line — mark that a sentinel is needed, return empty
+            self._needs_sentinel = True
+            return ""
+        try:
+            return bytes.fromhex(raw).decode("utf-8")
+        except (ValueError, UnicodeDecodeError):
+            return raw
 
     def write(self, text: str) -> None:
-        self._output.write(text)
-        self._output.flush()
+        print(text, end="", file=self._output)
 
     def writeln(self, text: str) -> None:
-        self._output.write(text + "\n")
-        self._output.flush()
+        self._println(text)
+        self._needs_sentinel = True

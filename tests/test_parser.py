@@ -1,7 +1,6 @@
-import threading
-
 import pytest
 
+from marple.errors import SyntaxError_
 from marple.parser import (
     Assignment,
     DyadicFunc,
@@ -57,23 +56,9 @@ class TestParserParentheses:
 
 
 class TestParserUnbalancedBraces:
-    def test_unbalanced_open_brace_hangs(self) -> None:
-        """Parser hangs on unbalanced braces — should raise an error instead."""
-        result: list[object] = []
-
-        def try_parse() -> None:
-            try:
-                result.append(parse("double←{"))
-            except Exception as e:
-                result.append(e)
-
-        t = threading.Thread(target=try_parse, daemon=True)
-        t.start()
-        t.join(timeout=2)
-        assert t.is_alive(), (
-            "Parser returned instead of hanging — "
-            "replace this test with one that checks for a proper error"
-        )
+    def test_unbalanced_open_brace_raises_error(self) -> None:
+        with pytest.raises(SyntaxError_, match="Unmatched"):
+            parse("double←{")
 
 
 class TestParserAssignment:

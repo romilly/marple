@@ -674,11 +674,13 @@ class Parser:
         """Parse a dfn: { statement (⋄ statement)* }"""
         self._eat(TokenType.LBRACE)
         statements: list[object] = []
-        while self._current().type != TokenType.RBRACE:
+        while self._current().type not in (TokenType.RBRACE, TokenType.EOF):
             stmt = self._parse_dfn_statement()
             statements.append(stmt)
             if self._current().type == TokenType.DIAMOND:
                 self._eat(TokenType.DIAMOND)
+        if self._current().type == TokenType.EOF:
+            raise SyntaxError_("Unmatched {")
         self._eat(TokenType.RBRACE)
         return Dfn(statements)
 

@@ -36,12 +36,13 @@ def process_line(
     return "", display, False
 
 
-def run_repl(interp: Interpreter, console: Console) -> None:
+def run_repl(interp: Interpreter, console: Console, banner: bool = True) -> None:
     """Run the REPL loop using the given Console for I/O."""
-    from marple import __version__ as ver
-    console.writeln(f"MARPLE v{ver} - Mini APL in Python")
-    console.writeln("CLEAR WS")
-    console.writeln("")
+    if banner:
+        from marple import __version__ as ver
+        console.writeln(f"MARPLE v{ver} - Mini APL in Python")
+        console.writeln("CLEAR WS")
+        console.writeln("")
     accum = ""
     while True:
         line = console.read_line("      ")

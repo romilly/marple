@@ -42,7 +42,7 @@ class PicoConnection:
         """
         for _ in range(self.PROBE_RETRIES):
             self.ser.reset_input_buffer()
-            self.ser.write(b"\r\n")
+            self.ser.write(b"\n")
             self.ser.flush()
             while True:
                 raw = self.ser.readline()
@@ -60,7 +60,7 @@ class PicoConnection:
         the hex echo). Raises TimeoutError if no sentinel is received.
         """
         encoded = expr.encode("utf-8").hex()
-        self.ser.write((encoded + "\r\n").encode("ascii"))
+        self.ser.write((encoded + "\n").encode("ascii"))
         self.ser.flush()
 
         lines: list[str] = []

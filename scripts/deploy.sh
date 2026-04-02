@@ -58,6 +58,7 @@ mpremote \
     cp $SRC/adapters/os_filesystem.py :marple/adapters/os_filesystem.py + \
     cp $SRC/adapters/pico_config.py :marple/adapters/pico_config.py + \
     cp $SRC/adapters/terminal_console.py :marple/adapters/terminal_console.py + \
+    cp $SRC/adapters/presto_console.py :marple/adapters/presto_console.py + \
     cp $SRC/stdlib/__init__.py :marple/stdlib/__init__.py + \
     cp $SRC/stdlib/str_impl.py :marple/stdlib/str_impl.py + \
     cp $SRC/stdlib/str/lower.apl :marple/stdlib/str/lower.apl + \
