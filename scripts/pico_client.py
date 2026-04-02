@@ -10,11 +10,10 @@ Usage:
 import sys
 import time
 
-import serial
+from marple.web.pico_bridge import PicoConnection
+
 
 PORT = "/dev/ttyACM0"
-BAUD = 115200
-SENTINEL = "\x00"
 
 
 _PICO_REPLACEMENTS = {
@@ -36,28 +35,7 @@ def _pico_safe(text: str) -> str:
     return text
 
 
-def send_and_receive(ser: serial.Serial, expr: str) -> list[str]:
-    """Send an expression and collect response lines until sentinel."""
-    encoded = _pico_safe(expr).encode("utf-8").hex()
-    ser.write((encoded + "\r\n").encode("ascii"))
-    ser.flush()
-
-    response_lines = []
-    while True:
-        raw = ser.readline()
-        if not raw:
-            response_lines.append("(timeout)")
-            break
-        line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
-        if line == SENTINEL:
-            break
-        if line == encoded:
-            continue
-        response_lines.append(line)
-    return response_lines
-
-
-def run_interactive(ser: serial.Serial) -> None:
+def run_interactive(conn: PicoConnection) -> None:
     """Interactive REPL over serial."""
     print("MARPLE on Pico — type APL expressions, Ctrl-C to exit\n")
     while True:
@@ -69,12 +47,12 @@ def run_interactive(ser: serial.Serial) -> None:
         expr = expr.strip()
         if not expr:
             continue
-        response = send_and_receive(ser, expr)
-        if response:
-            print("\n".join(response))
+        result = conn.eval(_pico_safe(expr))
+        if result:
+            print(result)
 
 
-def run_script(ser: serial.Serial, path: str, pause: float = 0.5) -> None:
+def run_script(conn: PicoConnection, path: str, pause: float = 0.5) -> None:
     """Send a .marple script file line by line.
 
     Multi-line dfns (unbalanced braces) are accumulated and
@@ -94,9 +72,9 @@ def run_script(ser: serial.Serial, path: str, pause: float = 0.5) -> None:
             accum = stripped
         if accum.count("{") > accum.count("}"):
             continue
-        response = send_and_receive(ser, accum)
-        if response:
-            print("\n".join(response))
+        result = conn.eval(_pico_safe(accum))
+        if result:
+            print(result)
         accum = ""
         time.sleep(pause)
 
@@ -113,20 +91,16 @@ def main() -> None:
     args = parser.parse_args()
 
     print(f"Connecting to Pico on {args.port}...")
-    ser = serial.Serial(args.port, BAUD, timeout=5)
-    time.sleep(1)
-
-    while ser.in_waiting:
-        ser.read(ser.in_waiting)
-        time.sleep(0.1)
+    conn = PicoConnection(args.port)
+    print("Connected.")
 
     try:
         if args.script:
-            run_script(ser, args.script, args.pause)
+            run_script(conn, args.script, args.pause)
         else:
-            run_interactive(ser)
+            run_interactive(conn)
     finally:
-        ser.close()
+        conn.close()
 
 
 if __name__ == "__main__":
