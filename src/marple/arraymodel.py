@@ -24,6 +24,16 @@ class APLArray:
             return bool(np.array_equal(self.data, other.data))
         return to_list(self.data) == to_list(other.data)
 
+    @classmethod
+    def array(cls, shape: list[int], data: Any) -> 'APLArray':
+        """Factory method for creating arrays. Use this instead of the constructor."""
+        return cls(shape, data)
+
+    @classmethod
+    def scalar(cls, value: Any) -> 'APLArray':
+        """Factory method for creating scalars. Use this instead of S()."""
+        return cls([], [value])
+
     def __repr__(self) -> str:
         if self.is_scalar():
             return f"S({self.data[0]})"
