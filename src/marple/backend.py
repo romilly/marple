@@ -34,7 +34,6 @@ HAS_BACKEND: bool = np is not None
 _DOWNCAST_CT: float = 1e-14
 
 # Ufunc names that can overflow integer arithmetic
-_OVERFLOW_UFUNCS: set[str] = {"add", "subtract", "multiply", "power"}
 
 
 def to_array(data: list[Any]) -> Any:
@@ -382,44 +381,24 @@ class APLArray(ABC):
 class NumpyArray(APLArray):
     """APLArray subclass backed by numpy arrays."""
 
-    def _dyadic(self, other: 'NumpyArray',
-                f: Any, ufunc_name: str | None = None,
-                bool_result: bool = False) -> 'APLArray':
-        """Pervade a dyadic function over self (alpha) and other (omega)."""
+    def _dyadic(self, other: 'APLArray',
+                f: Any, bool_result: bool = False) -> 'APLArray':
+        """Pervade a dyadic function element-wise with scalar extension."""
         from marple.errors import LengthError
-        if (ufunc_name and is_numeric_array(self.data)
-                and is_numeric_array(other.data)):
-            ufunc = getattr(np, ufunc_name, None)
-            if ufunc is not None:
-                a_arr = self.data
-                b_arr = other.data
-                if ufunc_name in _OVERFLOW_UFUNCS:
-                    a_arr = maybe_upcast(a_arr)
-                    b_arr = maybe_upcast(b_arr)
-                try:
-                    result = ufunc(a_arr, b_arr)
-                except ValueError:
-                    raise LengthError(f"Shape mismatch: {self.shape} vs {other.shape}")
-                if bool_result:
-                    result = to_bool_array(result)
-                shape = list(other.shape) if not other.is_scalar() else list(self.shape)
-                return APLArray.array(shape, result)
         a_data = to_list(self.data)
         b_data = to_list(other.data)
         if self.is_scalar() and other.is_scalar():
-            result_list = [f(a_data[0], b_data[0])]
+            result = [f(a_data[0], b_data[0])]
             if bool_result:
-                result_list = to_bool_array(result_list)
-            return APLArray.array([], result_list)
+                result = to_bool_array(result)
+            return APLArray.array([], result)
         if self.is_scalar():
-            a = a_data[0]
-            data = [f(a, x) for x in b_data]
+            data = [f(a_data[0], x) for x in b_data]
             if bool_result:
                 data = to_bool_array(data)
             return APLArray.array(list(other.shape), data)
         if other.is_scalar():
-            b = b_data[0]
-            data = [f(x, b) for x in a_data]
+            data = [f(x, b_data[0]) for x in a_data]
             if bool_result:
                 data = to_bool_array(data)
             return APLArray.array(list(self.shape), data)
@@ -535,10 +514,10 @@ class NumpyArray(APLArray):
         return self._dyadic(other, lambda a, b: int(not self._tolerant_eq(a, b, ct)), bool_result=True)
 
     def logical_and(self, other: 'APLArray') -> 'APLArray':
-        return self._dyadic(other, lambda a, b: int(bool(a) and bool(b)), "logical_and", bool_result=True)
+        return self._dyadic(other, lambda a, b: int(bool(a) and bool(b)), bool_result=True)
 
     def logical_or(self, other: 'APLArray') -> 'APLArray':
-        return self._dyadic(other, lambda a, b: int(bool(a) or bool(b)), "logical_or", bool_result=True)
+        return self._dyadic(other, lambda a, b: int(bool(a) or bool(b)), bool_result=True)
 
     def match(self, other: 'APLArray') -> 'APLArray':
         return APLArray.scalar(1 if self == other else 0)
