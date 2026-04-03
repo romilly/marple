@@ -1,3 +1,3 @@
 """Marple - A Python project following TDD principles."""
 
-__version__ = "0.5.60"
+__version__ = "0.6.0"
