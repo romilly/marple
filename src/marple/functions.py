@@ -86,21 +86,6 @@ def _pervade_dyadic(
 
 # Monadic functions
 
-def reciprocal(omega: APLArray) -> APLArray:
-    def _recip(x: int | float) -> int | float:
-        if x == 0:
-            raise DomainError("Division by zero")
-        return 1 / x
-    return _pervade_monadic(_recip, omega)
-
-
-def ceiling(omega: APLArray) -> APLArray:
-    return _pervade_monadic(lambda x: math.ceil(x), omega, "ceil")
-
-
-def floor(omega: APLArray) -> APLArray:
-    return _pervade_monadic(lambda x: math.floor(x), omega, "floor")
-
 
 # Dyadic functions
 
@@ -130,32 +115,6 @@ def maximum(alpha: APLArray, omega: APLArray) -> APLArray:
 
 def minimum(alpha: APLArray, omega: APLArray) -> APLArray:
     return _pervade_dyadic(lambda a, b: min(a, b), alpha, omega, "minimum")
-
-
-# Extended monadic functions
-
-def exponential(omega: APLArray) -> APLArray:
-    return _pervade_monadic(lambda x: math.exp(x), omega, "exp")
-
-
-def natural_log(omega: APLArray) -> APLArray:
-    return _pervade_monadic(lambda x: math.log(x), omega, "log")
-
-
-def absolute_value(omega: APLArray) -> APLArray:
-    return _pervade_monadic(lambda x: abs(x), omega, "absolute")
-
-
-def logical_not(omega: APLArray) -> APLArray:
-    return _pervade_monadic(lambda x: int(not x), omega, "logical_not", bool_result=True)
-
-
-def pi_times(omega: APLArray) -> APLArray:
-    return _pervade_monadic(lambda x: math.pi * x, omega)
-
-
-def factorial(omega: APLArray) -> APLArray:
-    return _pervade_monadic(lambda x: math.gamma(x + 1), omega)
 
 
 def binomial(alpha: APLArray, omega: APLArray) -> APLArray:

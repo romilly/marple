@@ -1,13 +1,10 @@
 from marple.arraymodel import APLArray, S
 from marple.functions import (
     add,
-    ceiling,
     divide,
-    floor,
     maximum,
     minimum,
     multiply,
-    reciprocal,
     subtract,
 )
 
@@ -20,13 +17,13 @@ class TestMonadicScalarFunctions:
         assert APLArray.array([3], [1, 2, 3]).negate() == APLArray.array([3], [-1, -2, -3])
 
     def test_reciprocal_scalar(self) -> None:
-        assert reciprocal(S(4)) == S(0.25)
+        assert S(4).reciprocal() == S(0.25)
 
     def test_ceiling_scalar(self) -> None:
-        assert ceiling(S(2.3)) == S(3)
+        assert S(2.3).ceiling() == S(3)
 
     def test_floor_scalar(self) -> None:
-        assert floor(S(2.7)) == S(2)
+        assert S(2.7).floor() == S(2)
 
 
 class TestDyadicScalarFunctions:

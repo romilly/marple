@@ -239,6 +239,59 @@ class NumpyArray(APLArray):
             return APLArray.array(list(self.shape), np.negative(self.data))
         return APLArray.array(list(self.shape), [-x for x in to_list(self.data)])
 
+    def reciprocal(self) -> 'APLArray':
+        from marple.errors import DomainError
+        data = to_list(self.data)
+        if any(x == 0 for x in data):
+            raise DomainError("Division by zero")
+        if is_numeric_array(self.data):
+            return APLArray.array(list(self.shape), 1.0 / self.data)
+        return APLArray.array(list(self.shape), [1 / x for x in data])
+
+    def ceiling(self) -> 'APLArray':
+        if is_numeric_array(self.data):
+            return APLArray.array(list(self.shape), np.ceil(self.data))
+        import math
+        return APLArray.array(list(self.shape), [math.ceil(x) for x in to_list(self.data)])
+
+    def floor(self) -> 'APLArray':
+        if is_numeric_array(self.data):
+            return APLArray.array(list(self.shape), np.floor(self.data))
+        import math
+        return APLArray.array(list(self.shape), [math.floor(x) for x in to_list(self.data)])
+
+    def exponential(self) -> 'APLArray':
+        if is_numeric_array(self.data):
+            return APLArray.array(list(self.shape), np.exp(self.data))
+        import math
+        return APLArray.array(list(self.shape), [math.exp(x) for x in to_list(self.data)])
+
+    def natural_log(self) -> 'APLArray':
+        if is_numeric_array(self.data):
+            return APLArray.array(list(self.shape), np.log(self.data))
+        import math
+        return APLArray.array(list(self.shape), [math.log(x) for x in to_list(self.data)])
+
+    def absolute_value(self) -> 'APLArray':
+        if is_numeric_array(self.data):
+            return APLArray.array(list(self.shape), np.absolute(self.data))
+        return APLArray.array(list(self.shape), [abs(x) for x in to_list(self.data)])
+
+    def logical_not(self) -> 'APLArray':
+        if is_numeric_array(self.data):
+            return APLArray.array(list(self.shape), to_bool_array(np.logical_not(self.data)))
+        return APLArray.array(list(self.shape), to_bool_array([int(not x) for x in to_list(self.data)]))
+
+    def pi_times(self) -> 'APLArray':
+        import math
+        if is_numeric_array(self.data):
+            return APLArray.array(list(self.shape), self.data * math.pi)
+        return APLArray.array(list(self.shape), [math.pi * x for x in to_list(self.data)])
+
+    def factorial(self) -> 'APLArray':
+        import math
+        return APLArray.array(list(self.shape), [math.gamma(x + 1) for x in to_list(self.data)])
+
 
 def S(value: Any) -> APLArray:
     return APLArray.scalar(value)

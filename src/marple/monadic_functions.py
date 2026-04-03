@@ -6,18 +6,6 @@ from marple.arraymodel import APLArray, S
 
 from marple.environment import Environment
 from marple.errors import DomainError
-from marple.functions import (
-
-    reciprocal,
-    ceiling,
-    floor,
-    exponential,
-    factorial,
-    natural_log,
-    absolute_value,
-    logical_not,
-    pi_times,
-)
 import random as _random
 
 from marple.structural import (
@@ -39,21 +27,21 @@ class MonadicFunctionBinding:
         "+": lambda omega: omega,
         "-": lambda omega: omega.negate(),
         "×": lambda omega: S((-1 if omega.data[0] < 0 else 1 if omega.data[0] > 0 else 0)),
-        "÷": reciprocal,
-        "⌈": ceiling,
-        "⌊": floor,
-        "*": exponential,
-        "⍟": natural_log,
-        "|": absolute_value,
-        "~": logical_not,
+        "÷": lambda omega: omega.reciprocal(),
+        "⌈": lambda omega: omega.ceiling(),
+        "⌊": lambda omega: omega.floor(),
+        "*": lambda omega: omega.exponential(),
+        "⍟": lambda omega: omega.natural_log(),
+        "|": lambda omega: omega.absolute_value(),
+        "~": lambda omega: omega.logical_not(),
         "⍴": shape,
         ",": ravel,
         "⌽": reverse,
         "⊖": reverse_first,
         "⍉": transpose,
         "⌹": matrix_inverse,
-        "○": pi_times,
-        "!": factorial,
+        "○": lambda omega: omega.pi_times(),
+        "!": lambda omega: omega.factorial(),
     }
 
     _ENV_DEPENDENT: dict[str, str] = {
