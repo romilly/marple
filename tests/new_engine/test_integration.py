@@ -15,13 +15,13 @@ class TestSpecExamples:
 
 class TestVectorArithmetic:
     def test_vector_plus_vector(self) -> None:
-        assert Interpreter(io=1).run("1 2+3 4") == APLArray([2], [4, 6])
+        assert Interpreter(io=1).run("1 2+3 4") == APLArray.array([2], [4, 6])
 
     def test_scalar_times_vector(self) -> None:
-        assert Interpreter(io=1).run("2×1 2 3") == APLArray([3], [2, 4, 6])
+        assert Interpreter(io=1).run("2×1 2 3") == APLArray.array([3], [2, 4, 6])
 
     def test_negate_vector(self) -> None:
-        assert Interpreter(io=1).run("-1 2 3") == APLArray([3], [-1, -2, -3])
+        assert Interpreter(io=1).run("-1 2 3") == APLArray.array([3], [-1, -2, -3])
 
 
 class TestVariables:

@@ -55,8 +55,8 @@ class TestCSV:
         i = Interpreter(io=1, fs=fs)
         result = i.run("⎕CSV '/data.csv'")
         assert result == S(3)
-        assert i.run("x") == APLArray([3], [1, 2, 3])
-        assert i.run("y") == APLArray([3], [10, 20, 30])
+        assert i.run("x") == APLArray.array([3], [1, 2, 3])
+        assert i.run("y") == APLArray.array([3], [10, 20, 30])
 
     def test_csv_text(self) -> None:
         fs = FakeFileSystem({"/data.csv": "name,val\nAlice,10\nBob,20\n"})

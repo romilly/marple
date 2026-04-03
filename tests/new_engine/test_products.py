@@ -16,7 +16,7 @@ class TestInnerProduct:
         i.run("A←2 2⍴1 2 3 4")
         i.run("B←2 2⍴5 6 7 8")
         result = i.run("A+.×B")
-        assert result == APLArray([2, 2], [19, 22, 43, 50])
+        assert result == APLArray.array([2, 2], [19, 22, 43, 50])
 
     def test_matrix_multiply_float(self) -> None:
         i = Interpreter(io=1)
@@ -55,13 +55,13 @@ class TestInnerProduct:
 class TestOuterProduct:
     def test_multiplication_table(self) -> None:
         result = Interpreter(io=1).run("(⍳3)∘.×⍳4")
-        assert result == APLArray([3, 4], [
+        assert result == APLArray.array([3, 4], [
             1, 2, 3, 4, 2, 4, 6, 8, 3, 6, 9, 12])
 
     def test_outer_addition(self) -> None:
         result = Interpreter(io=1).run("1 2 3∘.+10 20")
-        assert result == APLArray([3, 2], [11, 21, 12, 22, 13, 23])
+        assert result == APLArray.array([3, 2], [11, 21, 12, 22, 13, 23])
 
     def test_outer_equality(self) -> None:
         result = Interpreter(io=1).run("1 2 3∘.=1 3")
-        assert result == APLArray([3, 2], [1, 0, 0, 0, 0, 1])
+        assert result == APLArray.array([3, 2], [1, 0, 0, 0, 0, 1])

@@ -72,7 +72,7 @@ class TestLoadWorkspace:
             save_workspace(env_dict, ws_dir)
             i2 = Interpreter(io=1)
             load_workspace(i2.env, ws_dir, evaluate=i2.run)
-            assert i2.run("v") == APLArray([3], [1, 2, 3])
+            assert i2.run("v") == APLArray.array([3], [1, 2, 3])
 
     def test_load_restores_dfn(self) -> None:
         with tempfile.TemporaryDirectory() as root:
@@ -107,7 +107,7 @@ class TestLoadWorkspace:
             i2 = Interpreter(io=1)
             load_workspace(i2.env, ws_dir, evaluate=i2.run)
             # ⎕IO should be restored to 0, so x should be 0 1 2
-            assert i2.run("x") == APLArray([3], [0, 1, 2])
+            assert i2.run("x") == APLArray.array([3], [0, 1, 2])
 
 
 class TestLoadWorkspaceChars:
@@ -120,7 +120,7 @@ class TestLoadWorkspaceChars:
             save_workspace(env_dict, ws_dir)
             i2 = Interpreter(io=1)
             load_workspace(i2.env, ws_dir, evaluate=i2.run)
-            assert i2.run("x") == APLArray([5], list("HELLO"))
+            assert i2.run("x") == APLArray.array([5], list("HELLO"))
 
     def test_save_and_load_char_matrix(self) -> None:
         with tempfile.TemporaryDirectory() as root:
@@ -131,7 +131,7 @@ class TestLoadWorkspaceChars:
             save_workspace(env_dict, ws_dir)
             i2 = Interpreter(io=1)
             load_workspace(i2.env, ws_dir, evaluate=i2.run)
-            assert i2.run("x") == APLArray([2, 3], list("CATDOG"))
+            assert i2.run("x") == APLArray.array([2, 3], list("CATDOG"))
 
 
 class TestListWorkspaces:
