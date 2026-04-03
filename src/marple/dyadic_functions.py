@@ -30,23 +30,6 @@ from marple.functions import (
     greater_than,
     not_equal,
 )
-from marple.structural import (
-    catenate,
-    drop,
-    encode,
-    decode,
-    expand,
-    from_array,
-    index_of,
-    membership,
-    replicate,
-    replicate_first,
-    reshape,
-    rotate,
-    rotate_first,
-    take,
-    matrix_divide,
-)
 
 
 class DyadicFunctionBinding:
@@ -64,18 +47,18 @@ class DyadicFunctionBinding:
         "|": residue,
         "∧": logical_and,  # wrapper — will become GCD when fixed
         "∨": logical_or,   # wrapper — will become LCM when fixed
-        "⍴": reshape,
-        ",": catenate,
-        "↑": take,
-        "↓": drop,
-        "⌽": rotate,
-        "⊖": rotate_first,
-        "⊤": encode,
-        "⊥": decode,
-        "/": replicate,
-        "⌿": replicate_first,
-        "\\": expand,
-        "⌹": matrix_divide,
+        "⍴": lambda a, o: a.reshape(o),
+        ",": lambda a, o: a.catenate(o),
+        "↑": lambda a, o: a.take(o),
+        "↓": lambda a, o: a.drop(o),
+        "⌽": lambda a, o: a.rotate(o),
+        "⊖": lambda a, o: a.rotate_first(o),
+        "⊤": lambda a, o: a.encode(o),
+        "⊥": lambda a, o: a.decode(o),
+        "/": lambda a, o: a.replicate(o),
+        "⌿": lambda a, o: a.replicate_first(o),
+        "\\": lambda a, o: a.expand(o),
+        "⌹": lambda a, o: a.matrix_divide(o),
         "○": circular,
         "!": binomial,
         "≡": lambda a, o: a.match(o),
@@ -128,31 +111,16 @@ class DyadicFunctionBinding:
         return left.not_equal(right, self._env.ct)
 
     def _index_of(self, left: APLArray, right: APLArray) -> APLArray:
-        return index_of(left, right, self._env.io, self._env.ct)
+        return left.index_of(right, self._env.io, self._env.ct)
 
     def _membership(self, left: APLArray, right: APLArray) -> APLArray:
-        return membership(left, right, self._env.ct)
+        return left.membership(right, self._env.ct)
 
     def _from(self, left: APLArray, right: APLArray) -> APLArray:
-        return from_array(left, right, self._env.io)
+        return left.from_array(right, self._env.io)
 
     def _format(self, left: APLArray, right: APLArray) -> APLArray:
-        if left.is_scalar():
-            width = int(left.data[0])
-            precision = None
-        else:
-            width = int(left.data[0])
-            precision = int(left.data[1]) if len(left.data) > 1 else None
-        values = right.data if not right.is_scalar() else [right.data[0]]
-        result_chars: list[str] = []
-        for v in values:
-            if precision is not None:
-                formatted = f"{float(v):.{precision}f}"
-            else:
-                formatted = str(v)
-            padded = " " * max(0, width - len(formatted)) + formatted
-            result_chars.extend(list(padded))
-        return APLArray.array([len(result_chars)], result_chars)
+        return left.dyadic_format(right)
 
     def _deal(self, left: APLArray, right: APLArray) -> APLArray:
         return left.deal(right, io=self._env.io)

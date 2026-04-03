@@ -343,6 +343,41 @@ class APLArray(ABC):
     @abstractmethod
     def deal(self, other: 'APLArray', io: int = 1) -> 'APLArray': ...
 
+    # ── Dyadic structural ──
+
+    @abstractmethod
+    def reshape(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def catenate(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def take(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def drop(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def rotate(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def rotate_first(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def encode(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def decode(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def replicate(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def replicate_first(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def expand(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def matrix_divide(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def index_of(self, other: 'APLArray', io: int = 1, ct: float = 0) -> 'APLArray': ...
+    @abstractmethod
+    def membership(self, other: 'APLArray', ct: float = 0) -> 'APLArray': ...
+    @abstractmethod
+    def from_array(self, other: 'APLArray', io: int = 1) -> 'APLArray': ...
+    @abstractmethod
+    def dyadic_format(self, other: 'APLArray') -> 'APLArray': ...
+
 
 class NumpyArray(APLArray):
     """APLArray subclass backed by numpy arrays."""
@@ -499,6 +534,86 @@ class NumpyArray(APLArray):
             raise LengthError(f"Deal: cannot choose {n} from {m}")
         result = _random.sample(range(io, m + io), n)
         return APLArray.array([n], result)
+
+    # ── Dyadic structural (delegate to structural.py) ──
+
+    def reshape(self, other: 'APLArray') -> 'APLArray':
+        from marple.structural import reshape
+        return reshape(self, other)
+
+    def catenate(self, other: 'APLArray') -> 'APLArray':
+        from marple.structural import catenate
+        return catenate(self, other)
+
+    def take(self, other: 'APLArray') -> 'APLArray':
+        from marple.structural import take
+        return take(self, other)
+
+    def drop(self, other: 'APLArray') -> 'APLArray':
+        from marple.structural import drop
+        return drop(self, other)
+
+    def rotate(self, other: 'APLArray') -> 'APLArray':
+        from marple.structural import rotate
+        return rotate(self, other)
+
+    def rotate_first(self, other: 'APLArray') -> 'APLArray':
+        from marple.structural import rotate_first
+        return rotate_first(self, other)
+
+    def encode(self, other: 'APLArray') -> 'APLArray':
+        from marple.structural import encode
+        return encode(self, other)
+
+    def decode(self, other: 'APLArray') -> 'APLArray':
+        from marple.structural import decode
+        return decode(self, other)
+
+    def replicate(self, other: 'APLArray') -> 'APLArray':
+        from marple.structural import replicate
+        return replicate(self, other)
+
+    def replicate_first(self, other: 'APLArray') -> 'APLArray':
+        from marple.structural import replicate_first
+        return replicate_first(self, other)
+
+    def expand(self, other: 'APLArray') -> 'APLArray':
+        from marple.structural import expand
+        return expand(self, other)
+
+    def matrix_divide(self, other: 'APLArray') -> 'APLArray':
+        from marple.structural import matrix_divide
+        return matrix_divide(self, other)
+
+    def index_of(self, other: 'APLArray', io: int = 1, ct: float = 0) -> 'APLArray':
+        from marple.structural import index_of
+        return index_of(self, other, io, ct)
+
+    def membership(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
+        from marple.structural import membership
+        return membership(self, other, ct)
+
+    def from_array(self, other: 'APLArray', io: int = 1) -> 'APLArray':
+        from marple.structural import from_array
+        return from_array(self, other, io)
+
+    def dyadic_format(self, other: 'APLArray') -> 'APLArray':
+        if self.is_scalar():
+            width = int(self.data[0])
+            precision = None
+        else:
+            width = int(self.data[0])
+            precision = int(self.data[1]) if len(self.data) > 1 else None
+        values = other.data if not other.is_scalar() else [other.data[0]]
+        result_chars: list[str] = []
+        for v in values:
+            if precision is not None:
+                formatted = f"{float(v):.{precision}f}"
+            else:
+                formatted = str(v)
+            padded = " " * max(0, width - len(formatted)) + formatted
+            result_chars.extend(list(padded))
+        return APLArray.array([len(result_chars)], result_chars)
 
     def roll(self, io: int = 1) -> 'APLArray':
         """Monadic ?: roll. ?N → random int io..N, ?0 → random float [0,1)."""

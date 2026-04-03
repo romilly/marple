@@ -363,3 +363,70 @@ class TestDeal:
         result = APLArray.scalar(5).deal(APLArray.scalar(10), io=1)
         for v in result.data:
             assert 1 <= v <= 10
+
+
+# ── Dyadic structural ──
+
+class TestReshape:
+    def test_reshape(self) -> None:
+        assert APLArray.array([2], [2, 3]).reshape(APLArray.array([6], [1, 2, 3, 4, 5, 6])) == APLArray.array([2, 3], [1, 2, 3, 4, 5, 6])
+
+class TestCatenate:
+    def test_catenate(self) -> None:
+        assert APLArray.array([3], [1, 2, 3]).catenate(APLArray.array([2], [4, 5])) == APLArray.array([5], [1, 2, 3, 4, 5])
+
+class TestTake:
+    def test_take(self) -> None:
+        assert APLArray.scalar(3).take(APLArray.array([5], [1, 2, 3, 4, 5])) == APLArray.array([3], [1, 2, 3])
+
+class TestDrop:
+    def test_drop(self) -> None:
+        assert APLArray.scalar(2).drop(APLArray.array([5], [1, 2, 3, 4, 5])) == APLArray.array([3], [3, 4, 5])
+
+class TestDyadicRotate:
+    def test_rotate(self) -> None:
+        assert APLArray.scalar(1).rotate(APLArray.array([3], [1, 2, 3])) == APLArray.array([3], [2, 3, 1])
+
+class TestDyadicRotateFirst:
+    def test_rotate_first_matrix(self) -> None:
+        assert APLArray.scalar(1).rotate_first(APLArray.array([2, 3], [1, 2, 3, 4, 5, 6])) == APLArray.array([2, 3], [4, 5, 6, 1, 2, 3])
+
+class TestEncode:
+    def test_encode(self) -> None:
+        assert APLArray.array([3], [2, 2, 2]).encode(APLArray.scalar(7)) == APLArray.array([3], [1, 1, 1])
+
+class TestDecode:
+    def test_decode(self) -> None:
+        assert APLArray.array([3], [2, 2, 2]).decode(APLArray.array([3], [1, 1, 1])) == APLArray.scalar(7)
+
+class TestDyadicReplicate:
+    def test_replicate(self) -> None:
+        assert APLArray.array([3], [1, 0, 1]).replicate(APLArray.array([3], [10, 20, 30])) == APLArray.array([2], [10, 30])
+
+class TestDyadicReplicateFirst:
+    def test_replicate_first(self) -> None:
+        result = APLArray.array([2], [1, 0]).replicate_first(APLArray.array([2, 3], [1, 2, 3, 4, 5, 6]))
+        assert result.shape == [1, 3]
+
+class TestExpand:
+    def test_expand(self) -> None:
+        result = APLArray.array([3], [1, 0, 1]).expand(APLArray.array([2], [10, 20]))
+        assert result.shape == [3]
+
+class TestMatrixDivide:
+    def test_matrix_divide_identity(self) -> None:
+        """A⌹B where A is identity gives B back."""
+        result = APLArray.array([2, 2], [1, 0, 0, 1]).matrix_divide(APLArray.array([2, 2], [1, 0, 0, 1]))
+        assert result.shape == [2]
+
+class TestIndexOf:
+    def test_index_of(self) -> None:
+        assert APLArray.array([3], [10, 20, 30]).index_of(APLArray.scalar(20), io=1) == APLArray.scalar(2)
+
+class TestMembership:
+    def test_membership(self) -> None:
+        assert APLArray.array([2], [2, 3]).membership(APLArray.array([5], [1, 2, 3, 4, 5])) == APLArray.array([2], [1, 1])
+
+class TestFromArray:
+    def test_from_array(self) -> None:
+        assert APLArray.scalar(2).from_array(APLArray.array([3], [10, 20, 30]), io=1) == APLArray.scalar(20)
