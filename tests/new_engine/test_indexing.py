@@ -13,7 +13,7 @@ class TestVectorIndexing:
     def test_multiple_elements(self) -> None:
         i = Interpreter(io=1)
         i.run("v←10 20 30 40 50")
-        assert i.run("v[1 3 5]") == APLArray([3], [10, 30, 50])
+        assert i.run("v[1 3 5]") == APLArray.array([3], [10, 30, 50])
 
 
 class TestIndexingPreservesShape:
@@ -69,12 +69,12 @@ class TestStringBracketIndexWithFunction:
     def test_shape_of_string_bracket_index(self) -> None:
         i = Interpreter(io=1)
         result = i.run("⍴' *'[1 2 1]")
-        assert result == APLArray([1], [3])
+        assert result == APLArray.array([1], [3])
 
     def test_shape_of_string_bracket_index_matrix(self) -> None:
         i = Interpreter(io=1)
         result = i.run("⍴' *'[2 2⍴1 2 1 2]")
-        assert result == APLArray([2], [2, 2])
+        assert result == APLArray.array([2], [2, 2])
 
 
 class TestNumericBracketIndexWithFunction:
@@ -84,19 +84,19 @@ class TestNumericBracketIndexWithFunction:
         i = Interpreter(io=1)
         i.run("v←10 20 30 40 50")
         result = i.run("⍴v[2 3]")
-        assert result == APLArray([1], [2])
+        assert result == APLArray.array([1], [2])
 
     def test_shape_of_paren_vector_bracket_index(self) -> None:
         """⍴(1 2 3 4 5)[2 3] should give 2, not error."""
         i = Interpreter(io=1)
         result = i.run("⍴(1 2 3 4 5)[2 3]")
-        assert result == APLArray([1], [2])
+        assert result == APLArray.array([1], [2])
 
     def test_shape_of_literal_vector_bracket_index(self) -> None:
         """⍴1 2 3 4 5[2 3] — bracket binds to the whole vector."""
         i = Interpreter(io=1)
         result = i.run("⍴1 2 3 4 5[2 3]")
-        assert result == APLArray([1], [2])
+        assert result == APLArray.array([1], [2])
 
 
 class TestMatrixIndexing:
@@ -108,12 +108,12 @@ class TestMatrixIndexing:
     def test_entire_row(self) -> None:
         i = Interpreter(io=1)
         i.run("M←2 3⍴⍳6")
-        assert i.run("M[1;]") == APLArray([3], [1, 2, 3])
+        assert i.run("M[1;]") == APLArray.array([3], [1, 2, 3])
 
     def test_entire_column(self) -> None:
         i = Interpreter(io=1)
         i.run("M←2 3⍴⍳6")
-        assert i.run("M[;2]") == APLArray([2], [2, 5])
+        assert i.run("M[;2]") == APLArray.array([2], [2, 5])
 
 
 class TestDefaultIndexOrigin:
@@ -121,7 +121,7 @@ class TestDefaultIndexOrigin:
         assert Interpreter(io=1).run("⎕IO") == S(1)
 
     def test_index_origin_zero(self) -> None:
-        assert Interpreter(io=0).run("⍳3") == APLArray([3], [0, 1, 2])
+        assert Interpreter(io=0).run("⍳3") == APLArray.array([3], [0, 1, 2])
 
 
 class TestIndexOriginZero:
@@ -131,13 +131,13 @@ class TestIndexOriginZero:
         assert i.run("v[0]") == S(10)
 
     def test_grade_up_with_io0(self) -> None:
-        assert Interpreter(io=0).run("⍋3 1 4") == APLArray([3], [1, 0, 2])
+        assert Interpreter(io=0).run("⍋3 1 4") == APLArray.array([3], [1, 0, 2])
 
     def test_index_of_with_io0(self) -> None:
         assert Interpreter(io=0).run("10 20 30⍳20") == S(1)
 
     def test_grade_down_with_io0(self) -> None:
-        assert Interpreter(io=0).run("⍒3 1 4") == APLArray([3], [2, 0, 1])
+        assert Interpreter(io=0).run("⍒3 1 4") == APLArray.array([3], [2, 0, 1])
 
     def test_index_of_not_found_with_io0(self) -> None:
         assert Interpreter(io=0).run("10 20 30⍳99") == S(3)
