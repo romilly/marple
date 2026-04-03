@@ -87,34 +87,25 @@ def _pervade_dyadic(
 # Monadic functions
 
 
-# Dyadic functions
+# Dyadic functions — thin wrappers for operator_binding compatibility
 
 def add(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: a + b, alpha, omega, "add")
-
+    return alpha.add(omega)
 
 def subtract(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: a - b, alpha, omega, "subtract")
-
+    return alpha.subtract(omega)
 
 def multiply(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: a * b, alpha, omega, "multiply")
-
+    return alpha.multiply(omega)
 
 def divide(alpha: APLArray, omega: APLArray) -> APLArray:
-    def _div(a: int | float, b: int | float) -> int | float:
-        if b == 0:
-            raise DomainError("Division by zero")
-        return a / b
-    return _pervade_dyadic(_div, alpha, omega)
-
+    return alpha.divide(omega)
 
 def maximum(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: max(a, b), alpha, omega, "maximum")
-
+    return alpha.maximum(omega)
 
 def minimum(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: min(a, b), alpha, omega, "minimum")
+    return alpha.minimum(omega)
 
 
 def binomial(alpha: APLArray, omega: APLArray) -> APLArray:

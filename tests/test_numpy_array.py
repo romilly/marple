@@ -219,3 +219,41 @@ class TestRavel:
     def test_ravel_scalar(self) -> None:
         result = APLArray.scalar(5).ravel()
         assert result == APLArray.array([1], [5])
+
+
+# ── Dyadic functions ──
+
+class TestAdd:
+    def test_add_scalars(self) -> None:
+        assert APLArray.scalar(3).add(APLArray.scalar(4)) == APLArray.scalar(7)
+
+    def test_add_vectors(self) -> None:
+        assert APLArray.array([3], [1, 2, 3]).add(APLArray.array([3], [4, 5, 6])) == APLArray.array([3], [5, 7, 9])
+
+    def test_add_scalar_extension(self) -> None:
+        assert APLArray.scalar(10).add(APLArray.array([3], [1, 2, 3])) == APLArray.array([3], [11, 12, 13])
+
+
+class TestSubtract:
+    def test_subtract_scalars(self) -> None:
+        assert APLArray.scalar(5).subtract(APLArray.scalar(3)) == APLArray.scalar(2)
+
+
+class TestMultiply:
+    def test_multiply_scalars(self) -> None:
+        assert APLArray.scalar(3).multiply(APLArray.scalar(4)) == APLArray.scalar(12)
+
+
+class TestDivide:
+    def test_divide_scalars(self) -> None:
+        assert APLArray.scalar(10).divide(APLArray.scalar(4)) == APLArray.scalar(2.5)
+
+
+class TestMaximum:
+    def test_maximum_scalars(self) -> None:
+        assert APLArray.scalar(3).maximum(APLArray.scalar(5)) == APLArray.scalar(5)
+
+
+class TestMinimum:
+    def test_minimum_scalars(self) -> None:
+        assert APLArray.scalar(3).minimum(APLArray.scalar(5)) == APLArray.scalar(3)

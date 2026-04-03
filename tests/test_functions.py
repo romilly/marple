@@ -1,12 +1,4 @@
 from marple.arraymodel import APLArray, S
-from marple.functions import (
-    add,
-    divide,
-    maximum,
-    minimum,
-    multiply,
-    subtract,
-)
 
 
 class TestMonadicScalarFunctions:
@@ -28,32 +20,32 @@ class TestMonadicScalarFunctions:
 
 class TestDyadicScalarFunctions:
     def test_add_scalars(self) -> None:
-        assert add(S(3), S(4)) == S(7)
+        assert S(3).add(S(4)) == S(7)
 
     def test_add_vectors(self) -> None:
-        assert add(APLArray.array([3], [1, 2, 3]), APLArray.array([3], [4, 5, 6])) == APLArray.array(
+        assert APLArray.array([3], [1, 2, 3]).add(APLArray.array([3], [4, 5, 6])) == APLArray.array(
             [3], [5, 7, 9]
         )
 
     def test_subtract_scalars(self) -> None:
-        assert subtract(S(5), S(3)) == S(2)
+        assert S(5).subtract(S(3)) == S(2)
 
     def test_multiply_scalars(self) -> None:
-        assert multiply(S(3), S(4)) == S(12)
+        assert S(3).multiply(S(4)) == S(12)
 
     def test_divide_scalars(self) -> None:
-        assert divide(S(10), S(4)) == S(2.5)
+        assert S(10).divide(S(4)) == S(2.5)
 
     def test_maximum_scalars(self) -> None:
-        assert maximum(S(3), S(5)) == S(5)
+        assert S(3).maximum(S(5)) == S(5)
 
     def test_minimum_scalars(self) -> None:
-        assert minimum(S(3), S(5)) == S(3)
+        assert S(3).minimum(S(5)) == S(3)
 
 
 class TestScalarExtension:
     def test_scalar_plus_vector(self) -> None:
-        assert add(S(10), APLArray.array([3], [1, 2, 3])) == APLArray.array([3], [11, 12, 13])
+        assert S(10).add(APLArray.array([3], [1, 2, 3])) == APLArray.array([3], [11, 12, 13])
 
     def test_vector_plus_scalar(self) -> None:
-        assert add(APLArray.array([3], [1, 2, 3]), S(10)) == APLArray.array([3], [11, 12, 13])
+        assert APLArray.array([3], [1, 2, 3]).add(S(10)) == APLArray.array([3], [11, 12, 13])

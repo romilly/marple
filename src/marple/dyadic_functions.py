@@ -13,9 +13,9 @@ from marple.errors import DomainError, LengthError
 from marple.functions import (
     add,
     binomial,
+    divide,
     subtract,
     multiply,
-    divide,
     maximum,
     minimum,
     power,

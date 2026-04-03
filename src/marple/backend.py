@@ -290,9 +290,95 @@ class APLArray(ABC):
     @abstractmethod
     def format(self) -> 'APLArray': ...
 
+    # ── Dyadic arithmetic ──
+
+    @abstractmethod
+    def add(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def subtract(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def multiply(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def divide(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def maximum(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def minimum(self, other: 'APLArray') -> 'APLArray': ...
+
 
 class NumpyArray(APLArray):
     """APLArray subclass backed by numpy arrays."""
+
+    def _dyadic(self, other: 'APLArray',
+                f: Any, ufunc_name: str | None = None,
+                bool_result: bool = False) -> 'APLArray':
+        """Pervade a dyadic function over self (alpha) and other (omega)."""
+        from marple.errors import LengthError
+        if (ufunc_name and is_numeric_array(self.data)
+                and is_numeric_array(other.data)):
+            ufunc = getattr(np, ufunc_name, None)
+            if ufunc is not None:
+                a_arr = self.data
+                b_arr = other.data
+                if ufunc_name in _OVERFLOW_UFUNCS:
+                    a_arr = maybe_upcast(a_arr)
+                    b_arr = maybe_upcast(b_arr)
+                try:
+                    result = ufunc(a_arr, b_arr)
+                except ValueError:
+                    raise LengthError(f"Shape mismatch: {self.shape} vs {other.shape}")
+                if bool_result:
+                    result = to_bool_array(result)
+                shape = list(other.shape) if not other.is_scalar() else list(self.shape)
+                return APLArray.array(shape, result)
+        a_data = to_list(self.data)
+        b_data = to_list(other.data)
+        if self.is_scalar() and other.is_scalar():
+            result_list = [f(a_data[0], b_data[0])]
+            if bool_result:
+                result_list = to_bool_array(result_list)
+            return APLArray.array([], result_list)
+        if self.is_scalar():
+            a = a_data[0]
+            data = [f(a, x) for x in b_data]
+            if bool_result:
+                data = to_bool_array(data)
+            return APLArray.array(list(other.shape), data)
+        if other.is_scalar():
+            b = b_data[0]
+            data = [f(x, b) for x in a_data]
+            if bool_result:
+                data = to_bool_array(data)
+            return APLArray.array(list(self.shape), data)
+        if self.shape != other.shape:
+            raise LengthError(f"Shape mismatch: {self.shape} vs {other.shape}")
+        data = [f(a, b) for a, b in zip(a_data, b_data)]
+        if bool_result:
+            data = to_bool_array(data)
+        return APLArray.array(list(self.shape), data)
+
+    def add(self, other: 'APLArray') -> 'APLArray':
+        return self._dyadic(other, lambda a, b: a + b, "add")
+
+    def subtract(self, other: 'APLArray') -> 'APLArray':
+        return self._dyadic(other, lambda a, b: a - b, "subtract")
+
+    def multiply(self, other: 'APLArray') -> 'APLArray':
+        return self._dyadic(other, lambda a, b: a * b, "multiply")
+
+    def divide(self, other: 'APLArray') -> 'APLArray':
+        from marple.errors import DomainError
+        def _div(a: Any, b: Any) -> Any:
+            if b == 0:
+                raise DomainError("Division by zero")
+            return a / b
+        return self._dyadic(other, _div)
+
+    def maximum(self, other: 'APLArray') -> 'APLArray':
+        return self._dyadic(other, lambda a, b: max(a, b), "maximum")
+
+    def minimum(self, other: 'APLArray') -> 'APLArray':
+        return self._dyadic(other, lambda a, b: min(a, b), "minimum")
 
     def roll(self, io: int = 1) -> 'APLArray':
         """Monadic ?: roll. ?N → random int io..N, ?0 → random float [0,1)."""
