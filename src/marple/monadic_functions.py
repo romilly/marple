@@ -8,19 +8,15 @@ from marple.environment import Environment
 from marple.errors import DomainError
 import random as _random
 
-from marple.structural import (
-    grade_down,
-    grade_up,
-)
 
 
 class MonadicFunctionBinding:
     """Dispatches and applies monadic primitive functions."""
 
     _SIMPLE: dict[str, object] = {
-        "+": lambda omega: omega,
+        "+": lambda omega: omega.conjugate(),
         "-": lambda omega: omega.negate(),
-        "×": lambda omega: S((-1 if omega.data[0] < 0 else 1 if omega.data[0] > 0 else 0)),
+        "×": lambda omega: omega.signum(),
         "÷": lambda omega: omega.reciprocal(),
         "⌈": lambda omega: omega.ceiling(),
         "⌊": lambda omega: omega.floor(),
@@ -36,11 +32,11 @@ class MonadicFunctionBinding:
         "⌹": lambda omega: omega.matrix_inverse(),
         "○": lambda omega: omega.pi_times(),
         "!": lambda omega: omega.factorial(),
+        "≢": lambda omega: omega.tally(),
     }
 
     _ENV_DEPENDENT: dict[str, str] = {
         "⍳": "_iota",
-        "≢": "_tally",
         "⍋": "_grade_up",
         "⍒": "_grade_down",
         "?": "_roll",
@@ -61,18 +57,16 @@ class MonadicFunctionBinding:
         raise DomainError(f"Unknown monadic function: {glyph}")
 
     def _iota(self, operand: APLArray) -> APLArray:
-        io = self._env.io
-        n = int(operand.data[0])
-        return APLArray.array([n], list(range(io, n + io)))
+        return operand.iota(io=self._env.io)
 
     def _tally(self, operand: APLArray) -> APLArray:
         return S(1) if operand.is_scalar() else S(operand.shape[0])
 
     def _grade_up(self, operand: APLArray) -> APLArray:
-        return grade_up(operand, self._env.io)
+        return operand.grade_up(io=self._env.io)
 
     def _grade_down(self, operand: APLArray) -> APLArray:
-        return grade_down(operand, self._env.io)
+        return operand.grade_down(io=self._env.io)
 
     def _roll(self, operand: APLArray) -> APLArray:
         """Monadic ?: roll. ?N → random int ⎕IO..N, ?0 → random float [0,1)."""

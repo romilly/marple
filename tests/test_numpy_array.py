@@ -87,6 +87,59 @@ class TestFactorial:
         assert APLArray.scalar(5).factorial() == APLArray.scalar(120)
 
 
+class TestGrade:
+    def test_grade_up(self) -> None:
+        assert APLArray.array([5], [3, 1, 4, 1, 5]).grade_up(io=1) == APLArray.array([5], [2, 4, 1, 3, 5])
+
+    def test_grade_down(self) -> None:
+        assert APLArray.array([5], [3, 1, 4, 1, 5]).grade_down(io=1) == APLArray.array([5], [5, 3, 1, 2, 4])
+
+    def test_grade_up_io0(self) -> None:
+        assert APLArray.array([3], [3, 1, 4]).grade_up(io=0) == APLArray.array([3], [1, 0, 2])
+
+
+class TestIota:
+    def test_iota_io1(self) -> None:
+        assert APLArray.scalar(5).iota(io=1) == APLArray.array([5], [1, 2, 3, 4, 5])
+
+    def test_iota_io0(self) -> None:
+        assert APLArray.scalar(3).iota(io=0) == APLArray.array([3], [0, 1, 2])
+
+
+class TestTally:
+    def test_tally_vector(self) -> None:
+        assert APLArray.array([5], [1, 2, 3, 4, 5]).tally() == APLArray.scalar(5)
+
+    def test_tally_scalar(self) -> None:
+        assert APLArray.scalar(42).tally() == APLArray.scalar(1)
+
+    def test_tally_matrix(self) -> None:
+        assert APLArray.array([3, 4], list(range(12))).tally() == APLArray.scalar(3)
+
+
+class TestConjugate:
+    def test_conjugate_real(self) -> None:
+        """For real numbers, conjugate is identity."""
+        assert APLArray.scalar(5).conjugate() == APLArray.scalar(5)
+
+    def test_conjugate_vector(self) -> None:
+        assert APLArray.array([3], [1, 2, 3]).conjugate() == APLArray.array([3], [1, 2, 3])
+
+
+class TestSignum:
+    def test_signum_positive(self) -> None:
+        assert APLArray.scalar(42).signum() == APLArray.scalar(1)
+
+    def test_signum_negative(self) -> None:
+        assert APLArray.scalar(-7).signum() == APLArray.scalar(-1)
+
+    def test_signum_zero(self) -> None:
+        assert APLArray.scalar(0).signum() == APLArray.scalar(0)
+
+    def test_signum_vector(self) -> None:
+        assert APLArray.array([3], [-5, 0, 3]).signum() == APLArray.array([3], [-1, 0, 1])
+
+
 class TestShape:
     def test_shape_vector(self) -> None:
         assert APLArray.array([3], [1, 2, 3]).shape_of() == APLArray.array([1], [3])

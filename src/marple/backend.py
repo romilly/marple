@@ -234,6 +234,33 @@ class APLArray:
 class NumpyArray(APLArray):
     """APLArray subclass backed by numpy arrays."""
 
+    def grade_up(self, io: int = 1) -> 'APLArray':
+        indexed = list(enumerate(self.data))
+        indexed.sort(key=lambda pair: pair[1])  # type: ignore[arg-type]
+        return APLArray.array([len(self.data)], [i + io for i, _ in indexed])
+
+    def grade_down(self, io: int = 1) -> 'APLArray':
+        indexed = list(enumerate(self.data))
+        indexed.sort(key=lambda pair: pair[1], reverse=True)  # type: ignore[arg-type]
+        return APLArray.array([len(self.data)], [i + io for i, _ in indexed])
+
+    def iota(self, io: int = 1) -> 'APLArray':
+        n = int(self.data[0])
+        return APLArray.array([n], list(range(io, n + io)))
+
+    def tally(self) -> 'APLArray':
+        return APLArray.scalar(1) if self.is_scalar() else APLArray.scalar(self.shape[0])
+
+    def conjugate(self) -> 'APLArray':
+        """Monadic +: identity for real, conjugate for complex."""
+        return APLArray.array(list(self.shape), list(self.data))
+
+    def signum(self) -> 'APLArray':
+        if is_numeric_array(self.data):
+            return APLArray.array(list(self.shape), np.sign(self.data))
+        return APLArray.array(list(self.shape),
+            [(-1 if x < 0 else 1 if x > 0 else 0) for x in to_list(self.data)])
+
     def negate(self) -> 'APLArray':
         if is_numeric_array(self.data):
             return APLArray.array(list(self.shape), np.negative(self.data))
