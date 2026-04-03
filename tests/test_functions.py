@@ -7,7 +7,6 @@ from marple.functions import (
     maximum,
     minimum,
     multiply,
-    negate,
     reciprocal,
     subtract,
 )
@@ -15,10 +14,10 @@ from marple.functions import (
 
 class TestMonadicScalarFunctions:
     def test_negate_scalar(self) -> None:
-        assert negate(S(3)) == S(-3)
+        assert S(3).negate() == S(-3)
 
     def test_negate_vector(self) -> None:
-        assert negate(APLArray.array([3], [1, 2, 3])) == APLArray.array([3], [-1, -2, -3])
+        assert APLArray.array([3], [1, 2, 3]).negate() == APLArray.array([3], [-1, -2, -3])
 
     def test_reciprocal_scalar(self) -> None:
         assert reciprocal(S(4)) == S(0.25)

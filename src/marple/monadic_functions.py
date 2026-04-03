@@ -7,7 +7,7 @@ from marple.arraymodel import APLArray, S
 from marple.environment import Environment
 from marple.errors import DomainError
 from marple.functions import (
-    negate,
+
     reciprocal,
     ceiling,
     floor,
@@ -37,7 +37,7 @@ class MonadicFunctionBinding:
 
     _SIMPLE: dict[str, object] = {
         "+": lambda omega: omega,
-        "-": negate,
+        "-": lambda omega: omega.negate(),
         "×": lambda omega: S((-1 if omega.data[0] < 0 else 1 if omega.data[0] > 0 else 0)),
         "÷": reciprocal,
         "⌈": ceiling,

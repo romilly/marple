@@ -86,10 +86,6 @@ def _pervade_dyadic(
 
 # Monadic functions
 
-def negate(omega: APLArray) -> APLArray:
-    return _pervade_monadic(lambda x: -x, omega, "negative")
-
-
 def reciprocal(omega: APLArray) -> APLArray:
     def _recip(x: int | float) -> int | float:
         if x == 0:

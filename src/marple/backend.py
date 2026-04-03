@@ -233,7 +233,11 @@ class APLArray:
 
 class NumpyArray(APLArray):
     """APLArray subclass backed by numpy arrays."""
-    pass
+
+    def negate(self) -> 'APLArray':
+        if is_numeric_array(self.data):
+            return APLArray.array(list(self.shape), np.negative(self.data))
+        return APLArray.array(list(self.shape), [-x for x in to_list(self.data)])
 
 
 def S(value: Any) -> APLArray:
