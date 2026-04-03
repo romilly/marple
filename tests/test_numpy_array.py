@@ -257,3 +257,30 @@ class TestMaximum:
 class TestMinimum:
     def test_minimum_scalars(self) -> None:
         assert APLArray.scalar(3).minimum(APLArray.scalar(5)) == APLArray.scalar(3)
+
+
+class TestPower:
+    def test_power_scalars(self) -> None:
+        assert APLArray.scalar(2).power(APLArray.scalar(3)) == APLArray.scalar(8)
+
+
+class TestLogarithm:
+    def test_log_base_10(self) -> None:
+        assert APLArray.scalar(10).logarithm(APLArray.scalar(100)) == APLArray.scalar(2)
+
+
+class TestResidue:
+    def test_residue(self) -> None:
+        assert APLArray.scalar(3).residue(APLArray.scalar(7)) == APLArray.scalar(1)
+
+
+class TestCircular:
+    def test_sin(self) -> None:
+        import math
+        result = APLArray.scalar(1).circular(APLArray.scalar(0))
+        assert abs(result.data[0]) < 1e-10
+
+
+class TestBinomial:
+    def test_binomial(self) -> None:
+        assert APLArray.scalar(2).binomial(APLArray.scalar(5)) == APLArray.scalar(10)

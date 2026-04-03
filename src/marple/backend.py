@@ -304,6 +304,16 @@ class APLArray(ABC):
     def maximum(self, other: 'APLArray') -> 'APLArray': ...
     @abstractmethod
     def minimum(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def power(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def logarithm(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def residue(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def circular(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def binomial(self, other: 'APLArray') -> 'APLArray': ...
 
 
 class NumpyArray(APLArray):
@@ -379,6 +389,41 @@ class NumpyArray(APLArray):
 
     def minimum(self, other: 'APLArray') -> 'APLArray':
         return self._dyadic(other, lambda a, b: min(a, b), "minimum")
+
+    def power(self, other: 'APLArray') -> 'APLArray':
+        return self._dyadic(other, lambda a, b: a ** b, "power")
+
+    def logarithm(self, other: 'APLArray') -> 'APLArray':
+        import math
+        return self._dyadic(other, lambda a, b: math.log(b) / math.log(a))
+
+    def residue(self, other: 'APLArray') -> 'APLArray':
+        return self._dyadic(other, lambda a, b: b % a)
+
+    def circular(self, other: 'APLArray') -> 'APLArray':
+        import math
+        from marple.errors import DomainError
+        _CIRCULAR: dict[int, Any] = {
+            0: lambda x: math.sqrt(1 - x * x),
+            1: math.sin, 2: math.cos, 3: math.tan,
+            4: lambda x: math.sqrt(1 + x * x),
+            5: math.sinh, 6: math.cosh, 7: math.tanh,
+            -1: math.asin, -2: math.acos, -3: math.atan,
+            -4: lambda x: math.sqrt(x * x - 1),
+            -5: math.asinh, -6: math.acosh, -7: math.atanh,
+        }
+        def _apply(a: Any, b: Any) -> Any:
+            fn = _CIRCULAR.get(int(a))
+            if fn is None:
+                raise DomainError(f"Unknown circular function selector: {a}")
+            return fn(float(b))
+        return self._dyadic(other, _apply)
+
+    def binomial(self, other: 'APLArray') -> 'APLArray':
+        import math
+        def _binom(k: Any, n: Any) -> Any:
+            return math.gamma(n + 1) / (math.gamma(k + 1) * math.gamma(n - k + 1))
+        return self._dyadic(other, _binom)
 
     def roll(self, io: int = 1) -> 'APLArray':
         """Monadic ?: roll. ?N → random int io..N, ?0 → random float [0,1)."""

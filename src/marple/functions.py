@@ -109,51 +109,19 @@ def minimum(alpha: APLArray, omega: APLArray) -> APLArray:
 
 
 def binomial(alpha: APLArray, omega: APLArray) -> APLArray:
-    def _binom(k: float, n: float) -> float:
-        return math.gamma(n + 1) / (math.gamma(k + 1) * math.gamma(n - k + 1))
-    return _pervade_dyadic(_binom, alpha, omega)
-
-
-_CIRCULAR: dict[int, Callable[[float], float]] = {
-    0: lambda x: math.sqrt(1 - x * x),
-    1: math.sin,
-    2: math.cos,
-    3: math.tan,
-    4: lambda x: math.sqrt(1 + x * x),
-    5: math.sinh,
-    6: math.cosh,
-    7: math.tanh,
-    -1: math.asin,
-    -2: math.acos,
-    -3: math.atan,
-    -4: lambda x: math.sqrt(x * x - 1),
-    -5: math.asinh,
-    -6: math.acosh,
-    -7: math.atanh,
-}
-
+    return alpha.binomial(omega)
 
 def circular(alpha: APLArray, omega: APLArray) -> APLArray:
-    def _apply(a: int | float, b: int | float) -> int | float:
-        fn = _CIRCULAR.get(int(a))
-        if fn is None:
-            raise DomainError(f"Unknown circular function selector: {a}")
-        return fn(float(b))
-    return _pervade_dyadic(_apply, alpha, omega)
-
-
-# Extended dyadic functions
+    return alpha.circular(omega)
 
 def power(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: a ** b, alpha, omega, "power")
-
+    return alpha.power(omega)
 
 def logarithm(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: math.log(b) / math.log(a), alpha, omega)
-
+    return alpha.logarithm(omega)
 
 def residue(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: b % a, alpha, omega)
+    return alpha.residue(omega)
 
 
 def _tolerant_eq(a: int | float, b: int | float, ct: float) -> bool:
