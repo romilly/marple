@@ -32,7 +32,7 @@ marple
 ```
 
 ```
-MARPLE v0.5.43 - Mini APL in Python
+MARPLE v0.6.17 - Mini APL in Python
 CLEAR WS
 
       ⍳5
