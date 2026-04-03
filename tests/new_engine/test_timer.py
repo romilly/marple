@@ -10,7 +10,7 @@ class TestQuadTSWithTimer:
         timer = FakeTimer(ts=[2026, 4, 2, 14, 30, 45, 123])
         interp = Interpreter(io=1, timer=timer)
         result = interp.run("⎕TS")
-        assert result == APLArray([7], [2026, 4, 2, 14, 30, 45, 123])
+        assert result == APLArray.array([7], [2026, 4, 2, 14, 30, 45, 123])
 
 
 class TestQuadAIWithTimer:

@@ -70,7 +70,7 @@ class TestMembership:
         assert Interpreter(io=1).run("6∈1 2 3 4 5") == S(0)
 
     def test_membership_vector(self) -> None:
-        assert Interpreter(io=1).run("1 3 5∈2 3 4") == APLArray([3], [0, 1, 0])
+        assert Interpreter(io=1).run("1 3 5∈2 3 4") == APLArray.array([3], [0, 1, 0])
 
     def test_membership_tolerant(self) -> None:
         i = Interpreter(io=1)

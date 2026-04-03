@@ -18,7 +18,7 @@ class TestMonadicFactorial:
         assert Interpreter(io=1).run("!10") == S(3628800)
 
     def test_factorial_pervades(self) -> None:
-        assert Interpreter(io=1).run("!0 1 2 3 4") == APLArray([5], [1, 1, 2, 6, 24])
+        assert Interpreter(io=1).run("!0 1 2 3 4") == APLArray.array([5], [1, 1, 2, 6, 24])
 
 
 class TestDyadicBinomial:
@@ -35,4 +35,4 @@ class TestDyadicBinomial:
         assert Interpreter(io=1).run("1!7") == S(7)
 
     def test_binomial_pervades(self) -> None:
-        assert Interpreter(io=1).run("2!3 4 5") == APLArray([3], [3, 6, 10])
+        assert Interpreter(io=1).run("2!3 4 5") == APLArray.array([3], [3, 6, 10])

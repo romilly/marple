@@ -51,7 +51,7 @@ class TestComparison:
         assert Interpreter(io=1).run("3≠5") == S(1)
 
     def test_comparison_on_vectors(self) -> None:
-        assert Interpreter(io=1).run("1 2 3<2 2 2") == APLArray([3], [1, 0, 0])
+        assert Interpreter(io=1).run("1 2 3<2 2 2") == APLArray.array([3], [1, 0, 0])
 
 
 class TestCircular:

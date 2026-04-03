@@ -69,7 +69,7 @@ class TestPowerConvergence:
 
 class TestPowerStructural:
     def test_reverse_twice_is_identity(self) -> None:
-        assert Interpreter(io=1).run("(⌽⍣2) 1 2 3") == APLArray([3], [1, 2, 3])
+        assert Interpreter(io=1).run("(⌽⍣2) 1 2 3") == APLArray.array([3], [1, 2, 3])
 
     def test_reverse_three_times(self) -> None:
-        assert Interpreter(io=1).run("(⌽⍣3) 1 2 3") == APLArray([3], [3, 2, 1])
+        assert Interpreter(io=1).run("(⌽⍣3) 1 2 3") == APLArray.array([3], [3, 2, 1])
