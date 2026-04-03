@@ -15,7 +15,7 @@ class TestQuadIO:
         assert Interpreter(io=0).run("⎕IO") == S(0)
 
     def test_iota_with_io0(self) -> None:
-        assert Interpreter(io=0).run("⍳3") == APLArray([3], [0, 1, 2])
+        assert Interpreter(io=0).run("⍳3") == APLArray.array([3], [0, 1, 2])
 
     def test_indexing_with_io0(self) -> None:
         i = Interpreter(io=0)
@@ -85,7 +85,7 @@ class TestSystemFunctions:
 
     def test_ucs_to_code(self) -> None:
         result = Interpreter(io=1).run("⎕UCS 'A'")
-        assert result == APLArray([1], [65])
+        assert result == APLArray.array([1], [65])
 
     def test_signal(self) -> None:
         with pytest.raises(DomainError):
@@ -564,8 +564,8 @@ class TestCSV:
             path = f.name
         try:
             i.run(f"⎕CSV '{path}'")
-            assert i.run("age") == APLArray([3], [25, 30, 35])
-            assert i.run("score") == APLArray([3], [90, 85, 72])
+            assert i.run("age") == APLArray.array([3], [25, 30, 35])
+            assert i.run("score") == APLArray.array([3], [90, 85, 72])
         finally:
             os.unlink(path)
 
@@ -597,6 +597,6 @@ class TestCSV:
             assert name_result.shape[0] == 2
             row0 = "".join(str(c) for c in name_result.data[:name_result.shape[1]]).rstrip()
             assert row0 == "Alice"
-            assert i.run("val") == APLArray([2], [10, 20])
+            assert i.run("val") == APLArray.array([2], [10, 20])
         finally:
             os.unlink(path)

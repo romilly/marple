@@ -18,7 +18,7 @@ class TestBasicDfns:
         assert Interpreter(io=1).run("{-⍵}5") == S(-5)
 
     def test_dfn_with_vector(self) -> None:
-        assert Interpreter(io=1).run("{⍵+1}1 2 3") == APLArray([3], [2, 3, 4])
+        assert Interpreter(io=1).run("{⍵+1}1 2 3") == APLArray.array([3], [2, 3, 4])
 
 
 class TestNamedDfns:
@@ -30,7 +30,7 @@ class TestNamedDfns:
     def test_named_dfn_with_vector(self) -> None:
         i = Interpreter(io=1)
         i.run("inc←{⍵+1}")
-        assert i.run("inc 1 2 3") == APLArray([3], [2, 3, 4])
+        assert i.run("inc 1 2 3") == APLArray.array([3], [2, 3, 4])
 
 
 class TestDyadicDfns:
@@ -85,12 +85,12 @@ class TestDefaultAlpha:
     def test_default_alpha_monadic(self) -> None:
         i = Interpreter(io=1)
         i.run("pad←{⍺←0⋄⍺,⍵}")
-        assert i.run("pad 1 2 3") == APLArray([4], [0, 1, 2, 3])
+        assert i.run("pad 1 2 3") == APLArray.array([4], [0, 1, 2, 3])
 
     def test_default_alpha_overridden(self) -> None:
         i = Interpreter(io=1)
         i.run("pad←{⍺←0⋄⍺,⍵}")
-        assert i.run("9 pad 1 2 3") == APLArray([4], [9, 1, 2, 3])
+        assert i.run("9 pad 1 2 3") == APLArray.array([4], [9, 1, 2, 3])
 
 
 class TestMultiStatement:
@@ -177,7 +177,7 @@ class TestDopApplication:
         i = Interpreter(io=1)
         i.run("apply←{⍺⍺ ⍵}")
         result = i.run("(⍳) apply 5")
-        assert result == APLArray([5], [1, 2, 3, 4, 5])
+        assert result == APLArray.array([5], [1, 2, 3, 4, 5])
 
     def test_dop_with_array_operand(self) -> None:
         i = Interpreter(io=1)
