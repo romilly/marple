@@ -32,7 +32,6 @@ mpremote \
     cp $SRC/executor.py :marple/executor.py + \
     cp $SRC/fmt.py :marple/fmt.py + \
     cp $SRC/formatting.py :marple/formatting.py + \
-    cp $SRC/functions.py :marple/functions.py + \
     cp $SRC/glyphs.py :marple/glyphs.py + \
     cp $SRC/monadic_functions.py :marple/monadic_functions.py + \
     cp $SRC/namespace.py :marple/namespace.py + \
