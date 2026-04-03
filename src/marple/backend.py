@@ -382,7 +382,7 @@ class APLArray(ABC):
 class NumpyArray(APLArray):
     """APLArray subclass backed by numpy arrays."""
 
-    def _dyadic(self, other: 'APLArray',
+    def _dyadic(self, other: 'NumpyArray',
                 f: Any, ufunc_name: str | None = None,
                 bool_result: bool = False) -> 'APLArray':
         """Pervade a dyadic function over self (alpha) and other (omega)."""
@@ -430,14 +430,32 @@ class NumpyArray(APLArray):
             data = to_bool_array(data)
         return APLArray.array(list(self.shape), data)
 
+    def _numeric_dyadic_op(self, other: 'APLArray', op: Any, upcast: bool = False) -> 'APLArray':
+        """Apply a numeric operator (+, -, *, etc.) on numpy data."""
+        from marple.errors import LengthError
+        a = maybe_upcast(self.data) if upcast else self.data
+        b = maybe_upcast(other.data) if upcast else other.data
+        try:
+            result = op(a, b)
+        except ValueError:
+            raise LengthError(f"Shape mismatch: {self.shape} vs {other.shape}")
+        shape = list(other.shape) if not other.is_scalar() else list(self.shape)
+        return APLArray.array(shape, result)
+
     def add(self, other: 'APLArray') -> 'APLArray':
-        return self._dyadic(other, lambda a, b: a + b, "add")
+        if is_numeric_array(self.data) and is_numeric_array(other.data):
+            return self._numeric_dyadic_op(other, lambda a, b: a + b, upcast=True)
+        return self._dyadic(other, lambda a, b: a + b)
 
     def subtract(self, other: 'APLArray') -> 'APLArray':
-        return self._dyadic(other, lambda a, b: a - b, "subtract")
+        if is_numeric_array(self.data) and is_numeric_array(other.data):
+            return self._numeric_dyadic_op(other, lambda a, b: a - b, upcast=True)
+        return self._dyadic(other, lambda a, b: a - b)
 
     def multiply(self, other: 'APLArray') -> 'APLArray':
-        return self._dyadic(other, lambda a, b: a * b, "multiply")
+        if is_numeric_array(self.data) and is_numeric_array(other.data):
+            return self._numeric_dyadic_op(other, lambda a, b: a * b, upcast=True)
+        return self._dyadic(other, lambda a, b: a * b)
 
     def divide(self, other: 'APLArray') -> 'APLArray':
         from marple.errors import DomainError
@@ -448,19 +466,23 @@ class NumpyArray(APLArray):
         return self._dyadic(other, _div)
 
     def maximum(self, other: 'APLArray') -> 'APLArray':
-        return self._dyadic(other, lambda a, b: max(a, b), "maximum")
+        return self._dyadic(other, lambda a, b: max(a, b))
 
     def minimum(self, other: 'APLArray') -> 'APLArray':
-        return self._dyadic(other, lambda a, b: min(a, b), "minimum")
+        return self._dyadic(other, lambda a, b: min(a, b))
 
     def power(self, other: 'APLArray') -> 'APLArray':
-        return self._dyadic(other, lambda a, b: a ** b, "power")
+        if is_numeric_array(self.data) and is_numeric_array(other.data):
+            return self._numeric_dyadic_op(other, lambda a, b: a ** b, upcast=True)
+        return self._dyadic(other, lambda a, b: a ** b)
 
     def logarithm(self, other: 'APLArray') -> 'APLArray':
         import math
         return self._dyadic(other, lambda a, b: math.log(b) / math.log(a))
 
     def residue(self, other: 'APLArray') -> 'APLArray':
+        if is_numeric_array(self.data) and is_numeric_array(other.data):
+            return self._numeric_dyadic_op(other, lambda a, b: b % a)
         return self._dyadic(other, lambda a, b: b % a)
 
     def circular(self, other: 'APLArray') -> 'APLArray':
@@ -656,14 +678,12 @@ class NumpyArray(APLArray):
         return APLArray.array(list(self.shape), list(self.data))
 
     def signum(self) -> 'APLArray':
-        if is_numeric_array(self.data):
-            return APLArray.array(list(self.shape), np.sign(self.data))
         return APLArray.array(list(self.shape),
             [(-1 if x < 0 else 1 if x > 0 else 0) for x in to_list(self.data)])
 
     def negate(self) -> 'APLArray':
         if is_numeric_array(self.data):
-            return APLArray.array(list(self.shape), np.negative(self.data))
+            return APLArray.array(list(self.shape), -self.data)
         return APLArray.array(list(self.shape), [-x for x in to_list(self.data)])
 
     def reciprocal(self) -> 'APLArray':
@@ -701,12 +721,10 @@ class NumpyArray(APLArray):
 
     def absolute_value(self) -> 'APLArray':
         if is_numeric_array(self.data):
-            return APLArray.array(list(self.shape), np.absolute(self.data))
+            return APLArray.array(list(self.shape), abs(self.data))
         return APLArray.array(list(self.shape), [abs(x) for x in to_list(self.data)])
 
     def logical_not(self) -> 'APLArray':
-        if is_numeric_array(self.data):
-            return APLArray.array(list(self.shape), to_bool_array(np.logical_not(self.data)))
         return APLArray.array(list(self.shape), to_bool_array([int(not x) for x in to_list(self.data)]))
 
     def pi_times(self) -> 'APLArray':
