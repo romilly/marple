@@ -18,7 +18,7 @@ class TestMonadicScalarFunctions:
         assert negate(S(3)) == S(-3)
 
     def test_negate_vector(self) -> None:
-        assert negate(APLArray([3], [1, 2, 3])) == APLArray([3], [-1, -2, -3])
+        assert negate(APLArray.array([3], [1, 2, 3])) == APLArray.array([3], [-1, -2, -3])
 
     def test_reciprocal_scalar(self) -> None:
         assert reciprocal(S(4)) == S(0.25)
@@ -35,7 +35,7 @@ class TestDyadicScalarFunctions:
         assert add(S(3), S(4)) == S(7)
 
     def test_add_vectors(self) -> None:
-        assert add(APLArray([3], [1, 2, 3]), APLArray([3], [4, 5, 6])) == APLArray(
+        assert add(APLArray.array([3], [1, 2, 3]), APLArray.array([3], [4, 5, 6])) == APLArray.array(
             [3], [5, 7, 9]
         )
 
@@ -57,7 +57,7 @@ class TestDyadicScalarFunctions:
 
 class TestScalarExtension:
     def test_scalar_plus_vector(self) -> None:
-        assert add(S(10), APLArray([3], [1, 2, 3])) == APLArray([3], [11, 12, 13])
+        assert add(S(10), APLArray.array([3], [1, 2, 3])) == APLArray.array([3], [11, 12, 13])
 
     def test_vector_plus_scalar(self) -> None:
-        assert add(APLArray([3], [1, 2, 3]), S(10)) == APLArray([3], [11, 12, 13])
+        assert add(APLArray.array([3], [1, 2, 3]), S(10)) == APLArray.array([3], [11, 12, 13])

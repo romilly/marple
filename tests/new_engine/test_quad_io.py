@@ -80,7 +80,7 @@ class TestQuoteQuadOutput:
         console = FakeConsole(["Romilly"])
         interp = Interpreter(console=console)
         result = interp.run("⍞←'Name: '")
-        assert_that(result, equal_to(APLArray([7], list("Romilly"))))
+        assert_that(result, equal_to(APLArray.array([7], list("Romilly"))))
 
     def test_quote_quad_assign_chain(self) -> None:
         """a ← ⍞ ← 'prompt' sets a to response only (Dyalog style)."""
@@ -88,7 +88,7 @@ class TestQuoteQuadOutput:
         interp = Interpreter(console=console)
         interp.run("a ← ⍞ ← 'Name: '")
         result = interp.run("a")
-        assert_that(result, equal_to(APLArray([7], list("Romilly"))))
+        assert_that(result, equal_to(APLArray.array([7], list("Romilly"))))
 
     def test_quote_quad_assign_raises_when_no_input(self) -> None:
         console = FakeConsole([])  # no inputs
@@ -105,21 +105,21 @@ class TestQuoteQuadInput:
         interp = Interpreter(console=console)
         interp.run("x←⍞")
         result = interp.run("x")
-        assert_that(result, equal_to(APLArray([5], list("hello"))))
+        assert_that(result, equal_to(APLArray.array([5], list("hello"))))
 
     def test_quote_quad_numeric_input_stays_as_characters(self) -> None:
         console = FakeConsole(["42"])
         interp = Interpreter(console=console)
         interp.run("x←⍞")
         result = interp.run("x")
-        assert_that(result, equal_to(APLArray([2], list("42"))))
+        assert_that(result, equal_to(APLArray.array([2], list("42"))))
 
     def test_quote_quad_empty_input(self) -> None:
         console = FakeConsole([""])
         interp = Interpreter(console=console)
         interp.run("x←⍞")
         result = interp.run("x")
-        assert_that(result, equal_to(APLArray([0], [])))
+        assert_that(result, equal_to(APLArray.array([0], [])))
 
     def test_quote_quad_raises_when_no_input_available(self) -> None:
         console = FakeConsole([])  # no inputs
@@ -153,7 +153,7 @@ class TestQuadInput:
         interp = Interpreter(console=console)
         interp.run("x←⎕")
         result = interp.run("x")
-        assert_that(result, equal_to(APLArray([3], [1, 2, 3])))
+        assert_that(result, equal_to(APLArray.array([3], [1, 2, 3])))
 
     def test_quad_in_expression(self) -> None:
         console = FakeConsole(["5"])
@@ -229,7 +229,7 @@ class TestPrideQuadOutput:
         t.join(timeout=2.0)
         # Assignment is silent, but the value was captured
         result = session.interp.run("a")
-        assert_that(result, equal_to(APLArray([5], list("world"))))
+        assert_that(result, equal_to(APLArray.array([5], list("world"))))
 
 
 class TestScriptQuadOutput:

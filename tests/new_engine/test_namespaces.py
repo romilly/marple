@@ -40,7 +40,7 @@ class TestNamespaceExecution:
 
     def test_system_str_trim(self) -> None:
         result = Interpreter(io=1).run("$::str::trim '  hi  '")
-        assert result == APLArray([2], list("hi"))
+        assert result == APLArray.array([2], list("hi"))
 
 
 class TestImport:

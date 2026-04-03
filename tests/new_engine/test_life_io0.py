@@ -10,7 +10,7 @@ class TestLifeIO0:
         i.run("G←6 6⍴0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0")
         i.run("life←{⎕IO←0 ⋄ s←{(1↑⍺)⊖(1↓⍺)⌽⍵} ⋄ P←(⍉3 3⊤⍳9)-1 ⋄ N←(+⌿P(s⍤1 2)⍵)-⍵ ⋄ (N=3)∨⍵∧N=2}")
         result = i.run("(life⍣4) G")
-        expected = APLArray([6, 6], [
+        expected = APLArray.array([6, 6], [
             0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0,
             0, 0, 0, 1, 0, 0,

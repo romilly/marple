@@ -249,7 +249,7 @@ class TestCR:
         flat: list[str] = []
         for row in padded:
             flat.extend(row)
-        matrix = APLArray([3, max_len], flat)
+        matrix = APLArray.array([3, max_len], flat)
         i.env["__tmp"] = matrix
         i.run("⎕FX __tmp")
         assert i.run("abs ¯7") == S(7)

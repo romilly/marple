@@ -11,7 +11,7 @@ def _load_partfns(i: Interpreter) -> None:
 
 
 def _iv(data: list[int]) -> APLArray:
-    return APLArray([len(data)], data)
+    return APLArray.array([len(data)], data)
 
 
 class TestNDelta:

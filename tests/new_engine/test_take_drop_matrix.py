@@ -28,7 +28,7 @@ class TestTakeMatrix:
     def test_take_vector_unchanged(self) -> None:
         """Take on vectors still works as before."""
         result = Interpreter(io=1).run("3↑1 2 3 4 5")
-        assert result == APLArray([3], [1, 2, 3])
+        assert result == APLArray.array([3], [1, 2, 3])
 
 
 class TestDropMatrix:
@@ -47,7 +47,7 @@ class TestDropMatrix:
     def test_drop_vector_unchanged(self) -> None:
         """Drop on vectors still works as before."""
         result = Interpreter(io=1).run("2↓1 2 3 4 5")
-        assert result == APLArray([3], [3, 4, 5])
+        assert result == APLArray.array([3], [3, 4, 5])
 
 
 class TestCatenateMatrix:
@@ -59,4 +59,4 @@ class TestCatenateMatrix:
 
     def test_catenate_vectors_unchanged(self) -> None:
         result = Interpreter(io=1).run("1 2 3,4 5")
-        assert result == APLArray([5], [1, 2, 3, 4, 5])
+        assert result == APLArray.array([5], [1, 2, 3, 4, 5])
