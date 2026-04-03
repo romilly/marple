@@ -438,16 +438,23 @@ class NumpyArray(APLArray):
 
     def divide(self, other: 'APLArray') -> 'APLArray':
         from marple.errors import DomainError
-        def _div(a: Any, b: Any) -> Any:
-            if b == 0:
+        if is_numeric_array(other.data):
+            if np.any(other.data == 0):
                 raise DomainError("Division by zero")
-            return a / b
-        return self._dyadic(other, _div)
+            return self._numeric_dyadic_op(other, lambda a, b: a / b)
+        b_data = to_list(other.data)
+        if any(x == 0 for x in b_data):
+            raise DomainError("Division by zero")
+        return self._dyadic(other, lambda a, b: a / b)
 
     def maximum(self, other: 'APLArray') -> 'APLArray':
+        if is_numeric_array(self.data) and is_numeric_array(other.data):
+            return self._numeric_dyadic_op(other, lambda a, b: np.maximum(a, b))
         return self._dyadic(other, lambda a, b: max(a, b))
 
     def minimum(self, other: 'APLArray') -> 'APLArray':
+        if is_numeric_array(self.data) and is_numeric_array(other.data):
+            return self._numeric_dyadic_op(other, lambda a, b: np.minimum(a, b))
         return self._dyadic(other, lambda a, b: min(a, b))
 
     def power(self, other: 'APLArray') -> 'APLArray':
@@ -456,6 +463,8 @@ class NumpyArray(APLArray):
         return self._dyadic(other, lambda a, b: a ** b)
 
     def logarithm(self, other: 'APLArray') -> 'APLArray':
+        if is_numeric_array(self.data) and is_numeric_array(other.data):
+            return self._numeric_dyadic_op(other, lambda a, b: np.log(b) / np.log(a))
         import math
         return self._dyadic(other, lambda a, b: math.log(b) / math.log(a))
 
@@ -490,33 +499,49 @@ class NumpyArray(APLArray):
         return self._dyadic(other, _binom)
 
     @staticmethod
-    def _tolerant_eq(a: Any, b: Any, ct: float) -> bool:
+    def _tolerant_eq(a: Any, b: Any, ct: float) -> Any:
+        """Tolerant equality — works on scalars and numpy arrays."""
         if ct == 0:
             return a == b
-        return abs(a - b) <= ct * max(abs(a), abs(b))
+        return abs(a - b) <= ct * np.maximum(abs(a), abs(b))
+
+    def _compare(self, other: 'APLArray', op: Any, ct: float = 0) -> 'APLArray':
+        """Comparison with numpy fast path and tolerant equality."""
+        if is_numeric_array(self.data) and is_numeric_array(other.data):
+            shape = list(other.shape) if not other.is_scalar() else list(self.shape)
+            result = op(self.data, other.data, self._tolerant_eq(self.data, other.data, ct))
+            return APLArray.array(shape, to_bool_array(result))
+        return self._dyadic(other, lambda a, b: int(op(a, b, self._tolerant_eq(a, b, ct))), bool_result=True)
 
     def less_than(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
-        return self._dyadic(other, lambda a, b: int(a < b and not self._tolerant_eq(a, b, ct)), bool_result=True)
+        return self._compare(other, lambda a, b, eq: (a < b) & (1 - eq), ct)
 
     def less_equal(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
-        return self._dyadic(other, lambda a, b: int(a <= b or self._tolerant_eq(a, b, ct)), bool_result=True)
+        return self._compare(other, lambda a, b, eq: (a <= b) | eq, ct)
 
     def equal(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
-        return self._dyadic(other, lambda a, b: int(self._tolerant_eq(a, b, ct)), bool_result=True)
+        return self._compare(other, lambda a, b, eq: eq, ct)
 
     def greater_equal(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
-        return self._dyadic(other, lambda a, b: int(a >= b or self._tolerant_eq(a, b, ct)), bool_result=True)
+        return self._compare(other, lambda a, b, eq: (a >= b) | eq, ct)
 
     def greater_than(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
-        return self._dyadic(other, lambda a, b: int(a > b and not self._tolerant_eq(a, b, ct)), bool_result=True)
+        return self._compare(other, lambda a, b, eq: (a > b) & (1 - eq), ct)
 
     def not_equal(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
-        return self._dyadic(other, lambda a, b: int(not self._tolerant_eq(a, b, ct)), bool_result=True)
+        return self._compare(other, lambda a, b, eq: 1 - eq, ct)
 
     def logical_and(self, other: 'APLArray') -> 'APLArray':
+        if is_numeric_array(self.data) and is_numeric_array(other.data):
+            shape = list(other.shape) if not other.is_scalar() else list(self.shape)
+            return APLArray.array(shape, to_bool_array(self.data * other.data))
         return self._dyadic(other, lambda a, b: int(bool(a) and bool(b)), bool_result=True)
 
     def logical_or(self, other: 'APLArray') -> 'APLArray':
+        if is_numeric_array(self.data) and is_numeric_array(other.data):
+            shape = list(other.shape) if not other.is_scalar() else list(self.shape)
+            result = self.data + other.data
+            return APLArray.array(shape, to_bool_array(np.minimum(result, 1)))
         return self._dyadic(other, lambda a, b: int(bool(a) or bool(b)), bool_result=True)
 
     def match(self, other: 'APLArray') -> 'APLArray':
