@@ -330,6 +330,19 @@ class APLArray(ABC):
     @abstractmethod
     def not_equal(self, other: 'APLArray', ct: float = 0) -> 'APLArray': ...
 
+    # ── Dyadic logical / match / deal ──
+
+    @abstractmethod
+    def logical_and(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def logical_or(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def match(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def not_match(self, other: 'APLArray') -> 'APLArray': ...
+    @abstractmethod
+    def deal(self, other: 'APLArray', io: int = 1) -> 'APLArray': ...
+
 
 class NumpyArray(APLArray):
     """APLArray subclass backed by numpy arrays."""
@@ -463,6 +476,29 @@ class NumpyArray(APLArray):
 
     def not_equal(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
         return self._dyadic(other, lambda a, b: int(not self._tolerant_eq(a, b, ct)), bool_result=True)
+
+    def logical_and(self, other: 'APLArray') -> 'APLArray':
+        return self._dyadic(other, lambda a, b: int(bool(a) and bool(b)), "logical_and", bool_result=True)
+
+    def logical_or(self, other: 'APLArray') -> 'APLArray':
+        return self._dyadic(other, lambda a, b: int(bool(a) or bool(b)), "logical_or", bool_result=True)
+
+    def match(self, other: 'APLArray') -> 'APLArray':
+        return APLArray.scalar(1 if self == other else 0)
+
+    def not_match(self, other: 'APLArray') -> 'APLArray':
+        return APLArray.scalar(0 if self == other else 1)
+
+    def deal(self, other: 'APLArray', io: int = 1) -> 'APLArray':
+        """Dyadic ?: deal. N?M → N random integers from io..M without replacement."""
+        import random as _random
+        from marple.errors import LengthError
+        n = int(self.data[0])
+        m = int(other.data[0])
+        if n > m:
+            raise LengthError(f"Deal: cannot choose {n} from {m}")
+        result = _random.sample(range(io, m + io), n)
+        return APLArray.array([n], result)
 
     def roll(self, io: int = 1) -> 'APLArray':
         """Monadic ?: roll. ?N → random int io..N, ?0 → random float [0,1)."""

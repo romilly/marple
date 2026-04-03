@@ -144,8 +144,7 @@ def not_equal(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
 
 
 def logical_and(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(bool(a) and bool(b)), alpha, omega, "logical_and", bool_result=True)
-
+    return alpha.logical_and(omega)
 
 def logical_or(alpha: APLArray, omega: APLArray) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(bool(a) or bool(b)), alpha, omega, "logical_or", bool_result=True)
+    return alpha.logical_or(omega)

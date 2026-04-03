@@ -7,7 +7,6 @@ from marple.arraymodel import APLArray, S
 
 #if TYPE_CHECKING:
 from marple.environment import Environment
-import random as _random
 
 from marple.errors import DomainError, LengthError
 from marple.functions import (
@@ -63,8 +62,8 @@ class DyadicFunctionBinding:
         "*": power,
         "⍟": logarithm,
         "|": residue,
-        "∧": logical_and,
-        "∨": logical_or,
+        "∧": logical_and,  # wrapper — will become GCD when fixed
+        "∨": logical_or,   # wrapper — will become LCM when fixed
         "⍴": reshape,
         ",": catenate,
         "↑": take,
@@ -79,8 +78,8 @@ class DyadicFunctionBinding:
         "⌹": matrix_divide,
         "○": circular,
         "!": binomial,
-        "≡": lambda a, o: S(1 if a == o else 0),
-        "≢": lambda a, o: S(0 if a == o else 1),
+        "≡": lambda a, o: a.match(o),
+        "≢": lambda a, o: a.not_match(o),
     }
 
     _ENV_DEPENDENT: dict[str, str] = {
@@ -156,13 +155,7 @@ class DyadicFunctionBinding:
         return APLArray.array([len(result_chars)], result_chars)
 
     def _deal(self, left: APLArray, right: APLArray) -> APLArray:
-        io = self._env.io
-        n = int(left.data[0])
-        m = int(right.data[0])
-        if n > m:
-            raise LengthError(f"Deal: cannot choose {n} from {m}")
-        result = _random.sample(range(io, m + io), n)
-        return APLArray.array([n], result)
+        return left.deal(right, io=self._env.io)
 
     # Comparison functions for operator use (reduce/scan)
     # ct defaults to 0, so they work with 2 args

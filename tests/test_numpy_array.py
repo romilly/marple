@@ -323,3 +323,43 @@ class TestGreaterThan:
 class TestNotEqual:
     def test_true(self) -> None:
         assert APLArray.scalar(1).not_equal(APLArray.scalar(2)) == APLArray.scalar(1)
+
+
+class TestLogicalAnd:
+    def test_both_true(self) -> None:
+        assert APLArray.scalar(1).logical_and(APLArray.scalar(1)) == APLArray.scalar(1)
+
+    def test_one_false(self) -> None:
+        assert APLArray.scalar(1).logical_and(APLArray.scalar(0)) == APLArray.scalar(0)
+
+
+class TestLogicalOr:
+    def test_both_false(self) -> None:
+        assert APLArray.scalar(0).logical_or(APLArray.scalar(0)) == APLArray.scalar(0)
+
+    def test_one_true(self) -> None:
+        assert APLArray.scalar(0).logical_or(APLArray.scalar(1)) == APLArray.scalar(1)
+
+
+class TestMatch:
+    def test_match(self) -> None:
+        assert APLArray.array([3], [1, 2, 3]).match(APLArray.array([3], [1, 2, 3])) == APLArray.scalar(1)
+
+    def test_not_match(self) -> None:
+        assert APLArray.array([3], [1, 2, 3]).match(APLArray.array([3], [1, 2, 4])) == APLArray.scalar(0)
+
+
+class TestNotMatch:
+    def test_not_match(self) -> None:
+        assert APLArray.array([3], [1, 2, 3]).not_match(APLArray.array([3], [1, 2, 4])) == APLArray.scalar(1)
+
+
+class TestDeal:
+    def test_deal_returns_correct_count(self) -> None:
+        result = APLArray.scalar(3).deal(APLArray.scalar(10), io=1)
+        assert result.shape == [3]
+
+    def test_deal_values_in_range(self) -> None:
+        result = APLArray.scalar(5).deal(APLArray.scalar(10), io=1)
+        for v in result.data:
+            assert 1 <= v <= 10
