@@ -6,7 +6,6 @@ from marple.arraymodel import APLArray, S
 
 from marple.environment import Environment
 from marple.errors import DomainError
-import random as _random
 
 
 
@@ -33,6 +32,7 @@ class MonadicFunctionBinding:
         "○": lambda omega: omega.pi_times(),
         "!": lambda omega: omega.factorial(),
         "≢": lambda omega: omega.tally(),
+        "⍕": lambda omega: omega.format(),
     }
 
     _ENV_DEPENDENT: dict[str, str] = {
@@ -40,7 +40,6 @@ class MonadicFunctionBinding:
         "⍋": "_grade_up",
         "⍒": "_grade_down",
         "?": "_roll",
-        "⍕": "_format",
     }
 
     def __init__(self, env: Environment) -> None:
@@ -59,9 +58,6 @@ class MonadicFunctionBinding:
     def _iota(self, operand: APLArray) -> APLArray:
         return operand.iota(io=self._env.io)
 
-    def _tally(self, operand: APLArray) -> APLArray:
-        return S(1) if operand.is_scalar() else S(operand.shape[0])
-
     def _grade_up(self, operand: APLArray) -> APLArray:
         return operand.grade_up(io=self._env.io)
 
@@ -69,20 +65,4 @@ class MonadicFunctionBinding:
         return operand.grade_down(io=self._env.io)
 
     def _roll(self, operand: APLArray) -> APLArray:
-        """Monadic ?: roll. ?N → random int ⎕IO..N, ?0 → random float [0,1)."""
-        io = self._env.io
-        def roll_one(v: object) -> object:
-            n = int(v)  # type: ignore[arg-type]
-            return _random.random() if n == 0 else _random.randint(io, n - 1 + io)
-        if operand.is_scalar():
-            return S(roll_one(operand.data[0]))
-        return APLArray.array(list(operand.shape), [roll_one(v) for v in operand.data])
-
-    def _format(self, operand: APLArray) -> APLArray:
-        from marple.formatting import format_num
-        if operand.is_scalar():
-            s = format_num(operand.data[0])
-        else:
-            parts = [format_num(val) for val in operand.data]
-            s = " ".join(parts)
-        return APLArray.array([len(s)], list(s))
+        return operand.roll(io=self._env.io)

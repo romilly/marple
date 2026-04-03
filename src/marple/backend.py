@@ -234,6 +234,25 @@ class APLArray:
 class NumpyArray(APLArray):
     """APLArray subclass backed by numpy arrays."""
 
+    def roll(self, io: int = 1) -> 'APLArray':
+        """Monadic ?: roll. ?N → random int io..N, ?0 → random float [0,1)."""
+        import random as _random
+        def roll_one(v: object) -> object:
+            n = int(v)  # type: ignore[arg-type]
+            return _random.random() if n == 0 else _random.randint(io, n - 1 + io)
+        if self.is_scalar():
+            return APLArray.scalar(roll_one(self.data[0]))
+        return APLArray.array(list(self.shape), [roll_one(v) for v in self.data])
+
+    def format(self) -> 'APLArray':
+        from marple.formatting import format_num
+        if self.is_scalar():
+            s = format_num(self.data[0])
+        else:
+            parts = [format_num(val) for val in self.data]
+            s = " ".join(parts)
+        return APLArray.array([len(s)], list(s))
+
     def grade_up(self, io: int = 1) -> 'APLArray':
         indexed = list(enumerate(self.data))
         indexed.sort(key=lambda pair: pair[1])  # type: ignore[arg-type]

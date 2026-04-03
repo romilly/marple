@@ -87,6 +87,35 @@ class TestFactorial:
         assert APLArray.scalar(5).factorial() == APLArray.scalar(120)
 
 
+class TestRoll:
+    def test_roll_scalar_returns_in_range(self) -> None:
+        result = APLArray.scalar(6).roll(io=1)
+        val = result.data[0]
+        assert 1 <= val <= 6
+
+    def test_roll_zero_returns_float(self) -> None:
+        result = APLArray.scalar(0).roll(io=1)
+        val = result.data[0]
+        assert isinstance(val, float)
+        assert 0.0 <= val < 1.0
+
+    def test_roll_vector(self) -> None:
+        result = APLArray.array([3], [6, 6, 6]).roll(io=1)
+        assert result.shape == [3]
+        for v in result.data:
+            assert 1 <= v <= 6
+
+
+class TestFormat:
+    def test_format_scalar(self) -> None:
+        result = APLArray.scalar(42).format()
+        assert result == APLArray.array([2], list("42"))
+
+    def test_format_vector(self) -> None:
+        result = APLArray.array([3], [1, 2, 3]).format()
+        assert result == APLArray.array([5], list("1 2 3"))
+
+
 class TestGrade:
     def test_grade_up(self) -> None:
         assert APLArray.array([5], [3, 1, 4, 1, 5]).grade_up(io=1) == APLArray.array([5], [2, 4, 1, 3, 5])
