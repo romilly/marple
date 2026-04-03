@@ -11,12 +11,6 @@ import random as _random
 from marple.structural import (
     grade_down,
     grade_up,
-    ravel,
-    reverse,
-    reverse_first,
-    shape,
-    transpose,
-    matrix_inverse,
 )
 
 
@@ -34,12 +28,12 @@ class MonadicFunctionBinding:
         "⍟": lambda omega: omega.natural_log(),
         "|": lambda omega: omega.absolute_value(),
         "~": lambda omega: omega.logical_not(),
-        "⍴": shape,
-        ",": ravel,
-        "⌽": reverse,
-        "⊖": reverse_first,
-        "⍉": transpose,
-        "⌹": matrix_inverse,
+        "⍴": lambda omega: omega.shape_of(),
+        ",": lambda omega: omega.ravel(),
+        "⌽": lambda omega: omega.reverse(),
+        "⊖": lambda omega: omega.reverse_first(),
+        "⍉": lambda omega: omega.transpose(),
+        "⌹": lambda omega: omega.matrix_inverse(),
         "○": lambda omega: omega.pi_times(),
         "!": lambda omega: omega.factorial(),
     }

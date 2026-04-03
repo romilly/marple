@@ -85,3 +85,55 @@ class TestPiTimes:
 class TestFactorial:
     def test_factorial_five(self) -> None:
         assert APLArray.scalar(5).factorial() == APLArray.scalar(120)
+
+
+class TestShape:
+    def test_shape_vector(self) -> None:
+        assert APLArray.array([3], [1, 2, 3]).shape_of() == APLArray.array([1], [3])
+
+    def test_shape_matrix(self) -> None:
+        assert APLArray.array([2, 3], [1, 2, 3, 4, 5, 6]).shape_of() == APLArray.array([2], [2, 3])
+
+    def test_shape_scalar(self) -> None:
+        assert APLArray.scalar(5).shape_of() == APLArray.array([0], [])
+
+
+class TestTranspose:
+    def test_transpose_vector(self) -> None:
+        assert APLArray.array([3], [1, 2, 3]).transpose() == APLArray.array([3], [1, 2, 3])
+
+    def test_transpose_matrix(self) -> None:
+        result = APLArray.array([2, 3], [1, 2, 3, 4, 5, 6]).transpose()
+        assert result.shape == [3, 2]
+
+
+class TestMatrixInverse:
+    def test_identity_inverse(self) -> None:
+        result = APLArray.array([2, 2], [1, 0, 0, 1]).matrix_inverse()
+        assert result.shape == [2, 2]
+
+
+class TestReverse:
+    def test_reverse_vector(self) -> None:
+        assert APLArray.array([3], [1, 2, 3]).reverse() == APLArray.array([3], [3, 2, 1])
+
+    def test_reverse_matrix(self) -> None:
+        assert APLArray.array([2, 3], [1, 2, 3, 4, 5, 6]).reverse() == APLArray.array([2, 3], [3, 2, 1, 6, 5, 4])
+
+
+class TestReverseFirst:
+    def test_reverse_first_vector(self) -> None:
+        assert APLArray.array([3], [1, 2, 3]).reverse_first() == APLArray.array([3], [3, 2, 1])
+
+    def test_reverse_first_matrix(self) -> None:
+        assert APLArray.array([2, 3], [1, 2, 3, 4, 5, 6]).reverse_first() == APLArray.array([2, 3], [4, 5, 6, 1, 2, 3])
+
+
+class TestRavel:
+    def test_ravel_matrix(self) -> None:
+        result = APLArray.array([2, 3], [1, 2, 3, 4, 5, 6]).ravel()
+        assert result == APLArray.array([6], [1, 2, 3, 4, 5, 6])
+
+    def test_ravel_scalar(self) -> None:
+        result = APLArray.scalar(5).ravel()
+        assert result == APLArray.array([1], [5])

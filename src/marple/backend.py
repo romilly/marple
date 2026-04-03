@@ -292,6 +292,54 @@ class NumpyArray(APLArray):
         import math
         return APLArray.array(list(self.shape), [math.gamma(x + 1) for x in to_list(self.data)])
 
+    def shape_of(self) -> 'APLArray':
+        return APLArray.array([len(self.shape)], list(self.shape))
+
+    def transpose(self) -> 'APLArray':
+        from marple.errors import RankError
+        if len(self.shape) <= 1:
+            return APLArray.array(list(self.shape), list(self.data))
+        if len(self.shape) != 2:
+            raise RankError("Transpose currently supports only rank-2 arrays")
+        rows, cols = self.shape
+        new_data: list[object] = []
+        for c in range(cols):
+            for r in range(rows):
+                new_data.append(self.data[r * cols + c])
+        return APLArray.array([cols, rows], new_data)
+
+    def matrix_inverse(self) -> 'APLArray':
+        from marple.structural import matrix_inverse
+        return matrix_inverse(self)
+
+    def reverse(self) -> 'APLArray':
+        if len(self.shape) <= 1:
+            return APLArray.array(list(self.shape), list(reversed(self.data)))
+        row_len = self.shape[-1]
+        data = list(self.data)
+        result: list[object] = []
+        for r in range(len(data) // row_len):
+            start = r * row_len
+            result.extend(reversed(data[start:start + row_len]))
+        return APLArray.array(list(self.shape), result)
+
+    def reverse_first(self) -> 'APLArray':
+        if len(self.shape) <= 1:
+            return APLArray.array(list(self.shape), list(reversed(self.data)))
+        chunk = 1
+        for s in self.shape[1:]:
+            chunk *= s
+        n = self.shape[0]
+        data = list(self.data)
+        result: list[object] = []
+        for r in range(n - 1, -1, -1):
+            start = r * chunk
+            result.extend(data[start:start + chunk])
+        return APLArray.array(list(self.shape), result)
+
+    def ravel(self) -> 'APLArray':
+        return APLArray.array([len(self.data)], list(self.data))
+
 
 def S(value: Any) -> APLArray:
     return APLArray.scalar(value)
