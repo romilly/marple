@@ -9,44 +9,23 @@ from marple.arraymodel import APLArray, S
 from marple.environment import Environment
 
 from marple.errors import DomainError, LengthError
-from marple.functions import (
-    add,
-    binomial,
-    divide,
-    subtract,
-    multiply,
-    maximum,
-    minimum,
-    power,
-    logarithm,
-    residue,
-    logical_and,
-    logical_or,
-    circular,
-    less_than,
-    less_equal,
-    equal,
-    greater_equal,
-    greater_than,
-    not_equal,
-)
 
 
 class DyadicFunctionBinding:
     """Dispatches and applies dyadic primitive functions."""
 
     _SIMPLE: dict[str, object] = {
-        "+": add,
-        "-": subtract,
-        "×": multiply,
-        "÷": divide,
-        "⌈": maximum,
-        "⌊": minimum,
-        "*": power,
-        "⍟": logarithm,
-        "|": residue,
-        "∧": logical_and,  # wrapper — will become GCD when fixed
-        "∨": logical_or,   # wrapper — will become LCM when fixed
+        "+": lambda a, o: a.add(o),
+        "-": lambda a, o: a.subtract(o),
+        "×": lambda a, o: a.multiply(o),
+        "÷": lambda a, o: a.divide(o),
+        "⌈": lambda a, o: a.maximum(o),
+        "⌊": lambda a, o: a.minimum(o),
+        "*": lambda a, o: a.power(o),
+        "⍟": lambda a, o: a.logarithm(o),
+        "|": lambda a, o: a.residue(o),
+        "∧": lambda a, o: a.logical_and(o),
+        "∨": lambda a, o: a.logical_or(o),
         "⍴": lambda a, o: a.reshape(o),
         ",": lambda a, o: a.catenate(o),
         "↑": lambda a, o: a.take(o),
@@ -59,8 +38,8 @@ class DyadicFunctionBinding:
         "⌿": lambda a, o: a.replicate_first(o),
         "\\": lambda a, o: a.expand(o),
         "⌹": lambda a, o: a.matrix_divide(o),
-        "○": circular,
-        "!": binomial,
+        "○": lambda a, o: a.circular(o),
+        "!": lambda a, o: a.binomial(o),
         "≡": lambda a, o: a.match(o),
         "≢": lambda a, o: a.not_match(o),
     }
@@ -128,12 +107,12 @@ class DyadicFunctionBinding:
     # Comparison functions for operator use (reduce/scan)
     # ct defaults to 0, so they work with 2 args
     _OPERATOR_COMPARISONS: dict[str, object] = {
-        "<": less_than,
-        "≤": less_equal,
-        "=": equal,
-        "≥": greater_equal,
-        ">": greater_than,
-        "≠": not_equal,
+        "<": lambda a, o: a.less_than(o),
+        "≤": lambda a, o: a.less_equal(o),
+        "=": lambda a, o: a.equal(o),
+        "≥": lambda a, o: a.greater_equal(o),
+        ">": lambda a, o: a.greater_than(o),
+        "≠": lambda a, o: a.not_equal(o),
     }
 
     @classmethod

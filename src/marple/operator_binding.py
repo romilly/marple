@@ -3,42 +3,29 @@
 from typing import Any, Callable
 
 from marple.arraymodel import APLArray, S
-from marple.backend import is_numeric_array, maybe_upcast, np, to_list
+from marple.backend import to_list
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.errors import DomainError
-from marple.functions import (
-    add, subtract, multiply, divide, maximum, minimum,
-    logical_and, logical_or,
-    equal, not_equal, less_than, less_equal, greater_than, greater_equal,
-)
 from marple.parser import FunctionRef
 
 
-# Map function objects to numpy ufunc names for fast reduce
-_UFUNC_MAP: dict[object, str] = {
-    add: "add",
-    multiply: "multiply",
-    maximum: "maximum",
-    minimum: "minimum",
-}
+# Glyph-keyed maps for reduce/scan
 
-_COMMUTATIVE = {add, multiply, maximum, minimum}
-
-_IDENTITY_ELEMENTS: dict[object, int | float] = {
-    add: 0,
-    subtract: 0,
-    multiply: 1,
-    divide: 1,
-    maximum: float("-inf"),
-    minimum: float("inf"),
-    logical_and: 1,
-    logical_or: 0,
-    equal: 1,
-    not_equal: 0,
-    less_than: 0,
-    less_equal: 1,
-    greater_than: 0,
-    greater_equal: 1,
+_IDENTITY_ELEMENTS: dict[str, int | float] = {
+    "+": 0,
+    "-": 0,
+    "×": 1,
+    "÷": 1,
+    "⌈": float("-inf"),
+    "⌊": float("inf"),
+    "∧": 1,
+    "∨": 0,
+    "=": 1,
+    "≠": 0,
+    "<": 0,
+    "≤": 1,
+    ">": 0,
+    "≥": 1,
 }
 
 
@@ -56,25 +43,16 @@ def _reduce_vector(
 def _reduce(
     func: Callable[[APLArray, APLArray], APLArray],
     omega: APLArray,
+    glyph: str | None = None,
 ) -> APLArray:
     """Reduce along the last axis."""
     data = omega.data
     if len(data) == 0:
-        identity = _IDENTITY_ELEMENTS.get(func)
-        if identity is not None:
-            return S(identity)
+        if glyph is not None:
+            identity = _IDENTITY_ELEMENTS.get(glyph)
+            if identity is not None:
+                return S(identity)
         raise DomainError("Cannot reduce empty array")
-    if func in _COMMUTATIVE:
-        ufunc_name = _UFUNC_MAP.get(func)
-        if ufunc_name and is_numeric_array(data):
-            ufunc = getattr(np, ufunc_name, None)
-            if ufunc is not None and hasattr(ufunc, "reduce"):
-                work_data = maybe_upcast(data)
-                if len(omega.shape) <= 1:
-                    return S(ufunc.reduce(work_data).item())
-                shaped = np.reshape(work_data, omega.shape)
-                result = ufunc.reduce(shaped, axis=-1)
-                return APLArray.array(list(result.shape), result.ravel())
     if len(omega.shape) <= 1:
         return S(_reduce_vector(func, to_list(data)))
     last = omega.shape[-1]
@@ -91,6 +69,7 @@ def _reduce(
 def _scan(
     func: Callable[[APLArray, APLArray], APLArray],
     omega: APLArray,
+    glyph: str | None = None,
 ) -> APLArray:
     """Scan along the last axis."""
     if len(omega.shape) <= 1:
@@ -119,10 +98,11 @@ def _scan(
 def _reduce_first(
     func: Callable[[APLArray, APLArray], APLArray],
     omega: APLArray,
+    glyph: str | None = None,
 ) -> APLArray:
     """Reduce along the first axis (⌿)."""
     if len(omega.shape) <= 1:
-        return _reduce(func, omega)
+        return _reduce(func, omega, glyph)
     first = omega.shape[0]
     cell_shape = omega.shape[1:]
     cell_size = 1
@@ -142,10 +122,11 @@ def _reduce_first(
 def _scan_first(
     func: Callable[[APLArray, APLArray], APLArray],
     omega: APLArray,
+    glyph: str | None = None,
 ) -> APLArray:
     """Scan along the first axis (⍀)."""
     if len(omega.shape) <= 1:
-        return _scan(func, omega)
+        return _scan(func, omega, glyph)
     first = omega.shape[0]
     cell_shape = omega.shape[1:]
     cell_size = 1
@@ -177,18 +158,18 @@ class DerivedFunctionBinding:
 
     def apply(self, operator: str, function: object, operand: APLArray) -> APLArray:
         """Apply the derived function (operator + function) to an operand."""
-        func = self._resolve_function(function)
+        func, glyph = self._resolve_function(function)
         op_fn = _OPERATOR_DISPATCH.get(operator)
         if op_fn is None:
             raise DomainError(f"Unknown operator: {operator}")
-        return op_fn(func, operand)
+        return op_fn(func, operand, glyph)
 
-    def _resolve_function(self, function: object) -> Any:
-        """Resolve a function node to a dyadic callable."""
+    def _resolve_function(self, function: object) -> tuple[Any, str | None]:
+        """Resolve a function node to (dyadic callable, glyph or None)."""
         if isinstance(function, str):
-            return DyadicFunctionBinding.resolve(function)
+            return DyadicFunctionBinding.resolve(function), function
         if isinstance(function, FunctionRef):
-            return DyadicFunctionBinding.resolve(function.glyph)
+            return DyadicFunctionBinding.resolve(function.glyph), function.glyph
         if callable(function):
-            return function
+            return function, None
         raise DomainError(f"Expected function for operator, got {type(function)}")
