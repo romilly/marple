@@ -284,3 +284,42 @@ class TestCircular:
 class TestBinomial:
     def test_binomial(self) -> None:
         assert APLArray.scalar(2).binomial(APLArray.scalar(5)) == APLArray.scalar(10)
+
+
+class TestLessThan:
+    def test_true(self) -> None:
+        assert APLArray.scalar(1).less_than(APLArray.scalar(2)) == APLArray.scalar(1)
+
+    def test_false(self) -> None:
+        assert APLArray.scalar(3).less_than(APLArray.scalar(2)) == APLArray.scalar(0)
+
+    def test_vector(self) -> None:
+        assert APLArray.array([3], [1, 2, 3]).less_than(APLArray.array([3], [2, 2, 2])) == APLArray.array([3], [1, 0, 0])
+
+
+class TestLessEqual:
+    def test_equal(self) -> None:
+        assert APLArray.scalar(2).less_equal(APLArray.scalar(2)) == APLArray.scalar(1)
+
+
+class TestEqual:
+    def test_equal(self) -> None:
+        assert APLArray.scalar(5).equal(APLArray.scalar(5)) == APLArray.scalar(1)
+
+    def test_not_equal(self) -> None:
+        assert APLArray.scalar(5).equal(APLArray.scalar(3)) == APLArray.scalar(0)
+
+
+class TestGreaterEqual:
+    def test_equal(self) -> None:
+        assert APLArray.scalar(2).greater_equal(APLArray.scalar(2)) == APLArray.scalar(1)
+
+
+class TestGreaterThan:
+    def test_true(self) -> None:
+        assert APLArray.scalar(3).greater_than(APLArray.scalar(2)) == APLArray.scalar(1)
+
+
+class TestNotEqual:
+    def test_true(self) -> None:
+        assert APLArray.scalar(1).not_equal(APLArray.scalar(2)) == APLArray.scalar(1)

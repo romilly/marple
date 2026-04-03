@@ -124,35 +124,23 @@ def residue(alpha: APLArray, omega: APLArray) -> APLArray:
     return alpha.residue(omega)
 
 
-def _tolerant_eq(a: int | float, b: int | float, ct: float) -> bool:
-    """APL tolerant equality: |a-b| ≤ ct × (|a| ⌈ |b|)"""
-    if ct == 0:
-        return a == b
-    return abs(a - b) <= ct * max(abs(a), abs(b))
-
-
 def less_than(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a < b and not _tolerant_eq(a, b, ct)), alpha, omega, bool_result=True)
-
+    return alpha.less_than(omega, ct)
 
 def less_equal(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a <= b or _tolerant_eq(a, b, ct)), alpha, omega, bool_result=True)
-
+    return alpha.less_equal(omega, ct)
 
 def equal(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(_tolerant_eq(a, b, ct)), alpha, omega, bool_result=True)
-
+    return alpha.equal(omega, ct)
 
 def greater_equal(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a >= b or _tolerant_eq(a, b, ct)), alpha, omega, bool_result=True)
-
+    return alpha.greater_equal(omega, ct)
 
 def greater_than(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(a > b and not _tolerant_eq(a, b, ct)), alpha, omega, bool_result=True)
-
+    return alpha.greater_than(omega, ct)
 
 def not_equal(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
-    return _pervade_dyadic(lambda a, b: int(not _tolerant_eq(a, b, ct)), alpha, omega, bool_result=True)
+    return alpha.not_equal(omega, ct)
 
 
 def logical_and(alpha: APLArray, omega: APLArray) -> APLArray:

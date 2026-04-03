@@ -111,22 +111,22 @@ class DyadicFunctionBinding:
         raise DomainError(f"Unknown dyadic function: {glyph}")
 
     def _less_than(self, left: APLArray, right: APLArray) -> APLArray:
-        return less_than(left, right, self._env.ct)
+        return left.less_than(right, self._env.ct)
 
     def _less_equal(self, left: APLArray, right: APLArray) -> APLArray:
-        return less_equal(left, right, self._env.ct)
+        return left.less_equal(right, self._env.ct)
 
     def _equal(self, left: APLArray, right: APLArray) -> APLArray:
-        return equal(left, right, self._env.ct)
+        return left.equal(right, self._env.ct)
 
     def _greater_equal(self, left: APLArray, right: APLArray) -> APLArray:
-        return greater_equal(left, right, self._env.ct)
+        return left.greater_equal(right, self._env.ct)
 
     def _greater_than(self, left: APLArray, right: APLArray) -> APLArray:
-        return greater_than(left, right, self._env.ct)
+        return left.greater_than(right, self._env.ct)
 
     def _not_equal(self, left: APLArray, right: APLArray) -> APLArray:
-        return not_equal(left, right, self._env.ct)
+        return left.not_equal(right, self._env.ct)
 
     def _index_of(self, left: APLArray, right: APLArray) -> APLArray:
         return index_of(left, right, self._env.io, self._env.ct)

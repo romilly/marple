@@ -315,6 +315,21 @@ class APLArray(ABC):
     @abstractmethod
     def binomial(self, other: 'APLArray') -> 'APLArray': ...
 
+    # ── Dyadic comparisons ──
+
+    @abstractmethod
+    def less_than(self, other: 'APLArray', ct: float = 0) -> 'APLArray': ...
+    @abstractmethod
+    def less_equal(self, other: 'APLArray', ct: float = 0) -> 'APLArray': ...
+    @abstractmethod
+    def equal(self, other: 'APLArray', ct: float = 0) -> 'APLArray': ...
+    @abstractmethod
+    def greater_equal(self, other: 'APLArray', ct: float = 0) -> 'APLArray': ...
+    @abstractmethod
+    def greater_than(self, other: 'APLArray', ct: float = 0) -> 'APLArray': ...
+    @abstractmethod
+    def not_equal(self, other: 'APLArray', ct: float = 0) -> 'APLArray': ...
+
 
 class NumpyArray(APLArray):
     """APLArray subclass backed by numpy arrays."""
@@ -424,6 +439,30 @@ class NumpyArray(APLArray):
         def _binom(k: Any, n: Any) -> Any:
             return math.gamma(n + 1) / (math.gamma(k + 1) * math.gamma(n - k + 1))
         return self._dyadic(other, _binom)
+
+    @staticmethod
+    def _tolerant_eq(a: Any, b: Any, ct: float) -> bool:
+        if ct == 0:
+            return a == b
+        return abs(a - b) <= ct * max(abs(a), abs(b))
+
+    def less_than(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
+        return self._dyadic(other, lambda a, b: int(a < b and not self._tolerant_eq(a, b, ct)), bool_result=True)
+
+    def less_equal(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
+        return self._dyadic(other, lambda a, b: int(a <= b or self._tolerant_eq(a, b, ct)), bool_result=True)
+
+    def equal(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
+        return self._dyadic(other, lambda a, b: int(self._tolerant_eq(a, b, ct)), bool_result=True)
+
+    def greater_equal(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
+        return self._dyadic(other, lambda a, b: int(a >= b or self._tolerant_eq(a, b, ct)), bool_result=True)
+
+    def greater_than(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
+        return self._dyadic(other, lambda a, b: int(a > b and not self._tolerant_eq(a, b, ct)), bool_result=True)
+
+    def not_equal(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
+        return self._dyadic(other, lambda a, b: int(not self._tolerant_eq(a, b, ct)), bool_result=True)
 
     def roll(self, io: int = 1) -> 'APLArray':
         """Monadic ?: roll. ?N → random int io..N, ?0 → random float [0,1)."""
