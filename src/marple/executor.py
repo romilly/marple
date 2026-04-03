@@ -187,7 +187,7 @@ class Executor:
         if name in ("⎕", "⍞"):
             return self._io_assign(name, value)
         if isinstance(value, APLArray) and is_numeric_array(value.data):
-            value = APLArray(list(value.shape), maybe_downcast(value.data, _DOWNCAST_CT))
+            value = APLArray.array(list(value.shape), maybe_downcast(value.data, _DOWNCAST_CT))
         if name.startswith("⎕"):
             if name == "⎕FR" and isinstance(value, APLArray):
                 fr_val = int(value.data[0])
@@ -221,7 +221,7 @@ class Executor:
             raise DomainError("⍞ input not available — use the terminal REPL for interactive input")
         self.env.console.writeln(text + line)
         response_chars: list[object] = list(line)
-        return APLArray([len(response_chars)], response_chars)
+        return APLArray.array([len(response_chars)], response_chars)
 
     def create_binding(self, dfn_node: Dfn) -> object:
         from marple.dfn_binding import DfnBinding
@@ -244,17 +244,17 @@ class Executor:
 
     def _sysvar_ts(self) -> APLArray:
         ts = self.env.timer.timestamp()
-        return APLArray([7], ts)
+        return APLArray.array([7], ts)
 
     def _sysvar_ai(self) -> APLArray:
         timer = self.env.timer
-        return APLArray([4], [timer.user_id(), timer.cpu_ms(), timer.elapsed_ms(), 0])
+        return APLArray.array([4], [timer.user_id(), timer.cpu_ms(), timer.elapsed_ms(), 0])
 
     def _sysvar_ver(self) -> APLArray:
         from marple import __version__
         import sys
         s = "MARPLE v" + __version__ + " on " + sys.platform
-        return APLArray([len(s)], list(s))
+        return APLArray.array([len(s)], list(s))
 
     def _sysvar_wa(self) -> APLArray:
         """⎕WA — workspace available (free memory in bytes)."""
@@ -262,8 +262,8 @@ class Executor:
         if sys.implementation.name == "micropython":
             import gc  # type: ignore[import-not-found]
             gc.collect()
-            return APLArray([], [gc.mem_free()])
-        return APLArray([], [2**31 - 1])
+            return APLArray.array([], [gc.mem_free()])
+        return APLArray.array([], [2**31 - 1])
 
     def _sysvar_quad(self) -> APLArray:
         """⎕ — prompt, read, parse, and evaluate input as APL."""
@@ -285,7 +285,7 @@ class Executor:
         if line is None:
             raise DomainError("⍞ input not available — use the terminal REPL for interactive input")
         self.env.console.writeln(line)
-        return APLArray([len(line)], list(line))
+        return APLArray.array([len(line)], list(line))
 
     # ── Rank operator ──
 
@@ -502,21 +502,21 @@ class Executor:
         nc = int(operand.data[0])
         names = self.env.names_of_class(nc)
         if not names:
-            return APLArray([0, 0], [])
+            return APLArray.array([0, 0], [])
         max_len = max(len(n) for n in names)
         chars: list[object] = []
         for n in names:
             chars.extend(list(_ljust(n, max_len)))
-        return APLArray([len(names), max_len], chars)
+        return APLArray.array([len(names), max_len], chars)
 
     def _sys_ucs(self, operand: APLArray) -> APLArray:
         from marple.backend import to_list
         if all(isinstance(x, str) for x in operand.data):
-            return APLArray(list(operand.shape), [ord(c) for c in operand.data])
+            return APLArray.array(list(operand.shape), [ord(c) for c in operand.data])
         data = to_list(operand.data)
         if operand.is_scalar():
-            return APLArray([], [chr(int(data[0]))])
-        return APLArray(list(operand.shape), [chr(int(x)) for x in data])
+            return APLArray.array([], [chr(int(data[0]))])
+        return APLArray.array(list(operand.shape), [chr(int(x)) for x in data])
 
     def _sys_dr(self, operand: APLArray) -> APLArray:
         from marple.backend import data_type_code
@@ -545,7 +545,7 @@ class Executor:
             return self.evaluate(tree)
         except APLError as e:
             self.env["⎕EN"] = S(e.code)
-            self.env["⎕DM"] = APLArray([len(str(e))], list(str(e)))
+            self.env["⎕DM"] = APLArray.array([len(str(e))], list(str(e)))
             left_str = _apl_chars_to_str(left.data)
             tree = parse(left_str, self.env.class_dict())
             return self.evaluate(tree)
@@ -557,16 +557,16 @@ class Executor:
         vals = to_list(right.data)
         if target == 645:
             new_data = [float(v) for v in vals]
-            return APLArray(list(right.shape), new_data)
+            return APLArray.array(list(right.shape), new_data)
         if target in (643, 323, 163, 83):
             new_data = [int(round(v)) for v in vals]
-            return APLArray(list(right.shape), new_data)
+            return APLArray.array(list(right.shape), new_data)
         if target == 81:
             new_data = to_bool_array([int(bool(v)) for v in vals])
-            return APLArray(list(right.shape), new_data)
+            return APLArray.array(list(right.shape), new_data)
         if target == 320:
             new_data = [chr(int(v)) for v in vals]
-            return APLArray(list(right.shape), new_data)
+            return APLArray.array(list(right.shape), new_data)
         raise DomainError("Invalid ⎕DR type code: " + str(target))
 
     def _sys_fmt_monadic(self, operand_node: object) -> APLArray:
@@ -582,7 +582,7 @@ class Executor:
                 all_chars.append(" ")
             if all_chars:
                 all_chars.pop()
-            return APLArray([len(all_chars)], all_chars)
+            return APLArray.array([len(all_chars)], all_chars)
         operand = self.evaluate(operand_node)
         return self._fmt_value(operand)
 
@@ -598,7 +598,7 @@ class Executor:
                 text = " ".join(format_num(x) for x in operand.data)
         else:
             text = str(operand)
-        return APLArray([len(text)], list(text))
+        return APLArray.array([len(text)], list(text))
 
     def _sys_fmt_dyadic(self, left_node: object, right_node: object) -> APLArray:
         """Dyadic ⎕FMT — format with specification string."""
@@ -628,7 +628,7 @@ class Executor:
         flat: list[object] = []
         for line in lines:
             flat.extend(list(_ljust(line, max_len)))
-        return APLArray([len(lines), max_len], flat)
+        return APLArray.array([len(lines), max_len], flat)
 
     def _sys_fx(self, operand: APLArray) -> APLArray:
         from marple.dfn_binding import DfnBinding
@@ -662,7 +662,7 @@ class Executor:
             self.env.classify(fn_name, NC_OPERATOR)
             self.env.set_operator_arity(fn_name, 2 if "⍵⍵" in text else 1)
         chars = list(fn_name)
-        return APLArray([len(chars)], chars)
+        return APLArray.array([len(chars)], chars)
 
     def _sys_dl(self, operand: APLArray) -> APLArray:
         secs = float(operand.data[0])
@@ -696,7 +696,7 @@ class Executor:
                         nums.append(float(v))
                     else:
                         nums.append(int(v))
-                self.env.bind_name(col_name, APLArray([len(nums)], nums), NC_ARRAY)
+                self.env.bind_name(col_name, APLArray.array([len(nums)], nums), NC_ARRAY)
             except (ValueError, TypeError):
                 max_len = max((len(v) for v in col_data), default=0)
                 chars: list[object] = []
@@ -704,7 +704,7 @@ class Executor:
                     chars.extend(list(v.ljust(max_len)))
                 self.env.bind_name(
                     col_name,
-                    APLArray([len(col_data), max_len], chars),
+                    APLArray.array([len(col_data), max_len], chars),
                     NC_ARRAY,
                 )
         return S(row_count)
@@ -713,7 +713,7 @@ class Executor:
         path = _apl_chars_to_str(operand.data)
         text = self.fs.read_text(path)
         chars = list(text)
-        return APLArray([len(chars)], chars) if chars else APLArray([0], [])
+        return APLArray.array([len(chars)], chars) if chars else APLArray.array([0], [])
 
     def _sys_nexists(self, operand: APLArray) -> APLArray:
         path = _apl_chars_to_str(operand.data)
@@ -731,4 +731,4 @@ class Executor:
         path = _apl_chars_to_str(right.data)
         text = _apl_chars_to_str(left.data)
         self.fs.write_text(path, text)
-        return APLArray([0], [])
+        return APLArray.array([0], [])

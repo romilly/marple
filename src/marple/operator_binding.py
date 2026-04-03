@@ -74,7 +74,7 @@ def _reduce(
                     return S(ufunc.reduce(work_data).item())
                 shaped = np.reshape(work_data, omega.shape)
                 result = ufunc.reduce(shaped, axis=-1)
-                return APLArray(list(result.shape), result.ravel())
+                return APLArray.array(list(result.shape), result.ravel())
     if len(omega.shape) <= 1:
         return S(_reduce_vector(func, to_list(data)))
     last = omega.shape[-1]
@@ -85,7 +85,7 @@ def _reduce(
     for i in range(n_rows):
         row = data_list[i * last : (i + 1) * last]
         results.append(_reduce_vector(func, row))
-    return APLArray(new_shape, results)
+    return APLArray.array(new_shape, results)
 
 
 def _scan(
@@ -96,13 +96,13 @@ def _scan(
     if len(omega.shape) <= 1:
         data = omega.data
         if len(data) == 0:
-            return APLArray([0], [])
+            return APLArray.array([0], [])
         results = [data[0]]
         acc = S(data[0])
         for i in range(1, len(data)):
             acc = func(acc, S(data[i]))
             results.append(acc.data[0])
-        return APLArray([len(results)], results)
+        return APLArray.array([len(results)], results)
     last = omega.shape[-1]
     n_rows = len(omega.data) // last
     results: list[Any] = []
@@ -113,7 +113,7 @@ def _scan(
         for j in range(1, last):
             acc = func(acc, S(row[j]))
             results.append(acc.data[0])
-    return APLArray(list(omega.shape), results)
+    return APLArray.array(list(omega.shape), results)
 
 
 def _reduce_first(
@@ -136,7 +136,7 @@ def _reduce_first(
         for a, b in zip(acc, cell):
             paired.append(func(S(a), S(b)).data[0])
         acc = paired
-    return APLArray(cell_shape, acc)
+    return APLArray.array(cell_shape, acc)
 
 
 def _scan_first(
@@ -161,7 +161,7 @@ def _scan_first(
             new_acc.append(func(S(a), S(b)).data[0])
         acc = new_acc
         results.extend(acc)
-    return APLArray(list(omega.shape), results)
+    return APLArray.array(list(omega.shape), results)
 
 
 _OPERATOR_DISPATCH: dict[str, Any] = {

@@ -87,7 +87,7 @@ def _high_rank_html(arr: APLArray, is_char: bool) -> str:
         slice_size *= s
     slices = []
     for i in range(outer):
-        sub = APLArray(list(inner_shape),
+        sub = APLArray.array(list(inner_shape),
                        list(arr.data[i * slice_size:(i + 1) * slice_size]))
         inner_html = aplarray_to_html(sub)
         slices.append(

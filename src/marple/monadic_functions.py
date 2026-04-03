@@ -81,7 +81,7 @@ class MonadicFunctionBinding:
     def _iota(self, operand: APLArray) -> APLArray:
         io = self._env.io
         n = int(operand.data[0])
-        return APLArray([n], list(range(io, n + io)))
+        return APLArray.array([n], list(range(io, n + io)))
 
     def _tally(self, operand: APLArray) -> APLArray:
         return S(1) if operand.is_scalar() else S(operand.shape[0])
@@ -100,7 +100,7 @@ class MonadicFunctionBinding:
             return _random.random() if n == 0 else _random.randint(io, n - 1 + io)
         if operand.is_scalar():
             return S(roll_one(operand.data[0]))
-        return APLArray(list(operand.shape), [roll_one(v) for v in operand.data])
+        return APLArray.array(list(operand.shape), [roll_one(v) for v in operand.data])
 
     def _format(self, operand: APLArray) -> APLArray:
         from marple.formatting import format_num
@@ -109,4 +109,4 @@ class MonadicFunctionBinding:
         else:
             parts = [format_num(val) for val in operand.data]
             s = " ".join(parts)
-        return APLArray([len(s)], list(s))
+        return APLArray.array([len(s)], list(s))

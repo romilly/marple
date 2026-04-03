@@ -153,7 +153,7 @@ class DyadicFunctionBinding:
                 formatted = str(v)
             padded = " " * max(0, width - len(formatted)) + formatted
             result_chars.extend(list(padded))
-        return APLArray([len(result_chars)], result_chars)
+        return APLArray.array([len(result_chars)], result_chars)
 
     def _deal(self, left: APLArray, right: APLArray) -> APLArray:
         io = self._env.io
@@ -162,7 +162,7 @@ class DyadicFunctionBinding:
         if n > m:
             raise LengthError(f"Deal: cannot choose {n} from {m}")
         result = _random.sample(range(io, m + io), n)
-        return APLArray([n], result)
+        return APLArray.array([n], result)
 
     # Comparison functions for operator use (reduce/scan)
     # ct defaults to 0, so they work with 2 args

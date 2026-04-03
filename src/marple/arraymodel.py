@@ -42,4 +42,4 @@ class APLArray:
 
 
 def S(value: Any) -> APLArray:
-    return APLArray([], [value])
+    return APLArray.scalar(value)

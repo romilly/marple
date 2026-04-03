@@ -51,7 +51,7 @@ def _inner_product(
                 for idx in range(len(paired) - 2, -1, -1):
                     val = reduce_fn(paired[idx], val)
                 result_data.append(val.data[0])
-        return APLArray([m, n], result_data)
+        return APLArray.array([m, n], result_data)
     # Vector . Matrix
     if len(alpha.shape) == 1 and len(omega.shape) == 2:
         k, n = omega.shape
@@ -65,7 +65,7 @@ def _inner_product(
             for idx in range(len(paired) - 2, -1, -1):
                 val = reduce_fn(paired[idx], val)
             result_data.append(val.data[0])
-        return APLArray([n], result_data)
+        return APLArray.array([n], result_data)
     # Matrix . Vector
     if len(alpha.shape) == 2 and len(omega.shape) == 1:
         m, k1 = alpha.shape
@@ -81,7 +81,7 @@ def _inner_product(
             for idx in range(len(paired) - 2, -1, -1):
                 val = reduce_fn(paired[idx], val)
             result_data.append(val.data[0])
-        return APLArray([m], result_data)
+        return APLArray.array([m], result_data)
     raise RankError(f"Inner product not supported for shapes {alpha.shape} and {omega.shape}")
 
 
@@ -94,7 +94,7 @@ def _outer_product(func: Any, alpha: APLArray, omega: APLArray) -> APLArray:
     result_shape = alpha.shape + omega.shape
     if not result_shape:
         return S(result_data[0])
-    return APLArray(result_shape, result_data)
+    return APLArray.array(result_shape, result_data)
 
 
 class ExecutionContext(Protocol):
@@ -143,7 +143,7 @@ class Str(Node):
     def __init__(self, value: str) -> None:
         self.value = value
     def execute(self, ctx: ExecutionContext) -> APLArray:
-        return APLArray([len(self.value)], list(self.value))
+        return APLArray.array([len(self.value)], list(self.value))
 
 
 class Vector(Node):
@@ -151,7 +151,7 @@ class Vector(Node):
         self.elements = elements
     def execute(self, ctx: ExecutionContext) -> APLArray:
         values = [el.value for el in self.elements]
-        return APLArray([len(values)], list(values))
+        return APLArray.array([len(values)], list(values))
 
 
 class MonadicFunc(Node):
@@ -361,7 +361,7 @@ class Index(Node):
             result_shape.extend(s)
         if not result_shape:
             return S(result[0])
-        return APLArray(result_shape, result)
+        return APLArray.array(result_shape, result)
 
 
 class Omega(Node):

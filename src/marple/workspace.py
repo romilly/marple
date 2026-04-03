@@ -143,7 +143,7 @@ def load_workspace(env: Any, ws_dir: str,
         text = fs.read_text(ws_file)
         wsid = text.split("\n")[0].strip()
         env["__wsid__"] = wsid
-        env["⎕WSID"] = APLArray([len(wsid)], list(wsid))
+        env["⎕WSID"] = APLArray.array([len(wsid)], list(wsid))
 
     # Collect .apl files, system vars first
     files = sorted(fs.listdir(ws_dir))

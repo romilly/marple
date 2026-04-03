@@ -97,7 +97,7 @@ def format_result(result: APLArray, env: Any = None) -> str:
         for s in range(num_slices):
             start = s * slice_size
             slice_data = list(result.data[start:start + slice_size])
-            slice_arr = APLArray([result.shape[-2], result.shape[-1]], slice_data)
+            slice_arr = APLArray.array([result.shape[-2], result.shape[-1]], slice_data)
             slices.append(_format_matrix(slice_arr, pp))
         return "\n\n".join(slices)
     return repr(result)

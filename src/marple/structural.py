@@ -7,24 +7,24 @@ from marple.errors import DomainError, IndexError_, LengthError, RankError
 # Monadic structural functions
 
 def shape(omega: APLArray) -> APLArray:
-    return APLArray([len(omega.shape)], list(omega.shape))
+    return APLArray.array([len(omega.shape)], list(omega.shape))
 
 
 def iota(omega: APLArray) -> APLArray:
     if not omega.is_scalar():
         raise RankError("Monadic ⍳ requires a scalar argument")
     n = int(omega.data[0])
-    return APLArray([n], list(range(1, n + 1)))
+    return APLArray.array([n], list(range(1, n + 1)))
 
 
 def ravel(omega: APLArray) -> APLArray:
-    return APLArray([len(omega.data)], list(omega.data))
+    return APLArray.array([len(omega.data)], list(omega.data))
 
 
 def reverse(omega: APLArray) -> APLArray:
     """Monadic ⌽: reverse along last axis."""
     if len(omega.shape) <= 1:
-        return APLArray(list(omega.shape), list(reversed(omega.data)))
+        return APLArray.array(list(omega.shape), list(reversed(omega.data)))
     # Matrix: reverse each row
     rows, cols = omega.shape[0], omega.shape[-1]
     row_len = cols
@@ -33,7 +33,7 @@ def reverse(omega: APLArray) -> APLArray:
     for r in range(len(data) // row_len):
         start = r * row_len
         result.extend(reversed(data[start:start + row_len]))
-    return APLArray(list(omega.shape), result)
+    return APLArray.array(list(omega.shape), result)
 
 
 def _first_axis_chunk_size(shape: list[int]) -> int:
@@ -47,7 +47,7 @@ def _first_axis_chunk_size(shape: list[int]) -> int:
 def reverse_first(omega: APLArray) -> APLArray:
     """Monadic ⊖: reverse along first axis."""
     if len(omega.shape) <= 1:
-        return APLArray(list(omega.shape), list(reversed(omega.data)))
+        return APLArray.array(list(omega.shape), list(reversed(omega.data)))
     chunk = _first_axis_chunk_size(omega.shape)
     n = omega.shape[0]
     data = list(omega.data)
@@ -55,7 +55,7 @@ def reverse_first(omega: APLArray) -> APLArray:
     for r in range(n - 1, -1, -1):
         start = r * chunk
         result.extend(data[start:start + chunk])
-    return APLArray(list(omega.shape), result)
+    return APLArray.array(list(omega.shape), result)
 
 
 # Dyadic structural functions
@@ -75,7 +75,7 @@ def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
     result: list[object] = []
     for i in range(total):
         result.append(data[i % len(data)])
-    return APLArray(new_shape, result)
+    return APLArray.array(new_shape, result)
 
 
 def _tolerant_match(a: object, b: object, ct: float) -> bool:
@@ -106,7 +106,7 @@ def index_of(alpha: APLArray, omega: APLArray, io: int = 1, ct: float = 0) -> AP
                 break
         if not found:
             results.append(len(data) + io)
-    return APLArray(list(omega.shape), results)
+    return APLArray.array(list(omega.shape), results)
 
 
 def membership(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
@@ -127,17 +127,17 @@ def membership(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
                 found = 1
                 break
         results.append(found)
-    return APLArray(list(alpha.shape), results)
+    return APLArray.array(list(alpha.shape), results)
 
 
 def catenate(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ,: catenate along last axis."""
     if alpha.is_scalar() and omega.is_scalar():
-        return APLArray([2], [alpha.data[0], omega.data[0]])
+        return APLArray.array([2], [alpha.data[0], omega.data[0]])
     if len(alpha.shape) <= 1 and len(omega.shape) <= 1:
         left = list(alpha.data) if not alpha.is_scalar() else [alpha.data[0]]
         right = list(omega.data) if not omega.is_scalar() else [omega.data[0]]
-        return APLArray([len(left) + len(right)], left + right)
+        return APLArray.array([len(left) + len(right)], left + right)
     # Higher rank: catenate along last axis
     a_shape = list(alpha.shape) if not alpha.is_scalar() else [1]
     o_shape = list(omega.shape) if not omega.is_scalar() else [1]
@@ -150,7 +150,7 @@ def catenate(alpha: APLArray, omega: APLArray) -> APLArray:
         result.extend(omega.data[r * o_cols:(r + 1) * o_cols])
     new_shape = list(a_shape)
     new_shape[-1] = a_cols + o_cols
-    return APLArray(new_shape, result)
+    return APLArray.array(new_shape, result)
 
 
 def _fill_element(omega: APLArray) -> object:
@@ -185,7 +185,7 @@ def take(alpha: APLArray, omega: APLArray) -> APLArray:
         n = counts[0]
         data = list(omega.data)
         result, new_len = _take_axis(data, len(data), n, fill)
-        return APLArray([new_len], result)
+        return APLArray.array([new_len], result)
     # Multi-axis: take first axis, then recurse on inner
     n = counts[0]
     abs_n = abs(n)
@@ -207,18 +207,18 @@ def take(alpha: APLArray, omega: APLArray) -> APLArray:
         processed: list[object] = []
         inner_shape_out = inner_shape
         for row in rows:
-            inner = APLArray(list(inner_shape), row)
-            taken = take(APLArray([len(inner_counts)], inner_counts), inner)
+            inner = APLArray.array(list(inner_shape), row)
+            taken = take(APLArray.array([len(inner_counts)], inner_counts), inner)
             processed.extend(taken.data)
             inner_shape_out = list(taken.shape)
         new_shape = [abs_n] + inner_shape_out
-        return APLArray(new_shape, processed)
+        return APLArray.array(new_shape, processed)
     new_shape = list(omega.shape)
     new_shape[0] = abs_n
     result_data: list[object] = []
     for row in rows:
         result_data.extend(row)
-    return APLArray(new_shape, result_data)
+    return APLArray.array(new_shape, result_data)
 
 
 def drop(alpha: APLArray, omega: APLArray) -> APLArray:
@@ -234,7 +234,7 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
             result = data[n:]
         else:
             result = data[:n] if n != 0 else data
-        return APLArray([len(result)], result)
+        return APLArray.array([len(result)], result)
     # Multi-axis: drop first axis, then recurse on inner
     n = counts[0]
     chunk = _first_axis_chunk_size(omega.shape)
@@ -256,18 +256,18 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
         processed: list[object] = []
         inner_shape_out = inner_shape
         for row in rows:
-            inner = APLArray(list(inner_shape), row)
-            dropped = drop(APLArray([len(inner_counts)], inner_counts), inner)
+            inner = APLArray.array(list(inner_shape), row)
+            dropped = drop(APLArray.array([len(inner_counts)], inner_counts), inner)
             processed.extend(dropped.data)
             inner_shape_out = list(dropped.shape)
         new_shape = [kept_rows] + inner_shape_out
-        return APLArray(new_shape, processed)
+        return APLArray.array(new_shape, processed)
     new_shape = list(omega.shape)
     new_shape[0] = kept_rows
     result_data: list[object] = []
     for row in rows:
         result_data.extend(row)
-    return APLArray(new_shape, result_data)
+    return APLArray.array(new_shape, result_data)
 
 
 def rotate(alpha: APLArray, omega: APLArray) -> APLArray:
@@ -277,9 +277,9 @@ def rotate(alpha: APLArray, omega: APLArray) -> APLArray:
         data = list(omega.data)
         length = len(data)
         if length == 0:
-            return APLArray(list(omega.shape), [])
+            return APLArray.array(list(omega.shape), [])
         n = n % length
-        return APLArray(list(omega.shape), data[n:] + data[:n])
+        return APLArray.array(list(omega.shape), data[n:] + data[:n])
     # Matrix: rotate each row
     row_len = omega.shape[-1]
     data = list(omega.data)
@@ -289,7 +289,7 @@ def rotate(alpha: APLArray, omega: APLArray) -> APLArray:
         row = data[start:start + row_len]
         k = n % row_len if row_len else 0
         result.extend(row[k:] + row[:k])
-    return APLArray(list(omega.shape), result)
+    return APLArray.array(list(omega.shape), result)
 
 
 def rotate_first(alpha: APLArray, omega: APLArray) -> APLArray:
@@ -306,12 +306,12 @@ def rotate_first(alpha: APLArray, omega: APLArray) -> APLArray:
         src = (r + n) % num_chunks
         start = src * chunk
         result.extend(data[start:start + chunk])
-    return APLArray(list(omega.shape), result)
+    return APLArray.array(list(omega.shape), result)
 
 
 def transpose(omega: APLArray) -> APLArray:
     if len(omega.shape) <= 1:
-        return APLArray(list(omega.shape), list(omega.data))
+        return APLArray.array(list(omega.shape), list(omega.data))
     if len(omega.shape) != 2:
         raise RankError("Transpose currently supports only rank-2 arrays")
     rows, cols = omega.shape
@@ -319,19 +319,19 @@ def transpose(omega: APLArray) -> APLArray:
     for c in range(cols):
         for r in range(rows):
             new_data.append(omega.data[r * cols + c])
-    return APLArray([cols, rows], new_data)
+    return APLArray.array([cols, rows], new_data)
 
 
 def grade_up(omega: APLArray, io: int = 1) -> APLArray:
     indexed = list(enumerate(omega.data))
     indexed.sort(key=lambda pair: pair[1])  # type: ignore[arg-type]
-    return APLArray([len(omega.data)], [i + io for i, _ in indexed])
+    return APLArray.array([len(omega.data)], [i + io for i, _ in indexed])
 
 
 def grade_down(omega: APLArray, io: int = 1) -> APLArray:
     indexed = list(enumerate(omega.data))
     indexed.sort(key=lambda pair: pair[1], reverse=True)  # type: ignore[arg-type]
-    return APLArray([len(omega.data)], [i + io for i, _ in indexed])
+    return APLArray.array([len(omega.data)], [i + io for i, _ in indexed])
 
 
 def _encode_scalar(radices: list[object], n: int) -> list[int]:
@@ -353,7 +353,7 @@ def encode(alpha: APLArray, omega: APLArray) -> APLArray:
     radices = list(alpha.data)
     if omega.is_scalar():
         encoded = _encode_scalar(radices, int(omega.data[0]))
-        return APLArray([len(radices)], list(encoded))
+        return APLArray.array([len(radices)], list(encoded))
     # Vector right arg → matrix (radix_len × omega_len)
     cols = len(omega.data)
     rows = len(radices)
@@ -365,7 +365,7 @@ def encode(alpha: APLArray, omega: APLArray) -> APLArray:
         col = _encode_scalar(radices, int(omega.data[c]))
         for r in range(rows):
             result[r * cols + c] = col[r]
-    return APLArray([rows, cols], result)
+    return APLArray.array([rows, cols], result)
 
 
 def decode(alpha: APLArray, omega: APLArray) -> APLArray:
@@ -401,7 +401,7 @@ def replicate(alpha: APLArray, omega: APLArray) -> APLArray:
     for count, val in zip(counts, data):
         for _ in range(count):
             result.append(val)
-    return APLArray([len(result)], result)
+    return APLArray.array([len(result)], result)
 
 
 def replicate_first(alpha: APLArray, omega: APLArray) -> APLArray:
@@ -426,7 +426,7 @@ def replicate_first(alpha: APLArray, omega: APLArray) -> APLArray:
         for _ in range(count):
             result.extend(cell)
             total_rows += 1
-    return APLArray([total_rows] + cell_shape, result)
+    return APLArray.array([total_rows] + cell_shape, result)
 
 
 def expand(alpha: APLArray, omega: APLArray) -> APLArray:
@@ -444,7 +444,7 @@ def expand(alpha: APLArray, omega: APLArray) -> APLArray:
                 result.append(0)
         else:
             result.append(0)
-    return APLArray([len(result)], result)
+    return APLArray.array([len(result)], result)
 
 
 def matrix_inverse(omega: APLArray) -> APLArray:
@@ -479,7 +479,7 @@ def matrix_inverse(omega: APLArray) -> APLArray:
     for i in range(n):
         for j in range(n):
             result.append(aug[i][n + j])
-    return APLArray([n, n], result)
+    return APLArray.array([n, n], result)
 
 
 def matrix_divide(alpha: APLArray, omega: APLArray) -> APLArray:
@@ -493,7 +493,7 @@ def matrix_divide(alpha: APLArray, omega: APLArray) -> APLArray:
         for j in range(n):
             val += float(inv.data[i * n + j]) * float(b[j])
         result.append(val)
-    return APLArray([n], result)
+    return APLArray.array([n], result)
 
 
 def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
@@ -516,5 +516,5 @@ def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
             raise IndexError_(f"{idx} out of range")
         result.extend(data[i * cell_size : (i + 1) * cell_size])
     if alpha.is_scalar():
-        return APLArray(cell_shape, result)
-    return APLArray(list(alpha.shape) + cell_shape, result)
+        return APLArray.array(cell_shape, result)
+    return APLArray.array(list(alpha.shape) + cell_shape, result)

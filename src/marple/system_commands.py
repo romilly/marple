@@ -31,7 +31,7 @@ def _cmd_wsid(interp: Interpreter, line: str) -> tuple[str, bool]:
     parts = line.split(None, 1)
     if len(parts) > 1:
         name = parts[1].strip()
-        interp.env["⎕WSID"] = APLArray([len(name)], list(name))
+        interp.env["⎕WSID"] = APLArray.array([len(name)], list(name))
         return name, False
     return "".join(str(c) for c in interp.env["⎕WSID"].data), False
 
@@ -78,7 +78,7 @@ def _cmd_save(interp: Interpreter, line: str) -> tuple[str, bool]:
     parts = line.split(None, 1)
     if len(parts) > 1:
         name = parts[1].strip()
-        interp.env["⎕WSID"] = APLArray([len(name)], list(name))
+        interp.env["⎕WSID"] = APLArray.array([len(name)], list(name))
     wsid = "".join(str(c) for c in interp.env["⎕WSID"].data)
     if wsid == "CLEAR WS":
         return "ERROR: No workspace ID set. Use )WSID name first.", False

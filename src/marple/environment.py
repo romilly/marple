@@ -14,13 +14,13 @@ _QUAD_DEFAULTS: dict[str, APLArray] = {
     "⎕CT": S(1e-14),
     "⎕PP": S(10),
     "⎕EN": S(0),
-    "⎕DM": APLArray([0], []),
-    "⎕A": APLArray([26], list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
-    "⎕D": APLArray([10], list("0123456789")),
-    "⎕WSID": APLArray([8], list("CLEAR WS")),
+    "⎕DM": APLArray.array([0], []),
+    "⎕A": APLArray.array([26], list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
+    "⎕D": APLArray.array([10], list("0123456789")),
+    "⎕WSID": APLArray.array([8], list("CLEAR WS")),
     "⎕RL": S(1),
     "⎕FR": S(645),
-    "⎕LX": APLArray([0], []),
+    "⎕LX": APLArray.array([0], []),
 }
 
 

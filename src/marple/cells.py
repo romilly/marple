@@ -55,7 +55,7 @@ def decompose(array: APLArray, cell_rank: int) -> tuple[list[int], list[APLArray
     cells: list[APLArray] = []
     for i in range(n_cells):
         cell_data = data[i * cell_size : (i + 1) * cell_size]
-        cells.append(APLArray(list(cell_shape), cell_data))
+        cells.append(APLArray.array(list(cell_shape), cell_data))
     return (list(frame_shape), cells)
 
 
@@ -66,7 +66,7 @@ def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
     If shapes differ, pad with fill elements to max shape.
     """
     if len(cells) == 0:
-        return APLArray(frame_shape + [0], [])
+        return APLArray.array(frame_shape + [0], [])
     if len(cells) == 1 and frame_shape == []:
         return cells[0]
     # Determine max cell shape
@@ -83,7 +83,7 @@ def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
         all_data: list[object] = []
         for c in cells:
             all_data.extend(to_list(c.data))
-        return APLArray(frame_shape + max_shape, all_data)
+        return APLArray.array(frame_shape + max_shape, all_data)
     # Padding needed
     max_size = 1
     for s in max_shape:
@@ -106,4 +106,4 @@ def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
             for j, val in enumerate(cell_data):
                 padded_cell[j] = val
             all_data.extend(padded_cell)
-    return APLArray(frame_shape + max_shape, all_data)
+    return APLArray.array(frame_shape + max_shape, all_data)

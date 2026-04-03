@@ -25,11 +25,11 @@ def _pervade_monadic(
             result = ufunc(omega.data)
             if bool_result:
                 result = to_bool_array(result)
-            return APLArray(list(omega.shape), result)
+            return APLArray.array(list(omega.shape), result)
     data = [f(x) for x in to_list(omega.data)]
     if bool_result:
         data = to_bool_array(data)
-    return APLArray(list(omega.shape), data)
+    return APLArray.array(list(omega.shape), data)
 
 
 def _pervade_dyadic(
@@ -59,7 +59,7 @@ def _pervade_dyadic(
             if bool_result:
                 result = to_bool_array(result)
             shape = list(omega.shape) if not omega.is_scalar() else list(alpha.shape)
-            return APLArray(shape, result)
+            return APLArray.array(shape, result)
     # Fallback: element-wise Python
     a_data = to_list(alpha.data)
     b_data = to_list(omega.data)
@@ -67,21 +67,21 @@ def _pervade_dyadic(
         result = [f(a_data[0], b_data[0])]
         if bool_result:
             result = to_bool_array(result)
-        return APLArray([], result)
+        return APLArray.array([], result)
     if alpha.is_scalar():
         a = a_data[0]
         data = to_bool_array([f(a, x) for x in b_data]) if bool_result else [f(a, x) for x in b_data]
-        return APLArray(list(omega.shape), data)
+        return APLArray.array(list(omega.shape), data)
     if omega.is_scalar():
         b = b_data[0]
         data = to_bool_array([f(x, b) for x in a_data]) if bool_result else [f(x, b) for x in a_data]
-        return APLArray(list(alpha.shape), data)
+        return APLArray.array(list(alpha.shape), data)
     if alpha.shape != omega.shape:
         raise LengthError(f"Shape mismatch: {alpha.shape} vs {omega.shape}")
     data = [f(a, b) for a, b in zip(a_data, b_data)]
     if bool_result:
         data = to_bool_array(data)
-    return APLArray(list(alpha.shape), data)
+    return APLArray.array(list(alpha.shape), data)
 
 
 # Monadic functions

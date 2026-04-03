@@ -211,4 +211,4 @@ def dyadic_fmt(fmt_str: str, values: list[APLArray]) -> APLArray:
     all_chars: list[object] = []
     for r in rows:
         all_chars.extend(list(_ljust(r, max_width)))
-    return APLArray([len(rows), max_width], all_chars)
+    return APLArray.array([len(rows), max_width], all_chars)
