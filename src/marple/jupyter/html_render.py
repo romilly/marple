@@ -3,7 +3,7 @@
 import html as _html
 
 from marple.numpy_array import APLArray
-from marple.backend import format_num
+from marple.formatting import format_num
 
 ARRAY_CSS = """<style>
 .apl-array {

@@ -4,7 +4,7 @@
 from typing import Any
 
 from marple.numpy_array import APLArray, S
-from marple.backend import format_num, format_result
+from marple.formatting import format_num, format_result
 from marple.backend_functions import (
     _DOWNCAST_CT, is_numeric_array, maybe_downcast,
 )

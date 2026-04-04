@@ -3,7 +3,7 @@
 from typing import Any
 
 from marple.numpy_array import APLArray, S
-from marple.backend import format_num
+from marple.formatting import format_num
 from marple.errors import DomainError
 
 

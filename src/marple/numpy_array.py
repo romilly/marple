@@ -311,7 +311,7 @@ class APLArray:
         return APLArray.array(list(self.shape), [roll_one(v) for v in self.data])
 
     def format(self) -> 'APLArray':
-        from marple.backend import format_num
+        from marple.formatting import format_num
         if self.is_scalar():
             s = format_num(self.data[0])
         else:

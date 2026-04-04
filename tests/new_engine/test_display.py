@@ -1,7 +1,7 @@
 """Display formatting tests — new engine."""
 
 from marple.engine import Interpreter
-from marple.backend import format_result
+from marple.formatting import format_result
 
 
 class TestQuadPPDisplay:

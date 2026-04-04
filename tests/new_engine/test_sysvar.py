@@ -195,14 +195,14 @@ class TestQuadFR:
             Interpreter(io=1).run("⎕FR←999")
 
     def test_decimal_add_exact(self) -> None:
-        from marple.backend import format_result
+        from marple.formatting import format_result
         i = Interpreter(io=1)
         i.run("⎕FR←1287")
         result = i.run("0.1+0.2")
         assert format_result(result, i.env) == "0.3"
 
     def test_decimal_multiply_exact(self) -> None:
-        from marple.backend import format_result
+        from marple.formatting import format_result
         i = Interpreter(io=1)
         i.run("⎕FR←1287")
         result = i.run("0.1×0.1")

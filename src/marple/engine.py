@@ -6,7 +6,7 @@ from marple.backend_functions import (
 )
 from marple.dfn_binding import DfnBinding
 from marple.environment import Environment
-from marple.backend import format_result
+from marple.formatting import format_result
 from marple.ports.config import Config
 from marple.ports.console import Console
 from marple.ports.filesystem import FileSystem

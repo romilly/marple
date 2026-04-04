@@ -21,7 +21,6 @@ mpremote \
     mkdir :marple/stdlib + \
     mkdir :marple/stdlib/str + \
     cp $SRC/__init__.py :marple/__init__.py + \
-    cp $SRC/backend.py :marple/backend.py + \
     cp $SRC/backend_functions.py :marple/backend_functions.py + \
     cp $SRC/get_numpy.py :marple/get_numpy.py + \
     cp $SRC/numpy_array.py :marple/numpy_array.py + \
@@ -33,6 +32,7 @@ mpremote \
     cp $SRC/errors.py :marple/errors.py + \
     cp $SRC/executor.py :marple/executor.py + \
     cp $SRC/fmt.py :marple/fmt.py + \
+    cp $SRC/formatting.py :marple/formatting.py + \
     cp $SRC/glyphs.py :marple/glyphs.py + \
     cp $SRC/monadic_functions.py :marple/monadic_functions.py + \
     cp $SRC/namespace.py :marple/namespace.py + \
