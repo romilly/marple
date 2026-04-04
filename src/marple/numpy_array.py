@@ -449,3 +449,7 @@ class APLArray:
 
     def ravel(self) -> 'APLArray':
         return APLArray.array([len(self.data)], list(self.data))
+
+
+def S(value: Any) -> APLArray:
+    return APLArray.scalar(value)

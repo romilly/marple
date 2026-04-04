@@ -13,7 +13,7 @@ from typing import Any
 from aiohttp import web
 
 from marple.adapters.pride_console import PrideConsole
-from marple.arraymodel import APLArray
+from marple.numpy_array import APLArray
 from marple.engine import Interpreter
 from marple.ports.config import Config
 from marple.environment import Environment

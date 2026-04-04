@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from marple.arraymodel import APLArray, S
+from marple.numpy_array import APLArray, S
 from marple.backend import format_num
 from marple.errors import DomainError
 

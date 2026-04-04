@@ -2,7 +2,7 @@
 
 from typing import Any, Callable
 
-from marple.arraymodel import APLArray, S
+from marple.numpy_array import APLArray, S
 from marple.backend_functions import to_list
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.errors import DomainError

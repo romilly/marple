@@ -4,7 +4,7 @@ Returns strings instead of printing — usable by REPL, web server, and Jupyter.
 """
 
 
-from marple.arraymodel import APLArray
+from marple.numpy_array import APLArray
 from marple.backend import format_result
 from marple.engine import Interpreter
 

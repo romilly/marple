@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from marple.arraymodel import APLArray, S
+from marple.numpy_array import APLArray, S
 from marple.ports.console import Console
 from marple.ports.filesystem import FileSystem
 from marple.ports.timer import Timer

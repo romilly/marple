@@ -4,7 +4,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Protocol, Generator
 
-from marple.arraymodel import APLArray, S
+from marple.numpy_array import APLArray, S
 from marple.errors import DomainError, ValueError_
 
 

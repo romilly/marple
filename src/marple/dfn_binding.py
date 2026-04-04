@@ -1,7 +1,7 @@
 """DfnBinding: a dfn/dop that can evaluate its own body."""
 
 
-from marple.arraymodel import APLArray, S
+from marple.numpy_array import APLArray, S
 from marple.executor import Executor
 from marple.parser import AlphaDefault, Dfn, Guard
 

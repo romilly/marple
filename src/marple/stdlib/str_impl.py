@@ -1,5 +1,5 @@
 
-from marple.arraymodel import APLArray
+from marple.numpy_array import APLArray
 
 
 def upper(right: APLArray) -> APLArray:
