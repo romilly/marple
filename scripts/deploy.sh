@@ -23,6 +23,9 @@ mpremote \
     cp $SRC/__init__.py :marple/__init__.py + \
     cp $SRC/arraymodel.py :marple/arraymodel.py + \
     cp $SRC/backend.py :marple/backend.py + \
+    cp $SRC/backend_functions.py :marple/backend_functions.py + \
+    cp $SRC/get_numpy.py :marple/get_numpy.py + \
+    cp $SRC/numpy_array.py :marple/numpy_array.py + \
     cp $SRC/cells.py :marple/cells.py + \
     cp $SRC/dfn_binding.py :marple/dfn_binding.py + \
     cp $SRC/dyadic_functions.py :marple/dyadic_functions.py + \

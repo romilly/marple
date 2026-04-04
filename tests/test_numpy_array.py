@@ -2,7 +2,7 @@
 
 import pytest
 
-from marple.backend import APLArray, NumpyArray
+from marple.arraymodel import APLArray, NumpyArray
 from marple.errors import RankError
 
 

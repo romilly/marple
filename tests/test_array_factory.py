@@ -1,7 +1,7 @@
 """Tests for APLArray factory methods."""
 
 from marple.arraymodel import APLArray
-from marple.backend import NumpyArray
+from marple.arraymodel import NumpyArray
 
 
 class TestArrayFactory:

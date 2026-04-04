@@ -9,4 +9,4 @@ except ImportError:
     try:
         import numpy as np  # type: ignore[no-redef]
     except ImportError:
-        import ulab.numpy as np  # type: ignore[no-redef,import-not-found]
+        from ulab import numpy as np  # type: ignore[no-redef,import-not-found]
