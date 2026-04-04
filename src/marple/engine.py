@@ -1,7 +1,7 @@
 """Class-based APL interpreter for MARPLE."""
 
 from marple.arraymodel import APLArray, S
-from marple.backend import (
+from marple.backend_functions import (
     _DOWNCAST_CT, is_numeric_array, maybe_downcast,
 )
 from marple.dfn_binding import DfnBinding

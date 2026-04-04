@@ -1,17 +1,15 @@
 import pytest
 
-from marple.backend import HAS_BACKEND, is_numeric_array, to_array, to_list
-
-needs_backend = pytest.mark.skipif(not HAS_BACKEND, reason="no numpy backend")
+from marple.backend_functions import is_numeric_array, to_array, to_list
 
 
 class TestToArray:
-    @needs_backend
+
     def test_numeric_list_becomes_ndarray(self) -> None:
         result = to_array([1, 2, 3])
         assert is_numeric_array(result)
 
-    @needs_backend
+
     def test_float_list_becomes_ndarray(self) -> None:
         result = to_array([1.5, 2.5, 3.5])
         assert is_numeric_array(result)
@@ -25,37 +23,30 @@ class TestToArray:
         result = to_array([])
         assert isinstance(result, list)
 
-    @needs_backend
+
     def test_mixed_int_float_becomes_ndarray(self) -> None:
         result = to_array([1, 2.5, 3])
         assert is_numeric_array(result)
 
-    @needs_backend
+
     def test_int_list_preserves_int_type(self) -> None:
         result = to_array([1, 2, 3])
         # Elements should remain integers, not become floats
         assert isinstance(result.tolist()[0], int)
 
-    @needs_backend
+
     def test_large_int_does_not_overflow_to_int16(self) -> None:
         result = to_array([40000])
         # 40000 exceeds int16 range — must not silently wrap
         assert result.tolist()[0] == 40000
 
-    @needs_backend
+
     def test_int_within_range_stays_int(self) -> None:
         result = to_array([100])
         assert isinstance(result.tolist()[0], int)
 
-    def test_no_backend_returns_list(self) -> None:
-        if HAS_BACKEND:
-            pytest.skip("backend is available")
-        result = to_array([1, 2, 3])
-        assert isinstance(result, list)
-
-
 class TestToList:
-    @needs_backend
+
     def test_ndarray_to_list(self) -> None:
         arr = to_array([1, 2, 3])
         result = to_list(arr)

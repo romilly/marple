@@ -22,7 +22,7 @@ def _inner_product(
     reduce_fn: Any, apply_fn: Any, alpha: APLArray, omega: APLArray,
 ) -> APLArray:
     """Compute inner product: alpha reduce_fn.apply_fn omega."""
-    from marple.backend import to_list
+    from marple.backend_functions import to_list
     from marple.errors import LengthError, RankError
     # Vector . Vector
     if len(alpha.shape) <= 1 and len(omega.shape) <= 1:
@@ -299,7 +299,7 @@ class InnerProduct(Node):
         self.left = left
         self.right = right
     def execute(self, ctx: ExecutionContext) -> APLArray:
-        from marple.backend import to_list
+        from marple.backend_functions import to_list
         omega = ctx.evaluate(self.right)
         alpha = ctx.evaluate(self.left)
         reduce_fn = ctx.resolve_dyadic(self.left_fn)
@@ -331,7 +331,7 @@ class Index(Node):
         self.array = array
         self.indices = indices
     def execute(self, ctx: ExecutionContext) -> APLArray:
-        from marple.backend import to_list
+        from marple.backend_functions import to_list
         array = ctx.evaluate(self.array)
         io = ctx.env.io
         data = to_list(array.data)

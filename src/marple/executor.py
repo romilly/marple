@@ -4,8 +4,9 @@
 from typing import Any
 
 from marple.arraymodel import APLArray, S
-from marple.backend import (
-    _DOWNCAST_CT, format_num, format_result, is_numeric_array, maybe_downcast,
+from marple.backend import format_num, format_result
+from marple.backend_functions import (
+    _DOWNCAST_CT, is_numeric_array, maybe_downcast,
 )
 from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
 from marple.errors import DomainError, SyntaxError_, ValueError_
@@ -509,7 +510,7 @@ class Executor:
         return APLArray.array([len(names), max_len], chars)
 
     def _sys_ucs(self, operand: APLArray) -> APLArray:
-        from marple.backend import to_list
+        from marple.backend_functions import to_list
         if all(isinstance(x, str) for x in operand.data):
             return APLArray.array(list(operand.shape), [ord(c) for c in operand.data])
         data = to_list(operand.data)
@@ -518,7 +519,7 @@ class Executor:
         return APLArray.array(list(operand.shape), [chr(int(x)) for x in data])
 
     def _sys_dr(self, operand: APLArray) -> APLArray:
-        from marple.backend import data_type_code
+        from marple.backend_functions import data_type_code
         return S(data_type_code(operand.data))
 
     def _sys_signal(self, operand: APLArray) -> APLArray:
@@ -551,7 +552,7 @@ class Executor:
 
     def _sys_dr_dyadic(self, left: APLArray, right: APLArray) -> APLArray:
         """Dyadic ⎕DR: convert data representation."""
-        from marple.backend import to_list, to_bool_array
+        from marple.backend_functions import to_list, to_bool_array
         target = int(left.data[0])
         vals = to_list(right.data)
         if target == 645:

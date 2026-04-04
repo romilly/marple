@@ -3,7 +3,7 @@
 import numpy
 
 from marple.arraymodel import S
-from marple.backend import data_type_code
+from marple.backend_functions import data_type_code
 from marple.engine import Interpreter
 
 

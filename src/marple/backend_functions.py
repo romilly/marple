@@ -1,0 +1,146 @@
+try:
+    from typing import Any
+except ImportError:
+    pass
+
+from marple.get_numpy import np
+
+
+def to_array(data: list[Any]) -> Any:
+    """Convert a Python list to an ndarray if numeric."""
+    if len(data) == 0:
+        return data
+    if not all(isinstance(x, (int, float)) for x in data):
+        return data
+    # Preserve integer type: ulab defaults to float, so specify dtype explicitly
+    if all(isinstance(x, int) for x in data):
+        for dtype_name in ("int32", "int16"):
+            dt = getattr(np, dtype_name, None)
+            if dt is not None:
+                try:
+                    arr = np.array(data, dtype=dt)
+                except (ValueError, OverflowError):
+                    continue
+                # Verify no silent overflow (numpy/ulab wrap without error)
+                if arr.tolist() == data:
+                    return arr
+    return np.array(data)
+
+
+def _to_python(x: Any) -> Any:
+    """Convert a numpy scalar to a native Python type."""
+    if hasattr(x, "item"):
+        return x.item()  # type: ignore[union-attr]
+    return x
+
+
+def to_list(data: Any) -> list[Any]:
+    """Convert an ndarray or list to a Python list with native types."""
+    if isinstance(data, list):
+        # Only convert if list might contain numpy scalars
+        if data and hasattr(data[0], "item"):
+            return [_to_python(x) for x in data]
+        return data
+    return data.tolist()  # type: ignore[union-attr]
+
+
+def is_numeric_array(data: Any) -> bool:
+    """Check if data is an ndarray from the active backend."""
+    return hasattr(data, "dtype")
+
+
+def _is_int_dtype(arr: Any) -> bool:
+    """Check if an ndarray has an integer dtype."""
+    dtype_str = str(arr.dtype)
+    return "int" in dtype_str
+
+
+def _is_float_dtype(arr: Any) -> bool:
+    """Check if an ndarray has a float dtype."""
+    dtype_str = str(arr.dtype)
+    return "float" in dtype_str
+
+
+def maybe_upcast(data: Any) -> Any:
+    """Convert integer arrays to float to prevent overflow.
+
+    Returns non-array data unchanged.
+    """
+    if not is_numeric_array(data):
+        return data
+    if not _is_int_dtype(data):
+        return data
+    return data.astype(np.float64)
+
+
+# Module-level comparison tolerance for downcast
+_DOWNCAST_CT: float = 1e-14
+
+
+def maybe_downcast(data: Any, ct: float) -> Any:
+    """Convert float arrays to int if all elements are close to whole numbers.
+
+    Uses APL tolerance: |value - round(value)| <= ct * max(|value|, |round(value)|)
+    Returns non-array or already-integer data unchanged.
+    """
+    if not is_numeric_array(data):
+        return data
+    if _is_int_dtype(data):
+        return data
+    if not _is_float_dtype(data):
+        return data
+    if data.size == 0:
+        return data
+    # Non-finite values (inf, nan) can't be downcast
+    if not np.all(np.isfinite(data)):
+        return data
+    # Vectorised check: are all values close to whole numbers?
+    rounded = np.round(data)
+    diff = np.abs(data - rounded)
+    if ct == 0:
+        if not np.all(diff == 0):
+            return data
+    else:
+        mag = np.maximum(np.abs(data), np.abs(rounded))
+        if not np.all(diff <= ct * mag):
+            return data
+    # All close to integers — use int32 if values fit, else int64
+    int_arr = rounded.astype(np.int64)
+    if np.all(np.abs(int_arr) <= np.iinfo(np.int32).max):
+        return int_arr.astype(np.int32)
+    return int_arr
+
+
+def data_type_code(data: Any) -> int:
+    """Return the ⎕DR type code for the given data.
+
+    Encoding: first digits = bit width, last digit = type
+    (0=char, 1=boolean, 3=signed int, 5=float, 7=decimal, 9=complex).
+    """
+    if is_numeric_array(data):
+        dtype_str = str(data.dtype)
+        if "uint8" in dtype_str:
+            return 81
+        if "int8" in dtype_str and "int16" not in dtype_str and "int32" not in dtype_str and "int64" not in dtype_str:
+            return 83
+        if "int16" in dtype_str:
+            return 163
+        if "int32" in dtype_str:
+            return 323
+        if "int64" in dtype_str:
+            return 643
+        if _is_float_dtype(data):
+            return 645
+    if isinstance(data, list) and data and isinstance(data[0], str):
+        return 320
+    return 323
+
+
+def to_bool_array(data: Any) -> Any:
+    """Convert data to a uint8 boolean array (0/1 values)."""
+    dt = getattr(np, "uint8", None)
+    if dt is None:
+        return data
+    if hasattr(data, "dtype"):
+        return np.array(data.tolist(), dtype=dt)
+    return np.array(data, dtype=dt)

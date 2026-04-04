@@ -7,13 +7,11 @@ overflow, and cross-dtype operations.
 import pytest
 
 from marple.arraymodel import APLArray, S
-from marple.backend import HAS_BACKEND, maybe_downcast, maybe_upcast, np
+from marple.backend_functions import maybe_downcast, maybe_upcast
+from marple.get_numpy import np
 from marple.engine import Interpreter
 
-needs_backend = pytest.mark.skipif(not HAS_BACKEND, reason="no numpy backend")
 
-
-@needs_backend
 class TestArithmeticUpcastDowncast:
     def test_add_integers_gives_integer(self) -> None:
         result = Interpreter(io=1).run("2+3")
@@ -36,7 +34,6 @@ class TestArithmeticUpcastDowncast:
         assert isinstance(result.data.tolist()[0], int)
 
 
-@needs_backend
 class TestReduceScanOverflow:
     def test_reduce_add_overflows_int32(self) -> None:
         assert Interpreter(io=1).run("+/2000000000 2000000000") == S(4000000000)
@@ -54,7 +51,6 @@ class TestReduceScanOverflow:
         assert list(result.data) == [2000000000, 4000000000]
 
 
-@needs_backend
 class TestProductOverflow:
     def test_outer_product_overflows_int32(self) -> None:
         result = Interpreter(io=1).run("100000 200000∘.×100000 200000")
@@ -68,7 +64,6 @@ class TestProductOverflow:
         assert int(val) == val  # is a whole number
 
 
-@needs_backend
 class TestBooleanDtype:
     def test_comparison_produces_uint8(self) -> None:
         result = Interpreter(io=1).run("1 2 3=1 3 3")
@@ -103,7 +98,6 @@ class TestBooleanDtype:
         assert list(result.data) == [1, 2]
 
 
-@needs_backend
 class TestCrossDtypeArithmetic:
     def test_int_add_int(self) -> None:
         result = Interpreter(io=1).run("1 2 3+4 5 6")
@@ -183,7 +177,6 @@ class TestCrossDtypeArithmetic:
         assert list(i.run("100+b").data) == [101, 100, 101]
 
 
-@needs_backend
 class TestCrossDtypeReduce:
     def test_reduce_int(self) -> None:
         assert Interpreter(io=1).run("+/1 2 3 4") == S(10)
@@ -203,7 +196,6 @@ class TestCrossDtypeReduce:
         assert i.run("×/b") == S(1)
 
 
-@needs_backend
 class TestCrossDtypeProducts:
     def test_inner_product_int(self) -> None:
         assert Interpreter(io=1).run("1 2 3+.×4 5 6") == S(32)
@@ -237,7 +229,6 @@ class TestCrossDtypeProducts:
         assert list(i.run("a∘.∧b").data) == [0, 1, 0, 0]
 
 
-@needs_backend
 class TestMaybeDowncast:
     def test_exact_integers(self) -> None:
         arr = np.array([1.0, 2.0, 3.0])
@@ -292,7 +283,6 @@ class TestMaybeDowncast:
         assert result is data
 
 
-@needs_backend
 class TestMaybeUpcast:
     def test_int_becomes_float(self) -> None:
         arr = np.array([1, 2, 3], dtype=np.int32)
