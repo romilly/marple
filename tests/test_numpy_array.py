@@ -15,6 +15,10 @@ class TestNegate:
         result = APLArray.array([3], [1, 2, 3]).negate()
         assert result == APLArray.array([3], [-1, -2, -3])
 
+    def test_negate_matrix(self) -> None:
+        result = APLArray.array([2, 3], [1, 2, 3, 4, 5, 6]).negate()
+        assert result == APLArray.array([2, 3], [-1, -2, -3, -4, -5, -6])
+
 
 class TestReciprocal:
     def test_reciprocal_scalar(self) -> None:
@@ -25,6 +29,10 @@ class TestReciprocal:
         result = APLArray.array([2], [2, 5]).reciprocal()
         assert result == APLArray.array([2], [0.5, 0.2])
 
+    def test_reciprocal_matrix(self) -> None:
+        result = APLArray.array([2, 2], [1, 2, 4, 5]).reciprocal()
+        assert result == APLArray.array([2, 2], [1.0, 0.5, 0.25, 0.2])
+
 
 class TestCeiling:
     def test_ceiling_scalar(self) -> None:
@@ -32,6 +40,9 @@ class TestCeiling:
 
     def test_ceiling_vector(self) -> None:
         assert APLArray.array([3], [1.1, 2.5, 3.9]).ceiling() == APLArray.array([3], [2, 3, 4])
+
+    def test_ceiling_matrix(self) -> None:
+        assert APLArray.array([2, 2], [1.1, 2.5, 3.9, 4.0]).ceiling() == APLArray.array([2, 2], [2, 3, 4, 4])
 
 
 class TestFloor:
@@ -41,15 +52,32 @@ class TestFloor:
     def test_floor_vector(self) -> None:
         assert APLArray.array([3], [1.1, 2.5, 3.9]).floor() == APLArray.array([3], [1, 2, 3])
 
+    def test_floor_matrix(self) -> None:
+        assert APLArray.array([2, 2], [1.1, 2.5, 3.9, 4.0]).floor() == APLArray.array([2, 2], [1, 2, 3, 4])
+
 
 class TestExponential:
     def test_exp_zero(self) -> None:
         assert APLArray.scalar(0).exponential() == APLArray.scalar(1)
 
+    def test_exp_matrix(self) -> None:
+        import math
+        result = APLArray.array([2, 2], [0, 1, 0, 1]).exponential()
+        assert result.shape == [2, 2]
+        assert abs(result.data[0] - 1.0) < 1e-10
+        assert abs(result.data[1] - math.e) < 1e-10
+
 
 class TestNaturalLog:
     def test_log_one(self) -> None:
         assert APLArray.scalar(1).natural_log() == APLArray.scalar(0)
+
+    def test_log_matrix(self) -> None:
+        import math
+        result = APLArray.array([2, 2], [1, math.e, 1, math.e]).natural_log()
+        assert result.shape == [2, 2]
+        assert abs(result.data[0] - 0.0) < 1e-10
+        assert abs(result.data[1] - 1.0) < 1e-10
 
 
 class TestAbsoluteValue:
@@ -59,6 +87,9 @@ class TestAbsoluteValue:
     def test_abs_vector(self) -> None:
         assert APLArray.array([3], [-1, 2, -3]).absolute_value() == APLArray.array([3], [1, 2, 3])
 
+    def test_abs_matrix(self) -> None:
+        assert APLArray.array([2, 2], [-1, 2, -3, 4]).absolute_value() == APLArray.array([2, 2], [1, 2, 3, 4])
+
 
 class TestLogicalNot:
     def test_not_zero(self) -> None:
@@ -67,6 +98,9 @@ class TestLogicalNot:
     def test_not_one(self) -> None:
         assert APLArray.scalar(1).logical_not() == APLArray.scalar(0)
 
+    def test_not_matrix(self) -> None:
+        assert APLArray.array([2, 2], [0, 1, 1, 0]).logical_not() == APLArray.array([2, 2], [1, 0, 0, 1])
+
 
 class TestPiTimes:
     def test_pi_times_one(self) -> None:
@@ -74,10 +108,22 @@ class TestPiTimes:
         result = APLArray.scalar(1).pi_times()
         assert abs(result.data[0] - math.pi) < 1e-10
 
+    def test_pi_times_matrix(self) -> None:
+        import math
+        result = APLArray.array([2, 2], [0, 1, 2, 0.5]).pi_times()
+        assert result.shape == [2, 2]
+        assert abs(result.data[0] - 0.0) < 1e-10
+        assert abs(result.data[1] - math.pi) < 1e-10
+
 
 class TestFactorial:
     def test_factorial_five(self) -> None:
         assert APLArray.scalar(5).factorial() == APLArray.scalar(120)
+
+    def test_factorial_matrix(self) -> None:
+        result = APLArray.array([2, 2], [0, 1, 2, 3]).factorial()
+        assert result.shape == [2, 2]
+        assert result == APLArray.array([2, 2], [1, 1, 2, 6])
 
 
 class TestRoll:
@@ -184,6 +230,16 @@ class TestSignum:
 
     def test_signum_vector(self) -> None:
         assert APLArray.array([3], [-5, 0, 3]).signum() == APLArray.array([3], [-1, 0, 1])
+
+    def test_signum_float(self) -> None:
+        assert APLArray.scalar(3.7).signum() == APLArray.scalar(1)
+        assert APLArray.scalar(-0.5).signum() == APLArray.scalar(-1)
+
+    def test_signum_float_vector(self) -> None:
+        assert APLArray.array([3], [-2.5, 0.0, 1.1]).signum() == APLArray.array([3], [-1, 0, 1])
+
+    def test_signum_matrix(self) -> None:
+        assert APLArray.array([2, 2], [-5, 0, 3, -1]).signum() == APLArray.array([2, 2], [-1, 0, 1, -1])
 
 
 class TestShape:
