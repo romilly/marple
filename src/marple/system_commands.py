@@ -5,6 +5,7 @@ Returns strings instead of printing — usable by REPL, web server, and Jupyter.
 
 
 from marple.arraymodel import APLArray
+from marple.backend import format_result
 from marple.engine import Interpreter
 
 
@@ -109,16 +110,12 @@ def _cmd_load(interp: Interpreter, line: str) -> tuple[str, bool]:
         return f"ERROR: Workspace not found: {name}", False
     from marple.environment import Environment
     interp.env = Environment(io=1)
-    try:
-        from marple.formatting import format_result
-        lx_result = load_workspace(interp.env, ws_dir, evaluate=interp.run)
-        wsid = "".join(str(c) for c in interp.env["⎕WSID"].data)
-        output = wsid
-        if lx_result is not None:
-            output += "\n" + format_result(lx_result, interp.env)
-        return output, False
-    except Exception as e:
-        return f"ERROR: {e}", False
+    lx_result = load_workspace(interp.env, ws_dir, evaluate=interp.run)
+    wsid = "".join(str(c) for c in interp.env["⎕WSID"].data)
+    output = wsid
+    if lx_result is not None:
+        output += "\n" + format_result(lx_result, interp.env)
+    return output, False
 
 
 def _cmd_drop(interp: Interpreter, line: str) -> tuple[str, bool]:

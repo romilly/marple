@@ -5,6 +5,8 @@ try:
 except ImportError:
     pass
 
+from marple.errors import DomainError, LengthError, RankError
+
 # Backend selection: environment variable overrides auto-detection
 try:
     _backend_name = os.environ.get("MARPLE_BACKEND", "auto")
@@ -384,7 +386,6 @@ class NumpyArray(APLArray):
     def _dyadic(self, other: 'APLArray',
                 f: Any, bool_result: bool = False) -> 'APLArray':
         """Pervade a dyadic function element-wise with scalar extension."""
-        from marple.errors import LengthError
         a_data = to_list(self.data)
         b_data = to_list(other.data)
         if self.is_scalar() and other.is_scalar():
@@ -411,7 +412,6 @@ class NumpyArray(APLArray):
 
     def _numeric_dyadic_op(self, other: 'APLArray', op: Any, upcast: bool = False) -> 'APLArray':
         """Apply a numeric operator (+, -, *, etc.) on numpy data."""
-        from marple.errors import LengthError
         a = maybe_upcast(self.data) if upcast else self.data
         b = maybe_upcast(other.data) if upcast else other.data
         try:
@@ -437,7 +437,6 @@ class NumpyArray(APLArray):
         return self._dyadic(other, lambda a, b: a * b)
 
     def divide(self, other: 'APLArray') -> 'APLArray':
-        from marple.errors import DomainError
         if is_numeric_array(other.data):
             if np.any(other.data == 0):
                 raise DomainError("Division by zero")
@@ -475,7 +474,6 @@ class NumpyArray(APLArray):
 
     def circular(self, other: 'APLArray') -> 'APLArray':
         import math
-        from marple.errors import DomainError
         _CIRCULAR: dict[int, Any] = {
             0: lambda x: math.sqrt(1 - x * x),
             1: math.sin, 2: math.cos, 3: math.tan,
@@ -553,7 +551,6 @@ class NumpyArray(APLArray):
     def deal(self, other: 'APLArray', io: int = 1) -> 'APLArray':
         """Dyadic ?: deal. N?M → N random integers from io..M without replacement."""
         import random as _random
-        from marple.errors import LengthError
         n = int(self.data[0])
         m = int(other.data[0])
         if n > m:
@@ -652,7 +649,6 @@ class NumpyArray(APLArray):
         return APLArray.array(list(self.shape), [roll_one(v) for v in self.data])
 
     def format(self) -> 'APLArray':
-        from marple.formatting import format_num
         if self.is_scalar():
             s = format_num(self.data[0])
         else:
@@ -661,11 +657,15 @@ class NumpyArray(APLArray):
         return APLArray.array([len(s)], list(s))
 
     def grade_up(self, io: int = 1) -> 'APLArray':
+        if len(self.shape) != 1:
+            raise RankError("⍋ requires a vector argument")
         indexed = list(enumerate(self.data))
         indexed.sort(key=lambda pair: pair[1])  # type: ignore[arg-type]
         return APLArray.array([len(self.data)], [i + io for i, _ in indexed])
 
     def grade_down(self, io: int = 1) -> 'APLArray':
+        if len(self.shape) != 1:
+            raise RankError("⍒ requires a vector argument")
         indexed = list(enumerate(self.data))
         indexed.sort(key=lambda pair: pair[1], reverse=True)  # type: ignore[arg-type]
         return APLArray.array([len(self.data)], [i + io for i, _ in indexed])
@@ -691,7 +691,6 @@ class NumpyArray(APLArray):
         return APLArray.array(list(self.shape), [-x for x in to_list(self.data)])
 
     def reciprocal(self) -> 'APLArray':
-        from marple.errors import DomainError
         data = to_list(self.data)
         if any(x == 0 for x in data):
             raise DomainError("Division by zero")
@@ -745,7 +744,6 @@ class NumpyArray(APLArray):
         return APLArray.array([len(self.shape)], list(self.shape))
 
     def transpose(self) -> 'APLArray':
-        from marple.errors import RankError
         if len(self.shape) <= 1:
             return APLArray.array(list(self.shape), list(self.data))
         if len(self.shape) != 2:
@@ -788,6 +786,98 @@ class NumpyArray(APLArray):
 
     def ravel(self) -> 'APLArray':
         return APLArray.array([len(self.data)], list(self.data))
+
+
+def format_num(x: Any, pp: int = 10) -> str:
+    """Format a number for display, using pp significant digits for floats."""
+    if hasattr(x, "item"):
+        x = x.item()  # type: ignore[union-attr]
+    if isinstance(x, bool):
+        return str(int(x))
+    if isinstance(x, float):
+        if x == int(x) and abs(x) < 1e15:
+            n = int(x)
+            return "¯" + str(abs(n)) if n < 0 else str(n)
+        s = f"{x:.{pp}g}"
+        if s.startswith("-"):
+            s = "¯" + s[1:]
+        return s
+    if isinstance(x, int) and x < 0:
+        return "¯" + str(abs(x))
+    try:
+        from decimal import Decimal
+        if isinstance(x, Decimal):
+            s = str(x)
+            if s.startswith("-"):
+                return "¯" + s[1:]
+            return s
+    except ImportError:
+        pass
+    return str(x)
+
+
+def _is_char_array(arr: APLArray) -> bool:
+    return len(arr.data) > 0 and all(isinstance(x, str) for x in arr.data)
+
+
+def _rjust(s: str, width: int) -> str:
+    if len(s) >= width:
+        return s
+    return " " * (width - len(s)) + s
+
+
+def _format_matrix(result: APLArray, pp: int) -> str:
+    """Format a rank-2 array as right-justified columns."""
+    rows, cols = result.shape
+    if _is_char_array(result):
+        lines = []
+        for r in range(rows):
+            row_data = result.data[r * cols:(r + 1) * cols]
+            lines.append("".join(str(x) for x in row_data))
+        return "\n".join(lines)
+    strs = [format_num(result.data[r * cols + c], pp) for r in range(rows) for c in range(cols)]
+    col_widths = []
+    for c in range(cols):
+        w = max(len(strs[r * cols + c]) for r in range(rows))
+        col_widths.append(w)
+    lines = []
+    for r in range(rows):
+        parts = []
+        for c in range(cols):
+            parts.append(_rjust(strs[r * cols + c], col_widths[c]))
+        lines.append(" ".join(parts))
+    return "\n".join(lines)
+
+
+def format_result(result: APLArray, env: Any = None) -> str:
+    """Format an APLArray for display."""
+    pp = 10
+    if env is not None:
+        pp_val = env.get("⎕PP")
+        if pp_val is not None:
+            pp = int(pp_val.data[0])
+    if result.is_scalar():
+        return format_num(result.data[0], pp)
+    if _is_char_array(result):
+        if len(result.shape) == 1:
+            return "".join(str(x) for x in result.data)
+        if len(result.shape) == 2:
+            return _format_matrix(result, pp)
+    if len(result.shape) == 1:
+        return " ".join(format_num(x, pp) for x in result.data)
+    if len(result.shape) == 2:
+        return _format_matrix(result, pp)
+    if len(result.shape) >= 3:
+        slice_size = result.shape[-2] * result.shape[-1]
+        num_slices = len(result.data) // slice_size
+        slices = []
+        for s in range(num_slices):
+            start = s * slice_size
+            slice_data = list(result.data[start:start + slice_size])
+            slice_arr = APLArray.array([result.shape[-2], result.shape[-1]], slice_data)
+            slices.append(_format_matrix(slice_arr, pp))
+        return "\n\n".join(slices)
+    return repr(result)
 
 
 def S(value: Any) -> APLArray:

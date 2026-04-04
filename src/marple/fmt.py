@@ -3,6 +3,7 @@
 from typing import Any
 
 from marple.arraymodel import APLArray, S
+from marple.backend import format_num
 from marple.errors import DomainError
 
 
@@ -92,7 +93,6 @@ def format_one_value(code: str, width: int, decimals: int,
     elif code == "E":
         text = f"{num:.{decimals}E}"
     elif code == "G":
-        from marple.formatting import format_num
         text = format_num(num)
     else:
         text = str(num)

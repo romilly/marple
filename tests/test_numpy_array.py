@@ -1,6 +1,9 @@
 """Tests for NumpyArray — concrete APLArray subclass."""
 
+import pytest
+
 from marple.backend import APLArray, NumpyArray
+from marple.errors import RankError
 
 
 class TestNumpyArrayCreation:
@@ -125,6 +128,30 @@ class TestGrade:
 
     def test_grade_up_io0(self) -> None:
         assert APLArray.array([3], [3, 1, 4]).grade_up(io=0) == APLArray.array([3], [1, 0, 2])
+
+    def test_grade_up_scalar_raises_rank_error(self) -> None:
+        with pytest.raises(RankError):
+            APLArray.scalar(5).grade_up()
+
+    def test_grade_up_matrix_raises_rank_error(self) -> None:
+        with pytest.raises(RankError):
+            APLArray.array([2, 3], [1, 2, 3, 4, 5, 6]).grade_up()
+
+    def test_grade_up_rank3_raises_rank_error(self) -> None:
+        with pytest.raises(RankError):
+            APLArray.array([2, 2, 2], [1, 2, 3, 4, 5, 6, 7, 8]).grade_up()
+
+    def test_grade_down_scalar_raises_rank_error(self) -> None:
+        with pytest.raises(RankError):
+            APLArray.scalar(5).grade_down()
+
+    def test_grade_down_matrix_raises_rank_error(self) -> None:
+        with pytest.raises(RankError):
+            APLArray.array([2, 3], [1, 2, 3, 4, 5, 6]).grade_down()
+
+    def test_grade_down_rank3_raises_rank_error(self) -> None:
+        with pytest.raises(RankError):
+            APLArray.array([2, 2, 2], [1, 2, 3, 4, 5, 6, 7, 8]).grade_down()
 
 
 class TestIota:

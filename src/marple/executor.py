@@ -5,7 +5,7 @@ from typing import Any
 
 from marple.arraymodel import APLArray, S
 from marple.backend import (
-    _DOWNCAST_CT, is_numeric_array, maybe_downcast,
+    _DOWNCAST_CT, format_num, format_result, is_numeric_array, maybe_downcast,
 )
 from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
 from marple.errors import DomainError, SyntaxError_, ValueError_
@@ -210,7 +210,6 @@ class Executor:
         """Handle ⎕← (output with newline) and ⍞← (prompt, read, return prompt+response)."""
         if self.env.console is None:
             raise DomainError("Console not available for I/O")
-        from marple.formatting import format_result
         text = format_result(value, self.env)
         if name == "⎕":
             self.env.console.writeln(text)
@@ -571,7 +570,6 @@ class Executor:
 
     def _sys_fmt_monadic(self, operand_node: object) -> APLArray:
         """Monadic ⎕FMT — handles both regular operands and FmtArgs."""
-        from marple.formatting import format_num
         from marple.nodes import FmtArgs
         if isinstance(operand_node, FmtArgs):
             values = [self.evaluate(arg) for arg in operand_node.args]
@@ -588,7 +586,6 @@ class Executor:
 
     def _fmt_value(self, operand: APLArray) -> APLArray:
         """Format a single value as a character vector."""
-        from marple.formatting import format_num
         if operand.shape == []:
             text = format_num(operand.data[0])
         elif len(operand.shape) == 1:

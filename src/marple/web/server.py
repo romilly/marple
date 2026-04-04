@@ -18,7 +18,7 @@ from marple.engine import Interpreter
 from marple.ports.config import Config
 from marple.environment import Environment
 from marple.errors import APLError
-from marple.formatting import format_result
+from marple.backend import format_result
 
 STATIC_DIR = Path(__file__).parent / "static"
 INPUT_INDENT = "      "

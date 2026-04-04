@@ -8,7 +8,6 @@ import sys
 
 from marple.engine import Interpreter
 from marple.errors import APLError
-from marple.formatting import format_result  # re-export for backward compat
 from marple.parser import is_balanced
 from marple.ports.console import Console
 from marple.system_commands import run_system_command
