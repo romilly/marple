@@ -19,7 +19,6 @@ class TestNegate:
         result = APLArray.array([2, 3], [1, 2, 3, 4, 5, 6]).negate()
         assert result == APLArray.array([2, 3], [-1, -2, -3, -4, -5, -6])
 
-
 class TestReciprocal:
     def test_reciprocal_scalar(self) -> None:
         result = APLArray.scalar(4).reciprocal()

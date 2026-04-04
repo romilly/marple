@@ -51,6 +51,10 @@ Playwright tests must verify **actual visible output**, not just DOM state. Chec
 
 Never leave test processes running in the background. If a test hangs, kill it immediately — stuck processes can interfere with subsequent testing and the user's PRIDE server.
 
+## Problem Handling
+
+**Never move on from a problem without the user's explicit approval.** When you discover a bug, unexpected behaviour, or upstream issue, stop and discuss it. Do not defer it, work around it, or continue to the next task. The user decides when to move on.
+
 ## Bulk Changes
 
 **Always commit before bulk replacements** (sed, find-and-replace across files, etc.). Mistakes in bulk operations are hard to spot and easy to make. A commit gives you a clean state to revert to.
