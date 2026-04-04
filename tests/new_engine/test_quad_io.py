@@ -5,7 +5,7 @@ import pytest
 from hamcrest import assert_that, contains_string, equal_to, has_item, is_
 
 from marple.adapters.buffered_console import BufferedConsole
-from marple.arraymodel import APLArray, S
+from marple.numpy_array import APLArray, S
 from marple.engine import Interpreter
 from marple.errors import DomainError
 from marple.tokenizer import Token, TokenType, Tokenizer

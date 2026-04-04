@@ -4,7 +4,7 @@ import math
 
 import pytest
 
-from marple.arraymodel import APLArray, S
+from marple.numpy_array import APLArray, S
 from marple.engine import Interpreter
 from marple.errors import DomainError
 

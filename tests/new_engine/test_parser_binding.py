@@ -1,6 +1,6 @@
 """Parser binding precedence tests — new engine."""
 
-from marple.arraymodel import APLArray, S
+from marple.numpy_array import APLArray, S
 from marple.engine import Interpreter
 
 

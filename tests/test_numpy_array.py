@@ -1,19 +1,9 @@
-"""Tests for NumpyArray — concrete APLArray subclass."""
+"""Tests for APLArray — concrete array class."""
 
 import pytest
 
-from marple.arraymodel import APLArray, NumpyArray
+from marple.numpy_array import APLArray
 from marple.errors import RankError
-
-
-class TestNumpyArrayCreation:
-    def test_factory_creates_numpy_array(self) -> None:
-        result = APLArray.array([3], [1, 2, 3])
-        assert isinstance(result, NumpyArray)
-
-    def test_scalar_factory_creates_numpy_array(self) -> None:
-        result = APLArray.scalar(5)
-        assert isinstance(result, NumpyArray)
 
 
 class TestNegate:

@@ -1,6 +1,6 @@
 """System variables should be local to dfns."""
 
-from marple.arraymodel import S
+from marple.numpy_array import S
 from marple.engine import Interpreter
 
 

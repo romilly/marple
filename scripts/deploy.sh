@@ -21,7 +21,6 @@ mpremote \
     mkdir :marple/stdlib + \
     mkdir :marple/stdlib/str + \
     cp $SRC/__init__.py :marple/__init__.py + \
-    cp $SRC/arraymodel.py :marple/arraymodel.py + \
     cp $SRC/backend.py :marple/backend.py + \
     cp $SRC/backend_functions.py :marple/backend_functions.py + \
     cp $SRC/get_numpy.py :marple/get_numpy.py + \

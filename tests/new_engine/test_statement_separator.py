@@ -1,6 +1,6 @@
 """Statement separator tests — new engine."""
 
-from marple.arraymodel import S
+from marple.numpy_array import S
 from marple.engine import Interpreter
 
 

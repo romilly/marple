@@ -1,4 +1,4 @@
-from marple.arraymodel import APLArray, S
+from marple.numpy_array import APLArray, S
 from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
 
 

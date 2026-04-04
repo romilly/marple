@@ -1,6 +1,6 @@
 """Life with ⎕IO←0 inside the dfn."""
 
-from marple.arraymodel import APLArray
+from marple.numpy_array import APLArray
 from marple.engine import Interpreter
 
 

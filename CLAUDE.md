@@ -51,6 +51,10 @@ Playwright tests must verify **actual visible output**, not just DOM state. Chec
 
 Never leave test processes running in the background. If a test hangs, kill it immediately — stuck processes can interfere with subsequent testing and the user's PRIDE server.
 
+## Bulk Changes
+
+**Always commit before bulk replacements** (sed, find-and-replace across files, etc.). Mistakes in bulk operations are hard to spot and easy to make. A commit gives you a clean state to revert to.
+
 ## Dependencies
 
 **Always pin dependencies to exact versions** (`==`) in `pyproject.toml`, `requirements.txt`, and `requirements-test.txt`. Never use `>=` or `~=` ranges. This protects against supply-chain injection attacks where a compromised new release could be pulled in automatically.

@@ -1,6 +1,6 @@
 """⎕LX (latent expression) tests."""
 
-from marple.arraymodel import APLArray, S
+from marple.numpy_array import APLArray, S
 from marple.engine import Interpreter
 from tests.adapters.fake_filesystem import FakeFileSystem
 

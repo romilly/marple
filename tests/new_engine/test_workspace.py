@@ -3,7 +3,7 @@
 import os
 import tempfile
 
-from marple.arraymodel import APLArray, S
+from marple.numpy_array import APLArray, S
 from marple.engine import Interpreter
 from marple.workspace import save_workspace, load_workspace, list_workspaces
 
