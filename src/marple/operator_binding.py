@@ -3,7 +3,7 @@
 from typing import Any, Callable
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import to_list
+from marple.backend_functions import is_numeric_array, to_list
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.errors import DomainError
 from marple.get_numpy import np
@@ -30,15 +30,12 @@ _IDENTITY_ELEMENTS: dict[str, int | float] = {
 }
 
 
-def _reduce_vector(
-    func: Callable[[APLArray, APLArray], APLArray],
-    data: list[Any],
-) -> Any:
-    """Reduce a flat list right-to-left, returning a scalar value."""
-    result = S(data[-1])
-    for i in range(len(data) - 2, -1, -1):
-        result = func(S(data[i]), result)
-    return result.data[0]
+def _reduce_row(op: Any, data: Any, start: int, length: int) -> Any:
+    """Right-to-left reduce of a row, using numpy indexing."""
+    acc = data[start + length - 1]
+    for i in range(start + length - 2, start - 1, -1):
+        acc = op(data[i], acc)
+    return acc
 
 
 def _reduce(
@@ -48,23 +45,26 @@ def _reduce(
 ) -> APLArray:
     """Reduce along the last axis."""
     data = omega.data
-    if len(data) == 0:
+    flat = data.flatten() if is_numeric_array(data) else data
+    n = len(flat)
+    if n == 0:
         if glyph is not None:
             identity = _IDENTITY_ELEMENTS.get(glyph)
             if identity is not None:
                 return S(identity)
         raise DomainError("Cannot reduce empty array")
+    op = _SCALAR_OPS.get(glyph) if glyph is not None else None
+    if op is None:
+        raise DomainError(f"Unknown function for reduce: {glyph}")
     if len(omega.shape) <= 1:
-        return S(_reduce_vector(func, to_list(data)))
+        return S(_reduce_row(op, flat, 0, n))
     last = omega.shape[-1]
     new_shape = omega.shape[:-1]
-    data_list = to_list(data)
-    n_rows = len(data_list) // last
-    results: list[Any] = []
+    n_rows = n // last
+    result = np.empty(n_rows, dtype=np.float64)
     for i in range(n_rows):
-        row = data_list[i * last : (i + 1) * last]
-        results.append(_reduce_vector(func, row))
-    return APLArray.array(new_shape, results)
+        result[i] = _reduce_row(op, flat, i * last, last)
+    return APLArray(new_shape, result.reshape(new_shape))
 
 
 _ACCUMULATE_UFUNCS: dict[str, Any] = {
@@ -125,8 +125,8 @@ def _scan(
     glyph: str | None = None,
 ) -> APLArray:
     """Scan along the last axis."""
-    data = omega.data
-    n = len(data)
+    flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
+    n = len(flat)
     if n == 0:
         return APLArray.array([0], [])
     row_len = omega.shape[-1] if len(omega.shape) > 0 else n
@@ -134,11 +134,11 @@ def _scan(
     if glyph is not None:
         ufunc = _ACCUMULATE_UFUNCS.get(glyph)
         if ufunc is not None:
-            return APLArray.array(list(omega.shape), _scan_row_accumulate(ufunc, data, row_len))
+            return APLArray(list(omega.shape), _scan_row_accumulate(ufunc, flat, row_len).reshape(omega.shape))
     # General path: O(n²) right-to-left reduce per prefix
     op = _SCALAR_OPS.get(glyph) if glyph is not None else None
     if op is not None:
-        return APLArray.array(list(omega.shape), _scan_row_general(op, data, row_len))
+        return APLArray(list(omega.shape), _scan_row_general(op, flat, row_len).reshape(omega.shape))
     raise DomainError(f"Unknown function for scan: {glyph}")
 
 
@@ -150,20 +150,21 @@ def _reduce_first(
     """Reduce along the first axis (⌿)."""
     if len(omega.shape) <= 1:
         return _reduce(func, omega, glyph)
+    op = _SCALAR_OPS.get(glyph) if glyph is not None else None
+    if op is None:
+        raise DomainError(f"Unknown function for reduce: {glyph}")
     first = omega.shape[0]
     cell_shape = omega.shape[1:]
+    flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
     cell_size = 1
     for s in cell_shape:
         cell_size *= s
-    data_list = to_list(omega.data)
-    acc = data_list[:cell_size]
+    acc = np.array(flat[:cell_size], dtype=np.float64)
     for i in range(1, first):
-        cell = data_list[i * cell_size : (i + 1) * cell_size]
-        paired = []
-        for a, b in zip(acc, cell):
-            paired.append(func(S(a), S(b)).data[0])
-        acc = paired
-    return APLArray.array(cell_shape, acc)
+        cell = flat[i * cell_size : (i + 1) * cell_size]
+        for j in range(cell_size):
+            acc[j] = op(acc[j], cell[j])
+    return APLArray(cell_shape, acc.reshape(cell_shape))
 
 
 def _scan_first(

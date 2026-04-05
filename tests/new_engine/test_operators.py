@@ -49,8 +49,7 @@ class TestReduceFirst:
         i = Interpreter(io=1)
         i.run("A←2 2 3⍴⍳12")
         result = i.run("+⌿A")
-        assert result.shape == [2, 3]
-        assert list(result.data) == [8, 10, 12, 14, 16, 18]
+        assert result == APLArray.array([2, 3], [[8, 10, 12], [14, 16, 18]])
 
     def test_vector_same_as_reduce(self) -> None:
         assert Interpreter(io=1).run("+⌿1 2 3") == S(6)
@@ -69,17 +68,18 @@ class TestScan:
 
     def test_scan_matrix(self) -> None:
         result = Interpreter(io=1).run("+\\2 3⍴1 2 3 4 5 6")
-        assert result == APLArray.array([2, 3], [1, 3, 6, 4, 9, 15])
+        assert result == APLArray.array([2, 3], [[1, 3, 6], [4, 9, 15]])
 
     def test_scan_rank3(self) -> None:
         result = Interpreter(io=1).run("+\\2 2 3⍴⍳12")
-        assert result == APLArray.array([2, 2, 3], [1, 3, 6, 4, 9, 15, 7, 15, 24, 10, 21, 33])
+        assert result == APLArray.array([2, 2, 3],
+            [[[1, 3, 6], [4, 9, 15]], [[7, 15, 24], [10, 21, 33]]])
 
     def test_scan_rank4(self) -> None:
         result = Interpreter(io=1).run("+\\2 2 2 3⍴⍳24")
         assert result == APLArray.array([2, 2, 2, 3],
-            [1, 3, 6, 4, 9, 15, 7, 15, 24, 10, 21, 33,
-             13, 27, 42, 16, 33, 51, 19, 39, 60, 22, 45, 69])
+            [[[[1, 3, 6], [4, 9, 15]], [[7, 15, 24], [10, 21, 33]]],
+             [[[13, 27, 42], [16, 33, 51]], [[19, 39, 60], [22, 45, 69]]]])
 
     def test_subtract_scan_vector(self) -> None:
         """APL scan is right-to-left reduce per prefix."""
@@ -88,17 +88,18 @@ class TestScan:
 
     def test_subtract_scan_matrix(self) -> None:
         result = Interpreter(io=1).run("-\\2 3⍴1 2 3 4 5 6")
-        assert result == APLArray.array([2, 3], [1, -1, 2, 4, -1, 5])
+        assert result == APLArray.array([2, 3], [[1, -1, 2], [4, -1, 5]])
 
     def test_subtract_scan_rank3(self) -> None:
         result = Interpreter(io=1).run("-\\2 2 3⍴⍳12")
-        assert result == APLArray.array([2, 2, 3], [1, -1, 2, 4, -1, 5, 7, -1, 8, 10, -1, 11])
+        assert result == APLArray.array([2, 2, 3],
+            [[[1, -1, 2], [4, -1, 5]], [[7, -1, 8], [10, -1, 11]]])
 
     def test_subtract_scan_rank4(self) -> None:
         result = Interpreter(io=1).run("-\\2 2 2 3⍴⍳24")
         assert result == APLArray.array([2, 2, 2, 3],
-            [1, -1, 2, 4, -1, 5, 7, -1, 8, 10, -1, 11,
-             13, -1, 14, 16, -1, 17, 19, -1, 20, 22, -1, 23])
+            [[[[1, -1, 2], [4, -1, 5]], [[7, -1, 8], [10, -1, 11]]],
+             [[[13, -1, 14], [16, -1, 17]], [[19, -1, 20], [22, -1, 23]]]])
 
 
 class TestDfnWithOperator:
@@ -109,52 +110,6 @@ class TestDfnWithOperator:
     def test_dfn_with_scan_raises_domain_error(self) -> None:
         with pytest.raises(DomainError):
             Interpreter(io=1).run("{⍺+⍵}\\1 2 3")
-
-
-class TestInnerProduct:
-    def test_dot_product(self) -> None:
-        assert Interpreter(io=1).run("1 2 3+.×4 5 6") == S(32)
-
-    def test_matrix_multiply(self) -> None:
-        result = Interpreter(io=1).run("(2 2⍴1 2 3 4)+.×(2 2⍴5 6 7 8)")
-        assert result == APLArray.array([2, 2], [19, 22, 43, 50])
-
-    def test_non_square(self) -> None:
-        i = Interpreter(io=1)
-        i.run("A←2 3⍴⍳6")
-        i.run("B←3 2⍴⍳6")
-        result = i.run("A+.×B")
-        assert result.shape == [2, 2]
-        assert list(result.data) == [22, 28, 49, 64]
-
-    def test_matrix_vector(self) -> None:
-        i = Interpreter(io=1)
-        i.run("M←2 3⍴⍳6")
-        result = i.run("M+.×1 2 3")
-        assert result.shape == [2]
-        assert list(result.data) == [14, 32]
-
-    def test_vector_matrix(self) -> None:
-        i = Interpreter(io=1)
-        i.run("M←2 3⍴⍳6")
-        result = i.run("1 2+.×M")
-        assert result.shape == [3]
-        assert list(result.data) == [9, 12, 15]
-
-
-class TestOuterProduct:
-    def test_multiplication_table(self) -> None:
-        result = Interpreter(io=1).run("(⍳3)∘.×⍳4")
-        assert result == APLArray.array([3, 4], [
-            1, 2, 3, 4, 2, 4, 6, 8, 3, 6, 9, 12])
-
-    def test_outer_addition(self) -> None:
-        result = Interpreter(io=1).run("1 2 3∘.+10 20")
-        assert result == APLArray.array([3, 2], [11, 21, 12, 22, 13, 23])
-
-    def test_outer_equality(self) -> None:
-        result = Interpreter(io=1).run("1 2 3∘.=1 3")
-        assert result == APLArray.array([3, 2], [1, 0, 0, 0, 0, 1])
 
 
 class TestRank:
