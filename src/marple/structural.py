@@ -73,8 +73,12 @@ def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
         flat = omega.data.flatten()
         if len(flat) == 0:
             flat = np.array([0])
-        reps = (total + len(flat) - 1) // len(flat)
-        cycled = np.tile(flat, reps)[:total]
+        n = len(flat)
+        if total <= n:
+            cycled = flat[:total]
+        else:
+            reps = total // n + 1
+            cycled = np.concatenate([flat] * reps)[:total]
         return APLArray(new_shape, np_reshape(cycled, new_shape))
     # Character data
     data = list(omega.data) if len(omega.data) > 0 else [' ']
