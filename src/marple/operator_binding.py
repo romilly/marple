@@ -175,22 +175,25 @@ def _scan_first(
     """Scan along the first axis (⍀)."""
     if len(omega.shape) <= 1:
         return _scan(func, omega, glyph)
+    op = _SCALAR_OPS.get(glyph) if glyph is not None else None
+    if op is None:
+        raise DomainError(f"Unknown function for scan: {glyph}")
     first = omega.shape[0]
     cell_shape = omega.shape[1:]
     cell_size = 1
     for s in cell_shape:
         cell_size *= s
-    data_list = to_list(omega.data)
-    acc = data_list[:cell_size]
-    results = list(acc)
+    flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
+    result = np.empty(len(flat), dtype=np.float64)
+    # Copy first cell
+    result[:cell_size] = flat[:cell_size]
+    acc = np.array(flat[:cell_size], dtype=np.float64)
     for i in range(1, first):
-        cell = data_list[i * cell_size : (i + 1) * cell_size]
-        new_acc = []
-        for a, b in zip(acc, cell):
-            new_acc.append(func(S(a), S(b)).data[0])
-        acc = new_acc
-        results.extend(acc)
-    return APLArray.array(list(omega.shape), results)
+        cell = flat[i * cell_size : (i + 1) * cell_size]
+        for j in range(cell_size):
+            acc[j] = op(acc[j], cell[j])
+        result[i * cell_size : (i + 1) * cell_size] = acc
+    return APLArray(list(omega.shape), result.reshape(omega.shape))
 
 
 _OPERATOR_DISPATCH: dict[str, Any] = {

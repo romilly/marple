@@ -412,7 +412,7 @@ def replicate(alpha: APLArray, omega: APLArray) -> APLArray:
 
 def replicate_first(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⌿: replicate/compress along first axis."""
-    counts = [int(x) for x in alpha.data]
+    counts = [int(x) for x in alpha.data.flatten()]
     if len(omega.shape) <= 1:
         return replicate(alpha, omega)
     first = omega.shape[0]
@@ -424,15 +424,17 @@ def replicate_first(alpha: APLArray, omega: APLArray) -> APLArray:
     cell_size = 1
     for s in cell_shape:
         cell_size *= s
-    data = to_list(omega.data)
-    result: list[object] = []
-    total_rows = 0
+    flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
+    result_cells: list[Any] = []
     for i, count in enumerate(counts):
-        cell = data[i * cell_size : (i + 1) * cell_size]
+        cell = flat[i * cell_size : (i + 1) * cell_size]
         for _ in range(count):
-            result.extend(cell)
-            total_rows += 1
-    return APLArray.array([total_rows] + cell_shape, result)
+            result_cells.append(cell)
+    total_rows = len(result_cells)
+    if total_rows == 0:
+        return APLArray([0] + cell_shape, np.array([]))
+    result = np.concatenate(result_cells)
+    return APLArray([total_rows] + cell_shape, result.reshape([total_rows] + cell_shape))
 
 
 def expand(alpha: APLArray, omega: APLArray) -> APLArray:

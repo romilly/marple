@@ -129,15 +129,14 @@ class TestScanFirst:
 
     def test_scan_first_matrix_columns(self) -> None:
         result = Interpreter(io=1).run("+⍀2 3⍴1 2 3 4 5 6")
-        assert result.shape == [2, 3]
-        assert list(result.data) == [1, 2, 3, 5, 7, 9]
+        assert result == APLArray.array([2, 3], [[1, 2, 3], [5, 7, 9]])
 
     def test_scan_first_rank3(self) -> None:
         i = Interpreter(io=1)
         i.run("A←2 2 3⍴⍳12")
         result = i.run("+⍀A")
-        assert result.shape == [2, 2, 3]
-        assert list(result.data) == [1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18]
+        assert result == APLArray.array([2, 2, 3],
+            [[[1, 2, 3], [4, 5, 6]], [[8, 10, 12], [14, 16, 18]]])
 
 
 class TestReplicateFirst:
@@ -145,15 +144,13 @@ class TestReplicateFirst:
         i = Interpreter(io=1)
         i.run("M←2 3⍴1 2 3 4 5 6")
         result = i.run("1 0⌿M")
-        assert result.shape == [1, 3]
-        assert list(result.data) == [1, 2, 3]
+        assert result == APLArray.array([1, 3], [[1, 2, 3]])
 
     def test_replicate_rows(self) -> None:
         i = Interpreter(io=1)
         i.run("M←2 3⍴1 2 3 4 5 6")
         result = i.run("2 1⌿M")
-        assert result.shape == [3, 3]
-        assert list(result.data) == [1, 2, 3, 1, 2, 3, 4, 5, 6]
+        assert result == APLArray.array([3, 3], [[1, 2, 3], [1, 2, 3], [4, 5, 6]])
 
     def test_vector_same_as_slash(self) -> None:
         result = Interpreter(io=1).run("1 0 1⌿10 20 30")

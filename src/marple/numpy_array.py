@@ -406,29 +406,14 @@ class APLArray:
         return matrix_inverse(self)
 
     def reverse(self) -> 'APLArray':
-        if len(self.shape) <= 1:
-            return APLArray.array(list(self.shape), list(reversed(self.data)))
-        row_len = self.shape[-1]
-        data = list(self.data)
-        result: list[object] = []
-        for r in range(len(data) // row_len):
-            start = r * row_len
-            result.extend(reversed(data[start:start + row_len]))
-        return APLArray.array(list(self.shape), result)
+        if is_numeric_array(self.data):
+            return APLArray(list(self.shape), np.flip(self.data, axis=-1).copy())
+        return APLArray.array(list(self.shape), list(reversed(self.data)))
 
     def reverse_first(self) -> 'APLArray':
-        if len(self.shape) <= 1:
-            return APLArray.array(list(self.shape), list(reversed(self.data)))
-        chunk = 1
-        for s in self.shape[1:]:
-            chunk *= s
-        n = self.shape[0]
-        data = list(self.data)
-        result: list[object] = []
-        for r in range(n - 1, -1, -1):
-            start = r * chunk
-            result.extend(data[start:start + chunk])
-        return APLArray.array(list(self.shape), result)
+        if is_numeric_array(self.data):
+            return APLArray(list(self.shape), np.flip(self.data, axis=0).copy())
+        return APLArray.array(list(self.shape), list(reversed(self.data)))
 
     def ravel(self) -> 'APLArray':
         flat = self.data.flatten() if is_numeric_array(self.data) else self.data

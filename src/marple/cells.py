@@ -1,6 +1,6 @@
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import to_list
+from marple.backend_functions import is_numeric_array, to_list
 from marple.errors import LengthError
 
 
@@ -46,7 +46,7 @@ def decompose(array: APLArray, cell_rank: int) -> tuple[list[int], list[APLArray
         cell_size *= s
     if cell_size == 0:
         cell_size = 1
-    data = to_list(array.data)
+    flat = array.data.flatten() if is_numeric_array(array.data) else array.data
     n_cells = 1
     for s in frame_shape:
         n_cells *= s
@@ -54,8 +54,10 @@ def decompose(array: APLArray, cell_rank: int) -> tuple[list[int], list[APLArray
         n_cells = 1
     cells: list[APLArray] = []
     for i in range(n_cells):
-        cell_data = data[i * cell_size : (i + 1) * cell_size]
-        cells.append(APLArray.array(list(cell_shape), cell_data))
+        cell_data = flat[i * cell_size : (i + 1) * cell_size]
+        if is_numeric_array(cell_data) and cell_shape:
+            cell_data = cell_data.reshape(cell_shape)
+        cells.append(APLArray(list(cell_shape), cell_data))
     return (list(frame_shape), cells)
 
 
@@ -65,45 +67,54 @@ def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
     If all cells have the same shape, result shape is frame_shape + cell_shape.
     If shapes differ, pad with fill elements to max shape.
     """
+    from marple.get_numpy import np
     if len(cells) == 0:
-        return APLArray.array(frame_shape + [0], [])
+        return APLArray(frame_shape + [0], np.array([]))
     if len(cells) == 1 and frame_shape == []:
         return cells[0]
     # Determine max cell shape
     max_rank = max(len(c.shape) for c in cells)
     max_shape: list[int] = [0] * max_rank
     for c in cells:
-        # Pad cell shape on the left with 1s to match max_rank
         padded = [1] * (max_rank - len(c.shape)) + c.shape
         for j in range(max_rank):
             max_shape[j] = max(max_shape[j], padded[j])
-    # Check if all cells match max_shape (no padding needed)
+    result_shape = frame_shape + max_shape
+    # Check if all cells are numeric
+    all_numeric = all(is_numeric_array(c.data) for c in cells)
     all_uniform = all(c.shape == max_shape for c in cells)
+    if all_uniform and all_numeric:
+        flat_cells = [c.data.flatten() for c in cells]
+        result = np.concatenate(flat_cells)
+        return APLArray(result_shape, result.reshape(result_shape))
     if all_uniform:
         all_data: list[object] = []
         for c in cells:
             all_data.extend(to_list(c.data))
-        return APLArray.array(frame_shape + max_shape, all_data)
+        return APLArray.array(result_shape, all_data)
     # Padding needed
     max_size = 1
     for s in max_shape:
         max_size *= s
-    # Determine fill value
     is_char = any(
-        len(c.data) > 0 and isinstance(to_list(c.data)[0], str)
+        not is_numeric_array(c.data) and len(c.data) > 0 and isinstance(c.data[0], str)
         for c in cells
     )
     fill = " " if is_char else 0
+    if not is_char:
+        result = np.zeros(len(cells) * max_size, dtype=np.float64)
+        for i, c in enumerate(cells):
+            flat = c.data.flatten() if is_numeric_array(c.data) else c.data
+            result[i * max_size : i * max_size + len(flat)] = flat
+        return APLArray(result_shape, result.reshape(result_shape))
     all_data = []
     for c in cells:
         cell_data = to_list(c.data)
         if c.shape == max_shape:
             all_data.extend(cell_data)
         else:
-            # Pad: embed cell data in a max_shape-sized block
             padded_cell: list[object] = [fill] * max_size
-            # Simple case: 1D padding
             for j, val in enumerate(cell_data):
                 padded_cell[j] = val
             all_data.extend(padded_cell)
-    return APLArray.array(frame_shape + max_shape, all_data)
+    return APLArray.array(result_shape, all_data)
