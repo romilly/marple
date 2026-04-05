@@ -3,7 +3,8 @@
 import pytest
 
 from marple.numpy_array import APLArray
-from marple.errors import RankError
+from marple.backend_functions import is_numeric_array
+from marple.errors import DomainError, RankError
 
 
 class TestNegate:
@@ -442,6 +443,36 @@ class TestDeal:
 class TestReshape:
     def test_reshape(self) -> None:
         assert APLArray.array([2], [2, 3]).reshape(APLArray.array([6], [1, 2, 3, 4, 5, 6])) == APLArray.array([2, 3], [1, 2, 3, 4, 5, 6])
+
+    def test_reshape_result_is_numpy(self) -> None:
+        result = APLArray.array([2], [2, 3]).reshape(APLArray.array([6], [1, 2, 3, 4, 5, 6]))
+        assert is_numeric_array(result.data)
+
+    def test_reshape_to_vector(self) -> None:
+        result = APLArray.scalar(3).reshape(APLArray.array([3], [1, 2, 3]))
+        assert result == APLArray.array([3], [1, 2, 3])
+        assert is_numeric_array(result.data)
+
+    def test_reshape_to_matrix(self) -> None:
+        result = APLArray.array([2], [2, 3]).reshape(APLArray.array([6], [1, 2, 3, 4, 5, 6]))
+        assert result == APLArray.array([2, 3], [[1, 2, 3], [4, 5, 6]])
+        assert is_numeric_array(result.data)
+
+    def test_reshape_to_rank3(self) -> None:
+        result = APLArray.array([3], [2, 2, 3]).reshape(APLArray.array([12], list(range(1, 13))))
+        assert result == APLArray.array([2, 2, 3], [[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [10, 11, 12]]])
+        assert is_numeric_array(result.data)
+
+    def test_reshape_to_rank4(self) -> None:
+        result = APLArray.array([4], [2, 2, 2, 3]).reshape(APLArray.array([24], list(range(1, 25))))
+        assert result == APLArray.array([2, 2, 2, 3],
+            [[[[1,2,3],[4,5,6]],[[7,8,9],[10,11,12]]],[[[13,14,15],[16,17,18]],[[19,20,21],[22,23,24]]]])
+        assert is_numeric_array(result.data)
+
+    def test_reshape_cycle(self) -> None:
+        result = APLArray.array([2], [2, 3]).reshape(APLArray.array([2], [1, 2]))
+        assert result == APLArray.array([2, 3], [[1, 2, 1], [2, 1, 2]])
+        assert is_numeric_array(result.data)
 
 class TestCatenate:
     def test_catenate(self) -> None:

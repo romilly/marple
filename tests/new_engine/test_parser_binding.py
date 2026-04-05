@@ -1,15 +1,20 @@
 """Parser binding precedence tests — new engine."""
 
+import pytest
+
 from marple.numpy_array import APLArray, S
 from marple.engine import Interpreter
+from marple.errors import DomainError
 
 
 class TestReduceWithDfnOperand:
-    def test_dfn_reduce(self) -> None:
-        assert Interpreter(io=1).run("{⍺+⍵}/⍳5") == S(15)
+    def test_dfn_reduce_raises_domain_error(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("{⍺+⍵}/⍳5")
 
-    def test_dfn_scan(self) -> None:
-        assert Interpreter(io=1).run("{⍺+⍵}\\1 2 3") == APLArray.array([3], [1, 3, 6])
+    def test_dfn_scan_raises_domain_error(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("{⍺+⍵}\\1 2 3")
 
 
 class TestConjunctionBindsPrecedence:

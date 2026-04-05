@@ -6,6 +6,7 @@ from marple.numpy_array import APLArray, S
 from marple.backend_functions import to_list
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.errors import DomainError
+from marple.get_numpy import np
 from marple.parser import FunctionRef
 
 
@@ -66,33 +67,79 @@ def _reduce(
     return APLArray.array(new_shape, results)
 
 
+_ACCUMULATE_UFUNCS: dict[str, Any] = {
+    "+": np.add,
+    "×": np.multiply,
+    "⌈": np.maximum,
+    "⌊": np.minimum,
+}
+
+_SCALAR_OPS: dict[str, Any] = {
+    "+": lambda a, b: a + b,
+    "-": lambda a, b: a - b,
+    "×": lambda a, b: a * b,
+    "÷": lambda a, b: a / b,
+    "⌈": lambda a, b: max(a, b),
+    "⌊": lambda a, b: min(a, b),
+    "*": lambda a, b: a ** b,
+    "⍟": lambda a, b: np.log(b) / np.log(a),
+    "|": lambda a, b: b % a,
+    "∧": lambda a, b: int(bool(a) and bool(b)),
+    "∨": lambda a, b: int(bool(a) or bool(b)),
+    "≠": lambda a, b: int(a != b),
+    "=": lambda a, b: int(a == b),
+    "<": lambda a, b: int(a < b),
+    "≤": lambda a, b: int(a <= b),
+    ">": lambda a, b: int(a > b),
+    "≥": lambda a, b: int(a >= b),
+}
+
+
+def _scan_row_accumulate(ufunc: Any, data: Any, row_len: int) -> Any:
+    """Apply ufunc.accumulate to each row of length row_len in flat data."""
+    n = len(data)
+    result = np.empty(n, dtype=data.dtype)
+    for i in range(0, n, row_len):
+        result[i:i + row_len] = ufunc.accumulate(data[i:i + row_len])
+    return result
+
+
+def _scan_row_general(op: Any, data: Any, row_len: int) -> Any:
+    """O(n²) right-to-left reduce per prefix, row by row."""
+    n = len(data)
+    result = np.empty(n, dtype=np.float64)
+    for i in range(0, n, row_len):
+        row = data[i:i + row_len]
+        result[i] = row[0]
+        for k in range(1, row_len):
+            acc = row[k]
+            for j in range(k - 1, -1, -1):
+                acc = op(row[j], acc)
+            result[i + k] = acc
+    return result
+
+
 def _scan(
     func: Callable[[APLArray, APLArray], APLArray],
     omega: APLArray,
     glyph: str | None = None,
 ) -> APLArray:
     """Scan along the last axis."""
-    if len(omega.shape) <= 1:
-        data = omega.data
-        if len(data) == 0:
-            return APLArray.array([0], [])
-        results = [data[0]]
-        acc = S(data[0])
-        for i in range(1, len(data)):
-            acc = func(acc, S(data[i]))
-            results.append(acc.data[0])
-        return APLArray.array([len(results)], results)
-    last = omega.shape[-1]
-    n_rows = len(omega.data) // last
-    results: list[Any] = []
-    for i in range(n_rows):
-        row = omega.data[i * last : (i + 1) * last]
-        acc = S(row[0])
-        results.append(row[0])
-        for j in range(1, last):
-            acc = func(acc, S(row[j]))
-            results.append(acc.data[0])
-    return APLArray.array(list(omega.shape), results)
+    data = omega.data
+    n = len(data)
+    if n == 0:
+        return APLArray.array([0], [])
+    row_len = omega.shape[-1] if len(omega.shape) > 0 else n
+    # Fast path: commutative ops use numpy accumulate
+    if glyph is not None:
+        ufunc = _ACCUMULATE_UFUNCS.get(glyph)
+        if ufunc is not None:
+            return APLArray.array(list(omega.shape), _scan_row_accumulate(ufunc, data, row_len))
+    # General path: O(n²) right-to-left reduce per prefix
+    op = _SCALAR_OPS.get(glyph) if glyph is not None else None
+    if op is not None:
+        return APLArray.array(list(omega.shape), _scan_row_general(op, data, row_len))
+    raise DomainError(f"Unknown function for scan: {glyph}")
 
 
 def _reduce_first(
@@ -170,6 +217,4 @@ class DerivedFunctionBinding:
             return DyadicFunctionBinding.resolve(function), function
         if isinstance(function, FunctionRef):
             return DyadicFunctionBinding.resolve(function.glyph), function.glyph
-        if callable(function):
-            return function, None
-        raise DomainError(f"Expected function for operator, got {type(function)}")
+        raise DomainError("Operators require primitive function operands")
