@@ -28,10 +28,10 @@ class TestShape:
 
 class TestReshape:
     def test_reshape(self) -> None:
-        assert Interpreter(io=1).run("2 3⍴⍳6") == APLArray.array([2, 3], [1, 2, 3, 4, 5, 6])
+        assert Interpreter(io=1).run("2 3⍴⍳6") == APLArray.array([2, 3], [[1, 2, 3], [4, 5, 6]])
 
     def test_reshape_scalar_fill(self) -> None:
-        assert Interpreter(io=1).run("2 3⍴1") == APLArray.array([2, 3], [1, 1, 1, 1, 1, 1])
+        assert Interpreter(io=1).run("2 3⍴1") == APLArray.array([2, 3], [[1, 1, 1], [1, 1, 1]])
 
     def test_reshape_scalar_to_vector(self) -> None:
         assert Interpreter(io=1).run("3⍴5") == APLArray.array([3], [5, 5, 5])
@@ -40,7 +40,19 @@ class TestReshape:
         assert Interpreter(io=1).run("5⍴1 2 3") == APLArray.array([5], [1, 2, 3, 1, 2])
 
     def test_reshape_cycle(self) -> None:
-        assert Interpreter(io=1).run("2 3⍴1 2") == APLArray.array([2, 3], [1, 2, 1, 2, 1, 2])
+        assert Interpreter(io=1).run("2 3⍴1 2") == APLArray.array([2, 3], [[1, 2, 1], [2, 1, 2]])
+
+    def test_reshape_to_rank3(self) -> None:
+        assert Interpreter(io=1).run("2 2 3⍴⍳12") == APLArray.array([2, 2, 3],
+            [[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [10, 11, 12]]])
+
+    def test_reshape_to_rank4(self) -> None:
+        assert Interpreter(io=1).run("2 2 2 3⍴⍳24") == APLArray.array([2, 2, 2, 3],
+            [[[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [10, 11, 12]]],
+             [[[13, 14, 15], [16, 17, 18]], [[19, 20, 21], [22, 23, 24]]]])
+
+    def test_reshape_empty_fills_with_zero(self) -> None:
+        assert Interpreter(io=1).run("3⍴⍳0") == APLArray.array([3], [0, 0, 0])
 
 
 class TestRavel:

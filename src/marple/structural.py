@@ -454,38 +454,14 @@ def expand(alpha: APLArray, omega: APLArray) -> APLArray:
 
 
 def matrix_inverse(omega: APLArray) -> APLArray:
-    """Monadic ⌹: matrix inverse using Gauss-Jordan elimination."""
+    """Monadic ⌹: matrix inverse."""
     if len(omega.shape) != 2 or omega.shape[0] != omega.shape[1]:
         raise RankError("Matrix inverse requires a square matrix")
-    n = omega.shape[0]
-    # Build augmented matrix [A|I]
-    aug: list[list[float]] = []
-    for i in range(n):
-        row = [float(omega.data[i * n + j]) for j in range(n)]
-        ident = [1.0 if j == i else 0.0 for j in range(n)]
-        aug.append(row + ident)
-    # Gauss-Jordan elimination
-    for col in range(n):
-        max_row = col
-        for row in range(col + 1, n):
-            if abs(aug[row][col]) > abs(aug[max_row][col]):
-                max_row = row
-        aug[col], aug[max_row] = aug[max_row], aug[col]
-        pivot = aug[col][col]
-        if abs(pivot) < 1e-15:
-            raise DomainError("Singular matrix")
-        for j in range(2 * n):
-            aug[col][j] /= pivot
-        for row in range(n):
-            if row != col:
-                factor = aug[row][col]
-                for j in range(2 * n):
-                    aug[row][j] -= factor * aug[col][j]
-    result: list[object] = []
-    for i in range(n):
-        for j in range(n):
-            result.append(aug[i][n + j])
-    return APLArray.array([n, n], result)
+    try:
+        result = np.linalg.inv(omega.data.astype(np.float64))
+    except np.linalg.LinAlgError:
+        raise DomainError("Singular matrix")
+    return APLArray(list(omega.shape), result)
 
 
 def matrix_divide(alpha: APLArray, omega: APLArray) -> APLArray:

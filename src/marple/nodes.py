@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Protocol, Generator
 
 from marple.numpy_array import APLArray, S
+from marple.backend_functions import is_numeric_array
 from marple.errors import DomainError, ValueError_
 
 
@@ -18,83 +19,119 @@ def _product(*lists: list[int]) -> Generator[tuple[int, ...], None, None]:
             yield (item,) + rest
 
 
+_INNER_SCALAR_OPS: dict[str, Any] = {
+    "+": lambda a, b: a + b,
+    "-": lambda a, b: a - b,
+    "×": lambda a, b: a * b,
+    "÷": lambda a, b: a / b,
+    "⌈": lambda a, b: max(a, b),
+    "⌊": lambda a, b: min(a, b),
+    "*": lambda a, b: a ** b,
+    "|": lambda a, b: b % a,
+    "∧": lambda a, b: int(bool(a) and bool(b)),
+    "∨": lambda a, b: int(bool(a) or bool(b)),
+    "=": lambda a, b: int(a == b),
+    "≠": lambda a, b: int(a != b),
+    "<": lambda a, b: int(a < b),
+    "≤": lambda a, b: int(a <= b),
+    ">": lambda a, b: int(a > b),
+    "≥": lambda a, b: int(a >= b),
+}
+
+
 def _inner_product(
-    reduce_fn: Any, apply_fn: Any, alpha: APLArray, omega: APLArray,
+    reduce_glyph: str, apply_glyph: str, alpha: APLArray, omega: APLArray,
 ) -> APLArray:
-    """Compute inner product: alpha reduce_fn.apply_fn omega."""
-    from marple.backend_functions import to_list
-    from marple.errors import LengthError, RankError
-    # Vector . Vector
-    if len(alpha.shape) <= 1 and len(omega.shape) <= 1:
-        if len(alpha.data) != len(omega.data):
-            raise LengthError(f"Inner product length error: {len(alpha.data)} vs {len(omega.data)}")
-        paired = [apply_fn(S(a), S(b)) for a, b in zip(alpha.data, omega.data)]
-        result = paired[-1]
+    """Compute inner product: alpha reduce_fn.apply_fn omega.
+
+    Result shape is (¯1↓⍴alpha),(1↓⍴omega).
+    Last axis of alpha must match first axis of omega.
+    """
+    from marple.errors import DomainError, LengthError
+    from marple.get_numpy import np
+    reduce_op = _INNER_SCALAR_OPS.get(reduce_glyph)
+    apply_op = _INNER_SCALAR_OPS.get(apply_glyph)
+    if reduce_op is None:
+        raise DomainError(f"Unknown function for inner product: {reduce_glyph}")
+    if apply_op is None:
+        raise DomainError(f"Unknown function for inner product: {apply_glyph}")
+    a_shape = alpha.shape if alpha.shape else [1]
+    b_shape = omega.shape if omega.shape else [1]
+    k = a_shape[-1]
+    if k != b_shape[0]:
+        raise LengthError(f"Inner product length error: {a_shape} vs {b_shape}")
+    # Fast path: +.× uses np.dot (correct when at least one arg is rank ≤ 2)
+    if (reduce_glyph == "+" and apply_glyph == "×"
+            and is_numeric_array(alpha.data) and is_numeric_array(omega.data)
+            and (len(a_shape) <= 2 or len(b_shape) <= 2)):
+        result = np.dot(alpha.data, omega.data)
+        if not hasattr(result, 'shape') or result.shape == ():
+            return S(int(result) if float(result) == int(result) else float(result))
+        return APLArray(list(result.shape), result)
+    result_shape = a_shape[:-1] + b_shape[1:]
+    if not result_shape:
+        paired = [apply_op(alpha.data[(p,)], omega.data[(p,)]) for p in range(k)]
+        acc = paired[-1]
         for i in range(len(paired) - 2, -1, -1):
-            result = reduce_fn(paired[i], result)
-        return result
-    # Matrix . Matrix
-    if len(alpha.shape) == 2 and len(omega.shape) == 2:
-        m, k1 = alpha.shape
-        k2, n = omega.shape
-        if k1 != k2:
-            raise LengthError(f"Inner product shape mismatch: {alpha.shape} vs {omega.shape}")
-        a_data = to_list(alpha.data)
-        b_data = to_list(omega.data)
-        result_data: list[object] = []
-        for i in range(m):
-            for j in range(n):
-                row = [a_data[i * k1 + p] for p in range(k1)]
-                col = [b_data[p * n + j] for p in range(k2)]
-                paired = [apply_fn(S(a), S(b)) for a, b in zip(row, col)]
-                val = paired[-1]
-                for idx in range(len(paired) - 2, -1, -1):
-                    val = reduce_fn(paired[idx], val)
-                result_data.append(val.data[0])
-        return APLArray.array([m, n], result_data)
-    # Vector . Matrix
-    if len(alpha.shape) == 1 and len(omega.shape) == 2:
-        k, n = omega.shape
-        if len(alpha.data) != k:
-            raise LengthError("Inner product shape mismatch")
-        result_data = []
-        for j in range(n):
-            col = [omega.data[p * n + j] for p in range(k)]
-            paired = [apply_fn(S(a), S(b)) for a, b in zip(alpha.data, col)]
-            val = paired[-1]
-            for idx in range(len(paired) - 2, -1, -1):
-                val = reduce_fn(paired[idx], val)
-            result_data.append(val.data[0])
-        return APLArray.array([n], result_data)
-    # Matrix . Vector
-    if len(alpha.shape) == 2 and len(omega.shape) == 1:
-        m, k1 = alpha.shape
-        if k1 != len(omega.data):
-            raise LengthError("Inner product shape mismatch")
-        a_data = to_list(alpha.data)
-        b_data = to_list(omega.data)
-        result_data = []
-        for i in range(m):
-            row = [a_data[i * k1 + p] for p in range(k1)]
-            paired = [apply_fn(S(a), S(b)) for a, b in zip(row, b_data)]
-            val = paired[-1]
-            for idx in range(len(paired) - 2, -1, -1):
-                val = reduce_fn(paired[idx], val)
-            result_data.append(val.data[0])
-        return APLArray.array([m], result_data)
-    raise RankError(f"Inner product not supported for shapes {alpha.shape} and {omega.shape}")
+            acc = reduce_op(paired[i], acc)
+        return S(acc)
+    result = np.zeros(result_shape, dtype=np.float64)
+    a_outer = [range(s) for s in a_shape[:-1]]
+    b_outer = [range(s) for s in b_shape[1:]]
+    for a_idx in _product(*a_outer):
+        for b_idx in _product(*b_outer):
+            paired = [apply_op(alpha.data[a_idx + (p,)], omega.data[(p,) + b_idx])
+                      for p in range(k)]
+            acc = paired[-1]
+            for i in range(len(paired) - 2, -1, -1):
+                acc = reduce_op(paired[i], acc)
+            result[a_idx + b_idx] = acc
+    return APLArray(result_shape, result)
 
 
-def _outer_product(func: Any, alpha: APLArray, omega: APLArray) -> APLArray:
+_OUTER_UFUNCS: dict[str, Any] = {
+    "+": 'add',
+    "-": 'subtract',
+    "×": 'multiply',
+    "÷": 'true_divide',
+    "⌈": 'maximum',
+    "⌊": 'minimum',
+    "*": 'power',
+    "=": 'equal',
+    "≠": 'not_equal',
+    "<": 'less',
+    "≤": 'less_equal',
+    ">": 'greater',
+    "≥": 'greater_equal',
+}
+
+
+def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
     """Compute outer product: alpha ∘.func omega."""
-    result_data: list[object] = []
-    for a in alpha.data:
-        for b in omega.data:
-            result_data.append(func(S(a), S(b)).data[0])
+    from marple.errors import DomainError
+    from marple.get_numpy import np
+    # Fast path: use numpy ufunc.outer
+    if is_numeric_array(alpha.data) and is_numeric_array(omega.data):
+        ufunc_name = _OUTER_UFUNCS.get(glyph)
+        if ufunc_name is not None:
+            ufunc = getattr(np, ufunc_name)
+            result = ufunc.outer(alpha.data.flatten(), omega.data.flatten())
+            result_shape = alpha.shape + omega.shape
+            return APLArray(result_shape, result.reshape(result_shape))
+    # General path
+    op = _INNER_SCALAR_OPS.get(glyph)
+    if op is None:
+        raise DomainError(f"Unknown function for outer product: {glyph}")
     result_shape = alpha.shape + omega.shape
     if not result_shape:
-        return S(result_data[0])
-    return APLArray.array(result_shape, result_data)
+        return S(op(alpha.data[()], omega.data[()]))
+    result = np.zeros(result_shape, dtype=np.float64)
+    a_indices = [range(s) for s in alpha.shape]
+    b_indices = [range(s) for s in omega.shape]
+    for a_idx in _product(*a_indices):
+        for b_idx in _product(*b_indices):
+            result[a_idx + b_idx] = op(alpha.data[a_idx], omega.data[b_idx])
+    return APLArray(result_shape, result)
 
 
 class ExecutionContext(Protocol):
@@ -299,12 +336,9 @@ class InnerProduct(Node):
         self.left = left
         self.right = right
     def execute(self, ctx: ExecutionContext) -> APLArray:
-        from marple.backend_functions import to_list
         omega = ctx.evaluate(self.right)
         alpha = ctx.evaluate(self.left)
-        reduce_fn = ctx.resolve_dyadic(self.left_fn)
-        apply_fn = ctx.resolve_dyadic(self.right_fn)
-        return _inner_product(reduce_fn, apply_fn, alpha, omega)
+        return _inner_product(self.left_fn, self.right_fn, alpha, omega)
 
 
 class OuterProduct(Node):
@@ -315,8 +349,7 @@ class OuterProduct(Node):
     def execute(self, ctx: ExecutionContext) -> APLArray:
         omega = ctx.evaluate(self.right)
         alpha = ctx.evaluate(self.left)
-        func = ctx.resolve_dyadic(self.function)
-        return _outer_product(func, alpha, omega)
+        return _outer_product(self.function, alpha, omega)
 
 
 class SysVar(Node):

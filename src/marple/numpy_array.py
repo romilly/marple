@@ -396,15 +396,10 @@ class APLArray:
 
     def transpose(self) -> 'APLArray':
         if len(self.shape) <= 1:
-            return APLArray.array(list(self.shape), list(self.data))
+            return self
         if len(self.shape) != 2:
             raise RankError("Transpose currently supports only rank-2 arrays")
-        rows, cols = self.shape
-        new_data: list[object] = []
-        for c in range(cols):
-            for r in range(rows):
-                new_data.append(self.data[r * cols + c])
-        return APLArray.array([cols, rows], new_data)
+        return APLArray([self.shape[1], self.shape[0]], self.data.T.copy())
 
     def matrix_inverse(self) -> 'APLArray':
         from marple.structural import matrix_inverse
@@ -436,7 +431,8 @@ class APLArray:
         return APLArray.array(list(self.shape), result)
 
     def ravel(self) -> 'APLArray':
-        return APLArray.array([len(self.data)], list(self.data))
+        flat = self.data.flatten() if is_numeric_array(self.data) else self.data
+        return APLArray(  [len(flat)], flat)
 
 
 def S(value: Any) -> APLArray:

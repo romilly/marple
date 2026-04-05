@@ -5,37 +5,27 @@ from marple.engine import Interpreter
 
 
 class TestMatrixCreation:
-    def test_reshape_to_matrix(self) -> None:
-        result = Interpreter(io=1).run("2 3⍴⍳6")
-        assert result.shape == [2, 3]
-        assert list(result.data) == [1, 2, 3, 4, 5, 6]
-
     def test_shape_of_matrix(self) -> None:
         result = Interpreter(io=1).run("⍴2 3⍴⍳6")
         assert result == APLArray.array([2], [2, 3])
 
-    def test_reshape_scalar(self) -> None:
-        result = Interpreter(io=1).run("3 3⍴0")
-        assert result.shape == [3, 3]
-        assert all(v == 0 for v in result.data)
 
 
 class TestMatrixArithmetic:
     def test_matrix_plus_scalar(self) -> None:
         result = Interpreter(io=1).run("10+2 3⍴⍳6")
-        assert result.shape == [2, 3]
-        assert list(result.data) == [11, 12, 13, 14, 15, 16]
+        assert result == APLArray.array([2, 3], [[11, 12, 13], [14, 15, 16]])
 
     def test_negate_matrix(self) -> None:
         result = Interpreter(io=1).run("-2 2⍴1 2 3 4")
-        assert result == APLArray.array([2, 2], [-1, -2, -3, -4])
+        assert result == APLArray.array([2, 2], [[-1, -2], [-3, -4]])
 
     def test_matrix_plus_matrix(self) -> None:
         i = Interpreter(io=1)
         i.run("A←2 2⍴1 2 3 4")
         i.run("B←2 2⍴10 20 30 40")
         result = i.run("A+B")
-        assert list(result.data) == [11, 22, 33, 44]
+        assert result == APLArray.array([2, 2], [[11, 22], [33, 44]])
 
 
 class TestMatrixOps:
