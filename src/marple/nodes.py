@@ -368,7 +368,7 @@ class Index(Node):
         from marple.backend_functions import to_list
         array = ctx.evaluate(self.array)
         io = ctx.env.io
-        data = to_list(array.data)
+        flat = array.data.flatten() if is_numeric_array(array.data) else array.data
         axis_indices: list[list[int]] = []
         idx_shapes: list[list[int]] = []
         for axis, idx_node in enumerate(self.indices):
@@ -377,7 +377,8 @@ class Index(Node):
                 idx_shapes.append([array.shape[axis]])
             else:
                 idx = ctx.evaluate(idx_node)
-                vals = to_list(idx.data) if not idx.is_scalar() else [idx.data[0]]
+                idx_flat = idx.data.flatten() if is_numeric_array(idx.data) else idx.data
+                vals = list(idx_flat) if not idx.is_scalar() else [idx.data.flat[0]]
                 axis_indices.append([int(v) - io for v in vals])
                 idx_shapes.append(idx.shape if not idx.is_scalar() else [])
         for axis in range(len(self.indices), len(array.shape)):
@@ -386,16 +387,34 @@ class Index(Node):
         strides = [1] * len(array.shape)
         for i in range(len(array.shape) - 2, -1, -1):
             strides[i] = strides[i + 1] * array.shape[i + 1]
-        result: list[object] = []
+        from marple.get_numpy import np
+        if is_numeric_array(array.data):
+            n_results = 1
+            for ai in axis_indices:
+                n_results *= len(ai)
+            result_data = np.empty(max(1, n_results), dtype=np.float64)
+            idx = 0
+            for combo in _product(*axis_indices):
+                offset = sum(i * s for i, s in zip(combo, strides))
+                result_data[idx] = flat[offset]
+                idx += 1
+            result_shape: list[int] = []
+            for s in idx_shapes:
+                result_shape.extend(s)
+            if not result_shape:
+                return S(result_data[0])
+            return APLArray(result_shape, result_data[:idx].reshape(result_shape))
+        # Character data
+        result_list: list[object] = []
         for combo in _product(*axis_indices):
-            flat = sum(i * s for i, s in zip(combo, strides))
-            result.append(data[flat])
-        result_shape: list[int] = []
+            offset = sum(i * s for i, s in zip(combo, strides))
+            result_list.append(flat[offset])
+        result_shape = []
         for s in idx_shapes:
             result_shape.extend(s)
         if not result_shape:
-            return S(result[0])
-        return APLArray.array(result_shape, result)
+            return S(result_list[0])
+        return APLArray.array(result_shape, result_list)
 
 
 class Omega(Node):

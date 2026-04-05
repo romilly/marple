@@ -33,15 +33,14 @@ class TestIndexingPreservesShape:
         i = Interpreter(io=1)
         i.run("v←10 20 30 40 50")
         result = i.run("v[2 3⍴1 2 3 4 5 1]")
-        assert result.shape == [2, 3]
-        assert list(result.data) == [10, 20, 30, 40, 50, 10]
+        assert result == APLArray.array([2, 3], [[10, 20, 30], [40, 50, 10]])
 
     def test_rank3_index(self) -> None:
         i = Interpreter(io=1)
         i.run("v←10 20 30 40")
         result = i.run("v[2 2 2⍴1 2 3 4 1 2 3 4]")
-        assert result.shape == [2, 2, 2]
-        assert list(result.data) == [10, 20, 30, 40, 10, 20, 30, 40]
+        assert result == APLArray.array([2, 2, 2],
+            [[[10, 20], [30, 40]], [[10, 20], [30, 40]]])
 
     def test_rank4_index(self) -> None:
         i = Interpreter(io=1)
