@@ -139,24 +139,43 @@ def membership(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
 def catenate(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ,: catenate along last axis."""
     if alpha.is_scalar() and omega.is_scalar():
-        return APLArray.array([2], [alpha.data[0], omega.data[0]])
+        return APLArray.array([2], [alpha.data.flat[0], omega.data.flat[0]])
     if len(alpha.shape) <= 1 and len(omega.shape) <= 1:
+        if is_numeric_array(alpha.data) and is_numeric_array(omega.data):
+            a = alpha.data.flatten() if not alpha.is_scalar() else alpha.data.flatten()
+            b = omega.data.flatten() if not omega.is_scalar() else omega.data.flatten()
+            return APLArray([len(a) + len(b)], np.concatenate([a, b]))
         left = list(alpha.data) if not alpha.is_scalar() else [alpha.data[0]]
         right = list(omega.data) if not omega.is_scalar() else [omega.data[0]]
         return APLArray.array([len(left) + len(right)], left + right)
-    # Higher rank: catenate along last axis
+    # Higher rank: catenate along last axis using numpy
+    if is_numeric_array(alpha.data) and is_numeric_array(omega.data):
+        # Ensure both have the same number of dimensions
+        a = alpha.data
+        b = omega.data
+        if a.ndim < b.ndim:
+            a = a.reshape([1] * (b.ndim - a.ndim) + list(a.shape))
+        elif b.ndim < a.ndim:
+            b = b.reshape([1] * (a.ndim - b.ndim) + list(b.shape))
+        result = np.concatenate([a, b], axis=-1)
+        return APLArray(list(result.shape), result)
+    # Character fallback
     a_shape = list(alpha.shape) if not alpha.is_scalar() else [1]
     o_shape = list(omega.shape) if not omega.is_scalar() else [1]
     a_cols = a_shape[-1]
     o_cols = o_shape[-1]
-    a_rows = len(alpha.data) // a_cols
-    result: list[object] = []
-    for r in range(a_rows):
-        result.extend(alpha.data[r * a_cols:(r + 1) * a_cols])
-        result.extend(omega.data[r * o_cols:(r + 1) * o_cols])
+    a_flat = alpha.data
+    o_flat = omega.data
+    n_rows = 1
+    for s in a_shape[:-1]:
+        n_rows *= s
+    result_list: list[object] = []
+    for r in range(n_rows):
+        result_list.extend(a_flat[r * a_cols:(r + 1) * a_cols])
+        result_list.extend(o_flat[r * o_cols:(r + 1) * o_cols])
     new_shape = list(a_shape)
     new_shape[-1] = a_cols + o_cols
-    return APLArray.array(new_shape, result)
+    return APLArray.array(new_shape, result_list)
 
 
 def _fill_element(omega: APLArray) -> object:

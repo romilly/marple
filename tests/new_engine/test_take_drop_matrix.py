@@ -54,8 +54,8 @@ class TestCatenateMatrix:
     def test_catenate_matrices(self) -> None:
         """M,M joins along last axis (columns)."""
         result = Interpreter(io=0).run("(3 2⍴⍳6),(3 2⍴10+⍳6)")
-        assert result.shape == [3, 4]
-        assert list(result.data) == [0, 1, 10, 11, 2, 3, 12, 13, 4, 5, 14, 15]
+        assert result == APLArray.array([3, 4],
+            [[0, 1, 10, 11], [2, 3, 12, 13], [4, 5, 14, 15]])
 
     def test_catenate_vectors_unchanged(self) -> None:
         result = Interpreter(io=1).run("1 2 3,4 5")
