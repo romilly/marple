@@ -20,7 +20,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
-dependencies = ["aiohttp==3.13.3"]
+dependencies = ["aiohttp==3.13.3", "numpy==2.4.3"]
 
 [project.scripts]
 marple = "marple.repl:main"
