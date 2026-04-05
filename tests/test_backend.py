@@ -19,9 +19,9 @@ class TestToArray:
         assert isinstance(result, list)
         assert not is_numeric_array(result)
 
-    def test_empty_list_stays_list(self) -> None:
+    def test_empty_list_becomes_numpy(self) -> None:
         result = to_array([])
-        assert isinstance(result, list)
+        assert is_numeric_array(result)
 
 
     def test_mixed_int_float_becomes_ndarray(self) -> None:

@@ -1,7 +1,8 @@
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import to_list
+from marple.backend_functions import is_numeric_array, to_list
 from marple.errors import DomainError, IndexError_, LengthError, RankError
+from marple.get_numpy import np
 
 
 # Monadic structural functions
@@ -68,10 +69,15 @@ def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
     total = 1
     for s in new_shape:
         total *= s
-    data = list(omega.data)
-    if len(data) == 0:
-        raise DomainError("Cannot reshape empty array")
-    # Cycle data to fill
+    if is_numeric_array(omega.data):
+        flat = omega.data.flatten()
+        if len(flat) == 0:
+            flat = np.array([0])
+        reps = (total + len(flat) - 1) // len(flat)
+        cycled = np.tile(flat, reps)[:total]
+        return APLArray(new_shape, cycled.reshape(new_shape))
+    # Character data
+    data = list(omega.data) if len(omega.data) > 0 else [' ']
     result: list[object] = []
     for i in range(total):
         result.append(data[i % len(data)])

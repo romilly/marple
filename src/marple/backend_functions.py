@@ -7,23 +7,14 @@ from marple.get_numpy import np
 
 
 def to_array(data: list[Any]) -> Any:
-    """Convert a Python list to an ndarray if numeric."""
+    """Convert a Python list to an ndarray if numeric, or return as-is for characters."""
     if len(data) == 0:
+        return np.array(data)
+    first = data[0]
+    while isinstance(first, list):
+        first = first[0]
+    if isinstance(first, str):
         return data
-    if not all(isinstance(x, (int, float)) for x in data):
-        return data
-    # Preserve integer type: ulab defaults to float, so specify dtype explicitly
-    if all(isinstance(x, int) for x in data):
-        for dtype_name in ("int32", "int16"):
-            dt = getattr(np, dtype_name, None)
-            if dt is not None:
-                try:
-                    arr = np.array(data, dtype=dt)
-                except (ValueError, OverflowError):
-                    continue
-                # Verify no silent overflow (numpy/ulab wrap without error)
-                if arr.tolist() == data:
-                    return arr
     return np.array(data)
 
 

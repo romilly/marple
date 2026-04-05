@@ -442,7 +442,7 @@ class TestDeal:
 
 class TestReshape:
     def test_reshape(self) -> None:
-        assert APLArray.array([2], [2, 3]).reshape(APLArray.array([6], [1, 2, 3, 4, 5, 6])) == APLArray.array([2, 3], [1, 2, 3, 4, 5, 6])
+        assert APLArray.array([2], [2, 3]).reshape(APLArray.array([6], [1, 2, 3, 4, 5, 6])) == APLArray.array([2, 3], [[1, 2, 3], [4, 5, 6]])
 
     def test_reshape_result_is_numpy(self) -> None:
         result = APLArray.array([2], [2, 3]).reshape(APLArray.array([6], [1, 2, 3, 4, 5, 6]))
@@ -473,6 +473,12 @@ class TestReshape:
         result = APLArray.array([2], [2, 3]).reshape(APLArray.array([2], [1, 2]))
         assert result == APLArray.array([2, 3], [[1, 2, 1], [2, 1, 2]])
         assert is_numeric_array(result.data)
+
+    def test_reshape_empty_numeric_fills_with_zero(self) -> None:
+        result = APLArray.scalar(3).reshape(APLArray.array([0], []))
+        assert result == APLArray.array([3], [0, 0, 0])
+        assert is_numeric_array(result.data)
+
 
 class TestCatenate:
     def test_catenate(self) -> None:
