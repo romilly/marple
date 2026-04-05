@@ -55,7 +55,8 @@ def _format_matrix(result: APLArray, pp: int) -> str:
             row_data = result.data[r * cols:(r + 1) * cols]
             lines.append("".join(str(x) for x in row_data))
         return "\n".join(lines)
-    strs = [format_num(result.data[r * cols + c], pp) for r in range(rows) for c in range(cols)]
+    flat = result.data.flatten() if hasattr(result.data, 'flatten') else result.data
+    strs = [format_num(flat[r * cols + c], pp) for r in range(rows) for c in range(cols)]
     col_widths = []
     for c in range(cols):
         w = max(len(strs[r * cols + c]) for r in range(rows))
@@ -77,24 +78,25 @@ def format_result(result: APLArray, env: Any = None) -> str:
         if pp_val is not None:
             pp = int(pp_val.data[0])
     if result.is_scalar():
-        return format_num(result.data[0], pp)
+        return format_num(result.data.flat[0], pp)
     if _is_char_array(result):
         if len(result.shape) == 1:
             return "".join(str(x) for x in result.data)
         if len(result.shape) == 2:
             return _format_matrix(result, pp)
+    flat = result.data.flatten() if hasattr(result.data, 'flatten') else result.data
     if len(result.shape) == 1:
-        return " ".join(format_num(x, pp) for x in result.data)
+        return " ".join(format_num(x, pp) for x in flat)
     if len(result.shape) == 2:
         return _format_matrix(result, pp)
     if len(result.shape) >= 3:
         slice_size = result.shape[-2] * result.shape[-1]
-        num_slices = len(result.data) // slice_size
+        num_slices = len(flat) // slice_size
         slices = []
         for s in range(num_slices):
             start = s * slice_size
-            slice_data = list(result.data[start:start + slice_size])
-            slice_arr = APLArray.array([result.shape[-2], result.shape[-1]], slice_data)
+            slice_data = flat[start:start + slice_size]
+            slice_arr = APLArray([result.shape[-2], result.shape[-1]], slice_data.reshape(result.shape[-2], result.shape[-1]))
             slices.append(_format_matrix(slice_arr, pp))
         return "\n\n".join(slices)
     return repr(result)
