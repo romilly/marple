@@ -76,7 +76,7 @@ def _inner_product(
         for i in range(len(paired) - 2, -1, -1):
             acc = reduce_op(paired[i], acc)
         return S(acc)
-    result = np.zeros(result_shape, dtype=float)
+    result = np.zeros(tuple(result_shape))
     a_outer = [range(s) for s in a_shape[:-1]]
     b_outer = [range(s) for s in b_shape[1:]]
     for a_idx in _product(*a_outer):
@@ -127,7 +127,7 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
     result_shape = alpha.shape + omega.shape
     if not result_shape:
         return S(op(alpha.data[()], omega.data[()]))
-    result = np.zeros(result_shape, dtype=float)
+    result = np.zeros(tuple(result_shape))
     a_indices = [range(s) for s in alpha.shape]
     b_indices = [range(s) for s in omega.shape]
     for a_idx in _product(*a_indices):
@@ -393,7 +393,7 @@ class Index(Node):
             n_results = 1
             for ai in axis_indices:
                 n_results *= len(ai)
-            result_data = np.empty(int(max(1, n_results)), dtype=float)
+            result_data = np.zeros(int(max(1, n_results)))
             idx = 0
             for combo in _product(*axis_indices):
                 offset = int(sum(i * s for i, s in zip(combo, strides)))
