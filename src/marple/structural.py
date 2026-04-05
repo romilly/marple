@@ -488,16 +488,12 @@ def matrix_inverse(omega: APLArray) -> APLArray:
 
 def matrix_divide(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⌹: solve linear system b⌹A (find x where Ax=b)."""
-    inv = matrix_inverse(omega)
-    n = inv.shape[0]
-    b = list(alpha.data)
-    result: list[object] = []
-    for i in range(n):
-        val = 0.0
-        for j in range(n):
-            val += float(inv.data[i * n + j]) * float(b[j])
-        result.append(val)
-    return APLArray.array([n], result)
+    from marple.errors import DomainError
+    try:
+        result = np.linalg.solve(omega.data.astype(np.float64), alpha.data.astype(np.float64))
+    except np.linalg.LinAlgError:
+        raise DomainError("Singular matrix")
+    return APLArray(list(result.shape), result)
 
 
 def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:

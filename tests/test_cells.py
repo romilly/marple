@@ -66,7 +66,7 @@ class TestDecompose:
 
     def test_matrix_rank2(self) -> None:
         # Whole matrix is one cell
-        m = APLArray.array([2, 3], [1, 2, 3, 4, 5, 6])
+        m = APLArray.array([2, 3], [[1, 2, 3], [4, 5, 6]])
         frame, cells = decompose(m, 2)
         assert frame == []
         assert len(cells) == 1
@@ -86,7 +86,7 @@ class TestDecompose:
         frame, cells = decompose(a, 2)
         assert frame == [2]
         assert len(cells) == 2
-        assert cells[0] == APLArray.array([3, 4], list(range(1, 13)))
+        assert cells[0] == APLArray.array([3, 4], [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]])
 
 
 class TestReassemble:
@@ -98,7 +98,7 @@ class TestReassemble:
     def test_vectors_to_matrix(self) -> None:
         cells = [APLArray.array([4], [1, 2, 3, 4]), APLArray.array([4], [5, 6, 7, 8])]
         result = reassemble([2], cells)
-        assert result == APLArray.array([2, 4], [1, 2, 3, 4, 5, 6, 7, 8])
+        assert result == APLArray.array([2, 4], [[1, 2, 3, 4], [5, 6, 7, 8]])
 
     def test_single_cell_empty_frame(self) -> None:
         cell = APLArray.array([3], [1, 2, 3])
@@ -109,4 +109,4 @@ class TestReassemble:
         # Two vectors of different lengths → pad shorter with 0
         cells = [APLArray.array([3], [1, 2, 3]), APLArray.array([2], [4, 5])]
         result = reassemble([2], cells)
-        assert result == APLArray.array([2, 3], [1, 2, 3, 4, 5, 0])
+        assert result == APLArray.array([2, 3], [[1, 2, 3], [4, 5, 0]])
