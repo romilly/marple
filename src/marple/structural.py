@@ -297,21 +297,20 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
 
 def rotate(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⌽: rotate along last axis."""
-    n = int(alpha.data[0])
+    n = int(alpha.data.flat[0])
+    if is_numeric_array(omega.data):
+        return APLArray(list(omega.shape), np.roll(omega.data, -n, axis=-1))
+    data = omega.data
     if len(omega.shape) <= 1:
-        data = list(omega.data)
         length = len(data)
         if length == 0:
             return APLArray.array(list(omega.shape), [])
         n = n % length
         return APLArray.array(list(omega.shape), data[n:] + data[:n])
-    # Matrix: rotate each row
     row_len = omega.shape[-1]
-    data = list(omega.data)
     result: list[object] = []
-    for r in range(len(data) // row_len):
-        start = r * row_len
-        row = data[start:start + row_len]
+    for i in range(0, len(data), row_len):
+        row = data[i:i + row_len]
         k = n % row_len if row_len else 0
         result.extend(row[k:] + row[:k])
     return APLArray.array(list(omega.shape), result)
@@ -319,12 +318,14 @@ def rotate(alpha: APLArray, omega: APLArray) -> APLArray:
 
 def rotate_first(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⊖: rotate along first axis."""
-    n = int(alpha.data[0])
+    n = int(alpha.data.flat[0])
     if len(omega.shape) <= 1:
         return rotate(alpha, omega)
+    if is_numeric_array(omega.data):
+        return APLArray(list(omega.shape), np.roll(omega.data, -n, axis=0))
     chunk = _first_axis_chunk_size(omega.shape)
     num_chunks = omega.shape[0]
-    data = list(omega.data)
+    data = omega.data
     n = n % num_chunks if num_chunks else 0
     result: list[object] = []
     for r in range(num_chunks):
