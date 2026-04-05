@@ -182,14 +182,15 @@ def _take_axis(data: list[object], axis_len: int, n: int,
 
 def take(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ↑: take along each axis. Scalar left → first axis only."""
-    counts = [int(x) for x in alpha.data]
+    counts = [int(x) for x in alpha.data.flatten()]
     fill = _fill_element(omega)
     # Pad counts to match rank (fewer counts → keep trailing axes)
     while len(counts) < len(omega.shape):
         counts.append(omega.shape[len(counts)])
+    flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
     if len(omega.shape) <= 1:
         n = counts[0]
-        data = list(omega.data)
+        data = list(flat)
         result, new_len = _take_axis(data, len(data), n, fill)
         return APLArray.array([new_len], result)
     # Multi-axis: take first axis, then recurse on inner
@@ -197,13 +198,12 @@ def take(alpha: APLArray, omega: APLArray) -> APLArray:
     abs_n = abs(n)
     chunk = _first_axis_chunk_size(omega.shape)
     num_rows = omega.shape[0]
-    data = list(omega.data)
     fill_row = [fill] * chunk
     rows: list[list[object]] = []
     for r in range(abs_n):
         src = r if n >= 0 else num_rows + n + r
         if 0 <= src < num_rows:
-            rows.append(data[src * chunk:(src + 1) * chunk])
+            rows.append(list(flat[src * chunk:(src + 1) * chunk]))
         else:
             rows.append(list(fill_row))
     # If more axes to take, apply to each row
@@ -215,7 +215,7 @@ def take(alpha: APLArray, omega: APLArray) -> APLArray:
         for row in rows:
             inner = APLArray.array(list(inner_shape), row)
             taken = take(APLArray.array([len(inner_counts)], inner_counts), inner)
-            processed.extend(taken.data)
+            processed.extend(list(taken.data.flatten()) if is_numeric_array(taken.data) else taken.data)
             inner_shape_out = list(taken.shape)
         new_shape = [abs_n] + inner_shape_out
         return APLArray.array(new_shape, processed)
@@ -229,13 +229,14 @@ def take(alpha: APLArray, omega: APLArray) -> APLArray:
 
 def drop(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ↓: drop along each axis. Scalar left → first axis only."""
-    counts = [int(x) for x in alpha.data]
+    counts = [int(x) for x in alpha.data.flatten()]
     # Pad counts to match rank (fewer counts → keep trailing axes)
     while len(counts) < len(omega.shape):
         counts.append(0)
+    flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
     if len(omega.shape) <= 1:
         n = counts[0]
-        data = list(omega.data)
+        data = list(flat)
         if n >= 0:
             result = data[n:]
         else:
@@ -245,7 +246,6 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
     n = counts[0]
     chunk = _first_axis_chunk_size(omega.shape)
     num_rows = omega.shape[0]
-    data = list(omega.data)
     if n >= 0:
         start = min(n, num_rows)
         kept_rows = num_rows - start
@@ -255,7 +255,7 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
     rows: list[list[object]] = []
     for r in range(kept_rows):
         src = start + r if n >= 0 else r
-        rows.append(data[src * chunk:(src + 1) * chunk])
+        rows.append(list(flat[src * chunk:(src + 1) * chunk]))
     if len(counts) > 1:
         inner_shape = list(omega.shape[1:])
         inner_counts = counts[1:]
@@ -264,7 +264,7 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
         for row in rows:
             inner = APLArray.array(list(inner_shape), row)
             dropped = drop(APLArray.array([len(inner_counts)], inner_counts), inner)
-            processed.extend(dropped.data)
+            processed.extend(list(dropped.data.flatten()) if is_numeric_array(dropped.data) else dropped.data)
             inner_shape_out = list(dropped.shape)
         new_shape = [kept_rows] + inner_shape_out
         return APLArray.array(new_shape, processed)

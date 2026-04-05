@@ -408,7 +408,15 @@ class APLArray:
     def reverse(self) -> 'APLArray':
         if is_numeric_array(self.data):
             return APLArray(list(self.shape), np.flip(self.data, axis=-1).copy())
-        return APLArray.array(list(self.shape), list(reversed(self.data)))
+        if len(self.shape) <= 1:
+            return APLArray.array(list(self.shape), list(reversed(self.data)))
+        # Character matrix: reverse each row
+        row_len = self.shape[-1]
+        data = self.data
+        result: list[object] = []
+        for i in range(0, len(data), row_len):
+            result.extend(reversed(data[i:i + row_len]))
+        return APLArray.array(list(self.shape), result)
 
     def reverse_first(self) -> 'APLArray':
         if is_numeric_array(self.data):
