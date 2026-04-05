@@ -34,7 +34,7 @@ class TestVector:
 
 class TestMatrix:
     def test_numeric(self) -> None:
-        html = aplarray_to_html(APLArray.array([2, 3], [1, 2, 3, 4, 5, 6]))
+        html = aplarray_to_html(APLArray.array([2, 3], [[1, 2, 3], [4, 5, 6]]))
         assert '<table' in html
         assert html.count('<tr>') == 2
         assert html.count('<td>') == 6
@@ -47,6 +47,7 @@ class TestMatrix:
 
 class TestRank3:
     def test_slices(self) -> None:
-        html = aplarray_to_html(APLArray.array([2, 2, 3], list(range(12))))
+        html = aplarray_to_html(APLArray.array([2, 2, 3],
+            [[[0, 1, 2], [3, 4, 5]], [[6, 7, 8], [9, 10, 11]]]))
         assert 'apl-slice' in html
         assert html.count('apl-slice-label') == 2

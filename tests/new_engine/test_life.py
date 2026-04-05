@@ -12,12 +12,13 @@ class TestLifeWithRank:
         result = i.run("¯1 0 1(⌽⍤0 2)G")
         # 3 rotations of G stacked: shape 3×3×3
         assert result.shape == [3, 3, 3]
+        import numpy as np
         # First slice: ¯1⌽G (rotate right)
-        assert list(result.data[:9]) == list(i.run("¯1⌽G").data)
+        assert np.array_equal(result.data[0], i.run("¯1⌽G").data)
         # Second slice: 0⌽G (unchanged)
-        assert list(result.data[9:18]) == list(i.run("G").data)
+        assert np.array_equal(result.data[1], i.run("G").data)
         # Third slice: 1⌽G (rotate left)
-        assert list(result.data[18:27]) == list(i.run("1⌽G").data)
+        assert np.array_equal(result.data[2], i.run("1⌽G").data)
 
 
 class TestLifeShiftDfn:
