@@ -47,7 +47,7 @@ class TestMatrixOps:
 
     def test_matrix_multiply(self) -> None:
         result = Interpreter(io=1).run("(2 2⍴1 2 3 4)+.×(2 2⍴5 6 7 8)")
-        assert result == APLArray.array([2, 2], [19, 22, 43, 50])
+        assert result == APLArray.array([2, 2], [[19, 22], [43, 50]])
 
 
 class TestGrade:

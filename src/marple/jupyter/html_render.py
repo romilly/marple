@@ -71,10 +71,11 @@ def aplarray_to_html(arr: APLArray) -> str:
 
 def _matrix_html(arr: APLArray, is_char: bool) -> str:
     rows, cols = arr.shape
+    flat = arr.data.flatten() if hasattr(arr.data, 'flatten') else arr.data
     html_rows = []
     for r in range(rows):
         cells = ''.join(
-            _cell_html(arr.data[r * cols + c], is_char) for c in range(cols))
+            _cell_html(flat[r * cols + c], is_char) for c in range(cols))
         html_rows.append(f'<tr>{cells}</tr>')
     return f'<table class="apl-array">{"".join(html_rows)}</table>'
 
@@ -82,13 +83,10 @@ def _matrix_html(arr: APLArray, is_char: bool) -> str:
 def _high_rank_html(arr: APLArray, is_char: bool) -> str:
     outer = arr.shape[0]
     inner_shape = arr.shape[1:]
-    slice_size = 1
-    for s in inner_shape:
-        slice_size *= s
     slices = []
     for i in range(outer):
-        sub = APLArray.array(list(inner_shape),
-                       list(arr.data[i * slice_size:(i + 1) * slice_size]))
+        sub_data = arr.data[i]
+        sub = APLArray(list(inner_shape), sub_data)
         inner_html = aplarray_to_html(sub)
         slices.append(
             f'<div class="apl-slice">'

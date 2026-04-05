@@ -9,8 +9,8 @@ class TestDyadicEvalOrder:
         i = Interpreter(io=1)
         result = i.run("z∘.×z←⍳5")
         assert result.shape == [5, 5]
-        assert result.data[0] == 1
-        assert result.data[4] == 5
+        assert result.data[0, 0] == 1
+        assert result.data[4, 4] == 25
         assert result.data[24] == 25
 
     def test_inner_product_with_assignment(self) -> None:

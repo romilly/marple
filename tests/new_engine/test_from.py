@@ -26,7 +26,7 @@ class TestFromMatrix:
     def test_select_rows(self) -> None:
         i = Interpreter(io=1)
         i.run("M←3 4⍴⍳12")
-        assert i.run("1 3⌷M") == APLArray.array([2, 4], [1, 2, 3, 4, 9, 10, 11, 12])
+        assert i.run("1 3⌷M") == APLArray.array([2, 4], [[1, 2, 3, 4], [9, 10, 11, 12]])
 
 
 class TestFromIndexOrigin:
@@ -50,4 +50,4 @@ class TestFromWithRank:
         i = Interpreter(io=1)
         i.run("M←3 4⍴⍳12")
         result = i.run("1 3(⌷⍤1)M")
-        assert result == APLArray.array([3, 2], [1, 3, 5, 7, 9, 11])
+        assert result == APLArray.array([3, 2], [[1, 3], [5, 7], [9, 11]])

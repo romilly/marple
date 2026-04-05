@@ -500,7 +500,7 @@ def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
     """Dyadic ⌷: select major cells of omega at indices in alpha."""
     if omega.is_scalar():
         raise RankError("requires non-scalar right argument")
-    data = to_list(omega.data)
+    flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
     cell_shape = omega.shape[1:]
     cell_size = 1
     for s in cell_shape:
@@ -508,13 +508,18 @@ def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
     if cell_size == 0:
         cell_size = 1
     n_major = omega.shape[0]
-    indices = to_list(alpha.data) if not alpha.is_scalar() else [alpha.data[0]]
-    result: list[object] = []
+    idx_flat = alpha.data.flatten() if is_numeric_array(alpha.data) else alpha.data
+    indices = list(idx_flat) if not alpha.is_scalar() else [alpha.data.flat[0]]
+    result_cells: list[Any] = []
     for idx in indices:
         i = int(idx) - io
         if i < 0 or i >= n_major:
             raise IndexError_(f"{idx} out of range")
-        result.extend(data[i * cell_size : (i + 1) * cell_size])
+        result_cells.append(flat[i * cell_size : (i + 1) * cell_size])
+    if len(result_cells) == 0:
+        return APLArray.array(cell_shape, [])
+    result = np.concatenate(result_cells)
     if alpha.is_scalar():
-        return APLArray.array(cell_shape, result)
-    return APLArray.array(list(alpha.shape) + cell_shape, result)
+        return APLArray(cell_shape, result.reshape(cell_shape) if cell_shape else result)
+    result_shape = list(alpha.shape) + cell_shape
+    return APLArray(result_shape, result.reshape(result_shape))

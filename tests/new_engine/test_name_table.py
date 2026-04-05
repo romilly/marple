@@ -135,7 +135,7 @@ class TestWithProducts:
         i = Interpreter(io=1)
         i.run("double←{⍵+⍵}")
         result = i.run("double (⍳3)∘.×⍳3")
-        assert result == APLArray.array([3, 3], [2, 4, 6, 4, 8, 12, 6, 12, 18])
+        assert result == APLArray.array([3, 3], [[2, 4, 6], [4, 8, 12], [6, 12, 18]])
 
 
 class TestWithRank:
@@ -143,14 +143,14 @@ class TestWithRank:
         i = Interpreter(io=1)
         i.run("double←{⍵+⍵}")
         result = i.run("(double⍤1) 2 3⍴⍳6")
-        assert result == APLArray.array([2, 3], [2, 4, 6, 8, 10, 12])
+        assert result == APLArray.array([2, 3], [[2, 4, 6], [8, 10, 12]])
 
     def test_sort_with_rank(self) -> None:
         i = Interpreter(io=1)
         i.run("sort←{⍵[⍋⍵]}")
         i.run("M←3 4⍴12 1 8 3 5 9 2 7 11 4 6 10")
         result = i.run("(sort⍤1) M")
-        assert result == APLArray.array([3, 4], [1, 3, 8, 12, 2, 5, 7, 9, 4, 6, 10, 11])
+        assert result == APLArray.array([3, 4], [[1, 3, 8, 12], [2, 5, 7, 9], [4, 6, 10, 11]])
 
 
 class TestImport:
