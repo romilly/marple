@@ -393,7 +393,7 @@ class Index(Node):
             n_results = 1
             for ai in axis_indices:
                 n_results *= len(ai)
-            result_data = np.empty(max(1, n_results), dtype=float)
+            result_data = np.empty(int(max(1, n_results)), dtype=float)
             idx = 0
             for combo in _product(*axis_indices):
                 offset = int(sum(i * s for i, s in zip(combo, strides)))
