@@ -396,7 +396,7 @@ class Index(Node):
             result_data = np.empty(max(1, n_results), dtype=float)
             idx = 0
             for combo in _product(*axis_indices):
-                offset = sum(i * s for i, s in zip(combo, strides))
+                offset = int(sum(i * s for i, s in zip(combo, strides)))
                 result_data[idx] = flat[offset]
                 idx += 1
             result_shape: list[int] = []
@@ -408,7 +408,7 @@ class Index(Node):
         # Character data
         result_list: list[object] = []
         for combo in _product(*axis_indices):
-            offset = sum(i * s for i, s in zip(combo, strides))
+            offset = int(sum(i * s for i, s in zip(combo, strides)))
             result_list.append(flat[offset])
         result_shape = []
         for s in idx_shapes:
