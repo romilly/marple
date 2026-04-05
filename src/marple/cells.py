@@ -85,7 +85,7 @@ def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
     all_uniform = all(c.shape == max_shape for c in cells)
     if all_uniform and all_numeric:
         flat_cells = [c.data.flatten() for c in cells]
-        result = np.concatenate(flat_cells)
+        result = np.concatenate(tuple(flat_cells))
         return APLArray(result_shape, np_reshape(result, result_shape))
     if all_uniform:
         all_data: list[object] = []

@@ -78,7 +78,7 @@ def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
             cycled = flat[:total]
         else:
             reps = total // n + 1
-            cycled = np.concatenate([flat] * reps)[:total]
+            cycled = np.concatenate(tuple([flat] * reps))[:total]
         return APLArray(new_shape, np_reshape(cycled, new_shape))
     # Character data
     data = list(omega.data) if len(omega.data) > 0 else [' ']
@@ -148,7 +148,7 @@ def catenate(alpha: APLArray, omega: APLArray) -> APLArray:
         if is_numeric_array(alpha.data) and is_numeric_array(omega.data):
             a = alpha.data.flatten() if not alpha.is_scalar() else alpha.data.flatten()
             b = omega.data.flatten() if not omega.is_scalar() else omega.data.flatten()
-            return APLArray([len(a) + len(b)], np.concatenate([a, b]))
+            return APLArray([len(a) + len(b)], np.concatenate((a, b)))
         left = list(alpha.data) if not alpha.is_scalar() else [alpha.data[0]]
         right = list(omega.data) if not omega.is_scalar() else [omega.data[0]]
         return APLArray.array([len(left) + len(right)], left + right)
@@ -161,7 +161,7 @@ def catenate(alpha: APLArray, omega: APLArray) -> APLArray:
             a = np_reshape(a, [1] * (b.ndim - a.ndim) + list(a.shape))
         elif b.ndim < a.ndim:
             b = np_reshape(b, [1] * (a.ndim - b.ndim) + list(b.shape))
-        result = np.concatenate([a, b], axis=-1)
+        result = np.concatenate((a, b), axis=-1)
         return APLArray(list(result.shape), result)
     # Character fallback
     a_shape = list(alpha.shape) if not alpha.is_scalar() else [1]
@@ -455,7 +455,7 @@ def replicate_first(alpha: APLArray, omega: APLArray) -> APLArray:
     total_rows = len(result_cells)
     if total_rows == 0:
         return APLArray([0] + cell_shape, np.array([]))
-    result = np.concatenate(result_cells)
+    result = np.concatenate(tuple(result_cells))
     return APLArray([total_rows] + cell_shape, np_reshape(result, [total_rows] + cell_shape))
 
 
@@ -520,7 +520,7 @@ def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
         result_cells.append(flat[i * cell_size : (i + 1) * cell_size])
     if len(result_cells) == 0:
         return APLArray.array(cell_shape, [])
-    result = np.concatenate(result_cells)
+    result = np.concatenate(tuple(result_cells))
     if alpha.is_scalar():
         return APLArray(cell_shape, np_reshape(result, cell_shape) if cell_shape else result)
     result_shape = list(alpha.shape) + cell_shape
