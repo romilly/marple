@@ -376,22 +376,20 @@ def _encode_scalar(radices: list[object], n: int) -> list[int]:
 
 def encode(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⊤: represent omega in the radix system given by alpha."""
-    radices = list(alpha.data)
+    radices = list(alpha.data.flatten())
     if omega.is_scalar():
-        encoded = _encode_scalar(radices, int(omega.data[0]))
+        encoded = _encode_scalar(radices, int(omega.data.flat[0]))
         return APLArray.array([len(radices)], list(encoded))
     # Vector right arg → matrix (radix_len × omega_len)
-    cols = len(omega.data)
+    omega_flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
+    cols = len(omega_flat)
     rows = len(radices)
-    result: list[object] = []
-    for r in range(rows):
-        for c in range(cols):
-            result.append(0)
+    result = np.zeros((rows, cols), dtype=np.int64)
     for c in range(cols):
-        col = _encode_scalar(radices, int(omega.data[c]))
+        col = _encode_scalar(radices, int(omega_flat[c]))
         for r in range(rows):
-            result[r * cols + c] = col[r]
-    return APLArray.array([rows, cols], result)
+            result[r, c] = col[r]
+    return APLArray([rows, cols], result)
 
 
 def decode(alpha: APLArray, omega: APLArray) -> APLArray:

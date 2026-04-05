@@ -124,6 +124,12 @@ class TestEncodeDecode:
     def test_encode(self) -> None:
         assert Interpreter(io=1).run("2 2 2⊤7") == APLArray.array([3], [1, 1, 1])
 
+    def test_encode_vector_right(self) -> None:
+        result = Interpreter(io=1).run("3 3⊤0 1 2 3 4 5 6 7 8")
+        assert result == APLArray.array([2, 9],
+            [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+             [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+
     def test_decode(self) -> None:
         assert Interpreter(io=1).run("2 2 2⊥1 1 1") == S(7)
 

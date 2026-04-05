@@ -70,7 +70,7 @@ class TestLifeGenerated:
         i = Interpreter(io=1)
         result = i.run("(⍉3 3⊤(⍳9)-1)-1")
         assert result.shape == [9, 2]
-        pairs = [(int(result.data[r*2]), int(result.data[r*2+1])) for r in range(9)]
+        pairs = [(int(result.data[r, 0]), int(result.data[r, 1])) for r in range(9)]
         assert (0, 0) in pairs
         assert (-1, -1) in pairs
         assert (1, 1) in pairs
@@ -84,12 +84,12 @@ class TestLifeGenerated:
         i.run("life←{N←(+⌿P(shift⍤1 2)⍵)-⍵ ⋄ (N=3)∨⍵∧N=2}")
         result = i.run("(life⍣4) G")
         expected = APLArray.array([6, 6], [
-            0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0,
-            0, 0, 0, 1, 0, 0,
-            0, 0, 0, 0, 1, 0,
-            0, 0, 1, 1, 1, 0,
-            0, 0, 0, 0, 0, 0,
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 1, 0],
+            [0, 0, 1, 1, 1, 0],
+            [0, 0, 0, 0, 0, 0],
         ])
         assert result == expected
 
@@ -102,12 +102,12 @@ class TestLifeSelfContained:
         i.run("life←{s←{(1↑⍺)⊖(1↓⍺)⌽⍵} ⋄ P←(⍉3 3⊤(⍳9)-1)-1 ⋄ N←(+⌿P(s⍤1 2)⍵)-⍵ ⋄ (N=3)∨⍵∧N=2}")
         result = i.run("(life⍣4) G")
         expected = APLArray.array([6, 6], [
-            0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0,
-            0, 0, 0, 1, 0, 0,
-            0, 0, 0, 0, 1, 0,
-            0, 0, 1, 1, 1, 0,
-            0, 0, 0, 0, 0, 0,
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 1, 0],
+            [0, 0, 1, 1, 1, 0],
+            [0, 0, 0, 0, 0, 0],
         ])
         assert result == expected
 
@@ -119,12 +119,12 @@ class TestLifeGlider:
         i.run("life←{s←{(1↑⍺)⊖(1↓⍺)⌽⍵} ⋄ P←(⍉3 3⊤(⍳9)-1)-1 ⋄ N←(+⌿P(s⍤1 2)⍵)-⍵ ⋄ (N=3)∨⍵∧N=2}")
         result = i.run("life G")
         expected = APLArray.array([6, 6], [
-            0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0,
-            0, 1, 0, 1, 0, 0,
-            0, 0, 1, 1, 0, 0,
-            0, 0, 1, 0, 0, 0,
-            0, 0, 0, 0, 0, 0,
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 1, 0, 0],
+            [0, 0, 1, 1, 0, 0],
+            [0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
         ])
         assert result == expected
 
@@ -135,11 +135,11 @@ class TestLifeGlider:
         i.run("life←{s←{(1↑⍺)⊖(1↓⍺)⌽⍵} ⋄ P←(⍉3 3⊤(⍳9)-1)-1 ⋄ N←(+⌿P(s⍤1 2)⍵)-⍵ ⋄ (N=3)∨⍵∧N=2}")
         result = i.run("(life⍣4) G")
         expected = APLArray.array([6, 6], [
-            0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0,
-            0, 0, 0, 1, 0, 0,
-            0, 0, 0, 0, 1, 0,
-            0, 0, 1, 1, 1, 0,
-            0, 0, 0, 0, 0, 0,
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 1, 0],
+            [0, 0, 1, 1, 1, 0],
+            [0, 0, 0, 0, 0, 0],
         ])
         assert result == expected
