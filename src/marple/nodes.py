@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Protocol, Generator
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import is_numeric_array
+from marple.backend_functions import is_numeric_array, np_reshape
 from marple.errors import DomainError, ValueError_
 
 
@@ -76,7 +76,7 @@ def _inner_product(
         for i in range(len(paired) - 2, -1, -1):
             acc = reduce_op(paired[i], acc)
         return S(acc)
-    result = np.zeros(result_shape, dtype=np.float64)
+    result = np.zeros(result_shape, dtype=float)
     a_outer = [range(s) for s in a_shape[:-1]]
     b_outer = [range(s) for s in b_shape[1:]]
     for a_idx in _product(*a_outer):
@@ -111,14 +111,15 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
     """Compute outer product: alpha ∘.func omega."""
     from marple.errors import DomainError
     from marple.get_numpy import np
-    # Fast path: use numpy ufunc.outer
+    # Fast path: use numpy ufunc.outer (not available on ulab)
     if is_numeric_array(alpha.data) and is_numeric_array(omega.data):
         ufunc_name = _OUTER_UFUNCS.get(glyph)
         if ufunc_name is not None:
-            ufunc = getattr(np, ufunc_name)
-            result = ufunc.outer(alpha.data.flatten(), omega.data.flatten())
-            result_shape = alpha.shape + omega.shape
-            return APLArray(result_shape, result.reshape(result_shape))
+            ufunc = getattr(np, ufunc_name, None)
+            if ufunc is not None and hasattr(ufunc, 'outer'):
+                result = ufunc.outer(alpha.data.flatten(), omega.data.flatten())
+                result_shape = alpha.shape + omega.shape
+                return APLArray(result_shape, np_reshape(result, result_shape))
     # General path
     op = _INNER_SCALAR_OPS.get(glyph)
     if op is None:
@@ -126,7 +127,7 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
     result_shape = alpha.shape + omega.shape
     if not result_shape:
         return S(op(alpha.data[()], omega.data[()]))
-    result = np.zeros(result_shape, dtype=np.float64)
+    result = np.zeros(result_shape, dtype=float)
     a_indices = [range(s) for s in alpha.shape]
     b_indices = [range(s) for s in omega.shape]
     for a_idx in _product(*a_indices):
@@ -378,7 +379,7 @@ class Index(Node):
             else:
                 idx = ctx.evaluate(idx_node)
                 idx_flat = idx.data.flatten() if is_numeric_array(idx.data) else idx.data
-                vals = list(idx_flat) if not idx.is_scalar() else [idx.data.flat[0]]
+                vals = list(idx_flat) if not idx.is_scalar() else [idx.data.flatten()[0]]
                 axis_indices.append([int(v) - io for v in vals])
                 idx_shapes.append(idx.shape if not idx.is_scalar() else [])
         for axis in range(len(self.indices), len(array.shape)):
@@ -392,7 +393,7 @@ class Index(Node):
             n_results = 1
             for ai in axis_indices:
                 n_results *= len(ai)
-            result_data = np.empty(max(1, n_results), dtype=np.float64)
+            result_data = np.empty(max(1, n_results), dtype=float)
             idx = 0
             for combo in _product(*axis_indices):
                 offset = sum(i * s for i, s in zip(combo, strides))
@@ -403,7 +404,7 @@ class Index(Node):
                 result_shape.extend(s)
             if not result_shape:
                 return S(result_data[0])
-            return APLArray(result_shape, result_data[:idx].reshape(result_shape))
+            return APLArray(result_shape, np_reshape(result_data[:idx], result_shape))
         # Character data
         result_list: list[object] = []
         for combo in _product(*axis_indices):

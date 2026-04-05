@@ -6,6 +6,11 @@ except ImportError:
 from marple.get_numpy import np
 
 
+def np_reshape(arr: Any, shape: Any) -> Any:
+    """Reshape that accepts lists (ulab requires tuples)."""
+    return arr.reshape(tuple(shape) if isinstance(shape, list) else shape)
+
+
 def to_array(data: list[Any]) -> Any:
     """Convert a Python list to an ndarray if numeric, or return as-is for characters."""
     if len(data) == 0:

@@ -1,6 +1,6 @@
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import is_numeric_array, to_list
+from marple.backend_functions import is_numeric_array, np_reshape, to_list
 from marple.errors import LengthError
 
 
@@ -56,7 +56,7 @@ def decompose(array: APLArray, cell_rank: int) -> tuple[list[int], list[APLArray
     for i in range(n_cells):
         cell_data = flat[i * cell_size : (i + 1) * cell_size]
         if is_numeric_array(cell_data) and cell_shape:
-            cell_data = cell_data.reshape(cell_shape)
+            cell_data = np_reshape(cell_data, cell_shape)
         cells.append(APLArray(list(cell_shape), cell_data))
     return (list(frame_shape), cells)
 
@@ -86,7 +86,7 @@ def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
     if all_uniform and all_numeric:
         flat_cells = [c.data.flatten() for c in cells]
         result = np.concatenate(flat_cells)
-        return APLArray(result_shape, result.reshape(result_shape))
+        return APLArray(result_shape, np_reshape(result, result_shape))
     if all_uniform:
         all_data: list[object] = []
         for c in cells:
@@ -106,7 +106,7 @@ def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
         for i, c in enumerate(cells):
             flat = c.data.flatten() if is_numeric_array(c.data) else c.data
             result[i * max_size : i * max_size + len(flat)] = flat
-        return APLArray(result_shape, result.reshape(result_shape))
+        return APLArray(result_shape, np_reshape(result, result_shape))
     all_data = []
     for c in cells:
         cell_data = to_list(c.data)

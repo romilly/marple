@@ -3,7 +3,7 @@
 from typing import Any, Callable
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import is_numeric_array, to_list
+from marple.backend_functions import is_numeric_array, np_reshape, to_list
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.errors import DomainError
 from marple.get_numpy import np
@@ -61,18 +61,20 @@ def _reduce(
     last = omega.shape[-1]
     new_shape = omega.shape[:-1]
     n_rows = n // last
-    result = np.empty(n_rows, dtype=np.float64)
+    result = np.zeros(n_rows, dtype=flat.dtype)
     for i in range(n_rows):
         result[i] = _reduce_row(op, flat, i * last, last)
-    return APLArray(new_shape, result.reshape(new_shape))
+    return APLArray(new_shape, np_reshape(result, new_shape))
 
 
-_ACCUMULATE_UFUNCS: dict[str, Any] = {
-    "+": np.add,
-    "×": np.multiply,
-    "⌈": np.maximum,
-    "⌊": np.minimum,
-}
+_ACCUMULATE_UFUNCS: dict[str, Any] = {}
+if hasattr(np, 'add') and hasattr(np.add, 'accumulate'):
+    _ACCUMULATE_UFUNCS = {
+        "+": np.add,
+        "×": np.multiply,
+        "⌈": np.maximum,
+        "⌊": np.minimum,
+    }
 
 _SCALAR_OPS: dict[str, Any] = {
     "+": lambda a, b: a + b,
@@ -107,7 +109,7 @@ def _scan_row_accumulate(ufunc: Any, data: Any, row_len: int) -> Any:
 def _scan_row_general(op: Any, data: Any, row_len: int) -> Any:
     """O(n²) right-to-left reduce per prefix, row by row."""
     n = len(data)
-    result = np.empty(n, dtype=np.float64)
+    result = np.zeros(n, dtype=data.dtype)
     for i in range(0, n, row_len):
         row = data[i:i + row_len]
         result[i] = row[0]
@@ -134,11 +136,11 @@ def _scan(
     if glyph is not None:
         ufunc = _ACCUMULATE_UFUNCS.get(glyph)
         if ufunc is not None:
-            return APLArray(list(omega.shape), _scan_row_accumulate(ufunc, flat, row_len).reshape(omega.shape))
+            return APLArray(list(omega.shape), np_reshape(_scan_row_accumulate(ufunc, flat, row_len), omega.shape))
     # General path: O(n²) right-to-left reduce per prefix
     op = _SCALAR_OPS.get(glyph) if glyph is not None else None
     if op is not None:
-        return APLArray(list(omega.shape), _scan_row_general(op, flat, row_len).reshape(omega.shape))
+        return APLArray(list(omega.shape), np_reshape(_scan_row_general(op, flat, row_len), omega.shape))
     raise DomainError(f"Unknown function for scan: {glyph}")
 
 
@@ -159,12 +161,12 @@ def _reduce_first(
     cell_size = 1
     for s in cell_shape:
         cell_size *= s
-    acc = np.array(flat[:cell_size], dtype=np.float64)
+    acc = np.array(flat[:cell_size], dtype=flat.dtype)
     for i in range(1, first):
         cell = flat[i * cell_size : (i + 1) * cell_size]
         for j in range(cell_size):
             acc[j] = op(acc[j], cell[j])
-    return APLArray(cell_shape, acc.reshape(cell_shape))
+    return APLArray(cell_shape, np_reshape(acc, cell_shape))
 
 
 def _scan_first(
@@ -184,16 +186,16 @@ def _scan_first(
     for s in cell_shape:
         cell_size *= s
     flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
-    result = np.empty(len(flat), dtype=np.float64)
+    result = np.zeros(len(flat), dtype=flat.dtype)
     # Copy first cell
     result[:cell_size] = flat[:cell_size]
-    acc = np.array(flat[:cell_size], dtype=np.float64)
+    acc = np.array(flat[:cell_size], dtype=flat.dtype)
     for i in range(1, first):
         cell = flat[i * cell_size : (i + 1) * cell_size]
         for j in range(cell_size):
             acc[j] = op(acc[j], cell[j])
         result[i * cell_size : (i + 1) * cell_size] = acc
-    return APLArray(list(omega.shape), result.reshape(omega.shape))
+    return APLArray(list(omega.shape), np_reshape(result, omega.shape))
 
 
 _OPERATOR_DISPATCH: dict[str, Any] = {

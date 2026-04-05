@@ -1,6 +1,6 @@
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import is_numeric_array, to_list
+from marple.backend_functions import is_numeric_array, np_reshape, to_list
 from marple.errors import DomainError, IndexError_, LengthError, RankError
 from marple.get_numpy import np
 
@@ -75,7 +75,7 @@ def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
             flat = np.array([0])
         reps = (total + len(flat) - 1) // len(flat)
         cycled = np.tile(flat, reps)[:total]
-        return APLArray(new_shape, cycled.reshape(new_shape))
+        return APLArray(new_shape, np_reshape(cycled, new_shape))
     # Character data
     data = list(omega.data) if len(omega.data) > 0 else [' ']
     result: list[object] = []
@@ -139,7 +139,7 @@ def membership(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
 def catenate(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ,: catenate along last axis."""
     if alpha.is_scalar() and omega.is_scalar():
-        return APLArray.array([2], [alpha.data.flat[0], omega.data.flat[0]])
+        return APLArray.array([2], [alpha.data.flatten()[0], omega.data.flatten()[0]])
     if len(alpha.shape) <= 1 and len(omega.shape) <= 1:
         if is_numeric_array(alpha.data) and is_numeric_array(omega.data):
             a = alpha.data.flatten() if not alpha.is_scalar() else alpha.data.flatten()
@@ -154,9 +154,9 @@ def catenate(alpha: APLArray, omega: APLArray) -> APLArray:
         a = alpha.data
         b = omega.data
         if a.ndim < b.ndim:
-            a = a.reshape([1] * (b.ndim - a.ndim) + list(a.shape))
+            a = np_reshape(a, [1] * (b.ndim - a.ndim) + list(a.shape))
         elif b.ndim < a.ndim:
-            b = b.reshape([1] * (a.ndim - b.ndim) + list(b.shape))
+            b = np_reshape(b, [1] * (a.ndim - b.ndim) + list(b.shape))
         result = np.concatenate([a, b], axis=-1)
         return APLArray(list(result.shape), result)
     # Character fallback
@@ -297,7 +297,7 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
 
 def rotate(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⌽: rotate along last axis."""
-    n = int(alpha.data.flat[0])
+    n = int(alpha.data.flatten()[0])
     if is_numeric_array(omega.data):
         return APLArray(list(omega.shape), np.roll(omega.data, -n, axis=-1))
     data = omega.data
@@ -318,7 +318,7 @@ def rotate(alpha: APLArray, omega: APLArray) -> APLArray:
 
 def rotate_first(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⊖: rotate along first axis."""
-    n = int(alpha.data.flat[0])
+    n = int(alpha.data.flatten()[0])
     if len(omega.shape) <= 1:
         return rotate(alpha, omega)
     if is_numeric_array(omega.data):
@@ -378,7 +378,7 @@ def encode(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⊤: represent omega in the radix system given by alpha."""
     radices = list(alpha.data.flatten())
     if omega.is_scalar():
-        encoded = _encode_scalar(radices, int(omega.data.flat[0]))
+        encoded = _encode_scalar(radices, int(omega.data.flatten()[0]))
         return APLArray.array([len(radices)], list(encoded))
     # Vector right arg → matrix (radix_len × omega_len)
     omega_flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
@@ -452,7 +452,7 @@ def replicate_first(alpha: APLArray, omega: APLArray) -> APLArray:
     if total_rows == 0:
         return APLArray([0] + cell_shape, np.array([]))
     result = np.concatenate(result_cells)
-    return APLArray([total_rows] + cell_shape, result.reshape([total_rows] + cell_shape))
+    return APLArray([total_rows] + cell_shape, np_reshape(result, [total_rows] + cell_shape))
 
 
 def expand(alpha: APLArray, omega: APLArray) -> APLArray:
@@ -478,7 +478,7 @@ def matrix_inverse(omega: APLArray) -> APLArray:
     if len(omega.shape) != 2 or omega.shape[0] != omega.shape[1]:
         raise RankError("Matrix inverse requires a square matrix")
     try:
-        result = np.linalg.inv(omega.data.astype(np.float64))
+        result = np.linalg.inv(omega.data.astype(float))
     except np.linalg.LinAlgError:
         raise DomainError("Singular matrix")
     return APLArray(list(omega.shape), result)
@@ -488,7 +488,7 @@ def matrix_divide(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⌹: solve linear system b⌹A (find x where Ax=b)."""
     from marple.errors import DomainError
     try:
-        result = np.linalg.solve(omega.data.astype(np.float64), alpha.data.astype(np.float64))
+        result = np.linalg.solve(omega.data.astype(float), alpha.data.astype(float))
     except np.linalg.LinAlgError:
         raise DomainError("Singular matrix")
     return APLArray(list(result.shape), result)
@@ -507,7 +507,7 @@ def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
         cell_size = 1
     n_major = omega.shape[0]
     idx_flat = alpha.data.flatten() if is_numeric_array(alpha.data) else alpha.data
-    indices = list(idx_flat) if not alpha.is_scalar() else [alpha.data.flat[0]]
+    indices = list(idx_flat) if not alpha.is_scalar() else [alpha.data.flatten()[0]]
     result_cells: list[Any] = []
     for idx in indices:
         i = int(idx) - io
@@ -518,6 +518,6 @@ def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
         return APLArray.array(cell_shape, [])
     result = np.concatenate(result_cells)
     if alpha.is_scalar():
-        return APLArray(cell_shape, result.reshape(cell_shape) if cell_shape else result)
+        return APLArray(cell_shape, np_reshape(result, cell_shape) if cell_shape else result)
     result_shape = list(alpha.shape) + cell_shape
-    return APLArray(result_shape, result.reshape(result_shape))
+    return APLArray(result_shape, np_reshape(result, result_shape))
