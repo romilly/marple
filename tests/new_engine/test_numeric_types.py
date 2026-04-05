@@ -54,13 +54,13 @@ class TestReduceScanOverflow:
 class TestProductOverflow:
     def test_outer_product_overflows_int32(self) -> None:
         result = Interpreter(io=1).run("100000 200000∘.×100000 200000")
-        assert list(result.data) == [10000000000, 20000000000, 20000000000, 40000000000]
+        assert result == APLArray.array([2, 2],
+            [[10000000000, 20000000000], [20000000000, 40000000000]])
 
     def test_outer_product_small_is_integer(self) -> None:
         result = Interpreter(io=1).run("1 2∘.+3 4")
-        # Result values should be integers (Python int or numpy int)
-        assert list(result.data) == [4, 5, 5, 6]
-        val = result.data[0]
+        assert result == APLArray.array([2, 2], [[4, 5], [5, 6]])
+        val = result.data.flat[0]
         assert int(val) == val  # is a whole number
 
 
@@ -213,20 +213,20 @@ class TestCrossDtypeProducts:
         assert i.run("a+.×b") == S(1)
 
     def test_outer_product_int(self) -> None:
-        assert list(Interpreter(io=1).run("1 2∘.×3 4").data) == [3, 4, 6, 8]
+        assert Interpreter(io=1).run("1 2∘.×3 4") == APLArray.array([2, 2], [[3, 4], [6, 8]])
 
     def test_outer_product_float(self) -> None:
         result = Interpreter(io=1).run("0.5 1.5∘.+0.1 0.2")
-        assert abs(result.data.tolist()[0] - 0.6) < 1e-10
+        assert abs(result.data.flat[0] - 0.6) < 1e-10
 
     def test_outer_product_mixed(self) -> None:
-        assert list(Interpreter(io=1).run("1 2∘.×0.5 1.5").data) == [0.5, 1.5, 1, 3]
+        assert Interpreter(io=1).run("1 2∘.×0.5 1.5") == APLArray.array([2, 2], [[0.5, 1.5], [1.0, 3.0]])
 
     def test_outer_product_bool(self) -> None:
         i = Interpreter(io=1)
         i.run("a←1 0=1 1")
         i.run("b←0 1=1 1")
-        assert list(i.run("a∘.∧b").data) == [0, 1, 0, 0]
+        assert i.run("a∘.∧b") == APLArray.array([2, 2], [[0, 1], [0, 0]])
 
 
 class TestMaybeDowncast:
