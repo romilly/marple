@@ -163,6 +163,10 @@ class TestExpand:
         result = Interpreter(io=1).run("1 0 1\\1 2")
         assert result.shape == [3]
 
+    def test_expand_char(self) -> None:
+        result = Interpreter(io=1).run("1 0 1\\'AC'")
+        assert result == APLArray.array([3], list('A C'))
+
 
 class TestIndexOf:
     def test_index_of(self) -> None:

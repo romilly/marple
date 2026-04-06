@@ -460,9 +460,10 @@ def replicate_first(alpha: APLArray, omega: APLArray) -> APLArray:
 
 
 def expand(alpha: APLArray, omega: APLArray) -> APLArray:
-    """Dyadic \\: expand. Insert fill elements (0) where alpha is 0."""
+    """Dyadic \\: expand. Insert fill elements where alpha is 0."""
     mask = [int(x) for x in alpha.data]
     data = list(omega.data)
+    fill = _fill_element(omega)
     result: list[object] = []
     data_idx = 0
     for m in mask:
@@ -471,9 +472,9 @@ def expand(alpha: APLArray, omega: APLArray) -> APLArray:
                 result.append(data[data_idx])
                 data_idx += 1
             else:
-                result.append(0)
+                result.append(fill)
         else:
-            result.append(0)
+            result.append(fill)
     return APLArray.array([len(result)], result)
 
 
