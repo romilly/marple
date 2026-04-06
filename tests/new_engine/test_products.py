@@ -60,6 +60,18 @@ class TestInnerProduct:
             [[[22, 28], [49, 64]], [[76, 100], [103, 136]]])
 
 
+    def test_inner_product_no_int_overflow(self) -> None:
+        """Repeated +.× on int matrices must upcast to float, not overflow."""
+        i = Interpreter(io=1)
+        i.run("⎕RL←42")
+        i.run("y ← ?10 10⍴100")
+        result = i.run("({⍵+.×⍵}⍣10) y")
+        # With 10 iterations of self-multiplication, int64 overflows;
+        # all values should be positive (matrix of positive ints squared)
+        for v in result.data.flat:
+            assert v > 0, f"Overflow detected: {v}"
+
+
 class TestOuterProduct:
     def test_multiplication_table(self) -> None:
         result = Interpreter(io=1).run("(⍳3)∘.×⍳4")
