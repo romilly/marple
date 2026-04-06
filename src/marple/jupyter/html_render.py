@@ -4,6 +4,7 @@ import html as _html
 
 from marple.numpy_array import APLArray
 from marple.formatting import format_num
+from marple.backend_functions import chars_to_str, is_char_array
 
 ARRAY_CSS = """<style>
 .apl-array {
@@ -33,7 +34,7 @@ ARRAY_CSS = """<style>
 
 
 def _is_char_data(data: object) -> bool:
-    return hasattr(data, '__len__') and len(data) > 0 and all(isinstance(x, str) for x in data)  # type: ignore[arg-type]
+    return is_char_array(data)
 
 
 def _cell_html(value: object, is_char: bool) -> str:
@@ -55,7 +56,7 @@ def aplarray_to_html(arr: APLArray) -> str:
     # Vector
     if len(arr.shape) == 1:
         if is_char:
-            return f'<span class="apl-scalar">{_html.escape("".join(str(c) for c in arr.data))}</span>'
+            return f'<span class="apl-scalar">{_html.escape(chars_to_str(arr.data))}</span>'
         if len(arr.data) == 0:
             return '<table class="apl-array"><tr></tr></table>'
         cells = ''.join(_cell_html(v, is_char) for v in arr.data)

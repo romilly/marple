@@ -6,7 +6,7 @@ from typing import Any
 from marple.numpy_array import APLArray, S
 from marple.formatting import format_num, format_result
 from marple.backend_functions import (
-    _DOWNCAST_CT, is_numeric_array, maybe_downcast,
+    _DOWNCAST_CT, chars_to_str, is_char_array, is_numeric_array, maybe_downcast,
 )
 from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
 from marple.errors import DomainError, SyntaxError_, ValueError_
@@ -54,7 +54,7 @@ def _ljust(s: str, width: int) -> str:
 
 def _apl_chars_to_str(data: Any) -> str:
     """Convert an APLArray's character data to a Python string."""
-    return "".join(str(c) for c in data)
+    return chars_to_str(data)
 
 
 def _name_class(value: object) -> int:
@@ -511,7 +511,7 @@ class Executor:
 
     def _sys_ucs(self, operand: APLArray) -> APLArray:
         from marple.backend_functions import to_list
-        if all(isinstance(x, str) for x in operand.data):
+        if is_char_array(operand.data):
             return APLArray.array(list(operand.shape), [ord(c) for c in operand.data])
         data = to_list(operand.data)
         if operand.is_scalar():
@@ -590,8 +590,8 @@ class Executor:
         if operand.shape == []:
             text = format_num(operand.data[0])
         elif len(operand.shape) == 1:
-            if len(operand.data) > 0 and isinstance(operand.data[0], str):
-                text = "".join(str(c) for c in operand.data)
+            if is_char_array(operand.data):
+                text = chars_to_str(operand.data)
             else:
                 text = " ".join(format_num(x) for x in operand.data)
         else:

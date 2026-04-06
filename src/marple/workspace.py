@@ -5,7 +5,7 @@ except ImportError:
     pass
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import to_list
+from marple.backend_functions import chars_to_str, is_char_array, to_list
 from marple.ports.filesystem import FileSystem
 
 
@@ -28,9 +28,8 @@ def _format_value(value: object) -> str | None:
             return f"¯{abs(v)}"
         return str(v)
     data = to_list(value.data)
-    is_char = len(data) > 0 and all(isinstance(x, str) for x in data)
-    if is_char:
-        char_str = "".join(str(x) for x in data)
+    if is_char_array(value.data):
+        char_str = chars_to_str(value.data)
         quoted = f"'{char_str}'"
         if len(value.shape) == 1:
             return quoted
@@ -77,7 +76,7 @@ def save_workspace(env: dict[str, Any], ws_dir: str,
     # Write .ws marker
     wsid_val = env.get("⎕WSID", env.get("__wsid__", "CLEAR WS"))
     if isinstance(wsid_val, APLArray):
-        wsid = "".join(str(c) for c in wsid_val.data)
+        wsid = chars_to_str(wsid_val.data)
     else:
         wsid = str(wsid_val)
     fs.write_text(ws_dir + "/" + ".ws", wsid + "\n")
@@ -162,7 +161,7 @@ def load_workspace(env: Any, ws_dir: str,
     # Execute latent expression if present
     lx = env.get("⎕LX") if hasattr(env, 'get') else env.get("⎕LX")
     if lx is not None and isinstance(lx, APLArray) and len(lx.data) > 0:
-        lx_text = "".join(str(c) for c in lx.data)
+        lx_text = chars_to_str(lx.data)
         if lx_text.strip():
             result = evaluate(lx_text)
             if isinstance(result, APLArray):

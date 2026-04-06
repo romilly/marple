@@ -1,6 +1,6 @@
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import is_numeric_array, np_reshape, to_list
+from marple.backend_functions import is_char_array, is_numeric_array, np_reshape, to_list
 from marple.errors import LengthError
 
 
@@ -96,10 +96,7 @@ def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
     max_size = 1
     for s in max_shape:
         max_size *= s
-    is_char = any(
-        not is_numeric_array(c.data) and len(c.data) > 0 and isinstance(c.data[0], str)
-        for c in cells
-    )
+    is_char = any(is_char_array(c.data) for c in cells)
     fill = " " if is_char else 0
     if not is_char:
         result = np.zeros(len(cells) * max_size, dtype=np.float64)

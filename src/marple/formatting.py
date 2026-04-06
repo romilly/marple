@@ -5,7 +5,7 @@ try:
 except ImportError:
     pass
 
-from marple.backend_functions import np_reshape
+from marple.backend_functions import chars_to_str, is_char_array, np_reshape
 from marple.numpy_array import APLArray
 
 
@@ -38,7 +38,7 @@ def format_num(x: Any, pp: int = 10) -> str:
 
 
 def _is_char_array(arr: APLArray) -> bool:
-    return len(arr.data) > 0 and all(isinstance(x, str) for x in arr.data)
+    return is_char_array(arr.data)
 
 
 def _rjust(s: str, width: int) -> str:
@@ -54,7 +54,7 @@ def _format_matrix(result: APLArray, pp: int) -> str:
         lines = []
         for r in range(rows):
             row_data = result.data[r * cols:(r + 1) * cols]
-            lines.append("".join(str(x) for x in row_data))
+            lines.append(chars_to_str(row_data))
         return "\n".join(lines)
     flat = result.data.flatten() if hasattr(result.data, 'flatten') else result.data
     strs = [format_num(flat[r * cols + c], pp) for r in range(rows) for c in range(cols)]
@@ -82,7 +82,7 @@ def format_result(result: APLArray, env: Any = None) -> str:
         return format_num(result.data.flatten()[0], pp)
     if _is_char_array(result):
         if len(result.shape) == 1:
-            return "".join(str(x) for x in result.data)
+            return chars_to_str(result.data)
         if len(result.shape) == 2:
             return _format_matrix(result, pp)
     flat = result.data.flatten() if hasattr(result.data, 'flatten') else result.data

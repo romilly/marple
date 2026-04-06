@@ -4,6 +4,7 @@ from typing import Any
 
 from marple.numpy_array import APLArray, S
 from marple.formatting import format_num
+from marple.backend_functions import chars_to_str, is_char_array
 from marple.errors import DomainError
 
 
@@ -123,7 +124,7 @@ def apply_group(group: FmtGroup, value: APLArray | None,
         return group.text
     if value is None:
         return " " * (group.width * group.repeat)
-    is_char = (len(value.data) > 0 and isinstance(value.data[0], str))
+    is_char = is_char_array(value.data)
     if group.code == "A" and not is_char:
         raise DomainError("A format requires character data")
     if group.code != "A" and is_char:
@@ -135,9 +136,9 @@ def apply_group(group: FmtGroup, value: APLArray | None,
             start = row * cols
             if start >= len(value.data):
                 return " " * total_chars
-            row_chars = [str(c) for c in value.data[start:start + cols]]
-        elif len(value.data) > 0 and isinstance(value.data[0], str):
-            row_chars = [str(c) for c in value.data] if row == 0 else []
+            row_chars = list(chars_to_str(value.data[start:start + cols]))
+        elif is_char:
+            row_chars = list(chars_to_str(value.data)) if row == 0 else []
         else:
             row_chars = []
         while len(row_chars) < total_chars:
@@ -169,7 +170,7 @@ def column_row_count(value: APLArray, is_alpha: bool) -> int:
         return 1
     if len(value.shape) >= 2:
         return value.shape[0]
-    if is_alpha and len(value.data) > 0 and isinstance(value.data[0], str):
+    if is_alpha and is_char_array(value.data):
         return 1
     return value.shape[0]
 

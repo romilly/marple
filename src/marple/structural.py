@@ -1,6 +1,6 @@
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import is_numeric_array, np_reshape, to_list
+from marple.backend_functions import is_char_array, is_numeric_array, np_reshape, to_list
 from marple.errors import DomainError, IndexError_, LengthError, RankError
 from marple.get_numpy import np
 
@@ -184,7 +184,7 @@ def catenate(alpha: APLArray, omega: APLArray) -> APLArray:
 
 def _fill_element(omega: APLArray) -> object:
     """Return the fill element: ' ' for character arrays, 0 for numeric."""
-    if len(omega.data) > 0 and isinstance(omega.data[0], str):
+    if is_char_array(omega.data):
         return " "
     return 0
 

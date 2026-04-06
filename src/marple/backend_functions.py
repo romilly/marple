@@ -154,7 +154,7 @@ def data_type_code(data: Any) -> int:
             return 643
         if _is_float_dtype(data):
             return 645
-    if isinstance(data, list) and data and isinstance(data[0], str):
+    if is_char_array(data):
         return 320
     return 323
 
