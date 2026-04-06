@@ -40,6 +40,12 @@ class TestRoll:
         for v in result.data:
             assert 1 <= int(v) <= 6
 
+    def test_roll_matrix(self) -> None:
+        result = Interpreter(io=1).run("? 3 3⍴6")
+        assert result.shape == [3, 3]
+        for v in result.data.flat:
+            assert 1 <= int(v) <= 6
+
     def test_roll_respects_io(self) -> None:
         i = Interpreter(io=0)
         i.run("⎕RL←42")

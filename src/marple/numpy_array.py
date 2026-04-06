@@ -308,7 +308,8 @@ class APLArray:
             return _random.random() if n == 0 else _random.randint(io, n - 1 + io)
         if self.is_scalar():
             return APLArray.scalar(roll_one(self.data[0]))
-        return APLArray.array(list(self.shape), [roll_one(v) for v in self.data])
+        data = np.array([roll_one(v) for v in self.data.flat])
+        return APLArray(list(self.shape), data.reshape(self.shape) if self.shape else data)
 
     def format(self) -> 'APLArray':
         from marple.formatting import format_num
