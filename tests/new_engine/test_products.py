@@ -82,6 +82,16 @@ class TestOuterProduct:
         result = Interpreter(io=1).run("1 2 3∘.+10 20")
         assert result == APLArray.array([3, 2], [[11, 21], [12, 22], [13, 23]])
 
+    def test_outer_product_no_int_overflow(self) -> None:
+        """∘.× on large int vectors must not wrap around."""
+        i = Interpreter(io=1)
+        # 1e9 * 1e9 = 1e18 which overflows int64 (max ~9.2e18)
+        # 3e9 * 3e9 = 9e18 which is right at the edge
+        # 1e10 * 1e10 = 1e20 which clearly overflows
+        result = i.run("(1e10 2e10)∘.×(3e10 4e10)")
+        for v in result.data.flat:
+            assert v > 0, f"Overflow detected: {v}"
+
     def test_outer_equality(self) -> None:
         result = Interpreter(io=1).run("1 2 3∘.=1 3")
         assert result == APLArray.array([3, 2], [[1, 0], [0, 0], [0, 1]])

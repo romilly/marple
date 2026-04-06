@@ -100,7 +100,10 @@ def maybe_downcast(data: Any, ct: float) -> Any:
         mag = np.maximum(np.abs(data), np.abs(rounded))
         if not np.all(diff <= ct * mag):
             return data
-    # All close to integers — use int32 if values fit, else int64
+    # All close to integers — downcast only if values fit in int range
+    max_val = np.max(np.abs(rounded))
+    if max_val > np.float64(np.iinfo(np.int64).max):
+        return data
     int_arr = rounded.astype(np.int64)
     if np.all(np.abs(int_arr) <= np.iinfo(np.int32).max):
         return int_arr.astype(np.int32)

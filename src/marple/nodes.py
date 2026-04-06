@@ -117,7 +117,8 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
         if ufunc_name is not None:
             ufunc = getattr(np, ufunc_name, None)
             if ufunc is not None and hasattr(ufunc, 'outer'):
-                result = ufunc.outer(alpha.data.flatten(), omega.data.flatten())
+                result = ufunc.outer(maybe_upcast(alpha.data.flatten()),
+                                     maybe_upcast(omega.data.flatten()))
                 result_shape = alpha.shape + omega.shape
                 return APLArray(result_shape, np_reshape(result, result_shape))
     # General path
