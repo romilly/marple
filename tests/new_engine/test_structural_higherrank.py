@@ -68,3 +68,56 @@ class TestCharacterData:
         result = Interpreter(io=1).run("1⊖2 3⍴'ABCDEF'")
         assert result.shape == [2, 3]
         assert list(result.data) == list("DEFABC")
+
+    def test_reshape_char(self) -> None:
+        result = Interpreter(io=1).run("3⍴'AB'")
+        assert result.shape == [3]
+        assert list(result.data) == list("ABA")
+
+    def test_reshape_char_matrix(self) -> None:
+        result = Interpreter(io=1).run("2 3⍴'ABCD'")
+        assert result.shape == [2, 3]
+        assert list(result.data) == list("ABCDAB")
+
+    def test_ravel_char_matrix(self) -> None:
+        result = Interpreter(io=1).run(",2 3⍴'ABCDEF'")
+        assert result.shape == [6]
+        assert list(result.data) == list("ABCDEF")
+
+    def test_reverse_char_vector(self) -> None:
+        result = Interpreter(io=1).run("⌽'hello'")
+        assert result.shape == [5]
+        assert list(result.data) == list("olleh")
+
+    def test_transpose_char_matrix(self) -> None:
+        result = Interpreter(io=1).run("⍉2 3⍴'ABCDEF'")
+        assert result.shape == [3, 2]
+        assert list(result.data) == list("ADBECF")
+
+    def test_catenate_char(self) -> None:
+        result = Interpreter(io=1).run("'hello','world'")
+        assert result.shape == [10]
+        assert list(result.data) == list("helloworld")
+
+    def test_catenate_char_scalar(self) -> None:
+        i = Interpreter(io=1)
+        result = i.run("'hello','-'")
+        assert result.shape == [6]
+        assert list(result.data) == list("hello-")
+
+    def test_comparison_char_equal(self) -> None:
+        assert Interpreter(io=1).run("'A'='A'") == APLArray.array([1], [1])
+
+    def test_comparison_char_not_equal(self) -> None:
+        assert Interpreter(io=1).run("'A'='B'") == APLArray.array([1], [0])
+
+    def test_comparison_char_less(self) -> None:
+        assert Interpreter(io=1).run("'A'<'B'") == APLArray.array([1], [1])
+
+    def test_comparison_char_vector_equal(self) -> None:
+        result = Interpreter(io=1).run("'abc'='aXc'")
+        assert result.shape == [3]
+
+    def test_comparison_char_ne(self) -> None:
+        assert Interpreter(io=1).run("'A'≠'B'") == APLArray.array([1], [1])
+        assert Interpreter(io=1).run("'A'≠'A'") == APLArray.array([1], [0])

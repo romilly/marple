@@ -167,6 +167,8 @@ class APLArray:
 
     def _compare(self, other: 'APLArray', op: Any, ct: float = 0) -> 'APLArray':
         """Comparison with numpy fast path and tolerant equality."""
+        if not is_numeric_array(self.data) or not is_numeric_array(other.data):
+            ct = 0
         if is_numeric_array(self.data) and is_numeric_array(other.data):
             shape = list(other.shape) if not other.is_scalar() else list(self.shape)
             result = op(self.data, other.data, self._tolerant_eq(self.data, other.data, ct))
@@ -400,7 +402,10 @@ class APLArray:
             return self
         if len(self.shape) != 2:
             raise RankError("Transpose currently supports only rank-2 arrays")
-        return APLArray([self.shape[1], self.shape[0]], self.data.T.copy())
+        if is_numeric_array(self.data):
+            return APLArray([self.shape[1], self.shape[0]], self.data.T.copy())
+        from marple.structural import transpose
+        return transpose(self)
 
     def matrix_inverse(self) -> 'APLArray':
         from marple.structural import matrix_inverse
