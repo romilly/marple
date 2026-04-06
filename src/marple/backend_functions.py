@@ -11,6 +11,30 @@ def np_reshape(arr: Any, shape: Any) -> Any:
     return arr.reshape(tuple(shape) if isinstance(shape, list) else shape)
 
 
+def is_char_array(data: Any) -> bool:
+    """Check if data represents character data (uint32 ndarray or list of str)."""
+    if hasattr(data, 'dtype'):
+        return str(data.dtype) == 'uint32'
+    return isinstance(data, list) and len(data) > 0 and isinstance(data[0], str)
+
+
+def chars_to_str(data: Any) -> str:
+    """Convert character array data (uint32 ndarray or list of str) to Python string."""
+    if hasattr(data, 'dtype') and str(data.dtype) == 'uint32':
+        return ''.join(chr(int(x)) for x in data.flat)
+    return ''.join(str(c) for c in data)
+
+
+def str_to_char_array(s: str) -> Any:
+    """Convert a Python string to a uint32 numpy array of codepoints."""
+    return np.array([ord(c) for c in s], dtype=np.uint32)
+
+
+def char_fill() -> Any:
+    """Return the fill element for character arrays: space as uint32."""
+    return np.uint32(32)
+
+
 def to_array(data: list[Any]) -> Any:
     """Convert a Python list to an ndarray if numeric, or return as-is for characters."""
     if len(data) == 0:
