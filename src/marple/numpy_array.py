@@ -340,6 +340,7 @@ class APLArray:
         n = int(self.data[0])
         return APLArray.array([n], list(range(io, n + io)))
 
+    # TODO: wrong, tally is a count: ×/shape
     def tally(self) -> 'APLArray':
         return APLArray.scalar(1) if self.is_scalar() else APLArray.scalar(self.shape[0])
 
