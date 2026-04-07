@@ -74,8 +74,16 @@ def to_list(data: Any) -> list[Any]:
 
 
 def is_numeric_array(data: Any) -> bool:
-    """Check if data is an ndarray from the active backend."""
-    return hasattr(data, "dtype")
+    """Check if data is a numeric ndarray from the active backend.
+
+    uint32 arrays are reserved for character data (Unicode codepoints)
+    and are NOT numeric — see is_char_array. The two predicates are
+    disjoint, which is what allows the dyadic-arithmetic fast paths
+    to use is_numeric_array as a safe gate after the char guards run.
+    """
+    if not hasattr(data, "dtype"):
+        return False
+    return str(data.dtype) != 'uint32'
 
 
 def _is_int_dtype(arr: Any) -> bool:
