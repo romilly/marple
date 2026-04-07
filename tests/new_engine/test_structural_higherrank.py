@@ -43,67 +43,74 @@ class TestDropMultiAxis:
         assert result.shape == [3, 5]
 
 
+def _flat_chars(arr: APLArray) -> str:
+    """Render any character array (1D or 2D, list[str] or uint32) as a string."""
+    from marple.backend_functions import chars_to_str
+    data = arr.data.flatten() if hasattr(arr.data, 'flatten') else arr.data
+    return chars_to_str(data)
+
+
 class TestCharacterData:
     def test_take_char_with_space_fill(self) -> None:
         """5↑'abc' pads with spaces."""
         result = Interpreter(io=1).run("5↑'abc'")
         assert result.shape == [5]
-        assert list(result.data) == list("abc  ")
+        assert _flat_chars(result) == "abc  "
 
     def test_rotate_char_vector(self) -> None:
         result = Interpreter(io=1).run("1⌽'hello'")
-        assert list(result.data) == list("elloh")
+        assert _flat_chars(result) == "elloh"
 
     def test_rotate_char_matrix(self) -> None:
         result = Interpreter(io=1).run("1⌽2 3⍴'ABCDEF'")
         assert result.shape == [2, 3]
-        assert list(result.data) == list("BCAEFD")
+        assert _flat_chars(result) == "BCAEFD"
 
     def test_reverse_char_matrix(self) -> None:
         result = Interpreter(io=1).run("⌽2 3⍴'ABCDEF'")
         assert result.shape == [2, 3]
-        assert list(result.data) == list("CBAFED")
+        assert _flat_chars(result) == "CBAFED"
 
     def test_rotate_first_char_matrix(self) -> None:
         result = Interpreter(io=1).run("1⊖2 3⍴'ABCDEF'")
         assert result.shape == [2, 3]
-        assert list(result.data) == list("DEFABC")
+        assert _flat_chars(result) == "DEFABC"
 
     def test_reshape_char(self) -> None:
         result = Interpreter(io=1).run("3⍴'AB'")
         assert result.shape == [3]
-        assert list(result.data) == list("ABA")
+        assert _flat_chars(result) == "ABA"
 
     def test_reshape_char_matrix(self) -> None:
         result = Interpreter(io=1).run("2 3⍴'ABCD'")
         assert result.shape == [2, 3]
-        assert list(result.data) == list("ABCDAB")
+        assert _flat_chars(result) == "ABCDAB"
 
     def test_ravel_char_matrix(self) -> None:
         result = Interpreter(io=1).run(",2 3⍴'ABCDEF'")
         assert result.shape == [6]
-        assert list(result.data) == list("ABCDEF")
+        assert _flat_chars(result) == "ABCDEF"
 
     def test_reverse_char_vector(self) -> None:
         result = Interpreter(io=1).run("⌽'hello'")
         assert result.shape == [5]
-        assert list(result.data) == list("olleh")
+        assert _flat_chars(result) == "olleh"
 
     def test_transpose_char_matrix(self) -> None:
         result = Interpreter(io=1).run("⍉2 3⍴'ABCDEF'")
         assert result.shape == [3, 2]
-        assert list(result.data) == list("ADBECF")
+        assert _flat_chars(result) == "ADBECF"
 
     def test_catenate_char(self) -> None:
         result = Interpreter(io=1).run("'hello','world'")
         assert result.shape == [10]
-        assert list(result.data) == list("helloworld")
+        assert _flat_chars(result) == "helloworld"
 
     def test_catenate_char_scalar(self) -> None:
         i = Interpreter(io=1)
         result = i.run("'hello','-'")
         assert result.shape == [6]
-        assert list(result.data) == list("hello-")
+        assert _flat_chars(result) == "hello-"
 
     def test_comparison_char_equal(self) -> None:
         assert Interpreter(io=1).run("'A'='A'") == S(1)

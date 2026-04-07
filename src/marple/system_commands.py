@@ -5,6 +5,7 @@ Returns strings instead of printing — usable by REPL, web server, and Jupyter.
 
 
 from marple.numpy_array import APLArray
+from marple.backend_functions import chars_to_str, str_to_char_array
 from marple.formatting import format_result
 from marple.engine import Interpreter
 
@@ -32,9 +33,9 @@ def _cmd_wsid(interp: Interpreter, line: str) -> tuple[str, bool]:
     parts = line.split(None, 1)
     if len(parts) > 1:
         name = parts[1].strip()
-        interp.env["⎕WSID"] = APLArray.array([len(name)], list(name))
+        interp.env["⎕WSID"] = APLArray([len(name)], str_to_char_array(name))
         return name, False
-    return "".join(str(c) for c in interp.env["⎕WSID"].data), False
+    return chars_to_str(interp.env["⎕WSID"].data), False
 
 
 def _cmd_ops(interp: Interpreter, line: str) -> tuple[str, bool]:
@@ -79,8 +80,8 @@ def _cmd_save(interp: Interpreter, line: str) -> tuple[str, bool]:
     parts = line.split(None, 1)
     if len(parts) > 1:
         name = parts[1].strip()
-        interp.env["⎕WSID"] = APLArray.array([len(name)], list(name))
-    wsid = "".join(str(c) for c in interp.env["⎕WSID"].data)
+        interp.env["⎕WSID"] = APLArray([len(name)], str_to_char_array(name))
+    wsid = chars_to_str(interp.env["⎕WSID"].data)
     if wsid == "CLEAR WS":
         return "ERROR: No workspace ID set. Use )WSID name first.", False
     ws_root = interp.config.get_workspaces_dir()
@@ -111,7 +112,7 @@ def _cmd_load(interp: Interpreter, line: str) -> tuple[str, bool]:
     from marple.environment import Environment
     interp.env = Environment(io=1)
     lx_result = load_workspace(interp.env, ws_dir, evaluate=interp.run)
-    wsid = "".join(str(c) for c in interp.env["⎕WSID"].data)
+    wsid = chars_to_str(interp.env["⎕WSID"].data)
     output = wsid
     if lx_result is not None:
         output += "\n" + format_result(lx_result, interp.env)

@@ -73,10 +73,11 @@ class TestQuadWSID:
         assert len(result.data) > 0
 
     def test_set_wsid(self) -> None:
+        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         i.run("⎕WSID←'MYWS'")
         result = i.run("⎕WSID")
-        assert "".join(str(c) for c in result.data) == "MYWS"
+        assert chars_to_str(result.data) == "MYWS"
 
 
 class TestSystemFunctions:

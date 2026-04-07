@@ -45,3 +45,13 @@ class TestSingleCharIsScalar:
         from marple.backend_functions import is_char_array
         result = Interpreter(io=1).run("''")
         assert is_char_array(result.data)
+
+    def test_multi_char_literal_is_uint32(self) -> None:
+        # Step 4: non-empty string literals must be uint32 ndarrays.
+        from marple.backend_functions import is_char_array, is_ndarray
+        result = Interpreter(io=1).run("'abc'")
+        assert is_ndarray(result.data)
+        assert str(result.data.dtype) == 'uint32'
+        assert is_char_array(result.data)
+        # Codepoints check
+        assert list(result.data) == [97, 98, 99]

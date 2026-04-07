@@ -183,15 +183,13 @@ class Str(Node):
     def __init__(self, value: str) -> None:
         self.value = value
     def execute(self, ctx: ExecutionContext) -> APLArray:
+        # Step 4: all string literals are uint32 character arrays.
+        # Single-char literals are scalars (shape []) backed by a
+        # 1-element uint32 array, mirroring numeric scalars like S(5).
+        from marple.backend_functions import str_to_char_array
         if len(self.value) == 1:
-            return APLArray.scalar(self.value)
-        if len(self.value) == 0:
-            # Empty char array: type info is lost in a plain list, so
-            # construct the uint32 empty array directly. Without this,
-            # '' is indistinguishable from an empty numeric vector.
-            from marple.backend_functions import str_to_char_array
-            return APLArray([0], str_to_char_array(''))
-        return APLArray.array([len(self.value)], list(self.value))
+            return APLArray([], str_to_char_array(self.value))
+        return APLArray([len(self.value)], str_to_char_array(self.value))
 
 
 class Vector(Node):

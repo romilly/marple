@@ -110,18 +110,21 @@ class TestMultiStatement:
 
 class TestMultiGuard:
     def test_multi_guard_with_assignment(self) -> None:
+        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         i.run("classify←{r←'zero' ⋄ ⍵>0:r←'positive' ⋄ ⍵<0:r←'negative' ⋄ r}")
         result = i.run("classify 5")
-        assert "".join(str(c) for c in result.data) == "positive"
+        assert chars_to_str(result.data) == "positive"
 
 
 class TestCRandFX:
     def test_cr_multi_statement(self) -> None:
+        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         i.run("sign←{⍵>0:1 ⋄ ⍵<0:¯1 ⋄ 0}")
         result = i.run("⎕CR 'sign'")
-        text = "".join(str(c) for c in result.data)
+        data = result.data.flatten() if hasattr(result.data, 'flatten') else result.data
+        text = chars_to_str(data)
         assert "⋄" in text
         assert "sign←{" in text
 
@@ -225,10 +228,12 @@ class TestDopApplication:
         assert i.run("⎕NC 'twice'") == S(4)
 
     def test_cr_dop(self) -> None:
+        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         i.run("twice←{⍺⍺ ⍺⍺ ⍵}")
         result = i.run("⎕CR 'twice'")
-        text = "".join(str(c) for c in result.data)
+        data = result.data.flatten() if hasattr(result.data, 'flatten') else result.data
+        text = chars_to_str(data)
         assert "⍺⍺" in text
 
     def test_fx_dop(self) -> None:

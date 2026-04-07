@@ -120,7 +120,7 @@ class Executor:
 
     def _execute_string(self, operand: APLArray) -> APLArray:
         from marple.parser import parse
-        source = "".join(str(c) for c in operand.data)
+        source = chars_to_str(operand.data)
         tree = parse(source, self.env.class_dict())
         return self.evaluate(tree)
 
@@ -510,13 +510,18 @@ class Executor:
         return APLArray.array([len(names), max_len], chars)
 
     def _sys_ucs(self, operand: APLArray) -> APLArray:
-        from marple.backend_functions import to_list
+        from marple.backend_functions import is_ndarray, str_to_char_array, to_list
+        from marple.get_numpy import np
         if is_char_array(operand.data):
+            # uint32 ndarray: already codepoints, just retype.
+            # list[str]: ord() each element.
+            if is_ndarray(operand.data):
+                return APLArray(list(operand.shape), operand.data.astype(np.int64))
             return APLArray.array(list(operand.shape), [ord(c) for c in operand.data])
+        # Numeric → character: build a uint32 char array.
         data = to_list(operand.data)
-        if operand.is_scalar():
-            return APLArray.array([], [chr(int(data[0]))])
-        return APLArray.array(list(operand.shape), [chr(int(x)) for x in data])
+        text = ''.join(chr(int(x)) for x in data)
+        return APLArray(list(operand.shape), str_to_char_array(text))
 
     def _sys_dr(self, operand: APLArray) -> APLArray:
         from marple.backend_functions import data_type_code

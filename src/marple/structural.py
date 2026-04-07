@@ -1,6 +1,8 @@
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import is_char_array, is_ndarray, is_numeric_array, np_reshape, to_list
+from marple.backend_functions import (
+    char_fill, is_char_array, is_ndarray, is_numeric_array, np_reshape, to_list,
+)
 from marple.errors import DomainError, IndexError_, LengthError, RankError
 from marple.get_numpy import np
 
@@ -69,10 +71,14 @@ def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
     total = 1
     for s in new_shape:
         total *= s
-    if is_numeric_array(omega.data):
+    if is_ndarray(omega.data):
         flat = omega.data.flatten()
         if len(flat) == 0:
-            flat = np.array([0])
+            # Preserve dtype: fill is char_fill for uint32, 0 otherwise.
+            if str(omega.data.dtype) == 'uint32':
+                flat = np.array([char_fill()], dtype=np.uint32)
+            else:
+                flat = np.array([0])
         n = len(flat)
         if total <= n:
             cycled = flat[:total]
@@ -80,7 +86,7 @@ def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
             reps = total // n + 1
             cycled = np.concatenate(tuple([flat] * reps))[:total]
         return APLArray(new_shape, np_reshape(cycled, new_shape))
-    # Character data
+    # Character data (list[str] fallback)
     data = list(omega.data) if len(omega.data) > 0 else [' ']
     result: list[object] = []
     for i in range(total):
@@ -142,10 +148,21 @@ def membership(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
 
 def catenate(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ,: catenate along last axis."""
+    # Same-kind ndarrays (both numeric or both char) take the numpy fast
+    # path so dtype is preserved. Mixed kinds fall through to the list
+    # path (existing accidental coercion behaviour, unchanged).
+    same_kind = (
+        (is_numeric_array(alpha.data) and is_numeric_array(omega.data))
+        or (is_char_array(alpha.data) and is_char_array(omega.data)
+            and is_ndarray(alpha.data) and is_ndarray(omega.data))
+    )
     if alpha.is_scalar() and omega.is_scalar():
+        if same_kind:
+            return APLArray([2], np.concatenate(
+                (alpha.data.flatten(), omega.data.flatten())))
         return APLArray.array([2], [alpha.data.flatten()[0], omega.data.flatten()[0]])
     if len(alpha.shape) <= 1 and len(omega.shape) <= 1:
-        if is_numeric_array(alpha.data) and is_numeric_array(omega.data):
+        if same_kind:
             a = alpha.data.flatten() if not alpha.is_scalar() else alpha.data.flatten()
             b = omega.data.flatten() if not omega.is_scalar() else omega.data.flatten()
             return APLArray([len(a) + len(b)], np.concatenate((a, b)))
@@ -153,7 +170,7 @@ def catenate(alpha: APLArray, omega: APLArray) -> APLArray:
         right = list(omega.data) if not omega.is_scalar() else [omega.data[0]]
         return APLArray.array([len(left) + len(right)], left + right)
     # Higher rank: catenate along last axis using numpy
-    if is_numeric_array(alpha.data) and is_numeric_array(omega.data):
+    if same_kind:
         # Ensure both have the same number of dimensions
         a = alpha.data
         b = omega.data
@@ -183,8 +200,12 @@ def catenate(alpha: APLArray, omega: APLArray) -> APLArray:
 
 
 def _fill_element(omega: APLArray) -> object:
-    """Return the fill element: ' ' for character arrays, 0 for numeric."""
+    """Return the fill element: char_fill (uint32 32) or ' ' for char arrays,
+    0 for numeric. uint32 char data uses the numpy fill so result lists
+    can be passed to np.array without coercing to a string array."""
     if is_char_array(omega.data):
+        if is_ndarray(omega.data):
+            return char_fill()
         return " "
     return 0
 
@@ -302,7 +323,7 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
 def rotate(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⌽: rotate along last axis."""
     n = int(alpha.data.flatten()[0])
-    if is_numeric_array(omega.data):
+    if is_ndarray(omega.data):
         return APLArray(list(omega.shape), np.roll(omega.data, -n, axis=-1))
     data = omega.data
     if len(omega.shape) <= 1:
@@ -325,7 +346,7 @@ def rotate_first(alpha: APLArray, omega: APLArray) -> APLArray:
     n = int(alpha.data.flatten()[0])
     if len(omega.shape) <= 1:
         return rotate(alpha, omega)
-    if is_numeric_array(omega.data):
+    if is_ndarray(omega.data):
         return APLArray(list(omega.shape), np.roll(omega.data, -n, axis=0))
     chunk = _first_axis_chunk_size(omega.shape)
     num_chunks = omega.shape[0]
@@ -345,6 +366,9 @@ def transpose(omega: APLArray) -> APLArray:
     if len(omega.shape) != 2:
         raise RankError("Transpose currently supports only rank-2 arrays")
     rows, cols = omega.shape
+    if is_ndarray(omega.data):
+        # numpy preserves dtype (works for uint32 char data too)
+        return APLArray([cols, rows], omega.data.T.copy())
     new_data: list[object] = []
     for c in range(cols):
         for r in range(rows):

@@ -27,6 +27,13 @@ class APLArray:
             return False
         if is_numeric_array(self.data) and is_numeric_array(other.data):
             return bool(np.array_equal(self.data, other.data))
+        # Char vs char: compare as strings so the two representations
+        # (uint32 ndarray and list[str]) are equal when they spell the
+        # same text. Otherwise an APLArray equality check would care
+        # about representation accidents during the migration.
+        if is_char_array(self.data) and is_char_array(other.data):
+            from marple.backend_functions import chars_to_str
+            return chars_to_str(self.data) == chars_to_str(other.data)
         return to_list(self.data) == to_list(other.data)
 
     @classmethod
@@ -439,7 +446,7 @@ class APLArray:
             return self
         if len(self.shape) != 2:
             raise RankError("Transpose currently supports only rank-2 arrays")
-        if is_numeric_array(self.data):
+        if is_ndarray(self.data):
             return APLArray([self.shape[1], self.shape[0]], self.data.T.copy())
         from marple.structural import transpose
         return transpose(self)
@@ -449,11 +456,11 @@ class APLArray:
         return matrix_inverse(self)
 
     def reverse(self) -> 'APLArray':
-        if is_numeric_array(self.data):
+        if is_ndarray(self.data):
             return APLArray(list(self.shape), np.flip(self.data, axis=-1).copy())
         if len(self.shape) <= 1:
             return APLArray.array(list(self.shape), list(reversed(self.data)))
-        # Character matrix: reverse each row
+        # Character matrix (list[str] fallback): reverse each row
         row_len = self.shape[-1]
         data = self.data
         result: list[object] = []
@@ -462,7 +469,7 @@ class APLArray:
         return APLArray.array(list(self.shape), result)
 
     def reverse_first(self) -> 'APLArray':
-        if is_numeric_array(self.data):
+        if is_ndarray(self.data):
             return APLArray(list(self.shape), np.flip(self.data, axis=0).copy())
         return APLArray.array(list(self.shape), list(reversed(self.data)))
 

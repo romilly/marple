@@ -51,9 +51,12 @@ def _format_matrix(result: APLArray, pp: int) -> str:
     """Format a rank-2 array as right-justified columns."""
     rows, cols = result.shape
     if _is_char_array(result):
+        # Flatten first: char data may be a 2D uint32 ndarray (slicing
+        # would index rows, not flat elements) or a 1D list[str].
+        flat_chars = result.data.flatten() if hasattr(result.data, 'flatten') else result.data
         lines = []
         for r in range(rows):
-            row_data = result.data[r * cols:(r + 1) * cols]
+            row_data = flat_chars[r * cols:(r + 1) * cols]
             lines.append(chars_to_str(row_data))
         return "\n".join(lines)
     flat = result.data.flatten() if hasattr(result.data, 'flatten') else result.data
