@@ -5,7 +5,7 @@ except ImportError:
     pass
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import chars_to_str, is_char_array, to_list
+from marple.backend_functions import chars_to_str, is_char_array, str_to_char_array, to_list
 from marple.ports.filesystem import FileSystem
 
 
@@ -142,7 +142,7 @@ def load_workspace(env: Any, ws_dir: str,
         text = fs.read_text(ws_file)
         wsid = text.split("\n")[0].strip()
         env["__wsid__"] = wsid
-        env["⎕WSID"] = APLArray.array([len(wsid)], list(wsid))
+        env["⎕WSID"] = APLArray([len(wsid)], str_to_char_array(wsid))
 
     # Collect .apl files, system vars first
     files = sorted(fs.listdir(ws_dir))

@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from marple.backend_functions import str_to_char_array
 from marple.numpy_array import APLArray, S
 from marple.ports.console import Console
 from marple.ports.filesystem import FileSystem
@@ -14,13 +15,13 @@ _QUAD_DEFAULTS: dict[str, APLArray] = {
     "⎕CT": S(1e-14),
     "⎕PP": S(10),
     "⎕EN": S(0),
-    "⎕DM": APLArray.array([0], []),
-    "⎕A": APLArray.array([26], list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
-    "⎕D": APLArray.array([10], list("0123456789")),
-    "⎕WSID": APLArray.array([8], list("CLEAR WS")),
+    "⎕DM": APLArray([0], str_to_char_array("")),
+    "⎕A": APLArray([26], str_to_char_array("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
+    "⎕D": APLArray([10], str_to_char_array("0123456789")),
+    "⎕WSID": APLArray([8], str_to_char_array("CLEAR WS")),
     "⎕RL": S(1),
     "⎕FR": S(645),
-    "⎕LX": APLArray.array([0], []),
+    "⎕LX": APLArray([0], str_to_char_array("")),
 }
 
 

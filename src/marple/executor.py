@@ -7,6 +7,7 @@ from marple.numpy_array import APLArray, S
 from marple.formatting import format_num, format_result
 from marple.backend_functions import (
     _DOWNCAST_CT, chars_to_str, is_char_array, is_numeric_array, maybe_downcast,
+    str_to_char_array,
 )
 from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
 from marple.errors import DomainError, SyntaxError_, ValueError_
@@ -216,12 +217,12 @@ class Executor:
             self.env.console.writeln(text)
             return value
         # ⍞← : display prompt, read input, return response only (Dyalog style)
+        from marple.backend_functions import str_to_char_array
         line = self.env.console.read_line(text)
         if line is None:
             raise DomainError("⍞ input not available — use the terminal REPL for interactive input")
         self.env.console.writeln(text + line)
-        response_chars: list[object] = list(line)
-        return APLArray.array([len(response_chars)], response_chars)
+        return APLArray([len(line)], str_to_char_array(line))
 
     def create_binding(self, dfn_node: Dfn) -> object:
         from marple.dfn_binding import DfnBinding
@@ -252,9 +253,10 @@ class Executor:
 
     def _sysvar_ver(self) -> APLArray:
         from marple import __version__
+        from marple.backend_functions import str_to_char_array
         import sys
         s = "MARPLE v" + __version__ + " on " + sys.platform
-        return APLArray.array([len(s)], list(s))
+        return APLArray([len(s)], str_to_char_array(s))
 
     def _sysvar_wa(self) -> APLArray:
         """⎕WA — workspace available (free memory in bytes)."""
@@ -279,13 +281,14 @@ class Executor:
 
     def _sysvar_quote_quad(self) -> APLArray:
         """⍞ — read a line of character input (no prompt)."""
+        from marple.backend_functions import str_to_char_array
         if self.env.console is None:
             raise DomainError("Console not available for I/O")
         line = self.env.console.read_line("")
         if line is None:
             raise DomainError("⍞ input not available — use the terminal REPL for interactive input")
         self.env.console.writeln(line)
-        return APLArray.array([len(line)], list(line))
+        return APLArray([len(line)], str_to_char_array(line))
 
     # ── Rank operator ──
 
@@ -501,15 +504,16 @@ class Executor:
         return S(1) if self.env.delete_name(name) else S(0)
 
     def _sys_nl(self, operand: APLArray) -> APLArray:
+        from marple.backend_functions import str_to_char_array
+        from marple.get_numpy import np
         nc = int(operand.data[0])
         names = self.env.names_of_class(nc)
         if not names:
-            return APLArray.array([0, 0], [])
+            return APLArray([0, 0], np.array([], dtype=np.uint32).reshape(0, 0))
         max_len = max(len(n) for n in names)
-        chars: list[object] = []
-        for n in names:
-            chars.extend(list(_ljust(n, max_len)))
-        return APLArray.array([len(names), max_len], chars)
+        text = "".join(_ljust(n, max_len) for n in names)
+        data = str_to_char_array(text).reshape(len(names), max_len)
+        return APLArray([len(names), max_len], data)
 
     def _sys_ucs(self, operand: APLArray) -> APLArray:
         from marple.backend_functions import is_ndarray, str_to_char_array, to_list
@@ -552,7 +556,8 @@ class Executor:
             return self.evaluate(tree)
         except APLError as e:
             self.env["⎕EN"] = S(e.code)
-            self.env["⎕DM"] = APLArray.array([len(str(e))], list(str(e)))
+            msg = str(e)
+            self.env["⎕DM"] = APLArray([len(msg)], str_to_char_array(msg))
             left_str = _apl_chars_to_str(left.data)
             tree = parse(left_str, self.env.class_dict())
             return self.evaluate(tree)
@@ -572,8 +577,12 @@ class Executor:
             new_data = to_bool_array([int(bool(v)) for v in vals])
             return APLArray.array(list(right.shape), new_data)
         if target == 320:
-            new_data = [chr(int(v)) for v in vals]
-            return APLArray.array(list(right.shape), new_data)
+            from marple.get_numpy import np
+            text = "".join(chr(int(v)) for v in vals)
+            data = str_to_char_array(text)
+            if len(right.shape) > 1:
+                data = data.reshape(right.shape)
+            return APLArray(list(right.shape), data)
         raise DomainError("Invalid ⎕DR type code: " + str(target))
 
     def _sys_fmt_monadic(self, operand_node: object) -> APLArray:
@@ -582,13 +591,8 @@ class Executor:
         if isinstance(operand_node, FmtArgs):
             values = [self.evaluate(arg) for arg in operand_node.args]
             parts = [self._fmt_value(v) for v in values]
-            all_chars: list[object] = []
-            for p in parts:
-                all_chars.extend(p.data)
-                all_chars.append(" ")
-            if all_chars:
-                all_chars.pop()
-            return APLArray.array([len(all_chars)], all_chars)
+            joined = " ".join(chars_to_str(p.data) for p in parts)
+            return APLArray([len(joined)], str_to_char_array(joined))
         operand = self.evaluate(operand_node)
         return self._fmt_value(operand)
 
@@ -603,7 +607,7 @@ class Executor:
                 text = " ".join(format_num(x) for x in operand.data)
         else:
             text = str(operand)
-        return APLArray.array([len(text)], list(text))
+        return APLArray([len(text)], str_to_char_array(text))
 
     def _sys_fmt_dyadic(self, left_node: object, right_node: object) -> APLArray:
         """Dyadic ⎕FMT — format with specification string."""
@@ -619,6 +623,7 @@ class Executor:
         return dyadic_fmt(fmt_str, values)
 
     def _sys_cr(self, operand: APLArray) -> APLArray:
+        from marple.get_numpy import np
         fn_name = _apl_chars_to_str(operand.data)
         source = self.env.get_source(fn_name)
         if source is None:
@@ -630,10 +635,12 @@ class Executor:
         else:
             lines = [source]
         max_len = max(len(l) for l in lines) if lines else 0
-        flat: list[object] = []
-        for line in lines:
-            flat.extend(list(_ljust(line, max_len)))
-        return APLArray.array([len(lines), max_len], flat)
+        if not lines or max_len == 0:
+            return APLArray([len(lines), max_len],
+                            np.array([], dtype=np.uint32).reshape(len(lines), max_len))
+        text = "".join(_ljust(line, max_len) for line in lines)
+        data = str_to_char_array(text).reshape(len(lines), max_len)
+        return APLArray([len(lines), max_len], data)
 
     def _sys_fx(self, operand: APLArray) -> APLArray:
         from marple.dfn_binding import DfnBinding
@@ -668,8 +675,7 @@ class Executor:
         if "⍺⍺" in text or "⍵⍵" in text:
             self.env.classify(fn_name, NC_OPERATOR)
             self.env.set_operator_arity(fn_name, 2 if "⍵⍵" in text else 1)
-        chars = list(fn_name)
-        return APLArray.array([len(chars)], chars)
+        return APLArray([len(fn_name)], str_to_char_array(fn_name))
 
     def _sys_dl(self, operand: APLArray) -> APLArray:
         secs = float(operand.data[0])
@@ -705,13 +711,16 @@ class Executor:
                         nums.append(int(v))
                 self.env.bind_name(col_name, APLArray.array([len(nums)], nums), NC_ARRAY)
             except (ValueError, TypeError):
+                from marple.get_numpy import np
                 max_len = max((len(v) for v in col_data), default=0)
-                chars: list[object] = []
-                for v in col_data:
-                    chars.extend(list(v.ljust(max_len)))
+                if max_len == 0:
+                    data = np.array([], dtype=np.uint32).reshape(len(col_data), 0)
+                else:
+                    text = "".join(v.ljust(max_len) for v in col_data)
+                    data = str_to_char_array(text).reshape(len(col_data), max_len)
                 self.env.bind_name(
                     col_name,
-                    APLArray.array([len(col_data), max_len], chars),
+                    APLArray([len(col_data), max_len], data),
                     NC_ARRAY,
                 )
         return S(row_count)
@@ -719,8 +728,7 @@ class Executor:
     def _sys_nread(self, operand: APLArray) -> APLArray:
         path = _apl_chars_to_str(operand.data)
         text = self.fs.read_text(path)
-        chars = list(text)
-        return APLArray.array([len(chars)], chars) if chars else APLArray.array([0], [])
+        return APLArray([len(text)], str_to_char_array(text))
 
     def _sys_nexists(self, operand: APLArray) -> APLArray:
         path = _apl_chars_to_str(operand.data)

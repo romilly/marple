@@ -184,10 +184,11 @@ class TestDM:
         assert result.shape == [0]
 
     def test_dm_after_caught_error(self) -> None:
+        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         i.run("'0' ⎕EA '1÷0'")
         result = i.run("⎕DM")
-        msg = "".join(str(c) for c in result.data)
+        msg = chars_to_str(result.data)
         assert "DOMAIN ERROR" in msg
 
     def test_dm_readonly(self) -> None:
@@ -239,31 +240,32 @@ class TestCR:
         assert result.shape[0] >= 1
 
     def test_cr_simple_returns_matrix(self) -> None:
+        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         i.run("double←{⍵+⍵}")
         result = i.run("⎕CR 'double'")
         assert len(result.shape) == 2
         assert result.shape[0] == 1
-        row = "".join(str(c) for c in result.data).rstrip()
+        row = chars_to_str(result.data).rstrip()
         assert row == "double←{⍵+⍵}"
 
     def test_cr_multi_statement_single_line(self) -> None:
+        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         i.run("sign←{⍵>0:1 ⋄ ⍵<0:¯1 ⋄ 0}")
         result = i.run("⎕CR 'sign'")
         assert result.shape[0] == 1
-        text = "".join(str(c) for c in result.data).rstrip()
+        text = chars_to_str(result.data).rstrip()
         assert "⋄" in text
 
     def test_cr_multi_line_via_fx(self) -> None:
+        from marple.backend_functions import str_to_char_array
         i = Interpreter(io=1)
         lines = ["abs←{", "  ⍵<0:-⍵", "  ⍵}"]
         max_len = max(len(l) for l in lines)
-        padded = [list(l.ljust(max_len)) for l in lines]
-        flat: list[str] = []
-        for row in padded:
-            flat.extend(row)
-        matrix = APLArray.array([3, max_len], flat)
+        text = "".join(l.ljust(max_len) for l in lines)
+        data = str_to_char_array(text).reshape(3, max_len)
+        matrix = APLArray([3, max_len], data)
         i.env["__tmp"] = matrix
         i.run("⎕FX __tmp")
         assert i.run("abs ¯7") == S(7)
@@ -281,10 +283,11 @@ class TestCR:
             Interpreter(io=1).run("⎕CR 'nope'")
 
     def test_cr_dop(self) -> None:
+        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         i.run("twice←{⍺⍺ ⍺⍺ ⍵}")
         result = i.run("⎕CR 'twice'")
-        assert "twice←{⍺⍺ ⍺⍺ ⍵}" == "".join(str(c) for c in result.data)
+        assert "twice←{⍺⍺ ⍺⍺ ⍵}" == chars_to_str(result.data)
 
 
 class TestFX:
@@ -294,9 +297,10 @@ class TestFX:
         assert i.run("inc 5") == S(6)
 
     def test_fx_simple(self) -> None:
+        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         result = i.run("⎕FX 'triple←{⍵×3}'")
-        assert "".join(str(c) for c in result.data) == "triple"
+        assert chars_to_str(result.data) == "triple"
         assert i.run("triple 5") == S(15)
 
     def test_fx_multi_statement(self) -> None:
@@ -305,18 +309,20 @@ class TestFX:
         assert i.run("abs ¯7") == S(7)
 
     def test_fx_round_trip(self) -> None:
+        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         i.run("double←{⍵+⍵}")
         source = i.run("⎕CR 'double'")
-        text = "".join(str(c) for c in source.data)
+        text = chars_to_str(source.data)
         new_text = text.replace("double", "dbl", 1)
         i.run("⎕FX '" + new_text + "'")
         assert i.run("dbl 10") == S(20)
 
     def test_fx_dop(self) -> None:
+        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         result = i.run("⎕FX 'twice←{⍺⍺ ⍺⍺ ⍵}'")
-        assert "".join(str(c) for c in result.data) == "twice"
+        assert chars_to_str(result.data) == "twice"
 
     def test_fx_bad_input(self) -> None:
         with pytest.raises(DomainError):
@@ -339,6 +345,17 @@ class TestDL:
         assert float(result.data[0]) >= 0
 
 
+def _extract_matrix_rows(result: APLArray) -> list[str]:
+    """Extract rows of a 2D character matrix as trimmed strings."""
+    from marple.backend_functions import chars_to_str
+    cols = result.shape[1]
+    flat = result.data.flatten() if hasattr(result.data, 'flatten') else result.data
+    rows = []
+    for r in range(result.shape[0]):
+        rows.append(chars_to_str(flat[r * cols:(r + 1) * cols]).rstrip())
+    return rows
+
+
 class TestNL:
     def test_nl_functions(self) -> None:
         i = Interpreter(io=1)
@@ -346,11 +363,7 @@ class TestNL:
         i.run("triple←{⍵+⍵+⍵}")
         result = i.run("⎕NL 3")
         assert len(result.shape) == 2
-        cols = result.shape[1]
-        names = []
-        for r in range(result.shape[0]):
-            row = "".join(str(c) for c in result.data[r * cols:(r + 1) * cols]).rstrip()
-            names.append(row)
+        names = _extract_matrix_rows(result)
         assert "double" in names
         assert "triple" in names
 
@@ -360,11 +373,7 @@ class TestNL:
         i.run("y←10")
         result = i.run("⎕NL 2")
         assert len(result.shape) == 2
-        cols = result.shape[1]
-        names = []
-        for r in range(result.shape[0]):
-            row = "".join(str(c) for c in result.data[r * cols:(r + 1) * cols]).rstrip()
-            names.append(row)
+        names = _extract_matrix_rows(result)
         assert "x" in names
         assert "y" in names
 
@@ -375,34 +384,40 @@ class TestNL:
 
 def _fmt_row(result: APLArray, row: int = 0) -> str:
     """Extract a single row from a ⎕FMT character matrix as a string."""
+    from marple.backend_functions import chars_to_str
     if len(result.shape) == 1:
-        return "".join(str(c) for c in result.data)
+        return chars_to_str(result.data)
     cols = result.shape[1]
     start = row * cols
-    return "".join(str(c) for c in result.data[start:start + cols])
+    flat = result.data.flatten() if hasattr(result.data, 'flatten') else result.data
+    return chars_to_str(flat[start:start + cols])
 
 
 class TestFmt:
     def test_monadic_fmt_scalar(self) -> None:
+        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("⎕FMT 42")
-        assert list(result.data) == ["4", "2"]
+        assert chars_to_str(result.data) == "42"
 
     def test_monadic_fmt_vector(self) -> None:
+        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("⎕FMT 1 2 3")
-        assert "".join(str(c) for c in result.data) == "1 2 3"
+        assert chars_to_str(result.data) == "1 2 3"
 
     def test_dyadic_fmt_integer(self) -> None:
         result = Interpreter(io=1).run("'I5' ⎕FMT 42")
         assert result.shape == [1, 5]
 
     def test_dyadic_fmt_fixed(self) -> None:
+        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("'F8.2' ⎕FMT 3.14159")
-        chars = "".join(str(c) for c in result.data)
+        chars = chars_to_str(result.data)
         assert "3.14" in chars
 
     def test_dyadic_fmt_alpha(self) -> None:
+        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("'5A1' ⎕FMT 'hello'")
-        assert "".join(str(c) for c in result.data) == "hello"
+        assert chars_to_str(result.data) == "hello"
 
     def test_dyadic_fmt_multiple_columns(self) -> None:
         i = Interpreter(io=1)
@@ -430,12 +445,15 @@ class TestFmt:
         assert _fmt_row(result, 2) == "  3   6.0"
 
     def test_fmt_semicolons(self) -> None:
+        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("⎕FMT (1;2;3)")
-        assert "".join(str(c) for c in result.data) == "1 2 3"
+        assert chars_to_str(result.data) == "1 2 3"
 
     def test_fmt_text_insertion(self) -> None:
+        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("'I3,⊂ => ⊃,I3' ⎕FMT (1;2)")
-        chars = "".join(str(c) for c in result.data)
+        flat = result.data.flatten() if hasattr(result.data, 'flatten') else result.data
+        chars = chars_to_str(flat)
         assert "=>" in chars
 
     def test_fmt_spec_cycles(self) -> None:
@@ -502,8 +520,10 @@ class TestFmt:
         assert _fmt_row(result) == " 10: 20"
 
     def test_fmt_g_pattern(self) -> None:
+        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("'G⊂99/99/9999⊃' ⎕FMT 3142025")
-        chars = "".join(str(c) for c in result.data)
+        flat = result.data.flatten() if hasattr(result.data, 'flatten') else result.data
+        chars = chars_to_str(flat)
         assert chars.strip() == "03/14/2025"
 
     def test_fmt_g_date_pattern(self) -> None:
@@ -537,12 +557,13 @@ class TestFmt:
 
 class TestFileIO:
     def test_nwrite_and_nread(self, tmp_path: object) -> None:
+        from marple.backend_functions import chars_to_str
         import os
         path = os.path.join(str(tmp_path), "test.txt")
         i = Interpreter(io=1)
         i.run(f"'hello' ⎕NWRITE '{path}'")
         result = i.run(f"⎕NREAD '{path}'")
-        assert "".join(str(c) for c in result.data) == "hello"
+        assert chars_to_str(result.data) == "hello"
 
     def test_nexists(self, tmp_path: object) -> None:
         import os
@@ -609,8 +630,8 @@ class TestCSV:
             i.run(f"⎕CSV '{path}'")
             name_result = i.run("name")
             assert name_result.shape[0] == 2
-            row0 = "".join(str(c) for c in name_result.data[:name_result.shape[1]]).rstrip()
-            assert row0 == "Alice"
+            rows = _extract_matrix_rows(name_result)
+            assert rows[0] == "Alice"
             assert i.run("val") == APLArray.array([2], [10, 20])
         finally:
             os.unlink(path)

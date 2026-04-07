@@ -86,6 +86,7 @@ class TestLoadWorkspace:
             assert i2.run("double 5") == S(10)
 
     def test_load_restores_wsid(self) -> None:
+        from marple.backend_functions import chars_to_str
         with tempfile.TemporaryDirectory() as root:
             ws_dir = os.path.join(root, "test_ws")
             i = Interpreter(io=1)
@@ -95,7 +96,7 @@ class TestLoadWorkspace:
             i2 = Interpreter(io=1)
             load_workspace(i2.env, ws_dir, evaluate=i2.run)
             wsid = i2.run("⎕WSID")
-            assert "".join(str(c) for c in wsid.data) == "test_ws"
+            assert chars_to_str(wsid.data) == "test_ws"
 
     def test_load_system_vars_first(self) -> None:
         with tempfile.TemporaryDirectory() as root:

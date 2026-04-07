@@ -149,10 +149,12 @@ class TestCRandFX:
         assert i.run("add 5") == S(6)
 
     def test_cr_fx_round_trip_multi(self) -> None:
+        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         i.run("sign←{⍵>0:1 ⋄ ⍵<0:¯1 ⋄ 0}")
         src = i.run("⎕CR 'sign'")
-        text = "".join(str(c) for c in src.data)
+        flat = src.data.flatten() if hasattr(src.data, 'flatten') else src.data
+        text = chars_to_str(flat)
         new_text = text.replace("sign", "sgn", 1)
         i.run("⎕FX '" + new_text + "'")
         assert i.run("sgn 5") == S(1)

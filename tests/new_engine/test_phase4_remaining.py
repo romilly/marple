@@ -16,38 +16,46 @@ class TestExecute:
 
 class TestFormat:
     def test_format_scalar(self) -> None:
+        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("⍕42")
-        assert result.data == list("42")
+        assert chars_to_str(result.data) == "42"
 
     def test_format_vector(self) -> None:
+        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("⍕1 2 3")
-        assert result.data == list("1 2 3")
+        assert chars_to_str(result.data) == "1 2 3"
 
     def test_format_whole_number_float(self) -> None:
+        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("⍕1.0")
-        assert result.data == list("1")
+        assert chars_to_str(result.data) == "1"
 
     def test_format_vector_of_floats(self) -> None:
+        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         i.run("v←1.0 2.0 3.0")
         result = i.run("⍕v")
-        assert result.data == list("1 2 3")
+        assert chars_to_str(result.data) == "1 2 3"
 
     def test_format_negative_whole_float(self) -> None:
+        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("⍕¯3.0")
-        assert result.data == list("¯3")
+        assert chars_to_str(result.data) == "¯3"
 
     def test_dyadic_format_width(self) -> None:
+        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("6⍕42")
-        assert result.data == list("    42")
+        assert chars_to_str(result.data) == "    42"
 
     def test_dyadic_format_width_precision(self) -> None:
+        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("8 2⍕3.14159")
-        assert result.data == list("    3.14")
+        assert chars_to_str(result.data) == "    3.14"
 
     def test_dyadic_format_vector(self) -> None:
+        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("6 2⍕1.5 2.75")
-        assert "".join(result.data) == "  1.50  2.75"
+        assert chars_to_str(result.data) == "  1.50  2.75"
 
 
 class TestReplicate:

@@ -4,7 +4,8 @@ except ImportError:
     pass
 
 from marple.backend_functions import (
-    is_char_array, is_ndarray, is_numeric_array, maybe_upcast, to_array, to_bool_array, to_list,
+    is_char_array, is_ndarray, is_numeric_array, maybe_upcast,
+    str_to_char_array, to_array, to_bool_array, to_list,
 )
 from marple.errors import DomainError, LengthError, RankError
 from marple.get_numpy import np
@@ -324,15 +325,15 @@ class APLArray:
             width = int(self.data[0])
             precision = int(self.data[1]) if len(self.data) > 1 else None
         values = other.data if not other.is_scalar() else [other.data[0]]
-        result_chars: list[str] = []
+        parts: list[str] = []
         for v in values:
             if precision is not None:
                 formatted = f"{float(v):.{precision}f}"
             else:
                 formatted = str(v)
-            padded = " " * max(0, width - len(formatted)) + formatted
-            result_chars.extend(list(padded))
-        return APLArray.array([len(result_chars)], result_chars)
+            parts.append(" " * max(0, width - len(formatted)) + formatted)
+        text = "".join(parts)
+        return APLArray([len(text)], str_to_char_array(text))
 
     def roll(self, io: int = 1) -> 'APLArray':
         """Monadic ?: roll. ?N -> random int io..N, ?0 -> random float [0,1)."""
@@ -352,7 +353,7 @@ class APLArray:
         else:
             parts = [format_num(val) for val in self.data]
             s = " ".join(parts)
-        return APLArray.array([len(s)], list(s))
+        return APLArray([len(s)], str_to_char_array(s))
 
     def grade_up(self, io: int = 1) -> 'APLArray':
         if len(self.shape) != 1:
