@@ -116,6 +116,19 @@ class TestSystemFunctions:
         i.run("⎕EX 'x'")
         assert i.run("⎕NC 'x'") == S(0)
 
+    def test_ex_matrix(self) -> None:
+        # Matrix-form ⎕EX expunges multiple names: each row is a name.
+        # Bug pre-fix: operand.data[r*cols:(r+1)*cols] sliced ROWS of
+        # the 2D uint32 ndarray instead of flat elements, so neither
+        # name was correctly extracted and both stayed defined.
+        i = Interpreter(io=1)
+        i.run("foo←1")
+        i.run("baz←2")
+        result = i.run("⎕EX 2 3⍴'foobaz'")
+        assert result == S(2)
+        assert i.run("⎕NC 'foo'") == S(0)
+        assert i.run("⎕NC 'baz'") == S(0)
+
     def test_nl(self) -> None:
         i = Interpreter(io=1)
         i.run("foo←{⍵+1}")

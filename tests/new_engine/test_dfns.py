@@ -135,6 +135,19 @@ class TestCRandFX:
         assert i.run("clamp ¯5") == S(0)
         assert i.run("clamp 50") == S(50)
 
+    def test_fx_matrix_two_rows(self) -> None:
+        # Matrix-form ⎕FX takes a 2D char matrix (one line per row).
+        # Bug pre-fix: operand.data[r*cols:(r+1)*cols] sliced ROWS of
+        # the 2D uint32 ndarray instead of flat elements, so the
+        # extracted "lines" were either both rows concatenated or empty,
+        # causing parse failures or wrong definitions.
+        i = Interpreter(io=1)
+        # 2 rows of 11 cols, both 'add←{⍵+1}  ' (cycled by reshape).
+        # After rstrip: 'add←{⍵+1}' on each row, joined as a duplicate
+        # assignment which is legal (second wins).
+        i.run("⎕FX 2 11⍴'add←{⍵+1}  '")
+        assert i.run("add 5") == S(6)
+
     def test_cr_fx_round_trip_multi(self) -> None:
         i = Interpreter(io=1)
         i.run("sign←{⍵>0:1 ⋄ ⍵<0:¯1 ⋄ 0}")

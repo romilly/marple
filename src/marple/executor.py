@@ -486,10 +486,12 @@ class Executor:
 
     def _sys_ex_matrix(self, operand: APLArray) -> APLArray:
         rows, cols = operand.shape
+        # Flatten first: 2D uint32 char data otherwise slices rows.
+        flat = operand.data.flatten() if hasattr(operand.data, 'flatten') else operand.data
         count = 0
         for r in range(rows):
             start = r * cols
-            name = _apl_chars_to_str(operand.data[start:start + cols]).rstrip()
+            name = _apl_chars_to_str(flat[start:start + cols]).rstrip()
             result = self._expunge_name(name)
             count += int(result.data[0])
         return S(count)
@@ -639,9 +641,11 @@ class Executor:
         from marple.parser import parse
         if len(operand.shape) == 2:
             rows, cols = operand.shape
+            # Flatten first: 2D uint32 char data otherwise slices rows.
+            flat = operand.data.flatten() if hasattr(operand.data, 'flatten') else operand.data
             lines = []
             for r in range(rows):
-                row_chars = operand.data[r * cols : (r + 1) * cols]
+                row_chars = flat[r * cols : (r + 1) * cols]
                 lines.append(_apl_chars_to_str(row_chars).rstrip())
             text = "\n".join(lines)
         else:
