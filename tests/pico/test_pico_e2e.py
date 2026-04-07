@@ -206,6 +206,47 @@ class TestPicoIndexingShape:
         assert pico.eval("⍴' *'[1+r∘.=s]") == "3 3"
 
 
+class TestPicoReplicateExpand:
+    """Replicate / and expand \\ on vectors and matrices.
+
+    The desktop (CPython/numpy) implementation uses np.repeat, np.full,
+    and fancy indexing (`result[..., one_positions] = source`). These
+    are not used anywhere else in marple so they're untested under ulab.
+    If these tests fail on the Pico, we'll need to fall back to a
+    loop-based implementation (option B3 from the 2026-04-07 audit).
+    """
+
+    def test_replicate_vector(self, pico):
+        assert pico.eval("1 0 1/1 2 3") == "1 3"
+
+    def test_replicate_vector_multiplied(self, pico):
+        assert pico.eval("2 3/1 2") == "1 1 2 2 2"
+
+    def test_replicate_scalar_left(self, pico):
+        assert pico.eval("3/1 2 3") == "1 1 1 2 2 2 3 3 3"
+
+    def test_replicate_char_vector(self, pico):
+        assert pico.eval("1 0 1/'ABC'") == "AC"
+
+    def test_replicate_char_matrix(self, pico):
+        # 2×3 char matrix, replicate cols with mask 1 0 1 → 2×2 matrix
+        assert pico.eval("1 0 1/2 3⍴'ABCDEF'") == "AC\nDF"
+
+    def test_replicate_first_char_matrix(self, pico):
+        # 3×2 char matrix, replicate rows with mask 1 0 1 → 2×2 matrix
+        assert pico.eval("1 0 1⌿3 2⍴'ABCDEF'") == "AB\nEF"
+
+    def test_expand_vector(self, pico):
+        assert pico.eval("1 0 1\\1 2") == "1 0 2"
+
+    def test_expand_char_vector(self, pico):
+        assert pico.eval("1 0 1\\'AC'") == "A C"
+
+    def test_expand_char_matrix(self, pico):
+        # 2×2 char matrix, expand cols with mask 1 0 1 → 2×3 matrix
+        assert pico.eval("1 0 1\\2 2⍴'ABCD'") == "A B\nC D"
+
+
 class TestPicoSystemCommands:
     def test_save_load_drop_and_lib(self, pico):
         pico.eval(")clear")

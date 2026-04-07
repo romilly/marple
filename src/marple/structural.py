@@ -385,67 +385,55 @@ def decode(alpha: APLArray, omega: APLArray) -> APLArray:
 
 
 def replicate(alpha: APLArray, omega: APLArray) -> APLArray:
-    """Dyadic /: replicate/compress. Each element of alpha says how many
-    times to repeat the corresponding element of omega.
-    Scalar left argument is extended to match right argument length."""
-    counts = [int(x) for x in alpha.data]
-    data = list(omega.data)
-    # Scalar extension: single count applies to all elements
-    if len(counts) == 1 and len(data) > 1:
-        counts = counts * len(data)
-    if len(counts) != len(data):
-        raise LengthError(f"Length mismatch: {len(counts)} vs {len(data)}")
-    result: list[object] = []
-    for count, val in zip(counts, data):
-        for _ in range(count):
-            result.append(val)
-    return APLArray.array([len(result)], result)
+    """Dyadic /: replicate/compress along the last axis.
+
+    Each element of alpha says how many times to repeat the corresponding
+    element along omega's last axis. Scalar alpha extends to match.
+    """
+    counts = [int(x) for x in alpha.data.flatten()]
+    last_axis_len = omega.shape[-1] if omega.shape else 1
+    if len(counts) == 1 and last_axis_len > 1:
+        counts = counts * last_axis_len
+    if len(counts) != last_axis_len:
+        raise LengthError(f"Length mismatch: {len(counts)} vs {last_axis_len}")
+    result = np.repeat(omega.data, counts, axis=-1)
+    return APLArray(list(result.shape), result)
 
 
 def replicate_first(alpha: APLArray, omega: APLArray) -> APLArray:
-    """Dyadic ⌿: replicate/compress along first axis."""
-    counts = [int(x) for x in alpha.data.flatten()]
+    """Dyadic ⌿: replicate/compress along the first axis."""
     if len(omega.shape) <= 1:
         return replicate(alpha, omega)
-    first = omega.shape[0]
-    if len(counts) == 1 and first > 1:
-        counts = counts * first
-    if len(counts) != first:
-        raise LengthError(f"Length mismatch: {len(counts)} vs {first}")
-    cell_shape = omega.shape[1:]
-    cell_size = 1
-    for s in cell_shape:
-        cell_size *= s
-    flat = omega.data.flatten()
-    result_cells: list[Any] = []
-    for i, count in enumerate(counts):
-        cell = flat[i * cell_size : (i + 1) * cell_size]
-        for _ in range(count):
-            result_cells.append(cell)
-    total_rows = len(result_cells)
-    if total_rows == 0:
-        return APLArray([0] + cell_shape, np.array([]))
-    result = np.concatenate(tuple(result_cells))
-    return APLArray([total_rows] + cell_shape, np_reshape(result, [total_rows] + cell_shape))
+    counts = [int(x) for x in alpha.data.flatten()]
+    first_axis_len = omega.shape[0]
+    if len(counts) == 1 and first_axis_len > 1:
+        counts = counts * first_axis_len
+    if len(counts) != first_axis_len:
+        raise LengthError(f"Length mismatch: {len(counts)} vs {first_axis_len}")
+    result = np.repeat(omega.data, counts, axis=0)
+    return APLArray(list(result.shape), result)
 
 
 def expand(alpha: APLArray, omega: APLArray) -> APLArray:
-    """Dyadic \\: expand. Insert fill elements where alpha is 0."""
-    mask = [int(x) for x in alpha.data]
-    data = list(omega.data)
+    """Dyadic \\: expand along the last axis.
+
+    Where alpha is 0, insert a fill element; where alpha is 1, take the
+    next element from omega. The number of 1s in alpha must equal the
+    length of omega's last axis.
+    """
+    mask = [int(x) for x in alpha.data.flatten()]
     fill = _fill_element(omega)
-    result: list[object] = []
-    data_idx = 0
-    for m in mask:
-        if m:
-            if data_idx < len(data):
-                result.append(data[data_idx])
-                data_idx += 1
-            else:
-                result.append(fill)
-        else:
-            result.append(fill)
-    return APLArray.array([len(result)], result)
+    n_ones = sum(1 for m in mask if m)
+    last_axis_len = omega.shape[-1] if omega.shape else 1
+    if n_ones != last_axis_len:
+        raise LengthError(
+            f"Expand: mask has {n_ones} ones but argument has {last_axis_len} elements")
+    out_shape = (list(omega.shape[:-1]) + [len(mask)]) if omega.shape else [len(mask)]
+    result = np.full(out_shape, fill, dtype=omega.data.dtype)
+    one_positions = [i for i, m in enumerate(mask) if m]
+    if one_positions:
+        result[..., one_positions] = omega.data
+    return APLArray(out_shape, result)
 
 
 def matrix_inverse(omega: APLArray) -> APLArray:

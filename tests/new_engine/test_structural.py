@@ -1,5 +1,6 @@
 """Structural function tests — new engine."""
 
+from marple.backend_functions import str_to_char_array
 from marple.numpy_array import APLArray, S
 from marple.engine import Interpreter
 
@@ -164,10 +165,35 @@ class TestReplicate:
         assert Interpreter(io=1).run("1 0 1/1 2 3") == APLArray.array([2], [1, 3])
 
     def test_replicate_char(self) -> None:
-        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("1 0 1/'ABC'")
-        assert result.shape == [2]
-        assert chars_to_str(result.data) == "AC"
+        assert result == APLArray([2], str_to_char_array("AC"))
+
+    def test_replicate_char_compress_all(self) -> None:
+        # All-zero filter compresses to empty char vector.
+        result = Interpreter(io=1).run("0 0 0/'ABC'")
+        assert result == APLArray([0], str_to_char_array(""))
+
+    def test_replicate_char_multiplied(self) -> None:
+        # Counts > 1 repeat each element that many times.
+        result = Interpreter(io=1).run("2 2/'AB'")
+        assert result == APLArray([4], str_to_char_array("AABB"))
+
+    def test_replicate_char_scalar_left(self) -> None:
+        # Scalar left extends to match: 3/'AB' → 'AAABBB'
+        result = Interpreter(io=1).run("3/'AB'")
+        assert result == APLArray([6], str_to_char_array("AAABBB"))
+
+    def test_replicate_char_matrix(self) -> None:
+        # / on a matrix replicates along the last axis (columns).
+        # 1 0 1/2 3⍴'ABCDEF' keeps cols 0 and 2 of each row → 2×2 matrix.
+        result = Interpreter(io=1).run("1 0 1/2 3⍴'ABCDEF'")
+        assert result == APLArray([2, 2], str_to_char_array("ACDF").reshape(2, 2))
+
+    def test_replicate_first_char_matrix(self) -> None:
+        # ⌿ replicates along the first axis (rows).
+        # 1 0 1⌿3 2⍴'ABCDEF' keeps rows 0 and 2 → 2×2 matrix.
+        result = Interpreter(io=1).run("1 0 1⌿3 2⍴'ABCDEF'")
+        assert result == APLArray([2, 2], str_to_char_array("ABEF").reshape(2, 2))
 
 
 class TestExpand:
@@ -176,10 +202,29 @@ class TestExpand:
         assert result.shape == [3]
 
     def test_expand_char(self) -> None:
-        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("1 0 1\\'AC'")
-        assert result.shape == [3]
-        assert chars_to_str(result.data) == "A C"
+        assert result == APLArray([3], str_to_char_array("A C"))
+
+    def test_expand_char_at_start(self) -> None:
+        # Zero at start → space at start.
+        result = Interpreter(io=1).run("0 1 1\\'AB'")
+        assert result == APLArray([3], str_to_char_array(" AB"))
+
+    def test_expand_char_at_end(self) -> None:
+        # Zero at end → space at end.
+        result = Interpreter(io=1).run("1 1 0\\'AB'")
+        assert result == APLArray([3], str_to_char_array("AB "))
+
+    def test_expand_char_matrix(self) -> None:
+        # Expand along last axis of a 2×2 char matrix.
+        # 1 0 1\\2 2⍴'ABCD' inserts a space col between cols → 2×3 matrix.
+        result = Interpreter(io=1).run("1 0 1\\2 2⍴'ABCD'")
+        assert result == APLArray([2, 3], str_to_char_array("A BC D").reshape(2, 3))
+
+    def test_expand_empty_char(self) -> None:
+        # Expand of an empty char vector with all-zero filter → spaces.
+        result = Interpreter(io=1).run("0 0 0\\''")
+        assert result == APLArray([3], str_to_char_array("   "))
 
 
 class TestIndexOf:
