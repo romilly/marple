@@ -51,27 +51,12 @@ def _format_matrix(result: APLArray, pp: int) -> str:
     """Format a rank-2 array as right-justified columns."""
     rows, cols = result.shape
     if _is_char_array(result):
-        # Flat slice per row. 2D ndarray indexing would slice rows
-        # instead of flat elements — an eventual refactor could use
-        # row indexing (result.data[r]) for a more APL-like idiom.
-        flat_chars = result.data.flatten()
-        lines = []
-        for r in range(rows):
-            row_data = flat_chars[r * cols:(r + 1) * cols]
-            lines.append(chars_to_str(row_data))
-        return "\n".join(lines)
-    flat = result.data.flatten()
-    strs = [format_num(flat[r * cols + c], pp) for r in range(rows) for c in range(cols)]
-    col_widths = []
-    for c in range(cols):
-        w = max(len(strs[r * cols + c]) for r in range(rows))
-        col_widths.append(w)
-    lines = []
-    for r in range(rows):
-        parts = []
-        for c in range(cols):
-            parts.append(_rjust(strs[r * cols + c], col_widths[c]))
-        lines.append(" ".join(parts))
+        return "\n".join(chars_to_str(result.data[r]) for r in range(rows))
+    strs = [[format_num(result.data[r, c], pp) for c in range(cols)]
+            for r in range(rows)]
+    col_widths = [max(len(strs[r][c]) for r in range(rows)) for c in range(cols)]
+    lines = [" ".join(_rjust(strs[r][c], col_widths[c]) for c in range(cols))
+             for r in range(rows)]
     return "\n".join(lines)
 
 

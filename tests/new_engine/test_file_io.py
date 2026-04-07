@@ -66,9 +66,7 @@ class TestCSV:
         i.run("⎕CSV '/data.csv'")
         name_result = i.run("name")
         assert name_result.shape[0] == 2
-        cols = name_result.shape[1]
-        flat = name_result.data.flatten()
-        row0 = chars_to_str(flat[:cols]).rstrip()
+        row0 = chars_to_str(name_result.data[0]).rstrip()
         assert row0 == "Alice"
 
 

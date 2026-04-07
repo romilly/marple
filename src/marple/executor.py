@@ -264,7 +264,7 @@ class Executor:
         if sys.implementation.name == "micropython":
             import gc  # type: ignore[import-not-found]
             gc.collect()
-            return APLArray.array([], [gc.mem_free()])
+            return APLArray.array([], [gc.mem_free()])  # type: ignore[attr-defined]
         return APLArray.array([], [2**31 - 1])
 
     def _sysvar_quad(self) -> APLArray:
@@ -488,12 +488,9 @@ class Executor:
         return self._expunge_name(_apl_chars_to_str(operand.data).rstrip())
 
     def _sys_ex_matrix(self, operand: APLArray) -> APLArray:
-        rows, cols = operand.shape
-        flat = operand.data.flatten()
         count = 0
-        for r in range(rows):
-            start = r * cols
-            name = _apl_chars_to_str(flat[start:start + cols]).rstrip()
+        for r in range(operand.shape[0]):
+            name = _apl_chars_to_str(operand.data[r]).rstrip()
             result = self._expunge_name(name)
             count += int(result.data[0])
         return S(count)
@@ -646,12 +643,8 @@ class Executor:
         from marple.errors import APLError
         from marple.parser import parse
         if len(operand.shape) == 2:
-            rows, cols = operand.shape
-            flat = operand.data.flatten()
-            lines = []
-            for r in range(rows):
-                row_chars = flat[r * cols : (r + 1) * cols]
-                lines.append(_apl_chars_to_str(row_chars).rstrip())
+            lines = [_apl_chars_to_str(operand.data[r]).rstrip()
+                     for r in range(operand.shape[0])]
             text = "\n".join(lines)
         else:
             text = _apl_chars_to_str(operand.data)

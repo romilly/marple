@@ -133,12 +133,9 @@ def apply_group(group: FmtGroup, value: APLArray | None,
     if group.code == "A":
         total_chars = group.repeat * group.width
         if len(value.shape) >= 2:
-            cols = value.shape[1]
-            start = row * cols
-            flat_data = value.data.flatten()
-            if start >= len(flat_data):
+            if row >= value.shape[0]:
                 return " " * total_chars
-            row_chars = list(chars_to_str(flat_data[start:start + cols]))
+            row_chars = list(chars_to_str(value.data[row]))
         elif is_char:
             row_chars = list(chars_to_str(value.data)) if row == 0 else []
         else:

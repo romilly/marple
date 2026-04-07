@@ -351,12 +351,7 @@ class TestDL:
 def _extract_matrix_rows(result: APLArray) -> list[str]:
     """Extract rows of a 2D character matrix as trimmed strings."""
     from marple.backend_functions import chars_to_str
-    cols = result.shape[1]
-    flat = result.data.flatten()
-    rows = []
-    for r in range(result.shape[0]):
-        rows.append(chars_to_str(flat[r * cols:(r + 1) * cols]).rstrip())
-    return rows
+    return [chars_to_str(result.data[r]).rstrip() for r in range(result.shape[0])]
 
 
 class TestNL:
@@ -390,10 +385,7 @@ def _fmt_row(result: APLArray, row: int = 0) -> str:
     from marple.backend_functions import chars_to_str
     if len(result.shape) == 1:
         return chars_to_str(result.data)
-    cols = result.shape[1]
-    start = row * cols
-    flat = result.data.flatten()
-    return chars_to_str(flat[start:start + cols])
+    return chars_to_str(result.data[row])
 
 
 class TestFmt:
