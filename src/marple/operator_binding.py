@@ -3,11 +3,27 @@
 from typing import Any, Callable
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import is_numeric_array, np_reshape, to_list
+from marple.backend_functions import is_char_array, is_numeric_array, np_reshape, to_list
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.errors import DomainError
 from marple.get_numpy import np
 from marple.parser import FunctionRef
+
+
+# Glyphs whose meaning on character data is undefined: arithmetic and
+# logical operators. Comparison operators (= ≠ < ≤ > ≥) and min/max
+# (⌈ ⌊) are well-defined on chars (compare codepoints) and are NOT
+# guarded.
+_ARITHMETIC_GLYPHS_REJECTING_CHARS: frozenset[str] = frozenset({
+    "+", "-", "×", "÷", "*", "⍟", "|", "∧", "∨",
+})
+
+
+def _reject_chars_for_op(omega: APLArray, glyph: str | None, op_name: str) -> None:
+    """Raise DomainError if reducing/scanning an arithmetic operator
+    over character data."""
+    if glyph in _ARITHMETIC_GLYPHS_REJECTING_CHARS and is_char_array(omega.data):
+        raise DomainError(f"{glyph} {op_name} is not defined on character data")
 
 
 # Glyph-keyed maps for reduce/scan
@@ -44,6 +60,7 @@ def _reduce(
     glyph: str | None = None,
 ) -> APLArray:
     """Reduce along the last axis."""
+    _reject_chars_for_op(omega, glyph, "reduce")
     data = omega.data
     flat = data.flatten() if is_numeric_array(data) else data
     n = len(flat)
@@ -127,6 +144,7 @@ def _scan(
     glyph: str | None = None,
 ) -> APLArray:
     """Scan along the last axis."""
+    _reject_chars_for_op(omega, glyph, "scan")
     flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
     n = len(flat)
     if n == 0:
@@ -150,6 +168,7 @@ def _reduce_first(
     glyph: str | None = None,
 ) -> APLArray:
     """Reduce along the first axis (⌿)."""
+    _reject_chars_for_op(omega, glyph, "reduce")
     if len(omega.shape) <= 1:
         return _reduce(func, omega, glyph)
     op = _SCALAR_OPS.get(glyph) if glyph is not None else None
@@ -175,6 +194,7 @@ def _scan_first(
     glyph: str | None = None,
 ) -> APLArray:
     """Scan along the first axis (⍀)."""
+    _reject_chars_for_op(omega, glyph, "scan")
     if len(omega.shape) <= 1:
         return _scan(func, omega, glyph)
     op = _SCALAR_OPS.get(glyph) if glyph is not None else None

@@ -184,6 +184,64 @@ class TestMonadicArithmeticGuards:
             Interpreter(io=1).run("-'abc'")
 
 
+class TestReduceScanCharGuards:
+    """Reduce and scan with arithmetic operators on character data must
+    raise DomainError, not silently sum codepoints."""
+
+    def test_reduce_add_chars(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("+/'abc'")
+
+    def test_reduce_subtract_chars(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("-/'abc'")
+
+    def test_reduce_multiply_chars(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("×/'abc'")
+
+    def test_reduce_divide_chars(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("÷/'abc'")
+
+    def test_reduce_power_chars(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("*/'abc'")
+
+    def test_reduce_residue_chars(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("|/'abc'")
+
+    def test_reduce_logical_and_chars(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("∧/'abc'")
+
+    def test_scan_add_chars(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("+\\'abc'")
+
+    def test_scan_multiply_chars(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("×\\'abc'")
+
+
+class TestReduceScanOnCharsStillWorks:
+    """Min, max, and equality reductions on chars are well-defined
+    (they compare codepoints) and must still work."""
+
+    def test_reduce_max_chars(self) -> None:
+        # ⌈/'abc' should return the maximum codepoint as a char ('c')
+        # — but for now we accept it returning a numeric scalar (99)
+        # because the result-as-char fix is a separate concern.
+        result = Interpreter(io=1).run("⌈/'abc'")
+        # Either char 'c' or numeric 99 — just don't raise.
+        assert result.is_scalar()
+
+    def test_reduce_min_chars(self) -> None:
+        result = Interpreter(io=1).run("⌊/'abc'")
+        assert result.is_scalar()
+
+
 class TestComparisonStillWorks:
     """Sanity: Step 1 must NOT touch comparison operators."""
 
