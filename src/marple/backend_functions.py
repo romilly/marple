@@ -73,6 +73,16 @@ def to_list(data: Any) -> list[Any]:
     return data.tolist()  # type: ignore[union-attr]
 
 
+def is_ndarray(data: Any) -> bool:
+    """Check if data is an ndarray of any dtype (the layout question).
+
+    Use this for shape/order operations like .flatten(), .reshape(),
+    .copy() that don't care about element type. For arithmetic dispatch
+    use is_numeric_array, which excludes uint32 character arrays.
+    """
+    return hasattr(data, "dtype")
+
+
 def is_numeric_array(data: Any) -> bool:
     """Check if data is a numeric ndarray from the active backend.
 

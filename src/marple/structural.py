@@ -1,6 +1,6 @@
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import is_char_array, is_numeric_array, np_reshape, to_list
+from marple.backend_functions import is_char_array, is_ndarray, is_numeric_array, np_reshape, to_list
 from marple.errors import DomainError, IndexError_, LengthError, RankError
 from marple.get_numpy import np
 
@@ -210,7 +210,7 @@ def take(alpha: APLArray, omega: APLArray) -> APLArray:
     # Pad counts to match rank (fewer counts → keep trailing axes)
     while len(counts) < len(omega.shape):
         counts.append(omega.shape[len(counts)])
-    flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
+    flat = omega.data.flatten() if is_ndarray(omega.data) else omega.data
     if len(omega.shape) <= 1:
         n = counts[0]
         data = list(flat)
@@ -238,7 +238,7 @@ def take(alpha: APLArray, omega: APLArray) -> APLArray:
         for row in rows:
             inner = APLArray.array(list(inner_shape), row)
             taken = take(APLArray.array([len(inner_counts)], inner_counts), inner)
-            processed.extend(list(taken.data.flatten()) if is_numeric_array(taken.data) else taken.data)
+            processed.extend(list(taken.data.flatten()) if is_ndarray(taken.data) else taken.data)
             inner_shape_out = list(taken.shape)
         new_shape = [abs_n] + inner_shape_out
         return APLArray.array(new_shape, processed)
@@ -256,7 +256,7 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
     # Pad counts to match rank (fewer counts → keep trailing axes)
     while len(counts) < len(omega.shape):
         counts.append(0)
-    flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
+    flat = omega.data.flatten() if is_ndarray(omega.data) else omega.data
     if len(omega.shape) <= 1:
         n = counts[0]
         data = list(flat)
@@ -287,7 +287,7 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
         for row in rows:
             inner = APLArray.array(list(inner_shape), row)
             dropped = drop(APLArray.array([len(inner_counts)], inner_counts), inner)
-            processed.extend(list(dropped.data.flatten()) if is_numeric_array(dropped.data) else dropped.data)
+            processed.extend(list(dropped.data.flatten()) if is_ndarray(dropped.data) else dropped.data)
             inner_shape_out = list(dropped.shape)
         new_shape = [kept_rows] + inner_shape_out
         return APLArray.array(new_shape, processed)
@@ -385,7 +385,7 @@ def encode(alpha: APLArray, omega: APLArray) -> APLArray:
         encoded = _encode_scalar(radices, int(omega.data.flatten()[0]))
         return APLArray.array([len(radices)], list(encoded))
     # Vector right arg → matrix (radix_len × omega_len)
-    omega_flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
+    omega_flat = omega.data.flatten() if is_ndarray(omega.data) else omega.data
     cols = len(omega_flat)
     rows = len(radices)
     result = np.zeros((rows, cols), dtype=np.int64)
@@ -446,7 +446,7 @@ def replicate_first(alpha: APLArray, omega: APLArray) -> APLArray:
     cell_size = 1
     for s in cell_shape:
         cell_size *= s
-    flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
+    flat = omega.data.flatten() if is_ndarray(omega.data) else omega.data
     result_cells: list[Any] = []
     for i, count in enumerate(counts):
         cell = flat[i * cell_size : (i + 1) * cell_size]
@@ -503,7 +503,7 @@ def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
     """Dyadic ⌷: select major cells of omega at indices in alpha."""
     if omega.is_scalar():
         raise RankError("requires non-scalar right argument")
-    flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
+    flat = omega.data.flatten() if is_ndarray(omega.data) else omega.data
     cell_shape = omega.shape[1:]
     cell_size = 1
     for s in cell_shape:
@@ -511,7 +511,7 @@ def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
     if cell_size == 0:
         cell_size = 1
     n_major = omega.shape[0]
-    idx_flat = alpha.data.flatten() if is_numeric_array(alpha.data) else alpha.data
+    idx_flat = alpha.data.flatten() if is_ndarray(alpha.data) else alpha.data
     indices = list(idx_flat) if not alpha.is_scalar() else [alpha.data.flatten()[0]]
     result_cells: list[Any] = []
     for idx in indices:

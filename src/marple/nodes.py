@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Protocol, Generator
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import is_numeric_array, maybe_upcast, np_reshape
+from marple.backend_functions import is_ndarray, is_numeric_array, maybe_upcast, np_reshape
 from marple.errors import DomainError, ValueError_
 
 
@@ -378,7 +378,7 @@ class Index(Node):
         from marple.backend_functions import to_list
         array = ctx.evaluate(self.array)
         io = ctx.env.io
-        flat = array.data.flatten() if is_numeric_array(array.data) else array.data
+        flat = array.data.flatten() if is_ndarray(array.data) else array.data
         axis_indices: list[list[int]] = []
         idx_shapes: list[list[int]] = []
         for axis, idx_node in enumerate(self.indices):
@@ -387,7 +387,7 @@ class Index(Node):
                 idx_shapes.append([array.shape[axis]])
             else:
                 idx = ctx.evaluate(idx_node)
-                idx_flat = idx.data.flatten() if is_numeric_array(idx.data) else idx.data
+                idx_flat = idx.data.flatten() if is_ndarray(idx.data) else idx.data
                 vals = list(idx_flat) if not idx.is_scalar() else [idx.data.flatten()[0]]
                 axis_indices.append([int(v) - io for v in vals])
                 idx_shapes.append(idx.shape if not idx.is_scalar() else [])

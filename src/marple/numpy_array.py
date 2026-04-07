@@ -4,7 +4,7 @@ except ImportError:
     pass
 
 from marple.backend_functions import (
-    is_char_array, is_numeric_array, maybe_upcast, to_array, to_bool_array, to_list,
+    is_char_array, is_ndarray, is_numeric_array, maybe_upcast, to_array, to_bool_array, to_list,
 )
 from marple.errors import DomainError, LengthError, RankError
 from marple.get_numpy import np
@@ -42,7 +42,7 @@ class APLArray:
     def __repr__(self) -> str:
         if self.is_scalar():
             return f"S({self.data[0]})"
-        data_list = to_list(self.data) if is_numeric_array(self.data) else self.data
+        data_list = to_list(self.data) if is_ndarray(self.data) else self.data
         return f"APLArray({self.shape}, {data_list})"
 
     def _dyadic(self, other: 'APLArray',
@@ -467,7 +467,7 @@ class APLArray:
         return APLArray.array(list(self.shape), list(reversed(self.data)))
 
     def ravel(self) -> 'APLArray':
-        flat = self.data.flatten() if is_numeric_array(self.data) else self.data
+        flat = self.data.flatten() if is_ndarray(self.data) else self.data
         return APLArray(  [len(flat)], flat)
 
 

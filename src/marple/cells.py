@@ -1,6 +1,6 @@
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import is_char_array, is_numeric_array, np_reshape, to_list
+from marple.backend_functions import is_char_array, is_ndarray, is_numeric_array, np_reshape, to_list
 from marple.errors import LengthError
 
 
@@ -46,7 +46,7 @@ def decompose(array: APLArray, cell_rank: int) -> tuple[list[int], list[APLArray
         cell_size *= s
     if cell_size == 0:
         cell_size = 1
-    flat = array.data.flatten() if is_numeric_array(array.data) else array.data
+    flat = array.data.flatten() if is_ndarray(array.data) else array.data
     n_cells = 1
     for s in frame_shape:
         n_cells *= s
@@ -55,7 +55,7 @@ def decompose(array: APLArray, cell_rank: int) -> tuple[list[int], list[APLArray
     cells: list[APLArray] = []
     for i in range(n_cells):
         cell_data = flat[i * cell_size : (i + 1) * cell_size]
-        if is_numeric_array(cell_data) and cell_shape:
+        if is_ndarray(cell_data) and cell_shape:
             cell_data = np_reshape(cell_data, cell_shape)
         cells.append(APLArray(list(cell_shape), cell_data))
     return (list(frame_shape), cells)
