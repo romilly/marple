@@ -9,21 +9,24 @@ class TestTakeMultiAxis:
     def test_take_two_axes(self) -> None:
         """2 3↑4 5⍴⍳20 takes 2 rows and 3 columns."""
         result = Interpreter(io=0).run("2 3↑4 5⍴⍳20")
-        assert result.shape == [2, 3]
-        assert list(result.data) == [0, 1, 2, 5, 6, 7]
+        assert result == APLArray.array([2, 3], [[0, 1, 2], [5, 6, 7]])
 
     def test_take_with_padding(self) -> None:
         """6 3↑4 5⍴⍳20 pads extra rows with zeros."""
         result = Interpreter(io=0).run("6 3↑4 5⍴⍳20")
-        assert result.shape == [6, 3]
-        # 4 real rows × 3 cols = 12 data, then 2 padded rows × 3 cols = 6 zeros
-        assert list(result.data[12:]) == [0, 0, 0, 0, 0, 0]
+        assert result == APLArray.array([6, 3], [
+            [0, 1, 2],
+            [5, 6, 7],
+            [10, 11, 12],
+            [15, 16, 17],
+            [0, 0, 0],
+            [0, 0, 0],
+        ])
 
     def test_take_negative_both(self) -> None:
         """¯2 ¯3↑4 5⍴⍳20 takes last 2 rows, last 3 cols."""
         result = Interpreter(io=0).run("¯2 ¯3↑4 5⍴⍳20")
-        assert result.shape == [2, 3]
-        assert list(result.data) == [12, 13, 14, 17, 18, 19]
+        assert result == APLArray.array([2, 3], [[12, 13, 14], [17, 18, 19]])
 
     def test_scalar_left_on_matrix(self) -> None:
         """3↑4 5⍴⍳20 takes first 3 rows, all columns."""
@@ -35,8 +38,8 @@ class TestDropMultiAxis:
     def test_drop_two_axes(self) -> None:
         """1 2↓4 5⍴⍳20 drops 1 row and 2 columns."""
         result = Interpreter(io=0).run("1 2↓4 5⍴⍳20")
-        assert result.shape == [3, 3]
-        assert list(result.data) == [7, 8, 9, 12, 13, 14, 17, 18, 19]
+        assert result == APLArray.array([3, 3],
+            [[7, 8, 9], [12, 13, 14], [17, 18, 19]])
 
     def test_scalar_left_on_matrix(self) -> None:
         """1↓4 5⍴⍳20 drops first row, keeps all columns."""
@@ -49,6 +52,65 @@ class TestCharacterData:
         """5↑'abc' pads with spaces."""
         result = Interpreter(io=1).run("5↑'abc'")
         assert result == APLArray([5], str_to_char_array("abc  "))
+
+    def test_take_char_exact(self) -> None:
+        result = Interpreter(io=1).run("3↑'abcde'")
+        assert result == APLArray([3], str_to_char_array("abc"))
+
+    def test_take_char_negative(self) -> None:
+        # ¯3↑'abcde' takes the last 3
+        result = Interpreter(io=1).run("¯3↑'abcde'")
+        assert result == APLArray([3], str_to_char_array("cde"))
+
+    def test_take_char_negative_with_fill(self) -> None:
+        # ¯5↑'abc' takes 5 from the right; fill prepends
+        result = Interpreter(io=1).run("¯5↑'abc'")
+        assert result == APLArray([5], str_to_char_array("  abc"))
+
+    def test_take_char_zero(self) -> None:
+        result = Interpreter(io=1).run("0↑'abc'")
+        assert result == APLArray([0], str_to_char_array(""))
+
+    def test_take_from_empty_char(self) -> None:
+        # Take from an empty char vector — fills with spaces.
+        result = Interpreter(io=1).run("3↑''")
+        assert result == APLArray([3], str_to_char_array("   "))
+
+    def test_take_first_row_of_char_matrix(self) -> None:
+        # 1↑2 3⍴'ABCDEF' takes first major cell (row); result is 1×3 matrix
+        result = Interpreter(io=1).run("1↑2 3⍴'ABCDEF'")
+        assert result == APLArray([1, 3], str_to_char_array("ABC").reshape(1, 3))
+
+    def test_take_negative_row_of_char_matrix(self) -> None:
+        result = Interpreter(io=1).run("¯1↑2 3⍴'ABCDEF'")
+        assert result == APLArray([1, 3], str_to_char_array("DEF").reshape(1, 3))
+
+    def test_take_two_axes_char_matrix(self) -> None:
+        # 1 2↑ takes the first row, first 2 cols
+        result = Interpreter(io=1).run("1 2↑2 3⍴'ABCDEF'")
+        assert result == APLArray([1, 2], str_to_char_array("AB").reshape(1, 2))
+
+    def test_drop_char_vector(self) -> None:
+        result = Interpreter(io=1).run("2↓'abcde'")
+        assert result == APLArray([3], str_to_char_array("cde"))
+
+    def test_drop_char_negative(self) -> None:
+        result = Interpreter(io=1).run("¯2↓'abcde'")
+        assert result == APLArray([3], str_to_char_array("abc"))
+
+    def test_drop_char_zero(self) -> None:
+        result = Interpreter(io=1).run("0↓'abc'")
+        assert result == APLArray([3], str_to_char_array("abc"))
+
+    def test_drop_too_many_chars(self) -> None:
+        # Dropping more than length gives empty char vector
+        result = Interpreter(io=1).run("5↓'abc'")
+        assert result == APLArray([0], str_to_char_array(""))
+
+    def test_drop_first_row_of_char_matrix(self) -> None:
+        # 1↓ drops the first row, leaving a 1×3 matrix
+        result = Interpreter(io=1).run("1↓2 3⍴'ABCDEF'")
+        assert result == APLArray([1, 3], str_to_char_array("DEF").reshape(1, 3))
 
     def test_rotate_char_vector(self) -> None:
         result = Interpreter(io=1).run("1⌽'hello'")

@@ -189,6 +189,22 @@ def _take_axis(data: list[object], axis_len: int, n: int,
         return pad + taken, abs_n
 
 
+def _build_like(data: list[object], shape: list[int], source: APLArray) -> APLArray:
+    """Build an APLArray from a flat list, matching the source's dtype.
+
+    Used by take/drop to keep results consistent with their input:
+    a uint32 char input produces a uint32 char output, including for
+    empty results and multi-axis reshapes. Going through to_array
+    instead would drop empty data to float64 and would not reshape
+    a flat list to match a declared higher-rank shape.
+    """
+    dtype = source.data.dtype
+    arr = np.array(data, dtype=dtype) if data else np.array([], dtype=dtype)
+    if shape:
+        arr = np_reshape(arr, shape)
+    return APLArray(shape, arr)
+
+
 def take(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ↑: take along each axis. Scalar left → first axis only."""
     counts = [int(x) for x in alpha.data.flatten()]
@@ -201,7 +217,7 @@ def take(alpha: APLArray, omega: APLArray) -> APLArray:
         n = counts[0]
         data = list(flat)
         result, new_len = _take_axis(data, len(data), n, fill)
-        return APLArray.array([new_len], result)
+        return _build_like(result, [new_len], omega)
     # Multi-axis: take first axis, then recurse on inner
     n = counts[0]
     abs_n = abs(n)
@@ -222,18 +238,17 @@ def take(alpha: APLArray, omega: APLArray) -> APLArray:
         processed: list[object] = []
         inner_shape_out = inner_shape
         for row in rows:
-            inner = APLArray.array(list(inner_shape), row)
+            inner = _build_like(row, inner_shape, omega)
             taken = take(APLArray.array([len(inner_counts)], inner_counts), inner)
             processed.extend(list(taken.data.flatten()))
             inner_shape_out = list(taken.shape)
-        new_shape = [abs_n] + inner_shape_out
-        return APLArray.array(new_shape, processed)
+        return _build_like(processed, [abs_n] + inner_shape_out, omega)
     new_shape = list(omega.shape)
     new_shape[0] = abs_n
     result_data: list[object] = []
     for row in rows:
         result_data.extend(row)
-    return APLArray.array(new_shape, result_data)
+    return _build_like(result_data, new_shape, omega)
 
 
 def drop(alpha: APLArray, omega: APLArray) -> APLArray:
@@ -250,7 +265,7 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
             result = data[n:]
         else:
             result = data[:n] if n != 0 else data
-        return APLArray.array([len(result)], result)
+        return _build_like(result, [len(result)], omega)
     # Multi-axis: drop first axis, then recurse on inner
     n = counts[0]
     chunk = _first_axis_chunk_size(omega.shape)
@@ -271,18 +286,17 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
         processed: list[object] = []
         inner_shape_out = inner_shape
         for row in rows:
-            inner = APLArray.array(list(inner_shape), row)
+            inner = _build_like(row, inner_shape, omega)
             dropped = drop(APLArray.array([len(inner_counts)], inner_counts), inner)
             processed.extend(list(dropped.data.flatten()))
             inner_shape_out = list(dropped.shape)
-        new_shape = [kept_rows] + inner_shape_out
-        return APLArray.array(new_shape, processed)
+        return _build_like(processed, [kept_rows] + inner_shape_out, omega)
     new_shape = list(omega.shape)
     new_shape[0] = kept_rows
     result_data: list[object] = []
     for row in rows:
         result_data.extend(row)
-    return APLArray.array(new_shape, result_data)
+    return _build_like(result_data, new_shape, omega)
 
 
 def rotate(alpha: APLArray, omega: APLArray) -> APLArray:
