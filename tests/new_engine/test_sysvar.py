@@ -85,7 +85,7 @@ class TestSystemFunctions:
 
     def test_ucs_to_code(self) -> None:
         result = Interpreter(io=1).run("⎕UCS 'A'")
-        assert result == APLArray.array([1], [65])
+        assert result == S(65)
 
     def test_signal(self) -> None:
         with pytest.raises(DomainError):

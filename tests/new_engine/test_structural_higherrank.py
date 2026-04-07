@@ -106,18 +106,18 @@ class TestCharacterData:
         assert list(result.data) == list("hello-")
 
     def test_comparison_char_equal(self) -> None:
-        assert Interpreter(io=1).run("'A'='A'") == APLArray.array([1], [1])
+        assert Interpreter(io=1).run("'A'='A'") == S(1)
 
     def test_comparison_char_not_equal(self) -> None:
-        assert Interpreter(io=1).run("'A'='B'") == APLArray.array([1], [0])
+        assert Interpreter(io=1).run("'A'='B'") == S(0)
 
     def test_comparison_char_less(self) -> None:
-        assert Interpreter(io=1).run("'A'<'B'") == APLArray.array([1], [1])
+        assert Interpreter(io=1).run("'A'<'B'") == S(1)
 
     def test_comparison_char_vector_equal(self) -> None:
         result = Interpreter(io=1).run("'abc'='aXc'")
         assert result.shape == [3]
 
     def test_comparison_char_ne(self) -> None:
-        assert Interpreter(io=1).run("'A'≠'B'") == APLArray.array([1], [1])
-        assert Interpreter(io=1).run("'A'≠'A'") == APLArray.array([1], [0])
+        assert Interpreter(io=1).run("'A'≠'B'") == S(1)
+        assert Interpreter(io=1).run("'A'≠'A'") == S(0)

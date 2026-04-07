@@ -183,6 +183,8 @@ class Str(Node):
     def __init__(self, value: str) -> None:
         self.value = value
     def execute(self, ctx: ExecutionContext) -> APLArray:
+        if len(self.value) == 1:
+            return APLArray.scalar(self.value)
         return APLArray.array([len(self.value)], list(self.value))
 
 

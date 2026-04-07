@@ -188,10 +188,10 @@ class TestIndexOf:
         assert Interpreter(io=0).run("10 20 30⍳20") == S(1)
 
     def test_index_of_char(self) -> None:
-        assert Interpreter(io=1).run("'hello'⍳'l'") == APLArray.array([1], [3])
+        assert Interpreter(io=1).run("'hello'⍳'l'") == S(3)
 
     def test_index_of_char_not_found(self) -> None:
-        assert Interpreter(io=1).run("'hello'⍳'z'") == APLArray.array([1], [6])
+        assert Interpreter(io=1).run("'hello'⍳'z'") == S(6)
 
     def test_index_of_char_vector(self) -> None:
         assert Interpreter(io=1).run("'abcde'⍳'cab'") == APLArray.array([3], [3, 1, 2])
@@ -202,10 +202,10 @@ class TestMembership:
         assert Interpreter(io=1).run("2 3∈1 2 3 4 5") == APLArray.array([2], [1, 1])
 
     def test_membership_char(self) -> None:
-        assert Interpreter(io=1).run("'e'∈'hello'") == APLArray.array([1], [1])
+        assert Interpreter(io=1).run("'e'∈'hello'") == S(1)
 
     def test_membership_char_not_found(self) -> None:
-        assert Interpreter(io=1).run("'z'∈'hello'") == APLArray.array([1], [0])
+        assert Interpreter(io=1).run("'z'∈'hello'") == S(0)
 
     def test_membership_char_vector(self) -> None:
         assert Interpreter(io=1).run("'aeiou'∈'hello'") == APLArray.array([5], [0, 1, 0, 1, 0])
