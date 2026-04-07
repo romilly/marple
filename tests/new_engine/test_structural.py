@@ -164,7 +164,10 @@ class TestReplicate:
         assert Interpreter(io=1).run("1 0 1/1 2 3") == APLArray.array([2], [1, 3])
 
     def test_replicate_char(self) -> None:
-        assert Interpreter(io=1).run("1 0 1/'ABC'") == APLArray.array([2], list('AC'))
+        from marple.backend_functions import chars_to_str
+        result = Interpreter(io=1).run("1 0 1/'ABC'")
+        assert result.shape == [2]
+        assert chars_to_str(result.data) == "AC"
 
 
 class TestExpand:
@@ -173,8 +176,10 @@ class TestExpand:
         assert result.shape == [3]
 
     def test_expand_char(self) -> None:
+        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("1 0 1\\'AC'")
-        assert result == APLArray.array([3], list('A C'))
+        assert result.shape == [3]
+        assert chars_to_str(result.data) == "A C"
 
 
 class TestIndexOf:

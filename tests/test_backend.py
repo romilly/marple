@@ -18,11 +18,6 @@ class TestToArray:
         result = to_array([1.5, 2.5, 3.5])
         assert is_numeric_array(result)
 
-    def test_char_list_stays_list(self) -> None:
-        result = to_array(["a", "b", "c"])
-        assert isinstance(result, list)
-        assert not is_numeric_array(result)
-
     def test_empty_list_becomes_numpy(self) -> None:
         result = to_array([])
         assert is_numeric_array(result)
@@ -61,9 +56,6 @@ class TestToList:
         original = [1, 2, 3]
         assert to_list(original) is original
 
-    def test_char_list_passes_through(self) -> None:
-        original = ["a", "b"]
-        assert to_list(original) is original
 
 
 class TestIsCharArray:
@@ -71,9 +63,6 @@ class TestIsCharArray:
     def test_uint32_array_is_char(self) -> None:
         data = np.array([65, 66, 67], dtype=np.uint32)
         assert is_char_array(data)
-
-    def test_list_of_str_is_char(self) -> None:
-        assert is_char_array(["a", "b", "c"])
 
     def test_int_array_is_not_char(self) -> None:
         assert not is_char_array(np.array([1, 2, 3]))
@@ -93,9 +82,6 @@ class TestCharsToStr:
     def test_from_uint32(self) -> None:
         data = np.array([72, 101, 108, 108, 111], dtype=np.uint32)
         assert chars_to_str(data) == "Hello"
-
-    def test_from_list_of_str(self) -> None:
-        assert chars_to_str(["H", "i"]) == "Hi"
 
     def test_empty(self) -> None:
         assert chars_to_str(np.array([], dtype=np.uint32)) == ""

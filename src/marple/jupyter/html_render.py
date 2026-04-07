@@ -72,7 +72,7 @@ def aplarray_to_html(arr: APLArray) -> str:
 
 def _matrix_html(arr: APLArray, is_char: bool) -> str:
     rows, cols = arr.shape
-    flat = arr.data.flatten() if hasattr(arr.data, 'flatten') else arr.data
+    flat = arr.data.flatten()
     html_rows = []
     for r in range(rows):
         cells = ''.join(

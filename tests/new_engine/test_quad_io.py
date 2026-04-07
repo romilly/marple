@@ -5,6 +5,7 @@ import pytest
 from hamcrest import assert_that, contains_string, equal_to, has_item, is_
 
 from marple.adapters.buffered_console import BufferedConsole
+from marple.backend_functions import chars_to_str, str_to_char_array
 from marple.numpy_array import APLArray, S
 from marple.engine import Interpreter
 from marple.errors import DomainError
@@ -80,7 +81,7 @@ class TestQuoteQuadOutput:
         console = FakeConsole(["Romilly"])
         interp = Interpreter(console=console)
         result = interp.run("⍞←'Name: '")
-        assert_that(result, equal_to(APLArray.array([7], list("Romilly"))))
+        assert_that(chars_to_str(result.data), equal_to("Romilly"))
 
     def test_quote_quad_assign_chain(self) -> None:
         """a ← ⍞ ← 'prompt' sets a to response only (Dyalog style)."""
@@ -88,7 +89,7 @@ class TestQuoteQuadOutput:
         interp = Interpreter(console=console)
         interp.run("a ← ⍞ ← 'Name: '")
         result = interp.run("a")
-        assert_that(result, equal_to(APLArray.array([7], list("Romilly"))))
+        assert_that(chars_to_str(result.data), equal_to("Romilly"))
 
     def test_quote_quad_assign_raises_when_no_input(self) -> None:
         console = FakeConsole([])  # no inputs
@@ -105,21 +106,22 @@ class TestQuoteQuadInput:
         interp = Interpreter(console=console)
         interp.run("x←⍞")
         result = interp.run("x")
-        assert_that(result, equal_to(APLArray.array([5], list("hello"))))
+        assert_that(chars_to_str(result.data), equal_to("hello"))
 
     def test_quote_quad_numeric_input_stays_as_characters(self) -> None:
         console = FakeConsole(["42"])
         interp = Interpreter(console=console)
         interp.run("x←⍞")
         result = interp.run("x")
-        assert_that(result, equal_to(APLArray.array([2], list("42"))))
+        assert_that(chars_to_str(result.data), equal_to("42"))
 
     def test_quote_quad_empty_input(self) -> None:
         console = FakeConsole([""])
         interp = Interpreter(console=console)
         interp.run("x←⍞")
         result = interp.run("x")
-        assert_that(result, equal_to(APLArray.array([0], [])))
+        assert result.shape == [0]
+        assert chars_to_str(result.data) == ""
 
     def test_quote_quad_raises_when_no_input_available(self) -> None:
         console = FakeConsole([])  # no inputs
@@ -229,7 +231,7 @@ class TestPrideQuadOutput:
         t.join(timeout=2.0)
         # Assignment is silent, but the value was captured
         result = session.interp.run("a")
-        assert_that(result, equal_to(APLArray.array([5], list("world"))))
+        assert_that(chars_to_str(result.data), equal_to("world"))
 
 
 class TestScriptQuadOutput:

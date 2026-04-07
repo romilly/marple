@@ -44,10 +44,14 @@ class TestDropMultiAxis:
 
 
 def _flat_chars(arr: APLArray) -> str:
-    """Render any character array (1D or 2D, list[str] or uint32) as a string."""
+    """Render a character array of any rank as a string.
+
+    chars_to_str iterates data.flat internally, so it handles 1D and
+    2D (and higher) uint32 char arrays uniformly without an explicit
+    flatten at the call site.
+    """
     from marple.backend_functions import chars_to_str
-    data = arr.data.flatten() if hasattr(arr.data, 'flatten') else arr.data
-    return chars_to_str(data)
+    return chars_to_str(arr.data)
 
 
 class TestCharacterData:

@@ -44,10 +44,6 @@ class TestPredicatesDisjoint:
         assert is_numeric_array(data)
         assert not is_char_array(data)
 
-    def test_list_of_str_is_char_not_numeric(self) -> None:
-        data = ['a', 'b', 'c']
-        assert is_char_array(data)
-        assert not is_numeric_array(data)
 
 
 class TestIsNdarray:

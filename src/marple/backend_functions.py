@@ -12,17 +12,13 @@ def np_reshape(arr: Any, shape: Any) -> Any:
 
 
 def is_char_array(data: Any) -> bool:
-    """Check if data represents character data (uint32 ndarray or list of str)."""
-    if hasattr(data, 'dtype'):
-        return str(data.dtype) == 'uint32'
-    return isinstance(data, list) and len(data) > 0 and isinstance(data[0], str)
+    """Check if data represents character data (uint32 ndarray of codepoints)."""
+    return hasattr(data, 'dtype') and str(data.dtype) == 'uint32'
 
 
 def chars_to_str(data: Any) -> str:
-    """Convert character array data (uint32 ndarray or list of str) to Python string."""
-    if hasattr(data, 'dtype') and str(data.dtype) == 'uint32':
-        return ''.join(chr(int(x)) for x in data.flat)
-    return ''.join(str(c) for c in data)
+    """Convert character array data (uint32 ndarray) to Python string."""
+    return ''.join(chr(int(x)) for x in data.flat)
 
 
 def str_to_char_array(s: str) -> Any:
@@ -36,23 +32,18 @@ def char_fill() -> Any:
 
 
 def to_array(data: list[Any], dtype_hint: str | None = None) -> Any:
-    """Convert a Python list to an ndarray if numeric, or return as-is for characters.
+    """Convert a Python list to a numpy ndarray.
 
-    dtype_hint='char' tells to_array that the caller is producing character
-    data even when it cannot be inferred from the contents — currently this
-    matters only for the empty case, where an empty list is otherwise
-    indistinguishable from an empty numeric list. Non-empty input is
-    detected from its contents and the hint is ignored.
+    After Step 5 of the character migration, character data is always
+    constructed via str_to_char_array. to_array only handles numeric
+    lists. dtype_hint='char' with empty input returns a uint32 empty
+    array so character-producing sites can make that choice explicitly
+    without needing non-empty content to trigger dtype detection.
     """
     if len(data) == 0:
         if dtype_hint == 'char':
             return np.array([], dtype=np.uint32)
         return np.array(data)
-    first = data[0]
-    while isinstance(first, list):
-        first = first[0]
-    if isinstance(first, str):
-        return data
     return np.array(data)
 
 

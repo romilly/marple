@@ -1,7 +1,7 @@
 
 from marple.numpy_array import APLArray, S
 from marple.backend_functions import (
-    char_fill, is_char_array, is_ndarray, is_numeric_array, np_reshape, to_list,
+    char_fill, is_char_array, np_reshape, to_list,
 )
 from marple.errors import DomainError, IndexError_, LengthError, RankError
 from marple.get_numpy import np
@@ -71,27 +71,20 @@ def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
     total = 1
     for s in new_shape:
         total *= s
-    if is_ndarray(omega.data):
-        flat = omega.data.flatten()
-        if len(flat) == 0:
-            # Preserve dtype: fill is char_fill for uint32, 0 otherwise.
-            if str(omega.data.dtype) == 'uint32':
-                flat = np.array([char_fill()], dtype=np.uint32)
-            else:
-                flat = np.array([0])
-        n = len(flat)
-        if total <= n:
-            cycled = flat[:total]
+    flat = omega.data.flatten()
+    if len(flat) == 0:
+        # Preserve dtype: fill is char_fill for uint32, 0 otherwise.
+        if str(omega.data.dtype) == 'uint32':
+            flat = np.array([char_fill()], dtype=np.uint32)
         else:
-            reps = total // n + 1
-            cycled = np.concatenate(tuple([flat] * reps))[:total]
-        return APLArray(new_shape, np_reshape(cycled, new_shape))
-    # Character data (list[str] fallback)
-    data = list(omega.data) if len(omega.data) > 0 else [' ']
-    result: list[object] = []
-    for i in range(total):
-        result.append(data[i % len(data)])
-    return APLArray.array(new_shape, result)
+            flat = np.array([0])
+    n = len(flat)
+    if total <= n:
+        cycled = flat[:total]
+    else:
+        reps = total // n + 1
+        cycled = np.concatenate(tuple([flat] * reps))[:total]
+    return APLArray(new_shape, np_reshape(cycled, new_shape))
 
 
 def _tolerant_match(a: object, b: object, ct: float) -> bool:
@@ -147,66 +140,38 @@ def membership(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
 
 
 def catenate(alpha: APLArray, omega: APLArray) -> APLArray:
-    """Dyadic ,: catenate along last axis."""
-    # Same-kind ndarrays (both numeric or both char) take the numpy fast
-    # path so dtype is preserved. Mixed kinds fall through to the list
-    # path (existing accidental coercion behaviour, unchanged).
-    same_kind = (
-        (is_numeric_array(alpha.data) and is_numeric_array(omega.data))
-        or (is_char_array(alpha.data) and is_char_array(omega.data)
-            and is_ndarray(alpha.data) and is_ndarray(omega.data))
-    )
+    """Dyadic ,: catenate along last axis.
+
+    Mixed char/numeric catenation coerces via np.concatenate's dtype
+    promotion rules (an existing accidental behaviour: chars become
+    integer codepoints, or numeric fails to char). This is not strict
+    APL — proper behaviour would produce a nested array — but it is
+    what marple has always done and no test currently depends on the
+    strict semantics.
+    """
     if alpha.is_scalar() and omega.is_scalar():
-        if same_kind:
-            return APLArray([2], np.concatenate(
-                (alpha.data.flatten(), omega.data.flatten())))
-        return APLArray.array([2], [alpha.data.flatten()[0], omega.data.flatten()[0]])
+        return APLArray([2], np.concatenate(
+            (alpha.data.flatten(), omega.data.flatten())))
     if len(alpha.shape) <= 1 and len(omega.shape) <= 1:
-        if same_kind:
-            a = alpha.data.flatten() if not alpha.is_scalar() else alpha.data.flatten()
-            b = omega.data.flatten() if not omega.is_scalar() else omega.data.flatten()
-            return APLArray([len(a) + len(b)], np.concatenate((a, b)))
-        left = list(alpha.data) if not alpha.is_scalar() else [alpha.data[0]]
-        right = list(omega.data) if not omega.is_scalar() else [omega.data[0]]
-        return APLArray.array([len(left) + len(right)], left + right)
-    # Higher rank: catenate along last axis using numpy
-    if same_kind:
-        # Ensure both have the same number of dimensions
-        a = alpha.data
-        b = omega.data
-        if a.ndim < b.ndim:
-            a = np_reshape(a, [1] * (b.ndim - a.ndim) + list(a.shape))
-        elif b.ndim < a.ndim:
-            b = np_reshape(b, [1] * (a.ndim - b.ndim) + list(b.shape))
-        result = np.concatenate((a, b), axis=-1)
-        return APLArray(list(result.shape), result)
-    # Character fallback
-    a_shape = list(alpha.shape) if not alpha.is_scalar() else [1]
-    o_shape = list(omega.shape) if not omega.is_scalar() else [1]
-    a_cols = a_shape[-1]
-    o_cols = o_shape[-1]
-    a_flat = alpha.data
-    o_flat = omega.data
-    n_rows = 1
-    for s in a_shape[:-1]:
-        n_rows *= s
-    result_list: list[object] = []
-    for r in range(n_rows):
-        result_list.extend(a_flat[r * a_cols:(r + 1) * a_cols])
-        result_list.extend(o_flat[r * o_cols:(r + 1) * o_cols])
-    new_shape = list(a_shape)
-    new_shape[-1] = a_cols + o_cols
-    return APLArray.array(new_shape, result_list)
+        a = alpha.data.flatten()
+        b = omega.data.flatten()
+        return APLArray([len(a) + len(b)], np.concatenate((a, b)))
+    # Higher rank: catenate along last axis.
+    a = alpha.data
+    b = omega.data
+    if a.ndim < b.ndim:
+        a = np_reshape(a, [1] * (b.ndim - a.ndim) + list(a.shape))
+    elif b.ndim < a.ndim:
+        b = np_reshape(b, [1] * (a.ndim - b.ndim) + list(b.shape))
+    result = np.concatenate((a, b), axis=-1)
+    return APLArray(list(result.shape), result)
 
 
 def _fill_element(omega: APLArray) -> object:
-    """Return the fill element: char_fill (uint32 32) or ' ' for char arrays,
-    0 for numeric. uint32 char data uses the numpy fill so result lists
-    can be passed to np.array without coercing to a string array."""
+    """Return the fill element: char_fill (uint32 32) for char arrays,
+    0 for numeric."""
     if is_char_array(omega.data):
-        if is_ndarray(omega.data):
-            return char_fill()
-        return " "
+        return char_fill()
     return 0
 
 
@@ -231,7 +196,7 @@ def take(alpha: APLArray, omega: APLArray) -> APLArray:
     # Pad counts to match rank (fewer counts → keep trailing axes)
     while len(counts) < len(omega.shape):
         counts.append(omega.shape[len(counts)])
-    flat = omega.data.flatten() if is_ndarray(omega.data) else omega.data
+    flat = omega.data.flatten()
     if len(omega.shape) <= 1:
         n = counts[0]
         data = list(flat)
@@ -259,7 +224,7 @@ def take(alpha: APLArray, omega: APLArray) -> APLArray:
         for row in rows:
             inner = APLArray.array(list(inner_shape), row)
             taken = take(APLArray.array([len(inner_counts)], inner_counts), inner)
-            processed.extend(list(taken.data.flatten()) if is_ndarray(taken.data) else taken.data)
+            processed.extend(list(taken.data.flatten()))
             inner_shape_out = list(taken.shape)
         new_shape = [abs_n] + inner_shape_out
         return APLArray.array(new_shape, processed)
@@ -277,7 +242,7 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
     # Pad counts to match rank (fewer counts → keep trailing axes)
     while len(counts) < len(omega.shape):
         counts.append(0)
-    flat = omega.data.flatten() if is_ndarray(omega.data) else omega.data
+    flat = omega.data.flatten()
     if len(omega.shape) <= 1:
         n = counts[0]
         data = list(flat)
@@ -308,7 +273,7 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
         for row in rows:
             inner = APLArray.array(list(inner_shape), row)
             dropped = drop(APLArray.array([len(inner_counts)], inner_counts), inner)
-            processed.extend(list(dropped.data.flatten()) if is_ndarray(dropped.data) else dropped.data)
+            processed.extend(list(dropped.data.flatten()))
             inner_shape_out = list(dropped.shape)
         new_shape = [kept_rows] + inner_shape_out
         return APLArray.array(new_shape, processed)
@@ -323,22 +288,7 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
 def rotate(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⌽: rotate along last axis."""
     n = int(alpha.data.flatten()[0])
-    if is_ndarray(omega.data):
-        return APLArray(list(omega.shape), np.roll(omega.data, -n, axis=-1))
-    data = omega.data
-    if len(omega.shape) <= 1:
-        length = len(data)
-        if length == 0:
-            return APLArray.array(list(omega.shape), [])
-        n = n % length
-        return APLArray.array(list(omega.shape), data[n:] + data[:n])
-    row_len = omega.shape[-1]
-    result: list[object] = []
-    for i in range(0, len(data), row_len):
-        row = data[i:i + row_len]
-        k = n % row_len if row_len else 0
-        result.extend(row[k:] + row[:k])
-    return APLArray.array(list(omega.shape), result)
+    return APLArray(list(omega.shape), np.roll(omega.data, -n, axis=-1))
 
 
 def rotate_first(alpha: APLArray, omega: APLArray) -> APLArray:
@@ -346,34 +296,16 @@ def rotate_first(alpha: APLArray, omega: APLArray) -> APLArray:
     n = int(alpha.data.flatten()[0])
     if len(omega.shape) <= 1:
         return rotate(alpha, omega)
-    if is_ndarray(omega.data):
-        return APLArray(list(omega.shape), np.roll(omega.data, -n, axis=0))
-    chunk = _first_axis_chunk_size(omega.shape)
-    num_chunks = omega.shape[0]
-    data = omega.data
-    n = n % num_chunks if num_chunks else 0
-    result: list[object] = []
-    for r in range(num_chunks):
-        src = (r + n) % num_chunks
-        start = src * chunk
-        result.extend(data[start:start + chunk])
-    return APLArray.array(list(omega.shape), result)
+    return APLArray(list(omega.shape), np.roll(omega.data, -n, axis=0))
 
 
 def transpose(omega: APLArray) -> APLArray:
     if len(omega.shape) <= 1:
-        return APLArray.array(list(omega.shape), list(omega.data))
+        return APLArray(list(omega.shape), omega.data.copy())
     if len(omega.shape) != 2:
         raise RankError("Transpose currently supports only rank-2 arrays")
     rows, cols = omega.shape
-    if is_ndarray(omega.data):
-        # numpy preserves dtype (works for uint32 char data too)
-        return APLArray([cols, rows], omega.data.T.copy())
-    new_data: list[object] = []
-    for c in range(cols):
-        for r in range(rows):
-            new_data.append(omega.data[r * cols + c])
-    return APLArray.array([cols, rows], new_data)
+    return APLArray([cols, rows], omega.data.T.copy())
 
 
 def grade_up(omega: APLArray, io: int = 1) -> APLArray:
@@ -409,7 +341,7 @@ def encode(alpha: APLArray, omega: APLArray) -> APLArray:
         encoded = _encode_scalar(radices, int(omega.data.flatten()[0]))
         return APLArray.array([len(radices)], list(encoded))
     # Vector right arg → matrix (radix_len × omega_len)
-    omega_flat = omega.data.flatten() if is_ndarray(omega.data) else omega.data
+    omega_flat = omega.data.flatten()
     cols = len(omega_flat)
     rows = len(radices)
     result = np.zeros((rows, cols), dtype=np.int64)
@@ -470,7 +402,7 @@ def replicate_first(alpha: APLArray, omega: APLArray) -> APLArray:
     cell_size = 1
     for s in cell_shape:
         cell_size *= s
-    flat = omega.data.flatten() if is_ndarray(omega.data) else omega.data
+    flat = omega.data.flatten()
     result_cells: list[Any] = []
     for i, count in enumerate(counts):
         cell = flat[i * cell_size : (i + 1) * cell_size]
@@ -527,7 +459,7 @@ def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
     """Dyadic ⌷: select major cells of omega at indices in alpha."""
     if omega.is_scalar():
         raise RankError("requires non-scalar right argument")
-    flat = omega.data.flatten() if is_ndarray(omega.data) else omega.data
+    flat = omega.data.flatten()
     cell_shape = omega.shape[1:]
     cell_size = 1
     for s in cell_shape:
@@ -535,7 +467,7 @@ def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
     if cell_size == 0:
         cell_size = 1
     n_major = omega.shape[0]
-    idx_flat = alpha.data.flatten() if is_ndarray(alpha.data) else alpha.data
+    idx_flat = alpha.data.flatten()
     indices = list(idx_flat) if not alpha.is_scalar() else [alpha.data.flatten()[0]]
     result_cells: list[Any] = []
     for idx in indices:

@@ -23,7 +23,8 @@ class TestVector:
         assert html.count('<td>') == 3
 
     def test_char(self) -> None:
-        html = aplarray_to_html(APLArray.array([5], list('hello')))
+        from marple.backend_functions import str_to_char_array
+        html = aplarray_to_html(APLArray([5], str_to_char_array('hello')))
         assert 'hello' in html
         assert 'apl-scalar' in html
 

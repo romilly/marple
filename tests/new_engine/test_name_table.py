@@ -155,14 +155,16 @@ class TestWithRank:
 
 class TestImport:
     def test_imported_fn_no_parens(self) -> None:
+        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         i.run("#import $::str::upper")
-        assert i.run("upper 'hello'") == APLArray.array([5], list("HELLO"))
+        assert chars_to_str(i.run("upper 'hello'").data) == "HELLO"
 
     def test_imported_fn_with_alias(self) -> None:
+        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         i.run("#import $::str::upper as up")
-        assert i.run("up 'hello'") == APLArray.array([5], list("HELLO"))
+        assert chars_to_str(i.run("up 'hello'").data) == "HELLO"
 
 
 class TestErrorCases:

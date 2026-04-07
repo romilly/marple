@@ -113,6 +113,7 @@ class TestLoadWorkspace:
 
 class TestLoadWorkspaceChars:
     def test_save_and_load_char_vector(self) -> None:
+        from marple.backend_functions import chars_to_str
         with tempfile.TemporaryDirectory() as root:
             ws_dir = os.path.join(root, "test_ws")
             i = Interpreter(io=1)
@@ -121,9 +122,12 @@ class TestLoadWorkspaceChars:
             save_workspace(env_dict, ws_dir)
             i2 = Interpreter(io=1)
             load_workspace(i2.env, ws_dir, evaluate=i2.run)
-            assert i2.run("x") == APLArray.array([5], list("HELLO"))
+            result = i2.run("x")
+            assert result.shape == [5]
+            assert chars_to_str(result.data) == "HELLO"
 
     def test_save_and_load_char_matrix(self) -> None:
+        from marple.backend_functions import chars_to_str
         with tempfile.TemporaryDirectory() as root:
             ws_dir = os.path.join(root, "test_ws")
             i = Interpreter(io=1)
@@ -132,7 +136,9 @@ class TestLoadWorkspaceChars:
             save_workspace(env_dict, ws_dir)
             i2 = Interpreter(io=1)
             load_workspace(i2.env, ws_dir, evaluate=i2.run)
-            assert i2.run("x") == APLArray.array([2, 3], list("CATDOG"))
+            result = i2.run("x")
+            assert result.shape == [2, 3]
+            assert chars_to_str(result.data) == "CATDOG"
 
 
 class TestListWorkspaces:

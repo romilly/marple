@@ -60,8 +60,7 @@ class TestIndexingPreservesShape:
         from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("'abcde'[2 3⍴1 2 3 4 5 1]")
         assert result.shape == [2, 3]
-        data = result.data.flatten() if hasattr(result.data, 'flatten') else result.data
-        assert chars_to_str(data) == "abcdea"
+        assert chars_to_str(result.data) == "abcdea"
 
 
 class TestStringBracketIndexWithFunction:

@@ -33,7 +33,8 @@ class TestDataTypeCode:
         assert data_type_code(data) == 645
 
     def test_character(self) -> None:
-        data = ['h', 'e', 'l', 'l', 'o']
+        from marple.backend_functions import str_to_char_array
+        data = str_to_char_array("hello")
         assert data_type_code(data) == 320
 
 

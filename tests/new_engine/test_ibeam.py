@@ -2,6 +2,7 @@
 
 import pytest
 
+from marple.backend_functions import chars_to_str
 from marple.numpy_array import APLArray, S
 from marple.engine import Interpreter
 
@@ -9,21 +10,21 @@ from marple.engine import Interpreter
 class TestIBeamBasic:
     def test_monadic_ibeam(self) -> None:
         result = Interpreter(io=1).run("(⌶'marple.stdlib.str_impl.upper') 'hello'")
-        assert result == APLArray.array([5], list("HELLO"))
+        assert chars_to_str(result.data) == "HELLO"
 
     def test_monadic_ibeam_trim(self) -> None:
         result = Interpreter(io=1).run("(⌶'marple.stdlib.str_impl.trim') '  hi  '")
-        assert result == APLArray.array([2], list("hi"))
+        assert chars_to_str(result.data) == "hi"
 
     def test_monadic_ibeam_lower(self) -> None:
         result = Interpreter(io=1).run("(⌶'marple.stdlib.str_impl.lower') 'HELLO'")
-        assert result == APLArray.array([5], list("hello"))
+        assert chars_to_str(result.data) == "hello"
 
     def test_ibeam_assigned(self) -> None:
         i = Interpreter(io=1)
         i.run("up←⌶'marple.stdlib.str_impl.upper'")
         result = i.run("up 'world'")
-        assert result == APLArray.array([5], list("WORLD"))
+        assert chars_to_str(result.data) == "WORLD"
 
 
 class TestIBeamErrors:

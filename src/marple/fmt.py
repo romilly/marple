@@ -135,8 +135,7 @@ def apply_group(group: FmtGroup, value: APLArray | None,
         if len(value.shape) >= 2:
             cols = value.shape[1]
             start = row * cols
-            # Flatten for slicing: 2D uint32 char data slices rows otherwise.
-            flat_data = value.data.flatten() if hasattr(value.data, 'flatten') else value.data
+            flat_data = value.data.flatten()
             if start >= len(flat_data):
                 return " " * total_chars
             row_chars = list(chars_to_str(flat_data[start:start + cols]))

@@ -123,8 +123,7 @@ class TestCRandFX:
         i = Interpreter(io=1)
         i.run("sign←{⍵>0:1 ⋄ ⍵<0:¯1 ⋄ 0}")
         result = i.run("⎕CR 'sign'")
-        data = result.data.flatten() if hasattr(result.data, 'flatten') else result.data
-        text = chars_to_str(data)
+        text = chars_to_str(result.data)
         assert "⋄" in text
         assert "sign←{" in text
 
@@ -153,8 +152,7 @@ class TestCRandFX:
         i = Interpreter(io=1)
         i.run("sign←{⍵>0:1 ⋄ ⍵<0:¯1 ⋄ 0}")
         src = i.run("⎕CR 'sign'")
-        flat = src.data.flatten() if hasattr(src.data, 'flatten') else src.data
-        text = chars_to_str(flat)
+        text = chars_to_str(src.data)
         new_text = text.replace("sign", "sgn", 1)
         i.run("⎕FX '" + new_text + "'")
         assert i.run("sgn 5") == S(1)
@@ -247,8 +245,7 @@ class TestDopApplication:
         i = Interpreter(io=1)
         i.run("twice←{⍺⍺ ⍺⍺ ⍵}")
         result = i.run("⎕CR 'twice'")
-        data = result.data.flatten() if hasattr(result.data, 'flatten') else result.data
-        text = chars_to_str(data)
+        text = chars_to_str(result.data)
         assert "⍺⍺" in text
 
     def test_fx_dop(self) -> None:

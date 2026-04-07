@@ -82,7 +82,10 @@ class TestQuadWSID:
 
 class TestSystemFunctions:
     def test_ucs_to_char(self) -> None:
-        assert Interpreter(io=1).run("⎕UCS 65") == S("A")
+        from marple.backend_functions import chars_to_str
+        result = Interpreter(io=1).run("⎕UCS 65")
+        assert result.is_scalar()
+        assert chars_to_str(result.data) == "A"
 
     def test_ucs_to_code(self) -> None:
         result = Interpreter(io=1).run("⎕UCS 'A'")
@@ -349,7 +352,7 @@ def _extract_matrix_rows(result: APLArray) -> list[str]:
     """Extract rows of a 2D character matrix as trimmed strings."""
     from marple.backend_functions import chars_to_str
     cols = result.shape[1]
-    flat = result.data.flatten() if hasattr(result.data, 'flatten') else result.data
+    flat = result.data.flatten()
     rows = []
     for r in range(result.shape[0]):
         rows.append(chars_to_str(flat[r * cols:(r + 1) * cols]).rstrip())
@@ -389,7 +392,7 @@ def _fmt_row(result: APLArray, row: int = 0) -> str:
         return chars_to_str(result.data)
     cols = result.shape[1]
     start = row * cols
-    flat = result.data.flatten() if hasattr(result.data, 'flatten') else result.data
+    flat = result.data.flatten()
     return chars_to_str(flat[start:start + cols])
 
 
@@ -452,8 +455,7 @@ class TestFmt:
     def test_fmt_text_insertion(self) -> None:
         from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("'I3,⊂ => ⊃,I3' ⎕FMT (1;2)")
-        flat = result.data.flatten() if hasattr(result.data, 'flatten') else result.data
-        chars = chars_to_str(flat)
+        chars = chars_to_str(result.data)
         assert "=>" in chars
 
     def test_fmt_spec_cycles(self) -> None:
@@ -522,8 +524,7 @@ class TestFmt:
     def test_fmt_g_pattern(self) -> None:
         from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("'G⊂99/99/9999⊃' ⎕FMT 3142025")
-        flat = result.data.flatten() if hasattr(result.data, 'flatten') else result.data
-        chars = chars_to_str(flat)
+        chars = chars_to_str(result.data)
         assert chars.strip() == "03/14/2025"
 
     def test_fmt_g_date_pattern(self) -> None:
