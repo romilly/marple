@@ -38,3 +38,10 @@ class TestSingleCharIsScalar:
         # '' must remain a 0-element character vector, not a scalar
         result = Interpreter(io=1).run("''")
         assert result.shape == [0]
+
+    def test_empty_string_is_char_array(self) -> None:
+        # '' is character data, not numeric. Empty string used to silently
+        # produce a float64 empty array — this pins Step 2 of the migration.
+        from marple.backend_functions import is_char_array
+        result = Interpreter(io=1).run("''")
+        assert is_char_array(result.data)

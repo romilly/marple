@@ -35,9 +35,18 @@ def char_fill() -> Any:
     return np.uint32(32)
 
 
-def to_array(data: list[Any]) -> Any:
-    """Convert a Python list to an ndarray if numeric, or return as-is for characters."""
+def to_array(data: list[Any], dtype_hint: str | None = None) -> Any:
+    """Convert a Python list to an ndarray if numeric, or return as-is for characters.
+
+    dtype_hint='char' tells to_array that the caller is producing character
+    data even when it cannot be inferred from the contents — currently this
+    matters only for the empty case, where an empty list is otherwise
+    indistinguishable from an empty numeric list. Non-empty input is
+    detected from its contents and the hint is ignored.
+    """
     if len(data) == 0:
+        if dtype_hint == 'char':
+            return np.array([], dtype=np.uint32)
         return np.array(data)
     first = data[0]
     while isinstance(first, list):
