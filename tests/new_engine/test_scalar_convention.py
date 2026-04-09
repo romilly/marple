@@ -58,6 +58,20 @@ def test_repr_handles_zero_d_scalar() -> None:
     assert "7" in text
 
 
+def test_to_list_returns_list_for_zero_d_input() -> None:
+    """`to_list` is used as a "give me an iterable" helper across the
+    codebase. On a 0-d numpy array, the underlying `.tolist()` returns
+    the bare scalar (e.g. `7`), NOT a list `[7]` — so any consumer
+    doing `for x in to_list(...)` would silently break with a
+    TypeError after the storage flip. Lock in the contract: to_list
+    always returns a Python list.
+    """
+    from marple.backend_functions import to_list
+    result = to_list(np.asarray(7))
+    assert isinstance(result, list)
+    assert result == [7]
+
+
 def test_dyadic_format_handles_zero_d_scalars() -> None:
     """`dyadic_format` (⍕) must work with 0-d scalar storage on both
     operands. The current implementation has two failure modes when
