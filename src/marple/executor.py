@@ -192,12 +192,12 @@ class Executor:
             value = APLArray.array(list(value.shape), maybe_downcast(value.data, _DOWNCAST_CT))
         if name.startswith("⎕"):
             if name == "⎕FR" and isinstance(value, APLArray):
-                fr_val = int(value.data[0])
+                fr_val = int(value.data.item())
                 if fr_val not in (645, 1287):
                     raise DomainError(f"⎕FR must be 645 or 1287, got {fr_val}")
             if name == "⎕RL" and isinstance(value, APLArray):
                 import random as _random
-                _random.seed(int(value.data[0]))
+                _random.seed(int(value.data.item()))
             self.env[name] = value
         else:
             new_class = _name_class(value)
@@ -381,7 +381,7 @@ class Executor:
         right_op = power_node.right_operand
         right_val = self._resolve_power_operand(right_op)
         if isinstance(right_val, APLArray) and right_val.is_scalar():
-            n = int(right_val.data[0])
+            n = int(right_val.data.item())
             if n < 0:
                 raise DomainError("DOMAIN ERROR: inverse (⍣ with negative) not supported")
             result = omega
@@ -393,7 +393,7 @@ class Executor:
             while True:
                 curr = self.apply_func_monadic(power_node.function, prev)
                 test = self._apply_func_dyadic_or_match(right_val, curr, prev)
-                if test.data[0]:
+                if test.data.item():
                     return curr
                 prev = curr
         raise DomainError("⍣ right operand must be integer or function")
@@ -408,7 +408,7 @@ class Executor:
         right_op = power_node.right_operand
         right_val = self._resolve_power_operand(right_op)
         if isinstance(right_val, APLArray) and right_val.is_scalar():
-            n = int(right_val.data[0])
+            n = int(right_val.data.item())
             if n < 0:
                 raise DomainError("DOMAIN ERROR: inverse (⍣ with negative) not supported")
             result = omega
@@ -420,7 +420,7 @@ class Executor:
             while True:
                 curr = self._apply_func_dyadic(power_node.function, alpha, prev)
                 test = self._apply_func_dyadic_or_match(right_val, curr, prev)
-                if test.data[0]:
+                if test.data.item():
                     return curr
                 prev = curr
         raise DomainError("⍣ right operand must be integer or function")
@@ -446,7 +446,7 @@ class Executor:
             if func.glyph == "≡":
                 return S(1 if left == right else 0)
             if func.glyph == "=":
-                return S(1 if left.data[0] == right.data[0] else 0)
+                return S(1 if left.data.item() == right.data.item() else 0)
             return DyadicFunctionBinding(self.env).apply(func.glyph, left, right)
         if isinstance(func, DfnBinding):
             return func.apply(right, alpha=left)
@@ -492,7 +492,7 @@ class Executor:
         for r in range(operand.shape[0]):
             name = _apl_chars_to_str(operand.data[r]).rstrip()
             result = self._expunge_name(name)
-            count += int(result.data[0])
+            count += int(result.data.item())
         return S(count)
 
     def _expunge_name(self, name: str) -> APLArray:
@@ -502,7 +502,7 @@ class Executor:
     def _sys_nl(self, operand: APLArray) -> APLArray:
         from marple.backend_functions import str_to_char_array
         from marple.get_numpy import np
-        nc = int(operand.data[0])
+        nc = int(operand.data.item())
         names = self.env.names_of_class(nc)
         if not names:
             return APLArray([0, 0], np.array([], dtype=np.uint32).reshape(0, 0))
@@ -534,7 +534,7 @@ class Executor:
             SyntaxError_, ValueError_, LengthError,
             RankError, IndexError_, LimitError, SecurityError,
         )
-        code = int(operand.data[0])
+        code = int(operand.data.item())
         error_map: dict[int, type] = {
             1: SyntaxError_, 2: ValueError_, 3: DomainError, 4: LengthError,
             5: RankError, 6: IndexError_, 7: LimitError, 9: SecurityError,
@@ -561,7 +561,7 @@ class Executor:
     def _sys_dr_dyadic(self, left: APLArray, right: APLArray) -> APLArray:
         """Dyadic ⎕DR: convert data representation."""
         from marple.backend_functions import to_list, to_bool_array
-        target = int(left.data[0])
+        target = int(left.data.item())
         vals = to_list(right.data)
         if target == 645:
             new_data = [float(v) for v in vals]
@@ -595,7 +595,7 @@ class Executor:
     def _fmt_value(self, operand: APLArray) -> APLArray:
         """Format a single value as a character vector."""
         if operand.shape == []:
-            text = format_num(operand.data[0])
+            text = format_num(operand.data.item())
         elif len(operand.shape) == 1:
             if is_char_array(operand.data):
                 text = chars_to_str(operand.data)
@@ -669,7 +669,7 @@ class Executor:
         return APLArray([len(fn_name)], str_to_char_array(fn_name))
 
     def _sys_dl(self, operand: APLArray) -> APLArray:
-        secs = float(operand.data[0])
+        secs = float(operand.data.item())
         elapsed = self.env.timer.sleep(secs)
         return S(elapsed)
 
