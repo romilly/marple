@@ -512,14 +512,11 @@ class Executor:
         return APLArray([len(names), max_len], data)
 
     def _sys_ucs(self, operand: APLArray) -> APLArray:
-        from marple.backend_functions import is_ndarray, str_to_char_array, to_list
+        from marple.backend_functions import str_to_char_array, to_list
         from marple.get_numpy import np
         if is_char_array(operand.data):
-            # uint32 ndarray: already codepoints, just retype.
-            # list[str]: ord() each element.
-            if is_ndarray(operand.data):
-                return APLArray(list(operand.shape), operand.data.astype(np.int64))
-            return APLArray.array(list(operand.shape), [ord(c) for c in operand.data])
+            # Char array: already uint32 codepoints, just retype to int.
+            return APLArray(list(operand.shape), operand.data.astype(np.int64))
         # Numeric → character: build a uint32 char array.
         data = to_list(operand.data)
         text = ''.join(chr(int(x)) for x in data)

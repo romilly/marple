@@ -25,18 +25,7 @@ future cleanup pass can simplify them to `.item()`:
 
 ## Pre-existing dead code surfaced by the audit
 
-- **`workspace.py:25`** — `if isinstance(v, str): return f"'{v}'"`. After
-  the char-uint32 migration completed on 2026-04-07, `value.data[0]` for
-  a char scalar is a `uint32` codepoint, never a Python `str`. This
-  branch is unreachable. Safe to remove (and the surrounding logic
-  needs to render char scalars via `chr(int(...))` instead).
-
-- **`executor.py:522`** — the `[ord(c) for c in operand.data]` fallback
-  in `_sys_ucs` is reached only when `is_char_array(operand.data)` is
-  True AND `is_ndarray(operand.data)` is False. After the char-uint32
-  migration that combination is impossible: char arrays are always
-  uint32 ndarrays. Dead code, safe to remove. Surfaced 2026-04-09
-  during the scalar storage migration.
+(All known dead-code sites resolved 2026-04-09.)
 
 ## Monadic methods with `to_list`+comprehension slow paths
 
