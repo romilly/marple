@@ -16,7 +16,7 @@ def shape(omega: APLArray) -> APLArray:
 def iota(omega: APLArray) -> APLArray:
     if not omega.is_scalar():
         raise RankError("Monadic ⍳ requires a scalar argument")
-    n = int(omega.data[0])
+    n = int(omega.data.item())
     return APLArray.array([n], list(range(1, n + 1)))
 
 
@@ -65,7 +65,7 @@ def reverse_first(omega: APLArray) -> APLArray:
 
 def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
     if alpha.is_scalar():
-        new_shape = [int(alpha.data[0])]
+        new_shape = [int(alpha.data.item())]
     else:
         new_shape = [int(x) for x in alpha.data]
     total = 1
@@ -99,7 +99,7 @@ def _tolerant_match(a: object, b: object, ct: float) -> bool:
 def index_of(alpha: APLArray, omega: APLArray, io: int = 1, ct: float = 0) -> APLArray:
     data = to_list(alpha.data)
     if omega.is_scalar():
-        target = omega.data[0]
+        target = omega.data.item()
         for i, val in enumerate(data):
             if _tolerant_match(val, target, ct):
                 return S(i + io)
@@ -122,7 +122,7 @@ def membership(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
     """Dyadic ∈: for each element of alpha, 1 if found in omega, else 0."""
     right_data = to_list(omega.data)
     if alpha.is_scalar():
-        val = alpha.data[0]
+        val = alpha.data.item()
         for r in right_data:
             if _tolerant_match(val, r, ct):
                 return S(1)
@@ -370,7 +370,7 @@ def decode(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⊥: evaluate omega as a polynomial with bases from alpha."""
     values = list(omega.data)
     if alpha.is_scalar():
-        base = alpha.data[0]
+        base = alpha.data.item()
         result = 0
         for v in values:
             result = result * int(base) + int(v)  # type: ignore[arg-type]
