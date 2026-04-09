@@ -21,13 +21,14 @@ def iota(omega: APLArray) -> APLArray:
 
 
 def ravel(omega: APLArray) -> APLArray:
-    return APLArray.array([len(omega.data)], list(omega.data))
+    flat = omega.data.flatten()
+    return APLArray([len(flat)], flat)
 
 
 def reverse(omega: APLArray) -> APLArray:
     """Monadic ⌽: reverse along last axis."""
     if len(omega.shape) <= 1:
-        return APLArray.array(list(omega.shape), list(reversed(omega.data)))
+        return APLArray.array(list(omega.shape), list(reversed(to_list(omega.data))))
     # Matrix: reverse each row
     rows, cols = omega.shape[0], omega.shape[-1]
     row_len = cols
@@ -50,7 +51,7 @@ def _first_axis_chunk_size(shape: list[int]) -> int:
 def reverse_first(omega: APLArray) -> APLArray:
     """Monadic ⊖: reverse along first axis."""
     if len(omega.shape) <= 1:
-        return APLArray.array(list(omega.shape), list(reversed(omega.data)))
+        return APLArray.array(list(omega.shape), list(reversed(to_list(omega.data))))
     chunk = _first_axis_chunk_size(omega.shape)
     n = omega.shape[0]
     data = list(omega.data)
@@ -368,14 +369,14 @@ def encode(alpha: APLArray, omega: APLArray) -> APLArray:
 
 def decode(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⊥: evaluate omega as a polynomial with bases from alpha."""
-    values = list(omega.data)
+    values = to_list(omega.data)
     if alpha.is_scalar():
         base = alpha.data.item()
         result = 0
         for v in values:
             result = result * int(base) + int(v)  # type: ignore[arg-type]
         return S(result)
-    bases = list(alpha.data)
+    bases = to_list(alpha.data)
     if len(bases) != len(values):
         raise LengthError(f"Length mismatch: {len(bases)} bases vs {len(values)} values")
     result = 0

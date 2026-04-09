@@ -397,7 +397,7 @@ class APLArray:
     def conjugate(self) -> 'APLArray':
         """Monadic +: identity for real, conjugate for complex."""
         self._reject_chars_monadic("monadic +")
-        return APLArray.array(list(self.shape), list(self.data))
+        return APLArray.array(list(self.shape), np.conjugate(self.data))
 
     def signum(self) -> 'APLArray':
         self._reject_chars_monadic("monadic ×")

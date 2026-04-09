@@ -31,6 +31,13 @@ future cleanup pass can simplify them to `.item()`:
   branch is unreachable. Safe to remove (and the surrounding logic
   needs to render char scalars via `chr(int(...))` instead).
 
+- **`executor.py:522`** — the `[ord(c) for c in operand.data]` fallback
+  in `_sys_ucs` is reached only when `is_char_array(operand.data)` is
+  True AND `is_ndarray(operand.data)` is False. After the char-uint32
+  migration that combination is impossible: char arrays are always
+  uint32 ndarrays. Dead code, safe to remove. Surfaced 2026-04-09
+  during the scalar storage migration.
+
 ## Monadic methods with `to_list`+comprehension slow paths
 
 The monadic methods on `APLArray` follow a "numeric fast path /
