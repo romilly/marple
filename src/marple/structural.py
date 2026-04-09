@@ -314,15 +314,6 @@ def rotate_first(alpha: APLArray, omega: APLArray) -> APLArray:
     return APLArray(list(omega.shape), np.roll(omega.data, -n, axis=0))
 
 
-def transpose(omega: APLArray) -> APLArray:
-    if len(omega.shape) <= 1:
-        return APLArray(list(omega.shape), omega.data.copy())
-    if len(omega.shape) != 2:
-        raise RankError("Transpose currently supports only rank-2 arrays")
-    rows, cols = omega.shape
-    return APLArray([cols, rows], omega.data.T.copy())
-
-
 def grade_up(omega: APLArray, io: int = 1) -> APLArray:
     indexed = list(enumerate(omega.data))
     indexed.sort(key=lambda pair: pair[1])  # type: ignore[arg-type]

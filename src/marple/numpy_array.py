@@ -467,11 +467,13 @@ class APLArray:
         return APLArray.array([len(self.shape)], list(self.shape))
 
     def transpose(self) -> 'APLArray':
+        # Monadic ⍉: reverse the order of axes. Per the spec,
+        # ⍴⍉Y = ⌽⍴Y. For rank ≤ 1 this is identity; otherwise
+        # np.transpose handles arbitrary rank.
         if len(self.shape) <= 1:
-            return self
-        if len(self.shape) != 2:
-            raise RankError("Transpose currently supports only rank-2 arrays")
-        return APLArray([self.shape[1], self.shape[0]], self.data.T.copy())
+            return APLArray(list(self.shape), self.data.copy())
+        return APLArray(list(reversed(self.shape)),
+                        np.transpose(self.data).copy())
 
     def matrix_inverse(self) -> 'APLArray':
         from marple.structural import matrix_inverse
