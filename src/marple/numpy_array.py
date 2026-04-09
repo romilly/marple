@@ -252,8 +252,8 @@ class APLArray:
     def deal(self, other: 'APLArray', io: int = 1) -> 'APLArray':
         """Dyadic ?: deal. N?M -> N random integers from io..M without replacement."""
         import random as _random
-        n = int(self.data[0])
-        m = int(other.data[0])
+        n = int(self.data.item())
+        m = int(other.data.item())
         if n > m:
             raise LengthError(f"Deal: cannot choose {n} from {m}")
         result = _random.sample(range(io, m + io), n)
@@ -345,14 +345,14 @@ class APLArray:
             n = int(v)  # type: ignore[arg-type]
             return _random.random() if n == 0 else _random.randint(io, n - 1 + io)
         if self.is_scalar():
-            return APLArray.scalar(roll_one(self.data[0]))
+            return APLArray.scalar(roll_one(self.data.item()))
         data = np.array([roll_one(v) for v in self.data.flat])
         return APLArray(list(self.shape), data.reshape(self.shape) if self.shape else data)
 
     def format(self) -> 'APLArray':
         from marple.formatting import format_num
         if self.is_scalar():
-            s = format_num(self.data[0])
+            s = format_num(self.data.item())
         else:
             parts = [format_num(val) for val in self.data]
             s = " ".join(parts)
@@ -373,7 +373,7 @@ class APLArray:
         return APLArray.array([len(self.data)], [i + io for i, _ in indexed])
 
     def iota(self, io: int = 1) -> 'APLArray':
-        n = int(self.data[0])
+        n = int(self.data.item())
         return APLArray.array([n], list(range(io, n + io)))
 
     # TODO: wrong, tally is a count: ×/shape

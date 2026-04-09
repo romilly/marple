@@ -31,6 +31,36 @@ future cleanup pass can simplify them to `.item()`:
   branch is unreachable. Safe to remove (and the surrounding logic
   needs to render char scalars via `chr(int(...))` instead).
 
+## Monadic methods with `to_list`+comprehension slow paths
+
+The monadic methods on `APLArray` follow a "numeric fast path /
+to_list slow path" pattern. The slow paths are migration-safe via the
+`to_list` defensive fix (commit `e5adc1d`), but they are also dead or
+dead-adjacent code in the post-char-migration world: the only data
+that hits the slow path is non-numeric, non-char data, which after
+the char migration may not exist at all.
+
+Sites:
+
+| line | method | fast path | slow path |
+|---|---|---|---|
+| numpy_array.py:391 | `signum` | none ⚠️ | `to_list` + comprehension |
+| numpy_array.py:397 | `negate` | numpy negate | `to_list` + comprehension |
+| numpy_array.py:405 | `reciprocal` | numpy 1/data | `to_list` + comprehension |
+| numpy_array.py:433 | `logical_not` | numpy 1-data | `to_list` + comprehension |
+| numpy_array.py:443 | `factorial` | none ⚠️ | `to_list` + comprehension |
+
+Refactoring goals after the migration:
+1. Add a numpy fast path to `signum` and `factorial` (the two with no
+   fast path at all). For `signum`: `np.sign(data)`. For `factorial`:
+   numpy doesn't have a vectorised gamma in core, but `scipy.special`
+   does, or use `np.vectorize(math.gamma)` as a thin wrapper.
+2. Once every monadic has a fast path, audit whether the slow paths
+   are dead. If yes, delete them.
+3. If a `_monadic` helper would centralise the pattern usefully,
+   create one — but only if it actually reduces duplication. The
+   current per-method shape is fine if the slow paths go away.
+
 ## Helpers that could go away after the migration
 
 - **`_dyadic` in `numpy_array.py`** — built around the list-of-1
