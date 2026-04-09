@@ -368,21 +368,64 @@ def encode(alpha: APLArray, omega: APLArray) -> APLArray:
 
 
 def decode(alpha: APLArray, omega: APLArray) -> APLArray:
-    """Dyadic ⊥: evaluate omega as a polynomial with bases from alpha."""
-    values = to_list(omega.data)
-    if alpha.is_scalar():
-        base = alpha.data.item()
-        result = 0
-        for v in values:
-            result = result * int(base) + int(v)  # type: ignore[arg-type]
-        return S(result)
-    bases = to_list(alpha.data)
-    if len(bases) != len(values):
-        raise LengthError(f"Length mismatch: {len(bases)} bases vs {len(values)} values")
-    result = 0
-    for b, v in zip(bases, values):
-        result = result * int(b) + int(v)  # type: ignore[arg-type]
-    return S(result)
+    """Dyadic ⊥: evaluate ω as a polynomial with bases from α.
+
+    Per ISO/Dyalog "Base Value": the last axis of α and the first
+    axis of ω are the digit axis. They must agree in length, OR one
+    of them must be a length-1 axis that extends to match the other,
+    OR one or both operands may be scalars.
+
+    Result shape is `(¯1↓⍴α),(1↓⍴ω)` — the digit axis is consumed.
+
+    The "first element of α has no effect on the result" rule from
+    the spec falls out naturally because the weights vector is built
+    from `α[1:]` followed by 1, never using `α[0]`.
+    """
+    if is_char_array(alpha.data) or is_char_array(omega.data):
+        raise DomainError("⊥ is not defined on character data")
+
+    a = alpha.data
+    o = omega.data
+
+    # Treat 0-d operands as length-1 along an implicit single axis.
+    a_atleast = np.atleast_1d(a)
+    o_atleast = np.atleast_1d(o)
+
+    a_n = a_atleast.shape[-1]   # length of α's last axis (digit axis)
+    o_n = o_atleast.shape[0]    # length of ω's first axis (digit axis)
+
+    # Result shape (the digit axis is consumed on each side).
+    a_outer = list(a.shape[:-1]) if a.ndim >= 1 else []
+    o_outer = list(o.shape[1:]) if o.ndim >= 1 else []
+    result_shape = a_outer + o_outer
+
+    # Empty digit axis on either side → empty polynomial → 0.
+    if a_n == 0 or o_n == 0:
+        return APLArray(result_shape,
+                        np.zeros(tuple(result_shape) or (), dtype=a.dtype))
+
+    # Conformability: equal lengths, or one is length 1 (extends).
+    if a_n != o_n and a_n != 1 and o_n != 1:
+        raise LengthError(f"⊥ length mismatch: {a_n} vs {o_n}")
+    n = max(a_n, o_n)
+
+    # Broadcast both digit axes to common length n. The non-digit
+    # axes of α (everything before the last) and ω (everything after
+    # the first) are preserved unchanged.
+    a_view = np.broadcast_to(a_atleast, a_atleast.shape[:-1] + (n,))
+    o_view = np.broadcast_to(o_atleast, (n,) + o_atleast.shape[1:])
+
+    # Weights along the digit axis: drop the first element of α,
+    # append a trailing 1, then cumulative product from the right.
+    # For α = [b1, b2, ..., bn], weights = [b2·b3·...·bn, ..., bn, 1].
+    ones_tail = np.ones(a_view.shape[:-1] + (1,), dtype=a_view.dtype)
+    shifted = np.concatenate([a_view[..., 1:], ones_tail], axis=-1)
+    weights = np.flip(np.cumprod(np.flip(shifted, axis=-1), axis=-1), axis=-1)
+
+    # Matrix product: contracts α's last axis with ω's first axis.
+    result = weights @ o_view
+
+    return APLArray(result_shape, result)
 
 
 def replicate(alpha: APLArray, omega: APLArray) -> APLArray:

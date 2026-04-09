@@ -1,26 +1,17 @@
-"""Parked decode (⊥) edge-case + spec tests.
+"""Decode (⊥, dyadic) tests — edge cases and ISO/Dyalog spec compliance.
 
-These 20 tests were written on 2026-04-08 during the post-char-migration
-edge-case sweep on `decode`. They surfaced two ISO/Dyalog spec violations
-(matrix `α` rejected, float `ω` truncated) and one straightforward crash
-(matrix-right with vector-α). Writing the fix uncovered the deeper
-scalar-storage convention rot — see `project_scalar_convention_rot.md`
-and `plan/plan-scalar-convention-fix.md`.
+These tests cover dyadic ⊥ (Base Value): given a radix system in α and
+a digit sequence in ω, evaluate ω as a polynomial with bases from α.
 
-The sweep is paused until the scalar convention is fixed. These tests
-are parked OUTSIDE the test tree so pytest will not collect them and
-their failures will not confuse the in-progress scalar migration.
+The 20 tests below were originally written on 2026-04-08 during the
+post-char-migration edge-case sweep. They surfaced two ISO/Dyalog spec
+violations and one straightforward crash, but the work of fixing them
+uncovered the deeper scalar storage convention rot. The tests were
+parked outside the test tree while the scalar migration ran (commits
+46c269f → fe7499a, v0.7.26 → v0.7.40, completed 2026-04-09).
 
-When the scalar fix lands and the decode sweep resumes:
-  1. Move this file back to `tests/new_engine/test_matrices.py` (or
-     `tests/new_engine/test_decode.py`).
-  2. Use it as the spec-correct target for the decode rewrite.
-  3. The original 9 (TestDecodeEdgeCases up to test_decode_dtype_int)
-     plus 11 spec-driven tests below the marker — all 20 should pass
-     against the rewritten decode.
-
-DO NOT rename `Test...` classes or `test_...` functions — keeping the
-pytest naming makes resurrection a one-line `git mv`.
+With the scalar convention fixed, the parked tests are resurrected
+here as the spec-correct target for a numpy-native decode rewrite.
 """
 
 import pytest
