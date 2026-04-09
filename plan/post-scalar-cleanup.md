@@ -1,11 +1,14 @@
 # Post-scalar-convention cleanup follow-ups
 
-When the scalar storage convention migration is complete (Steps 1-9 of
-`plan-scalar-convention-fix.md`), there are a number of further cleanups
-worth a dedicated sweep. The migration itself stays narrowly focused on
-"make storage and APL shape agree" — these notes capture work that
-*could* be done in the same area but is out of scope for the migration
-itself.
+The scalar storage convention migration completed 2026-04-09 in
+commits `46c269f` → `fe7499a` (`v0.7.26` → `v0.7.40`). See
+`progress-2026-04-09.md` for the full timeline and
+`project_scalar_convention_rot.md` (in memory) for the durable
+record of what was wrong and why.
+
+This file lists cleanup work that the migration touched but kept
+out of scope, plus follow-ups discovered during the post-migration
+sweep that completed the same day.
 
 ## Type C sites — `.flatten()[0]` / `to_list(...)[0]` idioms
 
