@@ -16,21 +16,30 @@ class APLArray:
 
     def __init__(self, shape: list[int], data: Any) -> None:
         self.shape = shape
-        # Storage normalisation: data is always an ndarray after init.
-        # - lists go through to_array (the existing path)
+        # Storage normalisation: data is always an ndarray AND its
+        # numpy shape always matches the APL shape after init.
+        #
+        # - lists go through to_array
         # - bare numpy scalars (np.float64 etc.) and Python ints/floats
         #   are wrapped via np.asarray, which produces a 0-d ndarray.
-        #   This is the migration's defence against numpy's "0-d
-        #   arithmetic returns scalars" footgun: every primitive that
-        #   does numpy ops on 0-d data and stores the result here is
-        #   protected at the storage boundary.
+        #   This is the defence against numpy's "0-d arithmetic returns
+        #   scalars" footgun.
         # - existing ndarrays are stored as-is.
+        # - finally, if data.shape disagrees with the APL shape, the
+        #   data is reshaped. This catches every site that constructs
+        #   a scalar APLArray via `APLArray.array([], [value])` or
+        #   `APLArray.array(some_shape, list_comprehension)`: the list
+        #   becomes a 1-d ndarray via to_array, and the reshape pulls
+        #   it into the right shape (including 0-d for scalars).
         if isinstance(data, list):
             self.data = to_array(data)
         elif isinstance(data, np.ndarray):
             self.data = data
         else:
             self.data = np.asarray(data)
+        expected = tuple(shape)
+        if self.data.shape != expected:
+            self.data = self.data.reshape(expected)
 
     def is_scalar(self) -> bool:
         return self.shape == []
@@ -44,14 +53,6 @@ class APLArray:
         # numeric values happen to match the character codepoints.
         if is_char_array(self.data) != is_char_array(other.data):
             return False
-        # Scalar storage bridge (migration window): scalars with APL
-        # shape [] may have either 0-d or 1-d (1,) numpy data while the
-        # convention fix is in progress. `np.array_equal` says these
-        # are not equal even though they hold the same value. Compare
-        # via `.item()` so the suite stays green throughout migration.
-        # TODO: remove this branch at Step 8 when the migration ends.
-        if self.shape == []:
-            return bool(self.data.item() == other.data.item())
         return bool(np.array_equal(self.data, other.data))
 
     @classmethod
@@ -74,8 +75,6 @@ class APLArray:
 
     def __repr__(self) -> str:
         if self.is_scalar():
-            # Use .item() so we work for both 0-d and 1-d (1,) data
-            # storage during the scalar convention migration window.
             return f"S({self.data.item()})"
         return f"APLArray({self.shape}, {to_list(self.data)})"
 
@@ -479,9 +478,14 @@ class APLArray:
         return matrix_inverse(self)
 
     def reverse(self) -> 'APLArray':
+        # Scalar reverse is identity; np.flip needs at least one axis.
+        if self.shape == []:
+            return APLArray([], self.data.copy())
         return APLArray(list(self.shape), np.flip(self.data, axis=-1).copy())
 
     def reverse_first(self) -> 'APLArray':
+        if self.shape == []:
+            return APLArray([], self.data.copy())
         return APLArray(list(self.shape), np.flip(self.data, axis=0).copy())
 
     def ravel(self) -> 'APLArray':

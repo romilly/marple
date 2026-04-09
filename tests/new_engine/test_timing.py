@@ -60,4 +60,4 @@ class TestAI:
         i.run("t←3⌷⎕AI")
         i.run("+/⍳10000")
         elapsed = i.run("(3⌷⎕AI)-t")
-        assert int(elapsed.data[0]) >= 0
+        assert int(elapsed.data.item()) >= 0

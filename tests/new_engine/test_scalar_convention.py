@@ -162,16 +162,3 @@ def test_dyadic_format_handles_zero_d_scalars() -> None:
     assert chars == expected_text
 
 
-def test_eq_bridge_zero_d_equals_one_d_scalar() -> None:
-    """A scalar APLArray with 0-d data must compare equal to one with
-    1-d (1,) data when both have APL shape []. This bridge lets the
-    migration progress without every test failing on the storage flip.
-    """
-    zero_d = APLArray([], np.asarray(7))
-    one_d = APLArray([], np.array([7]))
-    assert zero_d.shape == []
-    assert one_d.shape == []
-    assert zero_d.data.ndim == 0
-    assert one_d.data.ndim == 1
-    assert zero_d == one_d
-    assert one_d == zero_d

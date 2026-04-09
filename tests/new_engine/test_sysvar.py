@@ -144,10 +144,11 @@ class TestWA:
     def test_wa_returns_scalar_integer(self) -> None:
         result = Interpreter(io=1).run("⎕WA")
         assert result.shape == []
-        assert int(result.data[0]) == result.data[0]
+        v = result.data.item()
+        assert int(v) == v
 
     def test_wa_greater_than_zero(self) -> None:
-        assert Interpreter(io=1).run("⎕WA").data[0] > 0
+        assert Interpreter(io=1).run("⎕WA").data.item() > 0
 
 
 class TestEA:

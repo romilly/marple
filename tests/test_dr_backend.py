@@ -105,8 +105,8 @@ class TestDyadicDRViaInterpreter:
 
     def test_dr_to_int(self) -> None:
         result = Interpreter(io=1).run("323 ⎕DR 3.0")
-        assert result.data[0] == 3
-        assert isinstance(result.data.tolist()[0], int)
+        assert result == S(3)
+        assert numpy.issubdtype(result.data.dtype, numpy.integer)
 
     def test_dr_to_boolean(self) -> None:
         result = Interpreter(io=1).run("81 ⎕DR 1 0 1")
