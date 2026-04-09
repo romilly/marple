@@ -72,6 +72,41 @@ def test_to_list_returns_list_for_zero_d_input() -> None:
     assert result == [7]
 
 
+def test_dyadic_handles_zero_d_scalars_both_sides() -> None:
+    """The `_dyadic` helper must handle 0-d scalar operands on both
+    sides. Uses `circular` (○) which has no numpy fast path and
+    therefore goes straight through `_dyadic`. Test driver for the
+    `_dyadic` rewrite (Step 4a of the migration).
+    """
+    a = APLArray([], np.asarray(1))      # selector 1 → sin
+    b = APLArray([], np.asarray(0.0))    # sin(0) = 0
+    result = a.circular(b)
+    assert result.shape == []
+    assert result == S(0.0)
+
+
+def test_dyadic_handles_zero_d_left_vector_right() -> None:
+    """`_dyadic` must extend a 0-d scalar left operand across a vector
+    right operand. Uses `circular` (○): selector 1 → sin, applied to
+    [0, 0, 0] → [0, 0, 0]."""
+    a = APLArray([], np.asarray(1))                      # selector 1 → sin
+    b = APLArray([3], np.asarray([0.0, 0.0, 0.0]))
+    result = a.circular(b)
+    assert result.shape == [3]
+    assert result == APLArray.array([3], [0.0, 0.0, 0.0])
+
+
+def test_dyadic_handles_vector_left_zero_d_right() -> None:
+    """Mirror of the previous: vector left, 0-d scalar right."""
+    import math
+    a = APLArray([2], np.asarray([1, 2]))                # sin, cos
+    b = APLArray([], np.asarray(0.0))
+    result = a.circular(b)
+    assert result.shape == [2]
+    # sin(0)=0, cos(0)=1
+    assert result == APLArray.array([2], [0.0, 1.0])
+
+
 def test_dyadic_format_handles_zero_d_scalars() -> None:
     """`dyadic_format` (⍕) must work with 0-d scalar storage on both
     operands. The current implementation has two failure modes when

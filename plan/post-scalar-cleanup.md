@@ -34,10 +34,23 @@ future cleanup pass can simplify them to `.item()`:
 ## Helpers that could go away after the migration
 
 - **`_dyadic` in `numpy_array.py`** — built around the list-of-1
-  scalar idiom. Will be rewritten in the migration (Step 4 of the plan)
-  but the rewrite may make it possible to drop the helper entirely in
-  favour of `np.broadcast_to` + numpy native ops. Decide post-migration
-  whether the abstraction still earns its keep.
+  scalar idiom. **Originally planned for rewrite as Step 4a of the
+  migration, but reclassified as post-migration cleanup on
+  2026-04-09**: the `to_list` defensive fix (commit `e5adc1d`) made
+  `_dyadic` migration-safe via the list bridge, so the rewrite is no
+  longer required for correctness — only for code quality and
+  performance. Three regression-guard tests were committed in
+  preparation for this refactoring:
+    - `test_dyadic_handles_zero_d_scalars_both_sides`
+    - `test_dyadic_handles_zero_d_left_vector_right`
+    - `test_dyadic_handles_vector_left_zero_d_right`
+  When the refactoring happens, use `np.broadcast_arrays` or
+  `np.broadcast_to` to align operand shapes, then a single
+  comprehension over the broadcast result. Test driver options:
+  `circular` (○) and `binomial` (!) — both go through `_dyadic` with
+  no fast path. Decide post-migration whether the helper still earns
+  its keep at all, or whether each dyadic method should call numpy
+  directly via `np.frompyfunc` or similar.
 - **`to_list()`** — many call sites only use it to bridge the
   list/array gap created by the broken scalar convention. After the
   storage flip, audit whether `to_list()` is still needed, or whether
