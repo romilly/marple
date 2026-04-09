@@ -335,36 +335,73 @@ def grade_down(omega: APLArray, io: int = 1) -> APLArray:
     return APLArray.array([len(omega.data)], [i + io for i, _ in indexed])
 
 
-def _encode_scalar(radices: list[object], n: int) -> list[int]:
-    """Encode a single integer in the given radix system."""
-    result = [0] * len(radices)
-    for i in range(len(radices) - 1, -1, -1):
-        r = int(radices[i])  # type: ignore[arg-type]
-        if r == 0:
-            result[i] = n
-            n = 0
-        else:
-            result[i] = n % r
-            n = n // r
-    return result
-
-
 def encode(alpha: APLArray, omega: APLArray) -> APLArray:
-    """Dyadic ⊤: represent omega in the radix system given by alpha."""
-    radices = list(alpha.data.flatten())
-    if omega.is_scalar():
-        encoded = _encode_scalar(radices, int(omega.data.flatten()[0]))
-        return APLArray.array([len(radices)], list(encoded))
-    # Vector right arg → matrix (radix_len × omega_len)
-    omega_flat = omega.data.flatten()
-    cols = len(omega_flat)
-    rows = len(radices)
-    result = np.zeros((rows, cols), dtype=np.int64)
-    for c in range(cols):
-        col = _encode_scalar(radices, int(omega_flat[c]))
-        for r in range(rows):
-            result[r, c] = col[r]
-    return APLArray([rows, cols], result)
+    """Dyadic ⊤: represent ω in the number system given by α.
+
+    Per ISO/Dyalog "Representation": both operands must be simple
+    numeric arrays. Result shape is (⍴α),⍴ω — α dimensions FIRST,
+    then ω dimensions.
+
+    For higher-rank α, the radix vectors are the vectors along α's
+    FIRST axis (so for an (n,k) matrix α, the k columns are k
+    independent radix systems each of length n).
+
+    A radix of 0 means "fully represent the remaining carry": the
+    digit at that position is the entire carry, and the carry
+    becomes 0 for any earlier positions.
+
+    If ω exceeds the system's range, the result is the residue
+    (×/X)|Y per the spec. This falls out naturally from the modular
+    arithmetic.
+    """
+    if is_char_array(alpha.data) or is_char_array(omega.data):
+        raise DomainError("⊤ is not defined on character data")
+
+    a = alpha.data
+    o = omega.data
+
+    # Treat 0-d α as length-1 along an implicit single radix axis,
+    # but track the original shape for the result.
+    a_atleast = np.atleast_1d(a)
+    n = a_atleast.shape[0]                    # the radix axis
+    other_a_dims = a_atleast.shape[1:]        # axes after the radix axis
+
+    # Result shape per spec: (⍴α),⍴ω
+    result_shape = list(a.shape) + list(o.shape)
+
+    # Choose an output dtype that accommodates both operands. For
+    # int+int the result stays int; for any float input it becomes
+    # float (so float ω is preserved).
+    out_dtype = np.result_type(a_atleast.dtype, o.dtype)
+
+    # Empty radix axis → empty result.
+    if n == 0:
+        return APLArray(result_shape,
+                        np.zeros(tuple(result_shape), dtype=out_dtype))
+
+    # Carry shape: one carry per (radix-system, ω-value) pair.
+    # That is: prepend the "other α dims" to the ω shape.
+    carry_shape = other_a_dims + o.shape
+    carry = np.broadcast_to(o, carry_shape).astype(out_dtype)
+
+    # Output buffer: (n,) + carry_shape, in the same dtype.
+    out = np.empty((n,) + carry_shape, dtype=out_dtype)
+
+    # Walk the radix axis from last (least significant) to first.
+    # At each position, peel off one digit and update the carry.
+    # `view_shape` reshapes a single radix slice so it broadcasts
+    # naturally against the carry across the ω axes.
+    view_shape = other_a_dims + (1,) * o.ndim
+    for i in range(n - 1, -1, -1):
+        radix_i = a_atleast[i].reshape(view_shape)
+        zero_mask = (radix_i == 0)
+        # Avoid div-by-zero in the unused branch via a safe replacement.
+        safe_radix = np.where(zero_mask, 1, radix_i)
+        digit = np.where(zero_mask, carry, carry % safe_radix)
+        carry = np.where(zero_mask, np.zeros_like(carry), carry // safe_radix)
+        out[i] = digit
+
+    return APLArray(result_shape, out)
 
 
 def decode(alpha: APLArray, omega: APLArray) -> APLArray:

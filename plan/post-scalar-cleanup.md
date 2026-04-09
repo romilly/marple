@@ -93,6 +93,24 @@ Refactoring goals after the migration:
   storage flip, audit whether `to_list()` is still needed, or whether
   `.tolist()` / direct numpy ops would do.
 
+## Test file organisation
+
+Tests are currently scattered across files in arbitrary ways. Some
+files are per-primitive (`test_decode.py`, `test_random.py`); others
+are broad collections (`test_matrices.py`, `test_extended_functions.py`,
+`test_structural.py`); some bundle unrelated concerns (`test_sysvar.py`
+holds system variables, ⎕EA, ⎕WA, and ⎕CR). The boundary between
+`test_structural.py` and `test_structural_higherrank.py` is not
+obvious.
+
+Sort this out as a refactoring step once the more urgent post-scalar
+work (encode, transpose, rank operator, etc.) is complete. Likely
+principle: one file per primitive family, with cross-cutting concerns
+(numeric types, character handling) in their own files. The exact
+mapping is a planning task in its own right when we get to it.
+
+Captured 2026-04-09 during the decode resume.
+
 ## Idiom upgrades worth considering
 
 - **`np.char.mod` + `np.char.rjust`** — numpy has vectorized string
