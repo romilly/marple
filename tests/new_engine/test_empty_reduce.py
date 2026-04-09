@@ -20,12 +20,10 @@ class TestEmptyReduce:
         assert Interpreter(io=1).run("÷/⍳0") == S(1)
 
     def test_max(self) -> None:
-        result = Interpreter(io=1).run("⌈/⍳0")
-        assert result.data[0] == float("-inf")
+        assert Interpreter(io=1).run("⌈/⍳0") == S(float("-inf"))
 
     def test_min(self) -> None:
-        result = Interpreter(io=1).run("⌊/⍳0")
-        assert result.data[0] == float("inf")
+        assert Interpreter(io=1).run("⌊/⍳0") == S(float("inf"))
 
     def test_and(self) -> None:
         assert Interpreter(io=1).run("∧/⍳0") == S(1)

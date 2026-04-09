@@ -28,4 +28,4 @@ class TestQuadDLWithTimer:
         timer = FakeTimer(sleep_elapsed=0.05)
         interp = Interpreter(io=1, timer=timer)
         result = interp.run("⎕DL 0.01")
-        assert float(result.data[0]) == 0.05
+        assert result == S(0.05)

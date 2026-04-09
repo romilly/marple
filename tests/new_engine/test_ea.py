@@ -27,7 +27,7 @@ class TestEA:
         i = Interpreter(io=1)
         i.run("'0' ⎕EA '1÷0'")
         result = i.run("⎕EN")
-        assert result.data[0] > 0
+        assert result.data.item() > 0
 
     def test_error_sets_dm(self) -> None:
         i = Interpreter(io=1)

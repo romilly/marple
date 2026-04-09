@@ -57,7 +57,7 @@ class TestComparison:
 class TestCircular:
     def test_pi_times(self) -> None:
         result = Interpreter(io=1).run("○1")
-        assert abs(result.data[0] - math.pi) < 1e-10
+        assert abs(result.data.item() - math.pi) < 1e-10
 
     def test_sin(self) -> None:
         result = Interpreter(io=1).run("1○○0.5")
@@ -73,7 +73,7 @@ class TestCircular:
 
     def test_pi_times_two(self) -> None:
         result = Interpreter(io=1).run("○2")
-        assert abs(result.data[0] - 2 * math.pi) < 1e-10
+        assert abs(result.data.item() - 2 * math.pi) < 1e-10
 
     def test_tan(self) -> None:
         result = Interpreter(io=1).run("3○0")  # tan(0) = 0

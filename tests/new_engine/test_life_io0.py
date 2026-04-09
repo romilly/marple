@@ -1,6 +1,6 @@
 """Life with ⎕IO←0 inside the dfn."""
 
-from marple.numpy_array import APLArray
+from marple.numpy_array import APLArray, S
 from marple.engine import Interpreter
 
 
@@ -26,4 +26,4 @@ class TestLifeIO0:
         i.run("life←{⎕IO←0 ⋄ s←{(1↑⍺)⊖(1↓⍺)⌽⍵} ⋄ P←(⍉3 3⊤⍳9)-1 ⋄ N←(+⌿P(s⍤1 2)⍵)-⍵ ⋄ (N=3)∨⍵∧N=2}")
         i.run("G←6 6⍴0")
         i.run("life G")
-        assert i.run("⎕IO").data[0] == 1
+        assert i.run("⎕IO") == S(1)

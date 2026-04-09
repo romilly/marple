@@ -16,7 +16,7 @@ class TestArithmeticUpcastDowncast:
     def test_add_integers_gives_integer(self) -> None:
         result = Interpreter(io=1).run("2+3")
         assert result == S(5)
-        assert isinstance(result.data.tolist()[0], int)
+        assert np.issubdtype(result.data.dtype, np.integer)
 
     def test_add_large_no_overflow(self) -> None:
         assert Interpreter(io=1).run("20000+20000") == S(40000)
@@ -26,12 +26,12 @@ class TestArithmeticUpcastDowncast:
 
     def test_division_stays_float(self) -> None:
         result = Interpreter(io=1).run("1÷3")
-        assert isinstance(result.data.tolist()[0], float)
+        assert np.issubdtype(result.data.dtype, np.floating)
 
     def test_add_floats_downcast_to_integer(self) -> None:
         result = Interpreter(io=1).run("1.5+1.5")
         assert result == S(3)
-        assert isinstance(result.data.tolist()[0], int)
+        assert np.issubdtype(result.data.dtype, np.integer)
 
 
 class TestReduceScanOverflow:
@@ -44,7 +44,7 @@ class TestReduceScanOverflow:
     def test_reduce_add_small_stays_integer(self) -> None:
         result = Interpreter(io=1).run("+/1 2 3")
         assert result == S(6)
-        assert isinstance(result.data.tolist()[0], int)
+        assert np.issubdtype(result.data.dtype, np.integer)
 
     def test_scan_add_overflows_int32(self) -> None:
         result = Interpreter(io=1).run("+\\2000000000 2000000000")
@@ -183,7 +183,7 @@ class TestCrossDtypeReduce:
 
     def test_reduce_float(self) -> None:
         result = Interpreter(io=1).run("+/0.1 0.2 0.3")
-        assert abs(result.data.tolist()[0] - 0.6) < 1e-10
+        assert abs(result.data.item() - 0.6) < 1e-10
 
     def test_reduce_bool(self) -> None:
         i = Interpreter(io=1)

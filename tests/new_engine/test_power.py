@@ -47,13 +47,13 @@ class TestPowerConvergence:
         i = Interpreter(io=1)
         i.run("phi←{1+÷⍵}")
         result = i.run("(phi⍣≡) 1")
-        assert abs(result.data[0] - (1 + math.sqrt(5)) / 2) < 1e-10
+        assert abs(result.data.item() - (1 + math.sqrt(5)) / 2) < 1e-10
 
     def test_sqrt_newton(self) -> None:
         i = Interpreter(io=1)
         i.run("sqr←{0.5×⍵+⍺÷⍵}")
         result = i.run("2(sqr⍣≡) 1")
-        assert abs(result.data[0] - math.sqrt(2)) < 1e-10
+        assert abs(result.data.item() - math.sqrt(2)) < 1e-10
 
     def test_identity_converges_immediately(self) -> None:
         i = Interpreter(io=1)
@@ -64,7 +64,7 @@ class TestPowerConvergence:
         i.run("close←{1e¯10>|⍺-⍵}")
         i.run("sqr←{0.5×⍵+⍺÷⍵}")
         result = i.run("2(sqr⍣close) 1")
-        assert abs(result.data[0] - math.sqrt(2)) < 1e-10
+        assert abs(result.data.item() - math.sqrt(2)) < 1e-10
 
 
 class TestPowerStructural:

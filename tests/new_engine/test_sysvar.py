@@ -232,7 +232,7 @@ class TestQuadFR:
         i.run("⎕FR←645")
         result = i.run("0.1+0.2")
         # Back to float — may not be exactly 0.3
-        assert result.data[0] != 0.3 or True
+        assert result.data.item() != 0.3 or True
 
 
 class TestCR:

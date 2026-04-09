@@ -10,12 +10,13 @@ from marple.errors import LengthError
 class TestRoll:
     def test_roll_returns_float(self) -> None:
         result = Interpreter(io=1).run("?0")
-        assert isinstance(result.data[0], float)
-        assert 0.0 <= result.data[0] < 1.0
+        v = result.data.item()
+        assert isinstance(v, float)
+        assert 0.0 <= v < 1.0
 
     def test_roll_integer(self) -> None:
         result = Interpreter(io=1).run("?6")
-        val = int(result.data[0])
+        val = int(result.data.item())
         assert 1 <= val <= 6
 
     def test_roll_deterministic(self) -> None:
@@ -31,7 +32,7 @@ class TestRoll:
         i.run("⎕RL←42")
         for _ in range(20):
             result = i.run("?6")
-            v = result.data[0]
+            v = result.data.item()
             assert 1 <= v <= 6
 
     def test_roll_vector(self) -> None:
@@ -51,7 +52,7 @@ class TestRoll:
         i.run("⎕RL←42")
         for _ in range(20):
             result = i.run("?6")
-            v = result.data[0]
+            v = result.data.item()
             assert 0 <= v <= 5
 
 

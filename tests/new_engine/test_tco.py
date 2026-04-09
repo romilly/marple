@@ -19,7 +19,7 @@ class TestTailRecursiveFactorial:
         i.run("fact←{⍺←1 ⋄ ⍵=0:⍺ ⋄ (⍺×⍵)∇ ⍵-1}")
         # Should not hit Python's recursion limit
         result = i.run("fact 1000")
-        assert result.data[0] > 0
+        assert result.data.item() > 0
 
 
 class TestTailRecursiveGCD:
