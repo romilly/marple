@@ -112,6 +112,21 @@ class TestLoadWorkspace:
 
 
 class TestLoadWorkspaceChars:
+    def test_save_and_load_char_scalar(self) -> None:
+        # Round-trip a single-character literal through save/load.
+        # Regression test for the workspace.py bug where char scalars
+        # were formatted as their numeric codepoint (e.g. 'a' → 97)
+        # via the dead `isinstance(v, str)` branch in _format_value.
+        with tempfile.TemporaryDirectory() as root:
+            ws_dir = os.path.join(root, "test_ws")
+            i = Interpreter(io=1)
+            i.run("c←'a'")
+            env_dict = _save_env_as_dict(i)
+            save_workspace(env_dict, ws_dir)
+            i2 = Interpreter(io=1)
+            load_workspace(i2.env, ws_dir, evaluate=i2.run)
+            assert i2.run("c") == i.run("'a'")
+
     def test_save_and_load_char_vector(self) -> None:
         from marple.backend_functions import chars_to_str
         with tempfile.TemporaryDirectory() as root:

@@ -21,9 +21,14 @@ def _format_value(value: object) -> str | None:
     if not isinstance(value, APLArray):
         return None
     if value.is_scalar():
+        # Char scalars must be detected via is_char_array on the
+        # ndarray itself, not by isinstance() on the extracted
+        # .item() value: post-char-migration char data is stored as
+        # uint32 codepoints, so .item() returns an int and the char
+        # nature is only visible at the dtype level.
+        if is_char_array(value.data):
+            return f"'{chars_to_str(value.data)}'"
         v = value.data.item()
-        if isinstance(v, str):
-            return f"'{v}'"
         if isinstance(v, (int, float)) and v < 0:
             return f"¯{abs(v)}"
         return str(v)
