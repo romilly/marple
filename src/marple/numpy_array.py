@@ -16,7 +16,21 @@ class APLArray:
 
     def __init__(self, shape: list[int], data: Any) -> None:
         self.shape = shape
-        self.data = to_array(data) if isinstance(data, list) else data
+        # Storage normalisation: data is always an ndarray after init.
+        # - lists go through to_array (the existing path)
+        # - bare numpy scalars (np.float64 etc.) and Python ints/floats
+        #   are wrapped via np.asarray, which produces a 0-d ndarray.
+        #   This is the migration's defence against numpy's "0-d
+        #   arithmetic returns scalars" footgun: every primitive that
+        #   does numpy ops on 0-d data and stores the result here is
+        #   protected at the storage boundary.
+        # - existing ndarrays are stored as-is.
+        if isinstance(data, list):
+            self.data = to_array(data)
+        elif isinstance(data, np.ndarray):
+            self.data = data
+        else:
+            self.data = np.asarray(data)
 
     def is_scalar(self) -> bool:
         return self.shape == []
