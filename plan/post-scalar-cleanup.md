@@ -95,28 +95,20 @@ Refactoring goals after the migration:
 
 ## Missing primitives
 
+- **Zilde literal (`⍬`)** — the empty numeric vector. Dyalog
+  recognises `⍬` as a literal equivalent to `0⍴0` (or `⍳0`). marple's
+  tokenizer/parser does not currently handle it; `≢⍬` raises
+  `DOMAIN ERROR: Unknown AST node: <class 'str'>`. Surfaced
+  2026-04-09 while writing the tally rank-3 spec example test.
+  Workaround: use `⍳0`. The fix is most likely a tokenizer
+  addition that maps the `⍬` glyph to a Num/Vector node producing
+  an empty array.
+
 - **Commute operator (`⍨`)** — postfix operator. Dyadic use:
   `α f⍨ ω` ≡ `ω f α` (swap arguments). Monadic use: `f⍨ ω` ≡ `ω f ω`
   (apply with both arguments the same). Common idioms: `+⍨ x` doubles
   x, `÷⍨ x y` is `y ÷ x`. Currently not implemented in marple.
   Captured 2026-04-09 by user request.
-
-## Primitives that may be wrongly defined
-
-- **`tally` (≢)** — `numpy_array.py:401`. The current implementation
-  returns `S(1)` for scalars and `S(shape[0])` otherwise. The TODO
-  comment on line 400 says "wrong, tally is a count: `×/shape`",
-  suggesting the author thought it should return the total element
-  count. The user (2026-04-09) flagged this as possibly wrong.
-
-  **Investigate before changing.** The Dyalog spec for monadic `≢`
-  says tally is the count of major cells, which IS shape[0] for
-  rank ≥ 1 and 1 for scalar — so the *implementation* matches the
-  spec, but the *TODO comment* may be misleading. Verify against
-  Dyalog with `≢` on a scalar, vector, matrix, and rank-3 array.
-  If the implementation is correct, delete the TODO comment.
-  If the user has a different definition in mind, capture it here
-  before changing the code.
 
 ## Test file organisation
 

@@ -401,8 +401,11 @@ class APLArray:
         n = int(self.data.item())
         return APLArray.array([n], list(range(io, n + io)))
 
-    # TODO: wrong, tally is a count: ×/shape
     def tally(self) -> 'APLArray':
+        # Monadic ≢: number of major cells of Y. Per ISO/Dyalog,
+        # this is the length of the leading axis, or 1 for a scalar.
+        # NB: NOT the total element count (×/⍴Y) — the previous TODO
+        # comment here was misleading and is now removed.
         return APLArray.scalar(1) if self.is_scalar() else APLArray.scalar(self.shape[0])
 
     def conjugate(self) -> 'APLArray':

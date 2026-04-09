@@ -137,10 +137,24 @@ class TestEncodeDecode:
 
 class TestTally:
     def test_tally_vector(self) -> None:
+        # ≢1 2 3 → 3 (length of leading axis)
         assert Interpreter(io=1).run("≢1 2 3") == S(3)
 
     def test_tally_scalar(self) -> None:
+        # ≢5 → 1 (scalar by definition)
         assert Interpreter(io=1).run("≢5") == S(1)
+
+    def test_tally_rank3(self) -> None:
+        # ≢2 3 4⍴⍳10 → 2 (length of LEADING axis, not total elements)
+        # Spec example. The misleading TODO comment in tally suggested
+        # ×/shape (= 24 here) which would be wrong.
+        assert Interpreter(io=1).run("≢2 3 4⍴⍳10") == S(2)
+
+    def test_tally_empty_vector(self) -> None:
+        # The spec example is ≢⍬ → 0, but marple's parser does not
+        # currently recognise ⍬ (zilde — see post-scalar-cleanup.md).
+        # Use ⍳0 which produces the same empty numeric vector.
+        assert Interpreter(io=1).run("≢⍳0") == S(0)
 
 
 class TestGrade:
