@@ -317,6 +317,19 @@ class PowerDerived:
         self.right_operand = right_operand
 
 
+class CommuteDerived:
+    """Unapplied commute-derived function: f⍨
+
+    Monadic application:  f⍨ ω  ≡  ω f ω    (apply with both sides)
+    Dyadic application:   α f⍨ ω ≡  ω f α    (swap arguments)
+
+    The argument is evaluated ONCE in the monadic case, even though
+    it appears on both sides of the underlying call.
+    """
+    def __init__(self, function: object) -> None:
+        self.function = function
+
+
 class ReduceOp:
     """Unapplied reduce: f/ as a function value"""
     def __init__(self, function: str) -> None:
@@ -548,6 +561,8 @@ class MonadicDfnCall(Node):
             return ctx.apply_rank_monadic(self.dfn, self.operand)
         if isinstance(self.dfn, PowerDerived):
             return ctx.apply_power_monadic(self.dfn, self.operand)
+        if isinstance(self.dfn, CommuteDerived):
+            return ctx.apply_commute_monadic(self.dfn, self.operand)
         dfn_val = ctx.evaluate(self.dfn)
         operand = ctx.evaluate(self.operand)
         if isinstance(dfn_val, DfnBinding):
@@ -576,6 +591,8 @@ class DyadicDfnCall(Node):
             return ctx.apply_rank_dyadic(self.dfn, self.left, self.right)
         if isinstance(self.dfn, PowerDerived):
             return ctx.apply_power_dyadic(self.dfn, self.left, self.right)
+        if isinstance(self.dfn, CommuteDerived):
+            return ctx.apply_commute_dyadic(self.dfn, self.left, self.right)
         dfn_val = ctx.evaluate(self.dfn)
         right = ctx.evaluate(self.right)
         left = ctx.evaluate(self.left)

@@ -155,3 +155,70 @@ class TestReplicateFirst:
     def test_vector_same_as_slash(self) -> None:
         result = Interpreter(io=1).run("1 0 1⌿10 20 30")
         assert list(result.data) == [10, 30]
+
+
+class TestCommute:
+    """Commute operator (⍨).
+
+    Per the standard semantics:
+      - Monadic:  f⍨ ω  ≡  ω f ω    (apply f with ω on both sides)
+      - Dyadic:   α f⍨ ω ≡  ω f α    (swap arguments)
+    """
+
+    # Monadic form: f⍨ ω → ω f ω
+    def test_commute_monadic_plus(self) -> None:
+        # +⍨ 5 → 5 + 5 = 10
+        assert Interpreter(io=1).run("+⍨ 5") == S(10)
+
+    def test_commute_monadic_times(self) -> None:
+        # ×⍨ 4 → 4 × 4 = 16
+        assert Interpreter(io=1).run("×⍨ 4") == S(16)
+
+    def test_commute_monadic_minus_is_zero(self) -> None:
+        # -⍨ 5 → 5 - 5 = 0
+        assert Interpreter(io=1).run("-⍨ 5") == S(0)
+
+    def test_commute_monadic_on_vector(self) -> None:
+        # +⍨ 1 2 3 → 2 4 6 (elementwise doubling)
+        result = Interpreter(io=1).run("+⍨ 1 2 3")
+        assert result == APLArray.array([3], [2, 4, 6])
+
+    # Dyadic form: α f⍨ ω → ω f α
+    def test_commute_dyadic_minus_swaps(self) -> None:
+        # 5 -⍨ 3 → 3 - 5 = ¯2 (NOT 5 - 3 = 2)
+        assert Interpreter(io=1).run("5 -⍨ 3") == S(-2)
+
+    def test_commute_dyadic_divide_swaps(self) -> None:
+        # 2 ÷⍨ 10 → 10 ÷ 2 = 5
+        assert Interpreter(io=1).run("2 ÷⍨ 10") == S(5)
+
+    def test_commute_dyadic_with_vectors(self) -> None:
+        # 1 2 3 ,⍨ 4 5 6 → (4 5 6),(1 2 3) → 4 5 6 1 2 3
+        result = Interpreter(io=1).run("1 2 3 ,⍨ 4 5 6")
+        assert result == APLArray.array([6], [4, 5, 6, 1, 2, 3])
+
+    # Dfn operand
+    def test_commute_with_dfn_monadic(self) -> None:
+        # f←{⍺×⍵}  →  f⍨ 5 = 5×5 = 25
+        i = Interpreter(io=1)
+        i.run("f←{⍺×⍵}")
+        assert i.run("f⍨ 5") == S(25)
+
+    def test_commute_with_dfn_dyadic(self) -> None:
+        # g←{⍺-⍵}  →  10 g⍨ 3  ≡  3 g 10  ≡  3 - 10 = ¯7
+        i = Interpreter(io=1)
+        i.run("g←{⍺-⍵}")
+        assert i.run("10 g⍨ 3") == S(-7)
+
+    # Single-evaluation guarantee — important for impure functions
+    def test_commute_evaluates_omega_once(self) -> None:
+        # If commute evaluated ⍵ twice, `+⍨ ?6` would be the sum of
+        # two independent random rolls. Evaluating once means it
+        # equals 2v for the single roll v. We can prove this by
+        # seeding the RNG, running both forms, and comparing.
+        i = Interpreter(io=1)
+        i.run("⎕RL←42")
+        commute_result = i.run("+⍨ ?6").data.item()
+        i.run("⎕RL←42")
+        single_roll = i.run("?6").data.item()
+        assert commute_result == 2 * single_roll

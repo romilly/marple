@@ -8,6 +8,7 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     Assignment,
     BoundOperator,
     CAT_EMPTY,
+    CommuteDerived,
     DerivedFunc,
     Dfn,
     DyadicDfnCall,
@@ -109,7 +110,7 @@ class Parser:
 
     def _classify_operator(self, op: str) -> int:
         """Classify an operator token as adverb or conjunction."""
-        if op in ("/", "\\", "⌿", "⍀", "∘."):
+        if op in ("/", "\\", "⌿", "⍀", "∘.", "⍨"):
             return CAT_ADV
         if op in ("⍤", "⍣", "⌶", ".", "∘"):
             return CAT_CONJ
@@ -407,6 +408,10 @@ class Parser:
         power_node = PowerDerived(bound.left_operand, bound.right_operand)
         return MonadicDfnCall(power_node, arg_node)
 
+    def _bound_monadic_commute(self, bound: BoundOperator, arg_node: object) -> object:
+        commute_node = CommuteDerived(bound.left_operand)
+        return MonadicDfnCall(commute_node, arg_node)
+
     def _bound_monadic_inner(self, bound: BoundOperator, arg_node: object) -> object:
         raise SyntaxError_("Inner product requires two arguments")
 
@@ -434,6 +439,7 @@ class Parser:
         "⍀": _bound_monadic_reduce,
         "⍤": _bound_monadic_rank,
         "⍣": _bound_monadic_power,
+        "⍨": _bound_monadic_commute,
         ".": _bound_monadic_inner,
         "∘.": _bound_monadic_outer,
         "⌶": _bound_monadic_ibeam,
@@ -461,6 +467,11 @@ class Parser:
                             left_node: object, right_node: object) -> object:
         power_node = PowerDerived(bound.left_operand, bound.right_operand)
         return DyadicDfnCall(power_node, left_node, right_node)
+
+    def _bound_dyadic_commute(self, bound: BoundOperator,
+                              left_node: object, right_node: object) -> object:
+        commute_node = CommuteDerived(bound.left_operand)
+        return DyadicDfnCall(commute_node, left_node, right_node)
 
     def _bound_dyadic_inner(self, bound: BoundOperator,
                             left_node: object, right_node: object) -> object:
@@ -494,6 +505,7 @@ class Parser:
     _BOUND_DYADIC_DISPATCH: dict[str, Callable[['Parser', BoundOperator, object, object], object]] = {
         "⍤": _bound_dyadic_rank,
         "⍣": _bound_dyadic_power,
+        "⍨": _bound_dyadic_commute,
         ".": _bound_dyadic_inner,
         "∘.": _bound_dyadic_outer,
         "/": _bound_dyadic_reduce,

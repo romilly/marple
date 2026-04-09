@@ -82,13 +82,33 @@ Refactoring goals after the migration:
   storage flip, audit whether `to_list()` is still needed, or whether
   `.tolist()` / direct numpy ops would do.
 
-## Missing primitives
+## Missing operators
 
-- **Commute operator (`⍨`)** — postfix operator. Dyadic use:
-  `α f⍨ ω` ≡ `ω f α` (swap arguments). Monadic use: `f⍨ ω` ≡ `ω f ω`
-  (apply with both arguments the same). Common idioms: `+⍨ x` doubles
-  x, `÷⍨ x y` is `y ÷ x`. Currently not implemented in marple.
-  Captured 2026-04-09 by user request.
+A scan of the tokenizer against the standard ISO operator set
+shows the following operators are NOT recognised by marple at all
+(no token, no parse, no execute):
+
+- **`⍥` (Over)** — `f⍥g ω` ≡ `f g ω`; dyadically `α f⍥g ω` ≡
+  `(g α) f (g ω)`. Pre-processes both arguments through g before
+  applying f.
+- **`@` (At)** — `(new)@(idx) array` patches values from `new` into
+  `array` at positions `idx`. Common idiom for "update these
+  elements". Heavy use in modern APL.
+- **`⌸` (Key)** — `f⌸ y` partitions y by unique keys and applies f
+  to each group. Used for tabulation and groupby-style code.
+- **`⌺` (Stencil)** — `f⌺ window y` applies f to sliding windows of
+  y. Used for cellular automata, image filters, etc.
+
+Marple tokenises but does not (yet) fully implement:
+
+- **`⍤` (Rank)** — known major missing feature, planned as the next
+  big piece of work post-migration. See `project_rank_operator.md`.
+
+Captured 2026-04-09 by user request during the commute work.
+The list above is what a casual scan turned up; a more thorough
+ISO/Dyalog audit may find more.
+
+(Commute (`⍨`) added 2026-04-09, removed from this list.)
 
 ## Test file organisation
 

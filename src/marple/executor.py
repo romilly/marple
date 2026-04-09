@@ -371,6 +371,24 @@ class Executor:
                 return DyadicFunctionBinding(self.env).apply(val.glyph, alpha, omega)
         raise DomainError(f"Expected function for rank, got {type(func)}")
 
+    # ── Commute operator (⍨) ──
+
+    def apply_commute_monadic(self, commute_node: object, operand_node: object) -> APLArray:
+        """Apply f⍨ monadically: ω f ω. Evaluates ω exactly once."""
+        from marple.parser import CommuteDerived
+        assert isinstance(commute_node, CommuteDerived)
+        omega = self.evaluate(operand_node)
+        return self._apply_func_dyadic(commute_node.function, omega, omega)
+
+    def apply_commute_dyadic(self, commute_node: object,
+                             left_node: object, right_node: object) -> APLArray:
+        """Apply f⍨ dyadically: α f⍨ ω ≡ ω f α (swap arguments)."""
+        from marple.parser import CommuteDerived
+        assert isinstance(commute_node, CommuteDerived)
+        alpha = self.evaluate(left_node)
+        omega = self.evaluate(right_node)
+        return self._apply_func_dyadic(commute_node.function, omega, alpha)
+
     # ── Power operator ──
 
     def apply_power_monadic(self, power_node: object, operand_node: object) -> APLArray:
