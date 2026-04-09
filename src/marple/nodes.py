@@ -201,6 +201,12 @@ class Vector(Node):
         return APLArray.array([len(values)], list(values))
 
 
+class Zilde(Node):
+    """⍬ — the empty numeric vector literal (equivalent to ⍳0)."""
+    def execute(self, ctx: ExecutionContext) -> APLArray:
+        return APLArray.array([0], [])
+
+
 class MonadicFunc(Node):
     def __init__(self, function: str, operand: object) -> None:
         self.function = function

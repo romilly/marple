@@ -31,6 +31,7 @@ class TokenType:
     SYSVAR = "SYSVAR"
     QUALIFIED_NAME = "QUALIFIED_NAME"
     ID = "ID"
+    ZILDE = "ZILDE"
     EOF = "EOF"
 
 
@@ -71,6 +72,7 @@ SINGLE_CHAR_TOKENS: dict[str, Token] = {
     "[": Token(TokenType.LBRACKET, "["),
     "]": Token(TokenType.RBRACKET, "]"),
     ";": Token(TokenType.SEMICOLON, ";"),
+    "⍬": Token(TokenType.ZILDE, "⍬"),
 }
 
 

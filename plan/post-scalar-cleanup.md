@@ -95,15 +95,6 @@ Refactoring goals after the migration:
 
 ## Missing primitives
 
-- **Zilde literal (`⍬`)** — the empty numeric vector. Dyalog
-  recognises `⍬` as a literal equivalent to `0⍴0` (or `⍳0`). marple's
-  tokenizer/parser does not currently handle it; `≢⍬` raises
-  `DOMAIN ERROR: Unknown AST node: <class 'str'>`. Surfaced
-  2026-04-09 while writing the tally rank-3 spec example test.
-  Workaround: use `⍳0`. The fix is most likely a tokenizer
-  addition that maps the `⍬` glyph to a Num/Vector node producing
-  an empty array.
-
 - **Commute operator (`⍨`)** — postfix operator. Dyadic use:
   `α f⍨ ω` ≡ `ω f α` (swap arguments). Monadic use: `f⍨ ω` ≡ `ω f ω`
   (apply with both arguments the same). Common idioms: `+⍨ x` doubles

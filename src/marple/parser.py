@@ -39,6 +39,7 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     SysVar,
     Var,
     Vector,
+    Zilde,
 )
 from marple.tokenizer import Token, TokenType, Tokenizer
 
@@ -296,6 +297,10 @@ class Parser:
         self._pos += 1
         items.append((CAT_VERB, Nabla()))
 
+    def _item_zilde(self, tok: Token, items: list[tuple[int, object]]) -> None:
+        self._pos += 1
+        items.append((CAT_NOUN, Zilde()))
+
     def _item_qualified_name(self, tok: Token, items: list[tuple[int, object]]) -> None:
         assert isinstance(tok.value, str)
         self._pos += 1
@@ -316,6 +321,7 @@ class Parser:
         TokenType.OMEGA_OMEGA: _item_omega_omega,
         TokenType.NABLA: _item_nabla,
         TokenType.QUALIFIED_NAME: _item_qualified_name,
+        TokenType.ZILDE: _item_zilde,
     }
 
     def _parse_fmt_args(self) -> FmtArgs:
@@ -754,6 +760,9 @@ class Parser:
         if token.type == TokenType.NABLA:
             self._eat(TokenType.NABLA)
             return Nabla()
+        if token.type == TokenType.ZILDE:
+            self._eat(TokenType.ZILDE)
+            return Zilde()
         if token.type == TokenType.SYSVAR:
             self._eat(TokenType.SYSVAR)
             assert isinstance(token.value, str)
@@ -796,7 +805,7 @@ class Parser:
             TokenType.OMEGA, TokenType.ALPHA, TokenType.ALPHA_ALPHA,
             TokenType.OMEGA_OMEGA, TokenType.NABLA,
             TokenType.LBRACE, TokenType.STRING, TokenType.QUALIFIED_NAME,
-            TokenType.SYSVAR,
+            TokenType.SYSVAR, TokenType.ZILDE,
         )
 
     def _parse_array(self) -> object:

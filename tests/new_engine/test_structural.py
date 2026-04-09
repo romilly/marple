@@ -151,10 +151,40 @@ class TestTally:
         assert Interpreter(io=1).run("≢2 3 4⍴⍳10") == S(2)
 
     def test_tally_empty_vector(self) -> None:
-        # The spec example is ≢⍬ → 0, but marple's parser does not
-        # currently recognise ⍬ (zilde — see post-scalar-cleanup.md).
-        # Use ⍳0 which produces the same empty numeric vector.
-        assert Interpreter(io=1).run("≢⍳0") == S(0)
+        # ≢⍬ → 0 (empty vector has leading-axis length 0).
+        # Spec example.
+        assert Interpreter(io=1).run("≢⍬") == S(0)
+
+
+class TestZilde:
+    """Zilde (⍬) — the empty numeric vector literal."""
+
+    def test_zilde_is_empty_numeric_vector(self) -> None:
+        # ⍬ evaluates to an empty numeric vector with shape [0].
+        result = Interpreter(io=1).run("⍬")
+        assert result.shape == [0]
+        assert result == APLArray.array([0], [])
+
+    def test_zilde_equals_iota_zero(self) -> None:
+        # ⍬ ≡ ⍳0 — semantically equivalent to ⍳0.
+        i = Interpreter(io=1)
+        assert i.run("⍬") == i.run("⍳0")
+
+    def test_zilde_shape_is_one_element_zero(self) -> None:
+        # ⍴⍬ → ,0   (the shape of zilde is a 1-element vector
+        # containing 0, since zilde is a rank-1 array).
+        result = Interpreter(io=1).run("⍴⍬")
+        assert result == APLArray.array([1], [0])
+
+    def test_zilde_concatenate_left(self) -> None:
+        # ⍬,1 2 3 → 1 2 3
+        result = Interpreter(io=1).run("⍬,1 2 3")
+        assert result == APLArray.array([3], [1, 2, 3])
+
+    def test_zilde_concatenate_right(self) -> None:
+        # 1 2 3,⍬ → 1 2 3
+        result = Interpreter(io=1).run("1 2 3,⍬")
+        assert result == APLArray.array([3], [1, 2, 3])
 
 
 class TestGrade:
