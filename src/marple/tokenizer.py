@@ -91,7 +91,7 @@ class Tokenizer:
         self._pos += 1
 
     def _skip_whitespace(self) -> None:
-        while self._current() is not None and self._current() == " ":
+        while self._current() is not None and self._current() in (" ", "\t", "\r", "\n"):
             self._advance()
 
     def _read_number(self) -> Token:
@@ -203,6 +203,15 @@ class Tokenizer:
             elif _isalpha(ch) or ch == "_":
                 tokens.append(self._read_id())
             else:
-                self._advance()
+                # Defensive: any character that reached this point is
+                # unrecognised. The previous behaviour (`self._advance()`)
+                # silently dropped the char, which masked two real bugs
+                # discovered on 2026-04-09 — the missing zilde literal
+                # (⍬) and the missing commute operator (⍨), both of
+                # which were silently swallowed and produced confusing
+                # downstream errors. Raising here surfaces the same
+                # class of bug immediately and clearly.
+                from marple.errors import SyntaxError_
+                raise SyntaxError_(f"Unknown character: {ch!r}")
         tokens.append(Token(TokenType.EOF, None))
         return tokens

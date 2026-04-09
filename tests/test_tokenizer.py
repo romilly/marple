@@ -134,3 +134,39 @@ class TestTokenizerExpressions:
     def test_ends_with_eof(self) -> None:
         tokens = Tokenizer("5").tokenize()
         assert tokens[-1] == Token(TokenType.EOF, None)
+
+
+class TestTokenizerUnknownChars:
+    """The tokenizer must reject unknown characters with a clear
+    error rather than silently dropping them. Two prior bugs (zilde
+    ⍬ and commute ⍨) were both consequences of the silent fall-through
+    in the tokenize loop — the parser saw an incomplete token stream
+    and produced confusing downstream errors."""
+
+    def test_unknown_char_raises(self) -> None:
+        # § is a printable character not in any APL glyph set, not
+        # alphanumeric, not whitespace.
+        import pytest
+        from marple.errors import SyntaxError_
+        with pytest.raises(SyntaxError_):
+            Tokenizer("1 § 2").tokenize()
+
+    def test_tab_is_skipped(self) -> None:
+        # Standard whitespace (tab, CR) should still be silently
+        # skipped — only NON-whitespace unknown characters error.
+        tokens = Tokenizer("1\t+\t2").tokenize()
+        assert tokens == [
+            Token(TokenType.NUMBER, 1),
+            Token(TokenType.FUNCTION, "+"),
+            Token(TokenType.NUMBER, 2),
+            Token(TokenType.EOF, None),
+        ]
+
+    def test_carriage_return_is_skipped(self) -> None:
+        tokens = Tokenizer("1\r+\r2").tokenize()
+        assert tokens == [
+            Token(TokenType.NUMBER, 1),
+            Token(TokenType.FUNCTION, "+"),
+            Token(TokenType.NUMBER, 2),
+            Token(TokenType.EOF, None),
+        ]
