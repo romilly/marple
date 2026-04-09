@@ -314,6 +314,78 @@ def rotate_first(alpha: APLArray, omega: APLArray) -> APLArray:
     return APLArray(list(omega.shape), np.roll(omega.data, -n, axis=0))
 
 
+def transpose_dyadic(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
+    """Dyadic ⍉: transpose Y by axis permutation X.
+
+    Per the ISO/Dyalog spec:
+      - X must be a simple scalar or vector.
+      - The length of X must equal the rank of Y (a scalar X has
+        length 1, so it can only transpose a rank-1 Y).
+      - The Ith element of X gives the new position for the Ith axis
+        of Y.
+      - If X repositions multiple axes of Y to the same axis, the
+        elements used to fill the resulting axis are those whose
+        indices on the relevant Y axes are equal — i.e., diagonal
+        extraction. The result rank is `⌈/X - ⎕IO + 1`.
+      - The integers in X must form the contiguous range
+        `⎕IO..⌈/X` inclusive (no gaps).
+      - ⎕IO is an implicit argument.
+    """
+    if len(alpha.shape) > 1:
+        raise RankError("⍉ X must be a scalar or vector")
+
+    # Treat scalar X as length-1 (matches Dyalog: scalar X has tally 1).
+    x_atleast = np.atleast_1d(alpha.data)
+    x_values = [int(v) for v in x_atleast]
+
+    rank_y = len(omega.shape)
+
+    if len(x_values) != rank_y:
+        raise LengthError(
+            f"⍉ length of X ({len(x_values)}) must equal rank of Y ({rank_y})")
+
+    # Convert to 0-indexed for numpy.
+    x_zero = [v - io for v in x_values]
+
+    # Range check: every X value must be a valid axis index.
+    if x_zero and (min(x_zero) < 0 or max(x_zero) >= rank_y):
+        raise RankError("⍉ axis index out of range")
+
+    # No-gap check: the values in X must cover [0, max(x_zero)] in
+    # 0-indexed terms, with no missing integer.
+    if x_zero:
+        max_xi = max(x_zero)
+        required = set(range(max_xi + 1))
+        actual = set(x_zero)
+        if not required.issubset(actual):
+            raise RankError("⍉ X is missing axis indices in its range")
+        n_result_axes = max_xi + 1
+    else:
+        n_result_axes = 0
+
+    # Result shape: for each result axis k, length is the min over the
+    # Y axes that map to it (the diagonal length when there are
+    # duplicates).
+    result_shape: list[int] = []
+    for k in range(n_result_axes):
+        y_axes_for_k = [i for i, xi in enumerate(x_zero) if xi == k]
+        result_shape.append(min(omega.shape[i] for i in y_axes_for_k))
+
+    # Empty permutation (only valid for scalar Y) → identity.
+    if n_result_axes == 0:
+        return APLArray([], omega.data.copy())
+
+    # Build result coordinates with np.indices, then for each Y axis
+    # take the result-coords array at the position x_zero[i]. Tuple-
+    # indexing Y with these gives us the diagonal-aware transpose in
+    # one numpy operation.
+    result_coords = np.indices(tuple(result_shape))
+    y_coord_arrays = tuple(result_coords[xi] for xi in x_zero)
+    result_data = omega.data[y_coord_arrays]
+
+    return APLArray(result_shape, result_data)
+
+
 def grade_up(omega: APLArray, io: int = 1) -> APLArray:
     indexed = list(enumerate(omega.data))
     indexed.sort(key=lambda pair: pair[1])  # type: ignore[arg-type]

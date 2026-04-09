@@ -342,6 +342,10 @@ class APLArray:
         from marple.structural import from_array
         return from_array(self, other, io)
 
+    def transpose_dyadic(self, other: 'APLArray', io: int = 1) -> 'APLArray':
+        from marple.structural import transpose_dyadic
+        return transpose_dyadic(self, other, io)
+
     def dyadic_format(self, other: 'APLArray') -> 'APLArray':
         # Spec is a scalar (width only) or a 2-element vector
         # (width, precision). Use .item() / flat for the extraction so

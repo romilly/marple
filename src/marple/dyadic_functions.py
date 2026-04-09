@@ -56,6 +56,7 @@ class DyadicFunctionBinding:
         "⌷": "_from",
         "⍕": "_format",
         "?": "_deal",
+        "⍉": "_transpose_dyadic",
     }
 
     def __init__(self, env: Environment) -> None:
@@ -103,6 +104,9 @@ class DyadicFunctionBinding:
 
     def _deal(self, left: APLArray, right: APLArray) -> APLArray:
         return left.deal(right, io=self._env.io)
+
+    def _transpose_dyadic(self, left: APLArray, right: APLArray) -> APLArray:
+        return left.transpose_dyadic(right, self._env.io)
 
     # Comparison functions for operator use (reduce/scan)
     # ct defaults to 0, so they work with 2 args
