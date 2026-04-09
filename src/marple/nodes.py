@@ -183,12 +183,13 @@ class Str(Node):
     def __init__(self, value: str) -> None:
         self.value = value
     def execute(self, ctx: ExecutionContext) -> APLArray:
-        # Step 4: all string literals are uint32 character arrays.
-        # Single-char literals are scalars (shape []) backed by a
-        # 1-element uint32 array, mirroring numeric scalars like S(5).
+        # All string literals are uint32 character arrays.
+        # Single-char literals are scalars (shape []) backed by 0-d
+        # uint32 data, constructed via S() so the storage convention
+        # matches numeric scalars.
         from marple.backend_functions import str_to_char_array
         if len(self.value) == 1:
-            return APLArray([], str_to_char_array(self.value))
+            return S(self.value)
         return APLArray([len(self.value)], str_to_char_array(self.value))
 
 

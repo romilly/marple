@@ -20,14 +20,12 @@ from marple.engine import Interpreter
 from marple.numpy_array import APLArray, S
 
 
-@pytest.mark.xfail(strict=True, reason="scalar storage migration in progress")
 def test_numeric_scalar_data_is_zero_dimensional() -> None:
     s = S(7)
     assert s.data.ndim == 0
     assert s.data.shape == ()
 
 
-@pytest.mark.xfail(strict=True, reason="scalar storage migration in progress")
 def test_char_scalar_data_is_zero_dimensional() -> None:
     # The single-char literal path goes through `Str.execute`, which
     # currently builds `APLArray([], str_to_char_array('a'))`. After the

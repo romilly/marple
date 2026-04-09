@@ -61,8 +61,16 @@ class APLArray:
 
     @classmethod
     def scalar(cls, value: Any) -> 'APLArray':
-        """Factory method for creating scalars."""
-        return APLArray([], [value])
+        """Factory method for creating scalars.
+
+        Stores data as a 0-dimensional ndarray, matching the APL
+        rank-0 shape `[]`. Accepts both numeric values (any type
+        np.asarray can handle) and single-character strings (which
+        are stored as 0-d uint32 char data).
+        """
+        if isinstance(value, str):
+            return APLArray([], str_to_char_array(value).reshape(()))
+        return APLArray([], np.asarray(value))
 
     def __repr__(self) -> str:
         if self.is_scalar():
