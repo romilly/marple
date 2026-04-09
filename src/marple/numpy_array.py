@@ -30,6 +30,14 @@ class APLArray:
         # numeric values happen to match the character codepoints.
         if is_char_array(self.data) != is_char_array(other.data):
             return False
+        # Scalar storage bridge (migration window): scalars with APL
+        # shape [] may have either 0-d or 1-d (1,) numpy data while the
+        # convention fix is in progress. `np.array_equal` says these
+        # are not equal even though they hold the same value. Compare
+        # via `.item()` so the suite stays green throughout migration.
+        # TODO: remove this branch at Step 8 when the migration ends.
+        if self.shape == []:
+            return bool(self.data.item() == other.data.item())
         return bool(np.array_equal(self.data, other.data))
 
     @classmethod
@@ -44,7 +52,9 @@ class APLArray:
 
     def __repr__(self) -> str:
         if self.is_scalar():
-            return f"S({self.data[0]})"
+            # Use .item() so we work for both 0-d and 1-d (1,) data
+            # storage during the scalar convention migration window.
+            return f"S({self.data.item()})"
         return f"APLArray({self.shape}, {to_list(self.data)})"
 
     def _dyadic(self, other: 'APLArray',
