@@ -58,6 +58,30 @@ def test_repr_handles_zero_d_scalar() -> None:
     assert "7" in text
 
 
+def test_dyadic_format_handles_zero_d_scalars() -> None:
+    """`dyadic_format` (⍕) must work with 0-d scalar storage on both
+    operands. The current implementation has two failure modes when
+    handed a 0-d APLArray:
+
+      1. `int(self.data[0])` for the spec → IndexError on 0-d data
+      2. `[other.data[0]]` for the value → IndexError on 0-d data
+         (and even after fixing that, `for v in other.data` would
+         raise TypeError because numpy refuses to iterate 0-d arrays)
+
+    Locking in the post-fix behaviour with both sides 0-d so the test
+    drives both fixes in a single commit.
+    """
+    spec = APLArray([], np.asarray(5))
+    val = APLArray([], np.asarray(7))
+    result = spec.dyadic_format(val)
+    # 5⍕7 with no precision: format value 7 in width 5 → "    7"
+    expected_text = "    7"
+    assert result.shape == [len(expected_text)]
+    # Decode the uint32 char data back to a Python string for comparison.
+    chars = "".join(chr(int(c)) for c in result.data.flat)
+    assert chars == expected_text
+
+
 def test_eq_bridge_zero_d_equals_one_d_scalar() -> None:
     """A scalar APLArray with 0-d data must compare equal to one with
     1-d (1,) data when both have APL shape []. This bridge lets the

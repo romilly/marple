@@ -322,21 +322,20 @@ class APLArray:
         return from_array(self, other, io)
 
     def dyadic_format(self, other: 'APLArray') -> 'APLArray':
-        if self.is_scalar():
-            width = int(self.data[0])
-            precision = None
-        else:
-            width = int(self.data[0])
-            precision = int(self.data[1]) if len(self.data) > 1 else None
-        values = other.data if not other.is_scalar() else [other.data[0]]
-        parts: list[str] = []
-        for v in values:
-            if precision is not None:
-                formatted = f"{float(v):.{precision}f}"
-            else:
-                formatted = str(v)
-            parts.append(" " * max(0, width - len(formatted)) + formatted)
-        text = "".join(parts)
+        # Spec is a scalar (width only) or a 2-element vector
+        # (width, precision). Use .item() / flat for the extraction so
+        # this works with both 0-d and 1-d (1,) scalar storage.
+        spec_flat = np.atleast_1d(self.data)
+        width = int(spec_flat[0])
+        precision = int(spec_flat[1]) if len(spec_flat) > 1 else None
+        # Vectorised formatting via numpy's char ops — avoids the
+        # element-by-element Python loop and the 0-d-iteration landmine
+        # that the old `[other.data[0]]` workaround created.
+        values = np.atleast_1d(other.data)
+        fmt = f"%.{precision}f" if precision is not None else "%s"
+        strs = np.char.mod(fmt, values)
+        strs = np.char.rjust(strs, width)
+        text = "".join(strs.tolist())
         return APLArray([len(text)], str_to_char_array(text))
 
     def roll(self, io: int = 1) -> 'APLArray':
