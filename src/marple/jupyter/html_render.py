@@ -49,7 +49,7 @@ def aplarray_to_html(arr: APLArray) -> str:
 
     # Scalar
     if arr.shape == []:
-        val = arr.data[0]
+        val = arr.data.item()
         text = _html.escape(str(val) if isinstance(val, str) else format_num(val))
         return f'<span class="apl-scalar">{text}</span>'
 

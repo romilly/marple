@@ -66,7 +66,7 @@ def format_result(result: APLArray, env: Any = None) -> str:
     if env is not None:
         pp_val = env.get("⎕PP")
         if pp_val is not None:
-            pp = int(pp_val.data[0])
+            pp = int(pp_val.data.item())
     if result.is_scalar():
         return format_num(result.data.flatten()[0], pp)
     if _is_char_array(result):

@@ -21,7 +21,7 @@ def _format_value(value: object) -> str | None:
     if not isinstance(value, APLArray):
         return None
     if value.is_scalar():
-        v = value.data[0]
+        v = value.data.item()
         if isinstance(v, str):
             return f"'{v}'"
         if isinstance(v, (int, float)) and v < 0:

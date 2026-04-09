@@ -150,7 +150,7 @@ def apply_group(group: FmtGroup, value: APLArray | None,
         return "".join(parts)
     else:
         if len(value.shape) == 0:
-            scalar = value.data[0] if row == 0 else None
+            scalar = value.data.item() if row == 0 else None
         elif row < value.shape[0]:
             scalar = value.data[row]
         else:
