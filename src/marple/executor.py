@@ -139,14 +139,13 @@ class Executor:
 
     def call_ibeam(self, path: str, operand: APLArray) -> APLArray:
         """Call a Python function via i-beam."""
+        import importlib
         parts = path.rsplit(".", 1)
         if len(parts) != 2:
             raise DomainError(f"Invalid i-beam path: {path}")
         module_name, func_name = parts
         try:
-            mod = __import__(module_name)
-            for part in module_name.split(".")[1:]:
-                mod = getattr(mod, part)
+            mod = importlib.import_module(module_name)
         except ImportError:
             raise DomainError(f"Cannot import module: {module_name}")
         func = getattr(mod, func_name, None)
