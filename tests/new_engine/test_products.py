@@ -4,7 +4,7 @@ import pytest
 
 from marple.numpy_array import APLArray, S
 from marple.engine import Interpreter
-from marple.errors import LengthError
+from marple.errors import DomainError, LengthError
 
 
 class TestInnerProduct:
@@ -60,16 +60,31 @@ class TestInnerProduct:
             [[[22, 28], [49, 64]], [[76, 100], [103, 136]]])
 
 
-    def test_inner_product_no_int_overflow(self) -> None:
-        """Repeated +.× on int matrices must upcast to float, not overflow."""
+    def test_inner_product_int_upcasts_to_float(self) -> None:
+        """Repeated +.× on int matrices must upcast to float64 so int64
+        wraparound doesn't produce a silently-wrong answer. 4 iterations
+        push element magnitudes past int64 range but stay well inside
+        float64 range — the result should be finite and positive.
+        """
         i = Interpreter(io=1)
         i.run("⎕RL←42")
         i.run("y ← ?10 10⍴100")
-        result = i.run("({⍵+.×⍵}⍣10) y")
-        # With 10 iterations of self-multiplication, int64 overflows;
-        # all values should be positive (matrix of positive ints squared)
+        result = i.run("({⍵+.×⍵}⍣4) y")
+        import math
         for v in result.data.flat:
-            assert v > 0, f"Overflow detected: {v}"
+            assert v > 0 and not math.isinf(float(v)), f"Bad value: {v}"
+
+    def test_inner_product_float_overflow_raises(self) -> None:
+        """10 iterations push element magnitudes past float64's ~1.8e308
+        ceiling. That is genuine overflow and must raise DomainError
+        rather than silently returning ∞ (which the old
+        `v > 0` assertion masked).
+        """
+        i = Interpreter(io=1)
+        i.run("⎕RL←42")
+        i.run("y ← ?10 10⍴100")
+        with pytest.raises(DomainError):
+            i.run("({⍵+.×⍵}⍣10) y")
 
 
 class TestOuterProduct:

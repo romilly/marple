@@ -55,8 +55,11 @@ def _inner_product(
     if (reduce_glyph == "+" and apply_glyph == "×"
             and is_numeric_array(alpha.data) and is_numeric_array(omega.data)
             and (len(a_shape) <= 2 or len(b_shape) <= 2)):
-        result = np.dot(maybe_upcast(alpha.data), maybe_upcast(omega.data))
-        # TODO: 2 lines below look redundant.
+        try:
+            with np.errstate(over="raise", invalid="raise"):
+                result = np.dot(maybe_upcast(alpha.data), maybe_upcast(omega.data))
+        except FloatingPointError:
+            raise DomainError("arithmetic overflow in inner product")
         if not hasattr(result, 'shape') or result.shape == ():
             return S(int(result) if float(result) == int(result) else float(result))
         return APLArray(list(result.shape), result)
