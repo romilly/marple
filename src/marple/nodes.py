@@ -2,21 +2,12 @@
 
 
 from abc import ABC, abstractmethod
-from typing import Any, Protocol, Generator
+from itertools import product
+from typing import Any, Protocol
 
 from marple.numpy_array import APLArray, S
 from marple.backend_functions import is_numeric_array, maybe_upcast
 from marple.errors import DomainError, ValueError_
-
-
-def _product(*lists: list[int]) -> Generator[tuple[int, ...], None, None]:
-    """Cartesian product generator — simpler alternative to itertools.product."""
-    if not lists:
-        yield ()
-        return
-    for item in lists[0]:
-        for rest in _product(*lists[1:]):
-            yield (item,) + rest
 
 
 _INNER_SCALAR_OPS: dict[str, Any] = {
@@ -79,8 +70,8 @@ def _inner_product(
     result = np.zeros(tuple(result_shape))
     a_outer = [range(s) for s in a_shape[:-1]]
     b_outer = [range(s) for s in b_shape[1:]]
-    for a_idx in _product(*a_outer):
-        for b_idx in _product(*b_outer):
+    for a_idx in product(*a_outer):
+        for b_idx in product(*b_outer):
             paired = [apply_op(alpha.data[a_idx + (p,)], omega.data[(p,) + b_idx])
                       for p in range(k)]
             acc = paired[-1]
@@ -131,8 +122,8 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
     result = np.zeros(tuple(result_shape))
     a_indices = [range(s) for s in alpha.shape]
     b_indices = [range(s) for s in omega.shape]
-    for a_idx in _product(*a_indices):
-        for b_idx in _product(*b_indices):
+    for a_idx in product(*a_indices):
+        for b_idx in product(*b_indices):
             result[a_idx + b_idx] = op(alpha.data[a_idx], omega.data[b_idx])
     return APLArray(result_shape, result)
 
@@ -422,7 +413,7 @@ class Index(Node):
                 n_results *= len(ai)
             result_data = np.zeros(int(max(1, n_results)))
             idx = 0
-            for combo in _product(*axis_indices):
+            for combo in product(*axis_indices):
                 offset = int(sum(i * s for i, s in zip(combo, strides)))
                 result_data[idx] = flat[offset]
                 idx += 1
@@ -434,7 +425,7 @@ class Index(Node):
             return APLArray(result_shape, result_data[:idx].reshape(result_shape))
         # Character data
         result_list: list[object] = []
-        for combo in _product(*axis_indices):
+        for combo in product(*axis_indices):
             offset = int(sum(i * s for i, s in zip(combo, strides)))
             result_list.append(flat[offset])
         result_shape = []
