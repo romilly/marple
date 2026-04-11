@@ -532,12 +532,45 @@ class TestRankWithRotate:
 class TestRankWithReplicate:
     """Rank with replicate/compress."""
 
-    @pytest.mark.xfail(reason="Parser treats / as operator, not function operand to ⍤")
     def test_compress_each_row(self) -> None:
         """Boolean mask applied to each row via /⍤1."""
         result = Interpreter(io=1).run("1 0 1 0((/⍤1)⍤1)3 4⍴⍳12")
         # Select elements at positions 1 and 3 from each row
         assert result == APLArray.array([3, 2], [[1, 3], [5, 7], [9, 11]])
+
+    def test_compress_at_rank_one_paren(self) -> None:
+        """(/⍤1) works as a function — compress applied at rank 1."""
+        result = Interpreter(io=1).run("1 0 1(/⍤1)3 3⍴⍳9")
+        assert result == APLArray.array([3, 2], [[1, 3], [4, 6], [7, 9]])
+
+    def test_replicate_first_at_rank_two(self) -> None:
+        """⌿ as a function operand at rank 2 — select rows."""
+        result = Interpreter(io=1).run("1 0 1(⌿⍤2)3 3⍴⍳9")
+        assert result == APLArray.array([2, 3], [[1, 2, 3], [7, 8, 9]])
+
+    def test_expand_at_rank_one(self) -> None:
+        """\\ as a function operand at rank 1 — expand each row."""
+        result = Interpreter(io=1).run("1 0 1(\\⍤1)2 2⍴⍳4")
+        # Each row [a b] becomes [a 0 b]
+        assert result.shape == [2, 3]
+        assert list(result.data[0]) == [1, 0, 2]
+        assert list(result.data[1]) == [3, 0, 4]
+
+    def test_plus_reduce_still_binds_first(self) -> None:
+        """`+/⍤1` must still parse as (plus-reduce)-at-rank-1, NOT
+        as plus followed by (slash-at-rank-1). Case 4 (adverb
+        binding with operand) should fire before the new Case 4.5
+        gets a chance.
+        """
+        result = Interpreter(io=1).run("(+/⍤1) 2 3⍴⍳6")
+        assert result == APLArray.array([2], [6, 15])
+
+    def test_nested_rank_with_plus_reduce(self) -> None:
+        """`((+/⍤1)⍤1) matrix` — nested rank operators. Previously
+        failed with "Operators require primitive function operands"
+        because apply_func_monadic did not handle nested rank."""
+        result = Interpreter(io=1).run("((+/⍤1)⍤1) 2 3⍴⍳6")
+        assert result == APLArray.array([2], [6, 15])
 
 
 class TestRankShapePreservation:

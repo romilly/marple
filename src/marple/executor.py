@@ -286,14 +286,23 @@ class Executor:
 
     # ── Rank operator ──
 
-    def apply_rank_monadic(self, rank_node: RankDerived, operand_node: object) -> APLArray:
-        omega = self.evaluate(operand_node)
-        rank_spec_val = self.evaluate(rank_node.rank_spec)
+    def _rank_apply_monadic_core(
+            self, func: object, rank_spec_val: APLArray,
+            omega: APLArray) -> APLArray:
+        """Core monadic rank application: decompose omega at rank and
+        apply `func` to each cell. Shared between top-level rank
+        application and nested rank (when one rank operator's left
+        operand is itself a rank-derived function)."""
         a, _, _ = resolve_rank_spec(rank_spec_val)
         k = clamp_rank(a, len(omega.shape))
         frame_shape, cells = decompose(omega, k)
-        results = [self.apply_func_monadic(rank_node.function, cell) for cell in cells]
+        results = [self.apply_func_monadic(func, cell) for cell in cells]
         return reassemble(frame_shape, results)
+
+    def apply_rank_monadic(self, rank_node: RankDerived, operand_node: object) -> APLArray:
+        omega = self.evaluate(operand_node)
+        rank_spec_val = self.evaluate(rank_node.rank_spec)
+        return self._rank_apply_monadic_core(rank_node.function, rank_spec_val, omega)
 
     def apply_func_monadic(self, func: object, omega: APLArray) -> APLArray:
         """Apply a function monadically. Used by rank operator."""
@@ -305,6 +314,11 @@ class Executor:
             return DerivedFunctionBinding().apply("/", func.function, omega)
         if isinstance(func, ScanOp):
             return DerivedFunctionBinding().apply("\\", func.function, omega)
+        if isinstance(func, BoundOperator) and func.operator == "⍤":
+            # Nested rank: the function we're applying is itself a
+            # rank-derived function — recursively decompose and apply.
+            rank_spec_val = self.evaluate(func.right_operand)
+            return self._rank_apply_monadic_core(func.left_operand, rank_spec_val, omega)
         if isinstance(func, BoundOperator) and isinstance(func.operator, str):
             return DerivedFunctionBinding().apply(
                 func.operator, func.left_operand, omega)
@@ -322,13 +336,14 @@ class Executor:
                 return binding.apply(omega)
         raise DomainError(f"Expected function for rank, got {type(func)}")
 
-    def apply_rank_dyadic(self, rank_node: object, left_node: object, right_node: object) -> APLArray:
+    def _rank_apply_dyadic_core(
+            self, func: object, rank_spec_val: APLArray,
+            alpha: APLArray, omega: APLArray) -> APLArray:
+        """Core dyadic rank application: decompose alpha and omega at
+        their respective ranks and apply `func` to each cell pair.
+        Shared between top-level rank application and nested rank.
+        """
         from marple.errors import LengthError
-        from marple.parser import RankDerived
-        assert isinstance(rank_node, RankDerived)
-        alpha = self.evaluate(left_node)
-        omega = self.evaluate(right_node)
-        rank_spec_val = self.evaluate(rank_node.rank_spec)
         _, b_rank, c_rank = resolve_rank_spec(rank_spec_val)
         b = clamp_rank(b_rank, len(alpha.shape))
         c = clamp_rank(c_rank, len(omega.shape))
@@ -345,8 +360,16 @@ class Executor:
             frame = left_frame
         else:
             raise LengthError(f"Frame mismatch: {left_frame} vs {right_frame}")
-        results = [self._apply_func_dyadic(rank_node.function, lc, rc) for lc, rc in pairs]
+        results = [self._apply_func_dyadic(func, lc, rc) for lc, rc in pairs]
         return reassemble(frame, results)
+
+    def apply_rank_dyadic(self, rank_node: object, left_node: object, right_node: object) -> APLArray:
+        from marple.parser import RankDerived
+        assert isinstance(rank_node, RankDerived)
+        alpha = self.evaluate(left_node)
+        omega = self.evaluate(right_node)
+        rank_spec_val = self.evaluate(rank_node.rank_spec)
+        return self._rank_apply_dyadic_core(rank_node.function, rank_spec_val, alpha, omega)
 
     def _apply_func_dyadic(self, func: object, alpha: APLArray, omega: APLArray) -> APLArray:
         """Apply a function dyadically. Used by dyadic rank operator."""
@@ -355,6 +378,10 @@ class Executor:
             return DyadicFunctionBinding(self.env).apply(func, alpha, omega)
         if isinstance(func, FunctionRef):
             return DyadicFunctionBinding(self.env).apply(func.glyph, alpha, omega)
+        if isinstance(func, BoundOperator) and func.operator == "⍤":
+            # Nested rank — recursively decompose and apply.
+            rank_spec_val = self.evaluate(func.right_operand)
+            return self._rank_apply_dyadic_core(func.left_operand, rank_spec_val, alpha, omega)
         from marple.dfn_binding import DfnBinding
         from marple.parser import Node
         if isinstance(func, Node):

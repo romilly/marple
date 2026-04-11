@@ -61,6 +61,16 @@ CAT_RP = 7     # Right paren
 _CTX_MONAD = frozenset({CAT_END, CAT_ADV, CAT_VERB, CAT_ASGN, CAT_LP})
 _CTX_DYAD = frozenset({CAT_END, CAT_NOUN, CAT_ADV, CAT_VERB, CAT_ASGN, CAT_LP})
 
+# Adverbs that also have dyadic function meanings — compress,
+# replicate, expand, and replicate-first. When one of these appears
+# as the left operand of a conjunction with no function available
+# on its left as an operator-operand, it is promoted to its function
+# role via FunctionRef (see Case 4.5 in `_stack_parse`). `⍨` is
+# excluded because commute is a pure operator with no dyadic
+# function meaning; `⍀` is excluded because dyadic `⍀` is not yet
+# registered in dyadic_functions.
+_ADV_AS_FN_GLYPHS = frozenset({"/", "\\", "⌿"})
+
 # System functions (classified as verbs) vs system variables (nouns)
 _SYS_FUNCTIONS = frozenset({
     "⎕CR", "⎕FX", "⎕NC", "⎕EX", "⎕SIGNAL", "⎕EA",
@@ -614,6 +624,21 @@ class Parser:
                 assert isinstance(operand_node, (str, Node, BoundOperator))
                 bound = BoundOperator(adv_node, operand_node, operand_cat)
                 stack[-3:-1] = [(CAT_VERB, bound)]
+                matched = True
+
+            # Case 4.5: Adverb-as-function promotion for / \ ⌿ when
+            # used as the left operand to a conjunction. Fires only
+            # when a "closed" left context (END, LP, ASGN) makes it
+            # impossible for an operator-operand to ever arrive for
+            # the adverb. This implements Dyalog's rule: "/ is a
+            # function unless it has a function operand on its left".
+            elif (c0 in (CAT_END, CAT_LP, CAT_ASGN)
+                    and c1 == CAT_ADV
+                    and c2 == CAT_CONJ
+                    and stack[-2][1] in _ADV_AS_FN_GLYPHS):
+                glyph = stack[-2][1]
+                assert isinstance(glyph, str)
+                stack[-2] = (CAT_VERB, FunctionRef(glyph))
                 matched = True
 
             # Case 5: Conjunction binding — E/N/A/V/←/LP  N/V  C  N/V
