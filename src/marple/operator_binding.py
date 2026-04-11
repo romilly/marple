@@ -3,7 +3,9 @@
 from typing import Any, Callable
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import is_char_array, is_numeric_array, to_list
+from marple.backend_functions import (
+    _DOWNCAST_CT, is_char_array, is_numeric_array, maybe_downcast, to_list,
+)
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.errors import DomainError
 from marple.get_numpy import np
@@ -168,16 +170,40 @@ def _scan(
     if n == 0:
         return APLArray.array([0], [])
     row_len = omega.shape[-1] if len(omega.shape) > 0 else n
-    # Fast path: commutative ops use numpy accumulate
-    if glyph is not None:
-        ufunc = _ACCUMULATE_UFUNCS.get(glyph)
-        if ufunc is not None:
-            return APLArray(list(omega.shape), _scan_row_accumulate(ufunc, flat, row_len).reshape(omega.shape))
-    # General path: O(n²) right-to-left reduce per prefix
-    op = _SCALAR_OPS.get(glyph) if glyph is not None else None
-    if op is not None:
-        return APLArray(list(omega.shape), _scan_row_general(op, flat, row_len).reshape(omega.shape))
-    raise DomainError(f"Unknown function for scan: {glyph}")
+
+    # `np.multiply.accumulate` silently wraps on int64 overflow and
+    # does not honor np.errstate. For × on integer data, upcast to
+    # float64 before the scan so overflow becomes detectable as inf.
+    # Integer-valued float results are downcasted back at the end.
+    scan_data = flat
+    if glyph == "×" and is_numeric_array(flat) and "int" in str(flat.dtype):
+        scan_data = flat.astype(np.float64)
+
+    def _do_scan(data: Any) -> Any:
+        if glyph is not None:
+            ufunc = _ACCUMULATE_UFUNCS.get(glyph)
+            if ufunc is not None:
+                return _scan_row_accumulate(ufunc, data, row_len)
+        op = _SCALAR_OPS.get(glyph) if glyph is not None else None
+        if op is not None:
+            return _scan_row_general(op, data, row_len)
+        raise DomainError(f"Unknown function for scan: {glyph}")
+
+    try:
+        with np.errstate(over="raise", invalid="raise"):
+            result = _do_scan(scan_data)
+    except FloatingPointError:
+        with np.errstate(over="ignore", invalid="ignore"):
+            result = _do_scan(scan_data.astype(np.float64))
+
+    # Detect float overflow (inf/nan) whichever path we took.
+    if hasattr(result, "dtype") and "float" in str(result.dtype):
+        if np.any(np.isinf(result)) or np.any(np.isnan(result)):
+            raise DomainError("arithmetic overflow in scan")
+        if scan_data is not flat:  # we eagerly upcasted — try to downcast
+            result = maybe_downcast(result, _DOWNCAST_CT)
+
+    return APLArray(list(omega.shape), result.reshape(omega.shape))
 
 
 def _reduce_first(

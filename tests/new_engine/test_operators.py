@@ -53,6 +53,12 @@ class TestReduceOverflow:
         with pytest.raises(DomainError):
             Interpreter(io=1).run("×⌿2 2⍴1e200 1e200 1e200 1e200")
 
+    def test_scan_product_huge_raises_domain_error(self) -> None:
+        # `×\⍳10000` — the running product passes 171! ≈ 1.2e309
+        # somewhere in the middle, which overflows float64.
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("×\\⍳10000")
+
 
 class TestReduceFirst:
     def test_reduce_first_axis(self) -> None:
