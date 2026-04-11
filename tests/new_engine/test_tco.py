@@ -6,6 +6,7 @@ import pytest
 
 from marple.numpy_array import APLArray, S
 from marple.engine import Interpreter
+from marple.errors import DomainError
 
 
 class TestTailRecursiveFactorial:
@@ -14,12 +15,19 @@ class TestTailRecursiveFactorial:
         i.run("fact←{⍺←1 ⋄ ⍵=0:⍺ ⋄ (⍺×⍵)∇ ⍵-1}")
         assert i.run("fact 5") == S(120)
 
-    def test_factorial_large_no_stack_overflow(self) -> None:
+    def test_factorial_large_raises_on_overflow(self) -> None:
+        """`fact 1000` overflows the float64 accumulator somewhere
+        around 170 iterations, which is well inside the TCO trampoline.
+        The resulting DomainError must propagate out cleanly — TCO
+        machinery should not swallow or transform it.
+
+        Deep-recursion-without-arithmetic is covered by
+        TestDeepTailRecursion.test_countdown_deep (10000 iterations).
+        """
         i = Interpreter(io=1)
         i.run("fact←{⍺←1 ⋄ ⍵=0:⍺ ⋄ (⍺×⍵)∇ ⍵-1}")
-        # Should not hit Python's recursion limit
-        result = i.run("fact 1000")
-        assert result.data.item() > 0
+        with pytest.raises(DomainError):
+            i.run("fact 1000")
 
 
 class TestTailRecursiveGCD:

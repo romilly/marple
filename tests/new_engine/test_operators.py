@@ -64,6 +64,12 @@ class TestReduceOverflow:
         with pytest.raises(DomainError):
             Interpreter(io=1).run("×⍀2 2⍴1e200 1e200 1e200 1e200")
 
+    def test_dyadic_multiply_overflow_raises(self) -> None:
+        # `1e200 × 1e200` = 1e400, overflows float64 to ∞. Should
+        # raise DomainError rather than silently return ∞.
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("1e200 × 1e200")
+
 
 class TestReduceFirst:
     def test_reduce_first_axis(self) -> None:

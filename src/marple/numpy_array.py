@@ -103,11 +103,21 @@ class APLArray:
         return APLArray.array(list(self.shape), data)
 
     def _numeric_dyadic_op(self, other: 'APLArray', op: Any, upcast: bool = False) -> 'APLArray':
-        """Apply a numeric operator (+, -, *, etc.) on numpy data."""
+        """Apply a numeric operator (+, -, *, etc.) on numpy data.
+
+        `maybe_upcast` promotes integer arrays to float64 before the
+        op, which prevents integer-overflow silent-wrap at the cost of
+        precision for very large ints. If the float operation then
+        overflows to ±inf, that's a genuine arithmetic limit — raise
+        DomainError rather than propagating ∞ silently.
+        """
         a = maybe_upcast(self.data) if upcast else self.data
         b = maybe_upcast(other.data) if upcast else other.data
         try:
-            result = op(a, b)
+            with np.errstate(over="raise", invalid="raise"):
+                result = op(a, b)
+        except FloatingPointError:
+            raise DomainError("arithmetic overflow")
         except ValueError:
             raise LengthError(f"Shape mismatch: {self.shape} vs {other.shape}")
         shape = list(other.shape) if not other.is_scalar() else list(self.shape)
