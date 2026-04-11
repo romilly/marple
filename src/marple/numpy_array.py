@@ -1,7 +1,4 @@
-try:
-    from typing import Any
-except ImportError:
-    pass
+from typing import Any
 
 from marple.backend_functions import (
     is_char_array, is_ndarray, is_numeric_array, maybe_upcast,

@@ -1,9 +1,6 @@
 """Shared formatting for MARPLE display and ⍕."""
 
-try:
-    from typing import Any
-except ImportError:
-    pass
+from typing import Any
 
 from marple.backend_functions import chars_to_str, is_char_array, np_reshape
 from marple.numpy_array import APLArray

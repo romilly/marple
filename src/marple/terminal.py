@@ -1,9 +1,6 @@
 """GlyphLineEditor — platform-independent line editor with backtick→glyph translation."""
 
-try:
-    from typing import Callable
-except ImportError:
-    pass
+from typing import Callable
 
 from marple.glyphs import GLYPH_MAP
 from marple.ports.char_source import CharSource

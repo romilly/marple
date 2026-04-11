@@ -1,8 +1,4 @@
-
-try:
-    from typing import Any, Callable
-except ImportError:
-    pass
+from typing import Any, Callable
 
 from marple.numpy_array import APLArray, S
 from marple.backend_functions import chars_to_str, is_char_array, str_to_char_array, to_list

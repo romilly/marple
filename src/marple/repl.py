@@ -1,8 +1,4 @@
-
-try:
-    from typing import Any
-except ImportError:
-    pass
+from typing import Any
 
 import sys
 

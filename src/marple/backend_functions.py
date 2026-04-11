@@ -1,7 +1,4 @@
-try:
-    from typing import Any
-except ImportError:
-    pass
+from typing import Any
 
 from marple.get_numpy import np
 
