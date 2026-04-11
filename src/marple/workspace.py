@@ -130,10 +130,12 @@ def save_workspace(env: dict[str, Any], ws_dir: str,
 
 def load_workspace(env: Any, ws_dir: str,
                     evaluate: Callable[[str], Any] | None = None,
-                    fs: FileSystem | None = None) -> None:
+                    fs: FileSystem | None = None) -> APLArray | None:
     """Load workspace from a directory.
 
     If evaluate is provided, it's called to execute each line.
+    Returns the latent-expression (⎕LX) result if the workspace
+    defines one and it evaluates to an APLArray, otherwise None.
     """
     if fs is None:
         fs = _default_fs()

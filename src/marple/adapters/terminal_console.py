@@ -19,10 +19,10 @@ class TerminalConsole(Console):
             from marple.adapters.unix_char_source import UnixCharSource
             from marple.terminal import GlyphLineEditor
             if sys.stdin.isatty():
-                self._editor = GlyphLineEditor(
-                    UnixCharSource(),
-                    lambda s: (sys.stdout.write(s), sys.stdout.flush()),
-                )
+                def _write(s: str) -> None:
+                    sys.stdout.write(s)
+                    sys.stdout.flush()
+                self._editor = GlyphLineEditor(UnixCharSource(), _write)
         except ImportError:
             pass
 

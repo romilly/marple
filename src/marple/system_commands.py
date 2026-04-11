@@ -3,11 +3,15 @@
 Returns strings instead of printing — usable by REPL, web server, and Jupyter.
 """
 
+from typing import Callable
 
 from marple.numpy_array import APLArray
 from marple.backend_functions import chars_to_str, str_to_char_array
 from marple.formatting import format_result
 from marple.engine import Interpreter
+
+
+SystemCommandHandler = Callable[[Interpreter, str], tuple[str, bool]]
 
 
 def run_system_command(interp: Interpreter, line: str) -> tuple[str, bool]:
@@ -135,7 +139,7 @@ def _cmd_drop(interp: Interpreter, line: str) -> tuple[str, bool]:
         return f"ERROR: {e}", False
 
 
-_COMMANDS: dict[str, object] = {
+_COMMANDS: dict[str, SystemCommandHandler] = {
     "off": _cmd_off,
     "clear": _cmd_clear,
     "wsid": _cmd_wsid,

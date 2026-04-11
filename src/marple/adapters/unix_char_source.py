@@ -4,6 +4,7 @@ import os
 import sys
 import termios
 import tty
+from typing import Any
 
 from marple.ports.char_source import CharSource
 
@@ -13,7 +14,7 @@ class UnixCharSource(CharSource):
 
     def __init__(self) -> None:
         self._fd = sys.stdin.fileno()
-        self._old_settings: list[object] | None = None
+        self._old_settings: Any = None
 
     def read_char(self) -> str:
         """Read one complete UTF-8 character."""
