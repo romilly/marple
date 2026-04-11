@@ -107,6 +107,12 @@ class TestOuterProduct:
         for v in result.data.flat:
             assert v > 0, f"Overflow detected: {v}"
 
+    def test_outer_product_float_overflow_raises(self) -> None:
+        """∘.× where element products exceed float64 max must raise
+        DomainError (rather than silently returning ∞)."""
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("(2⍴1e200)∘.×2⍴1e200")
+
     def test_outer_equality(self) -> None:
         result = Interpreter(io=1).run("1 2 3∘.=1 3")
         assert result == APLArray.array([3, 2], [[1, 0], [0, 0], [0, 1]])

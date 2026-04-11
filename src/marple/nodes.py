@@ -111,8 +111,14 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
         if ufunc_name is not None:
             ufunc = getattr(np, ufunc_name, None)
             if ufunc is not None and hasattr(ufunc, 'outer'):
-                result = ufunc.outer(maybe_upcast(alpha.data.flatten()),
-                                     maybe_upcast(omega.data.flatten()))
+                try:
+                    with np.errstate(over="raise", invalid="raise"):
+                        result = ufunc.outer(
+                            maybe_upcast(alpha.data.flatten()),
+                            maybe_upcast(omega.data.flatten()),
+                        )
+                except FloatingPointError:
+                    raise DomainError("arithmetic overflow in outer product")
                 result_shape = alpha.shape + omega.shape
                 return APLArray(result_shape, result.reshape(result_shape))
     # General path
@@ -121,13 +127,21 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
         raise DomainError(f"Unknown function for outer product: {glyph}")
     result_shape = alpha.shape + omega.shape
     if not result_shape:
-        return S(op(alpha.data[()], omega.data[()]))
+        try:
+            with np.errstate(over="raise", invalid="raise"):
+                return S(op(alpha.data[()], omega.data[()]))
+        except FloatingPointError:
+            raise DomainError("arithmetic overflow in outer product")
     result = np.zeros(tuple(result_shape))
     a_indices = [range(s) for s in alpha.shape]
     b_indices = [range(s) for s in omega.shape]
-    for a_idx in product(*a_indices):
-        for b_idx in product(*b_indices):
-            result[a_idx + b_idx] = op(alpha.data[a_idx], omega.data[b_idx])
+    try:
+        with np.errstate(over="raise", invalid="raise"):
+            for a_idx in product(*a_indices):
+                for b_idx in product(*b_indices):
+                    result[a_idx + b_idx] = op(alpha.data[a_idx], omega.data[b_idx])
+    except FloatingPointError:
+        raise DomainError("arithmetic overflow in outer product")
     return APLArray(result_shape, result)
 
 
