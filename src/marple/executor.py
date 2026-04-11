@@ -319,6 +319,11 @@ class Executor:
             # rank-derived function — recursively decompose and apply.
             rank_spec_val = self.evaluate(func.right_operand)
             return self._rank_apply_monadic_core(func.left_operand, rank_spec_val, omega)
+        if isinstance(func, BoundOperator) and func.operator == "∘":
+            # Nested beside: func is (f∘g), apply monadically to
+            # omega — (f∘g) ω ≡ f (g ω).
+            g_result = self.apply_func_monadic(func.right_operand, omega)
+            return self.apply_func_monadic(func.left_operand, g_result)
         if isinstance(func, BoundOperator) and isinstance(func.operator, str):
             return DerivedFunctionBinding().apply(
                 func.operator, func.left_operand, omega)
@@ -382,6 +387,10 @@ class Executor:
             # Nested rank — recursively decompose and apply.
             rank_spec_val = self.evaluate(func.right_operand)
             return self._rank_apply_dyadic_core(func.left_operand, rank_spec_val, alpha, omega)
+        if isinstance(func, BoundOperator) and func.operator == "∘":
+            # Nested beside: α (f∘g) ω ≡ α f (g ω).
+            g_result = self.apply_func_monadic(func.right_operand, omega)
+            return self._apply_func_dyadic(func.left_operand, alpha, g_result)
         from marple.dfn_binding import DfnBinding
         from marple.parser import Node
         if isinstance(func, Node):
@@ -409,6 +418,27 @@ class Executor:
         alpha = self.evaluate(left_node)
         omega = self.evaluate(right_node)
         return self._apply_func_dyadic(commute_node.function, omega, alpha)
+
+    # ── Beside operator (∘) ──
+
+    def apply_beside_monadic(self, beside_node: object,
+                             operand_node: object) -> APLArray:
+        """Apply (f∘g) monadically: (f∘g) ω ≡ f (g ω)."""
+        from marple.nodes import BesideDerived
+        assert isinstance(beside_node, BesideDerived)
+        omega = self.evaluate(operand_node)
+        g_result = self.apply_func_monadic(beside_node.g, omega)
+        return self.apply_func_monadic(beside_node.f, g_result)
+
+    def apply_beside_dyadic(self, beside_node: object,
+                            left_node: object, right_node: object) -> APLArray:
+        """Apply (f∘g) dyadically: α (f∘g) ω ≡ α f (g ω)."""
+        from marple.nodes import BesideDerived
+        assert isinstance(beside_node, BesideDerived)
+        alpha = self.evaluate(left_node)
+        omega = self.evaluate(right_node)
+        g_result = self.apply_func_monadic(beside_node.g, omega)
+        return self._apply_func_dyadic(beside_node.f, alpha, g_result)
 
     # ── Power operator ──
 

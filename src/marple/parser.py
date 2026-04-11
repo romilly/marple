@@ -6,6 +6,7 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     AlphaAlpha,
     AlphaDefault,
     Assignment,
+    BesideDerived,
     BoundOperator,
     CAT_EMPTY,
     CommuteDerived,
@@ -422,6 +423,10 @@ class Parser:
         commute_node = CommuteDerived(bound.left_operand)
         return MonadicDfnCall(commute_node, arg_node)
 
+    def _bound_monadic_beside(self, bound: BoundOperator, arg_node: object) -> object:
+        beside_node = BesideDerived(bound.left_operand, bound.right_operand)
+        return MonadicDfnCall(beside_node, arg_node)
+
     def _bound_monadic_inner(self, bound: BoundOperator, arg_node: object) -> object:
         raise SyntaxError_("Inner product requires two arguments")
 
@@ -450,6 +455,7 @@ class Parser:
         "⍤": _bound_monadic_rank,
         "⍣": _bound_monadic_power,
         "⍨": _bound_monadic_commute,
+        "∘": _bound_monadic_beside,
         ".": _bound_monadic_inner,
         "∘.": _bound_monadic_outer,
         "⌶": _bound_monadic_ibeam,
@@ -482,6 +488,11 @@ class Parser:
                               left_node: object, right_node: object) -> object:
         commute_node = CommuteDerived(bound.left_operand)
         return DyadicDfnCall(commute_node, left_node, right_node)
+
+    def _bound_dyadic_beside(self, bound: BoundOperator,
+                             left_node: object, right_node: object) -> object:
+        beside_node = BesideDerived(bound.left_operand, bound.right_operand)
+        return DyadicDfnCall(beside_node, left_node, right_node)
 
     def _bound_dyadic_inner(self, bound: BoundOperator,
                             left_node: object, right_node: object) -> object:
@@ -516,6 +527,7 @@ class Parser:
         "⍤": _bound_dyadic_rank,
         "⍣": _bound_dyadic_power,
         "⍨": _bound_dyadic_commute,
+        "∘": _bound_dyadic_beside,
         ".": _bound_dyadic_inner,
         "∘.": _bound_dyadic_outer,
         "/": _bound_dyadic_reduce,

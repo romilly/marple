@@ -164,6 +164,8 @@ class ExecutionContext(Protocol):
     def apply_power_dyadic(self, power_node: object, left_node: object, right_node: object) -> APLArray: ...
     def apply_commute_monadic(self, commute_node: object, operand_node: object) -> APLArray: ...
     def apply_commute_dyadic(self, commute_node: object, left_node: object, right_node: object) -> APLArray: ...
+    def apply_beside_monadic(self, beside_node: object, operand_node: object) -> APLArray: ...
+    def apply_beside_dyadic(self, beside_node: object, left_node: object, right_node: object) -> APLArray: ...
     def resolve_qualified(self, parts: list[str]) -> object: ...
     def call_ibeam(self, path: str, operand: APLArray) -> APLArray: ...
 
@@ -338,6 +340,25 @@ class CommuteDerived:
     """
     def __init__(self, function: object) -> None:
         self.function = function
+
+
+class BesideDerived:
+    """Unapplied beside-derived function: f∘g
+
+    Monadic application:  (f∘g) ω  ≡  f (g ω)
+    Dyadic application:   α (f∘g) ω ≡  α f (g ω)
+
+    `g` is always applied monadically; `f` is applied monadically
+    for monadic derived-function calls and dyadically for dyadic
+    derived-function calls.
+    """
+    def __init__(self, f: object, g: object) -> None:
+        self.f = f
+        self.g = g
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, BesideDerived):
+            return NotImplemented
+        return self.f == other.f and self.g == other.g
 
 
 class ReduceOp:
@@ -573,6 +594,8 @@ class MonadicDfnCall(Node):
             return ctx.apply_power_monadic(self.dfn, self.operand)
         if isinstance(self.dfn, CommuteDerived):
             return ctx.apply_commute_monadic(self.dfn, self.operand)
+        if isinstance(self.dfn, BesideDerived):
+            return ctx.apply_beside_monadic(self.dfn, self.operand)
         dfn_val = ctx.evaluate(self.dfn)
         operand = ctx.evaluate(self.operand)
         if isinstance(dfn_val, DfnBinding):
@@ -603,6 +626,8 @@ class DyadicDfnCall(Node):
             return ctx.apply_power_dyadic(self.dfn, self.left, self.right)
         if isinstance(self.dfn, CommuteDerived):
             return ctx.apply_commute_dyadic(self.dfn, self.left, self.right)
+        if isinstance(self.dfn, BesideDerived):
+            return ctx.apply_beside_dyadic(self.dfn, self.left, self.right)
         dfn_val = ctx.evaluate(self.dfn)
         right = ctx.evaluate(self.right)
         left = ctx.evaluate(self.left)
