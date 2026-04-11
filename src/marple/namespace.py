@@ -1,23 +1,7 @@
-
-
 import os
+import os.path
 
 from typing import Any
-
-
-def _isdir(path):
-    """Check if path is a directory."""
-    try:
-        return (os.stat(path)[0] & 0x4000) != 0
-    except OSError:
-        return False
-
-
-def _join(base, name):
-    """Join path components."""
-    if base.endswith("/"):
-        return base + name
-    return base + "/" + name
 
 
 class Namespace:
@@ -57,17 +41,17 @@ def load_system_workspace(stdlib_path: str) -> Namespace:
     from marple.engine import Interpreter
 
     root = Namespace("$")
-    if not _isdir(stdlib_path):
+    if not os.path.isdir(stdlib_path):
         return root
 
     for entry in sorted(os.listdir(stdlib_path)):
-        subdir = _join(stdlib_path, entry)
-        if _isdir(subdir) and not entry.startswith("_"):
+        subdir = os.path.join(stdlib_path, entry)
+        if os.path.isdir(subdir) and not entry.startswith("_"):
             ns = Namespace(entry)
             for fname in sorted(os.listdir(subdir)):
                 if fname.endswith(".apl"):
                     func_name = fname[:-4]
-                    filepath = _join(subdir, fname)
+                    filepath = os.path.join(subdir, fname)
                     with open(filepath) as f:
                         source = f.read().strip()
                     if source:
