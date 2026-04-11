@@ -1,5 +1,6 @@
 """DesktopTimer — Timer adapter for CPython."""
 
+import datetime
 import os
 import time
 
@@ -13,10 +14,10 @@ class DesktopTimer(Timer):
         self._start_time = time.time()
 
     def timestamp(self) -> list[int]:
-        now = time.time()
-        t = time.localtime(now)
-        ms = int((now % 1) * 1000)
-        return [t[0], t[1], t[2], t[3], t[4], t[5], ms]
+        now = datetime.datetime.now()
+        return [now.year, now.month, now.day,
+                now.hour, now.minute, now.second,
+                now.microsecond // 1000]
 
     def elapsed_ms(self) -> int:
         return int((time.time() - self._start_time) * 1000)
