@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "marple-lang"
-version = "0.8.0"
+version = "0.8.1"
 description = "Mini APL in Python Language Experiment. Uses numpy arrays."
 authors = [{name = "Romilly Cocking", email = "romilly.cocking@gmail.com"}]
 license = {text = "MIT"}
@@ -24,6 +24,7 @@ dependencies = ["aiohttp==3.13.3", "numpy==2.4.3"]
 
 [project.scripts]
 marple = "marple.repl:main"
+marple-server = "marple.web.server:main"
 marple-jupyter-install = "marple.jupyter.install:install_kernel"
 
 [project.optional-dependencies]

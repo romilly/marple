@@ -362,14 +362,44 @@ def create_app() -> web.Application:
     return app
 
 
-if __name__ == "__main__":
+def _print_banner(host: str, port: int) -> None:
+    """Print startup banner, including a LAN-access note if bound publicly."""
+    from marple import __version__
+    print(f"MARPLE v{__version__} web server")
+    if host in ("0.0.0.0", "::"):
+        print(f"  Local:  http://localhost:{port}/")
+        try:
+            import socket
+            lan_host = socket.gethostname()
+            print(f"  LAN:    http://{lan_host}:{port}/")
+        except OSError:
+            pass
+        print(f"  Bound to {host} — accessible from any device on this network.")
+        print("  Home LAN use only: no authentication, no HTTPS.")
+    else:
+        print(f"  http://{host}:{port}/")
+
+
+def main() -> None:
     import argparse
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog="marple-server")
     parser.add_argument("--port", type=int, default=8888)
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="0.0.0.0",
+        help="Network interface to bind. 0.0.0.0 = all interfaces "
+             "(LAN-accessible, default). 127.0.0.1 = localhost only.",
+    )
     args = parser.parse_args()
     app = create_app()
-    print(f"MARPLE Web REPL: http://localhost:{args.port}/")
+    _print_banner(args.host, args.port)
     try:
-        web.run_app(app, port=args.port, print=None, handle_signals=True)
+        web.run_app(app, host=args.host, port=args.port,
+                    print=None, handle_signals=True)
     except KeyboardInterrupt:
         pass
+
+
+if __name__ == "__main__":
+    main()

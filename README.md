@@ -62,18 +62,46 @@ CLEAR WS
 From within the virtual environment:
 
 ```bash
-python -m marple.web.server
+marple-server                     # default: http://0.0.0.0:8888/ (LAN-accessible)
+marple-server --port 9000
+marple-server --host 127.0.0.1    # localhost only
 ```
 
-Open `http://localhost:8888/` in your browser.
+The startup banner prints both a `localhost:` URL and a LAN URL using
+the machine's hostname. Open either in a browser.
 
-PRIDE features 
+PRIDE features
 
 - a clickable language bar for APL glyph input
 - workspace panel,
 - session with system commands,
 - session save/load, and
 - interactive ⎕/⍞ input.
+
+#### Running PRIDE on one machine, browsing from another
+
+MARPLE's web server binds to all network interfaces by default, so you
+can run the interpreter on a Raspberry Pi (or any other machine on
+your home network) and connect from your desktop browser:
+
+```bash
+# On the Pi:
+marple-server
+
+# On your workstation, in a browser:
+http://pi.local:8888/
+# …or whatever the Pi's hostname or IP is
+```
+
+This is the simplest way to develop MARPLE on a Pi from a workstation,
+and it lets you use MARPLE from Windows or Mac machines that don't
+have the Python environment installed locally.
+
+**Security note:** the server has no authentication. Only run it on
+networks where you trust every device — a home LAN is fine, a
+coffee-shop WiFi is not. For anything beyond a trusted LAN, put PRIDE
+behind an authenticating reverse proxy (Caddy, nginx + basic auth,
+Tailscale, etc.).
 
 ### Jupyter Notebook
 
