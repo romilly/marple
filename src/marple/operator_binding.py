@@ -3,7 +3,7 @@
 from typing import Any, Callable
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import is_char_array, is_numeric_array, np_reshape, to_list
+from marple.backend_functions import is_char_array, is_numeric_array, to_list
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.errors import DomainError
 from marple.get_numpy import np
@@ -81,7 +81,7 @@ def _reduce(
     result = np.zeros(n_rows, dtype=flat.dtype)
     for i in range(n_rows):
         result[i] = _reduce_row(op, flat, i * last, last)
-    return APLArray(new_shape, np_reshape(result, new_shape))
+    return APLArray(new_shape, result.reshape(new_shape))
 
 
 _ACCUMULATE_UFUNCS: dict[str, Any] = {}
@@ -154,11 +154,11 @@ def _scan(
     if glyph is not None:
         ufunc = _ACCUMULATE_UFUNCS.get(glyph)
         if ufunc is not None:
-            return APLArray(list(omega.shape), np_reshape(_scan_row_accumulate(ufunc, flat, row_len), omega.shape))
+            return APLArray(list(omega.shape), _scan_row_accumulate(ufunc, flat, row_len).reshape(omega.shape))
     # General path: O(n²) right-to-left reduce per prefix
     op = _SCALAR_OPS.get(glyph) if glyph is not None else None
     if op is not None:
-        return APLArray(list(omega.shape), np_reshape(_scan_row_general(op, flat, row_len), omega.shape))
+        return APLArray(list(omega.shape), _scan_row_general(op, flat, row_len).reshape(omega.shape))
     raise DomainError(f"Unknown function for scan: {glyph}")
 
 
@@ -185,7 +185,7 @@ def _reduce_first(
         cell = flat[i * cell_size : (i + 1) * cell_size]
         for j in range(cell_size):
             acc[j] = op(acc[j], cell[j])
-    return APLArray(cell_shape, np_reshape(acc, cell_shape))
+    return APLArray(cell_shape, acc.reshape(cell_shape))
 
 
 def _scan_first(
@@ -215,7 +215,7 @@ def _scan_first(
         for j in range(cell_size):
             acc[j] = op(acc[j], cell[j])
         result[i * cell_size : (i + 1) * cell_size] = acc
-    return APLArray(list(omega.shape), np_reshape(result, omega.shape))
+    return APLArray(list(omega.shape), result.reshape(omega.shape))
 
 
 _OPERATOR_DISPATCH: dict[str, Any] = {

@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from marple.backend_functions import chars_to_str, is_char_array, np_reshape
+from marple.backend_functions import chars_to_str, is_char_array
 from marple.numpy_array import APLArray
 
 
@@ -84,7 +84,7 @@ def format_result(result: APLArray, env: Any = None) -> str:
             start = s * slice_size
             slice_data = flat[start:start + slice_size]
             slice_shape = [result.shape[-2], result.shape[-1]]
-            slice_arr = APLArray(slice_shape, np_reshape(slice_data, slice_shape))
+            slice_arr = APLArray(slice_shape, slice_data.reshape(slice_shape))
             slices.append(_format_matrix(slice_arr, pp))
         return "\n\n".join(slices)
     return repr(result)

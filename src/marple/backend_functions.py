@@ -3,11 +3,6 @@ from typing import Any
 from marple.get_numpy import np
 
 
-def np_reshape(arr: Any, shape: Any) -> Any:
-    """Reshape that accepts a list or tuple shape."""
-    return arr.reshape(tuple(shape) if isinstance(shape, list) else shape)
-
-
 def is_char_array(data: Any) -> bool:
     """Check if data represents character data (uint32 ndarray of codepoints)."""
     return hasattr(data, 'dtype') and str(data.dtype) == 'uint32'

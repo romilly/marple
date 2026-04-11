@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Protocol, Generator
 
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import is_numeric_array, maybe_upcast, np_reshape
+from marple.backend_functions import is_numeric_array, maybe_upcast
 from marple.errors import DomainError, ValueError_
 
 
@@ -120,7 +120,7 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
                 result = ufunc.outer(maybe_upcast(alpha.data.flatten()),
                                      maybe_upcast(omega.data.flatten()))
                 result_shape = alpha.shape + omega.shape
-                return APLArray(result_shape, np_reshape(result, result_shape))
+                return APLArray(result_shape, result.reshape(result_shape))
     # General path
     op = _INNER_SCALAR_OPS.get(glyph)
     if op is None:
@@ -431,7 +431,7 @@ class Index(Node):
                 result_shape.extend(s)
             if not result_shape:
                 return S(result_data[0])
-            return APLArray(result_shape, np_reshape(result_data[:idx], result_shape))
+            return APLArray(result_shape, result_data[:idx].reshape(result_shape))
         # Character data
         result_list: list[object] = []
         for combo in _product(*axis_indices):

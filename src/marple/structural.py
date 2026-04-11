@@ -1,7 +1,7 @@
 
 from marple.numpy_array import APLArray, S
 from marple.backend_functions import (
-    char_fill, is_char_array, np_reshape, to_list,
+    char_fill, is_char_array, to_list,
 )
 from marple.errors import DomainError, IndexError_, LengthError, RankError
 from marple.get_numpy import np
@@ -85,7 +85,7 @@ def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
     else:
         reps = total // n + 1
         cycled = np.concatenate(tuple([flat] * reps))[:total]
-    return APLArray(new_shape, np_reshape(cycled, new_shape))
+    return APLArray(new_shape, cycled.reshape(new_shape))
 
 
 def _tolerant_match(a: object, b: object, ct: float) -> bool:
@@ -161,9 +161,9 @@ def catenate(alpha: APLArray, omega: APLArray) -> APLArray:
     a = alpha.data
     b = omega.data
     if a.ndim < b.ndim:
-        a = np_reshape(a, [1] * (b.ndim - a.ndim) + list(a.shape))
+        a = a.reshape([1] * (b.ndim - a.ndim) + list(a.shape))
     elif b.ndim < a.ndim:
-        b = np_reshape(b, [1] * (a.ndim - b.ndim) + list(b.shape))
+        b = b.reshape([1] * (a.ndim - b.ndim) + list(b.shape))
     result = np.concatenate((a, b), axis=-1)
     return APLArray(list(result.shape), result)
 
@@ -202,7 +202,7 @@ def _build_like(data: list[object], shape: list[int], source: APLArray) -> APLAr
     dtype = source.data.dtype
     arr = np.array(data, dtype=dtype) if data else np.array([], dtype=dtype)
     if shape:
-        arr = np_reshape(arr, shape)
+        arr = arr.reshape(shape)
     return APLArray(shape, arr)
 
 
@@ -625,6 +625,6 @@ def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
         return APLArray.array(cell_shape, [])
     result = np.concatenate(tuple(result_cells))
     if alpha.is_scalar():
-        return APLArray(cell_shape, np_reshape(result, cell_shape) if cell_shape else result)
+        return APLArray(cell_shape, result.reshape(cell_shape) if cell_shape else result)
     result_shape = list(alpha.shape) + cell_shape
-    return APLArray(result_shape, np_reshape(result, result_shape))
+    return APLArray(result_shape, result.reshape(result_shape))
