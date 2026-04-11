@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "marple-lang"
-version = "0.7.51"
+version = "0.7.52"
 description = "Mini APL in Python Language Experiment. Uses numpy arrays."
 authors = [{name = "Romilly Cocking", email = "romilly.cocking@gmail.com"}]
 license = {text = "MIT"}
@@ -52,9 +52,8 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short -m 'not pico and not slow' --ignore=tests/web"
+addopts = "-v --tb=short -m 'not slow' --ignore=tests/web"
 markers = [
-    "pico: end-to-end tests requiring a connected Raspberry Pi Pico",
     "slow: slow tests (PRIDE, deep TCO, delays) — run with pytest -m slow",
 ]
 asyncio_mode = "auto"

@@ -7,7 +7,7 @@ from marple.get_numpy import np
 
 
 def np_reshape(arr: Any, shape: Any) -> Any:
-    """Reshape that accepts lists (ulab requires tuples)."""
+    """Reshape that accepts a list or tuple shape."""
     return arr.reshape(tuple(shape) if isinstance(shape, list) else shape)
 
 

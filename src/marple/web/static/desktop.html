@@ -118,14 +118,6 @@
             </div>
         </span>
         <span class="d-flex align-items-center gap-3">
-            <span id="mode-toggle" style="display:none; font-size:0.8em;">
-                <label style="cursor:pointer; margin-right:0.5em;">
-                    <input type="radio" name="mode" value="local" checked> Local
-                </label>
-                <label style="cursor:pointer;">
-                    <input type="radio" name="mode" value="pico"> Pico
-                </label>
-            </span>
             <span id="ws-status" style="font-size:0.8em; color:#ffdd44;">connecting...</span>
         </span>
     </div>
@@ -399,21 +391,8 @@
         }
     });
 
-    // Mode toggle
-    var modeToggle = document.getElementById('mode-toggle');
-    document.querySelectorAll('input[name="mode"]').forEach(function(radio) {
-        radio.addEventListener('change', function() {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({type: 'mode', mode: radio.value}));
-            }
-        });
-    });
-
-    // Check if Pico is available and show toggle
+    // Fetch version info for title and label.
     fetch('/config').then(function(r) { return r.json(); }).then(function(cfg) {
-        if (cfg.pico_available) {
-            modeToggle.style.display = '';
-        }
         if (cfg.version) {
             document.title = 'PRIDE — MARPLE v' + cfg.version;
             document.getElementById('version-label').textContent = 'v' + cfg.version;

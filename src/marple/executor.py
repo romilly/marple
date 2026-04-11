@@ -260,11 +260,6 @@ class Executor:
 
     def _sysvar_wa(self) -> APLArray:
         """⎕WA — workspace available (free memory in bytes)."""
-        import sys
-        if sys.implementation.name == "micropython":
-            import gc  # type: ignore[import-not-found]
-            gc.collect()
-            return APLArray.array([], [gc.mem_free()])  # type: ignore[attr-defined]
         return APLArray.array([], [2**31 - 1])
 
     def _sysvar_quad(self) -> APLArray:

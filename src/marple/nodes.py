@@ -10,7 +10,7 @@ from marple.errors import DomainError, ValueError_
 
 
 def _product(*lists: list[int]) -> Generator[tuple[int, ...], None, None]:
-    """Simple replacement for itertools.product (MicroPython compatible)."""
+    """Cartesian product generator — simpler alternative to itertools.product."""
     if not lists:
         yield ()
         return
@@ -111,7 +111,7 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
     """Compute outer product: alpha ∘.func omega."""
     from marple.errors import DomainError
     from marple.get_numpy import np
-    # Fast path: use numpy ufunc.outer (not available on ulab)
+    # Fast path: use numpy ufunc.outer for numeric operands.
     if is_numeric_array(alpha.data) and is_numeric_array(omega.data):
         ufunc_name = _OUTER_UFUNCS.get(glyph)
         if ufunc_name is not None:

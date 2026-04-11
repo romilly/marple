@@ -337,16 +337,16 @@ class TestFX:
 class TestDL:
     def test_dl(self) -> None:
         result = Interpreter(io=1).run("⎕DL 0.01")
-        assert result.data[0] >= 0.01
+        assert result.data.item() >= 0.01
 
     def test_dl_returns_elapsed(self) -> None:
         result = Interpreter(io=1).run("⎕DL 0.1")
-        elapsed = float(result.data[0])
+        elapsed = float(result.data.item())
         assert 0.05 < elapsed < 0.5
 
     def test_dl_zero(self) -> None:
         result = Interpreter(io=1).run("⎕DL 0")
-        assert float(result.data[0]) >= 0
+        assert float(result.data.item()) >= 0
 
 
 def _extract_matrix_rows(result: APLArray) -> list[str]:

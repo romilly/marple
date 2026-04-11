@@ -85,67 +85,6 @@ async def test_ws_unknown_type(aiohttp_client, app):
     await ws.close()
 
 
-async def test_ws_mode_switch_local(aiohttp_client, app):
-    client = await aiohttp_client(app)
-    ws = await client.ws_connect("/ws")
-    await ws.send_json({"type": "mode", "mode": "local"})
-    msg = await ws.receive_json()
-    assert msg["type"] == "mode_changed"
-    assert msg["mode"] == "local"
-    await ws.close()
-
-
-async def test_ws_mode_switch_pico_no_connection(aiohttp_client, app):
-    """Switching to pico mode without a Pico connected gives an error."""
-    client = await aiohttp_client(app)
-    ws = await client.ws_connect("/ws")
-    await ws.send_json({"type": "mode", "mode": "pico"})
-    msg = await ws.receive_json()
-    assert msg["type"] == "error"
-    assert "pico" in msg["message"].lower() or "not" in msg["message"].lower()
-    await ws.close()
-
-
-class FakePicoConnection:
-    """Mock PicoConnection for testing."""
-
-    def __init__(self) -> None:
-        self.last_expr = ""
-
-    def eval(self, expr: str) -> str:
-        self.last_expr = expr
-        if expr == "2+3":
-            return "5"
-        if expr == "⍳5":
-            return "1 2 3 4 5"
-        return "42"
-
-    def close(self) -> None:
-        pass
-
-
-@pytest.fixture
-def app_with_pico():
-    app = create_app()
-    app["pico"] = FakePicoConnection()
-    return app
-
-
-async def test_ws_pico_eval(aiohttp_client, app_with_pico):
-    client = await aiohttp_client(app_with_pico)
-    ws = await client.ws_connect("/ws")
-    # Switch to pico mode
-    await ws.send_json({"type": "mode", "mode": "pico"})
-    msg = await ws.receive_json()
-    assert msg["type"] == "mode_changed"
-    # Eval on pico
-    await ws.send_json({"type": "eval", "expr": "2+3"})
-    msg = await ws.receive_json()
-    assert msg["type"] == "result"
-    assert "5" in msg["html"]
-    await ws.close()
-
-
 async def test_ws_save_and_list_sessions(aiohttp_client, app, tmp_path):
     app["sessions_dir"] = str(tmp_path)
     client = await aiohttp_client(app)
@@ -246,37 +185,3 @@ async def test_ws_delete_nonexistent(aiohttp_client, app, tmp_path):
     await ws.close()
 
 
-async def test_ws_pico_system_command_goes_to_pico(aiohttp_client, app_with_pico):
-    """In pico mode, system commands must be sent to the Pico, not run locally."""
-    client = await aiohttp_client(app_with_pico)
-    ws = await client.ws_connect("/ws")
-    # Switch to pico mode
-    await ws.send_json({"type": "mode", "mode": "pico"})
-    await ws.receive_json()  # mode_changed
-    # Send a system command
-    await ws.send_json({"type": "system", "cmd": ")vars"})
-    msg = await ws.receive_json()
-    assert msg["type"] == "result"
-    # Verify it was sent to the Pico
-    pico = app_with_pico["pico"]
-    assert pico.last_expr == ")vars"
-    await ws.close()
-
-
-async def test_ws_pico_then_local(aiohttp_client, app_with_pico):
-    client = await aiohttp_client(app_with_pico)
-    ws = await client.ws_connect("/ws")
-    # Switch to pico
-    await ws.send_json({"type": "mode", "mode": "pico"})
-    await ws.receive_json()
-    # Switch back to local
-    await ws.send_json({"type": "mode", "mode": "local"})
-    msg = await ws.receive_json()
-    assert msg["type"] == "mode_changed"
-    assert msg["mode"] == "local"
-    # Eval locally
-    await ws.send_json({"type": "eval", "expr": "2+3"})
-    msg = await ws.receive_json()
-    assert msg["type"] == "result"
-    assert "5" in msg["html"]
-    await ws.close()

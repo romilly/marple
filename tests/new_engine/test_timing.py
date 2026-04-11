@@ -15,10 +15,8 @@ class TestTS:
         result = Interpreter(io=1).run("⎕TS")
         assert result.data[0] >= 2024
 
-    def test_ts_milliseconds_on_cpython(self) -> None:
-        """On CPython, milliseconds should be a real value 0-999."""
-        if hasattr(time, "ticks_ms"):
-            return  # skip on MicroPython
+    def test_ts_milliseconds(self) -> None:
+        """Milliseconds should be a real value 0-999."""
         result = Interpreter(io=1).run("⎕TS")
         ms = result.data[6]
         assert 0 <= int(ms) <= 999

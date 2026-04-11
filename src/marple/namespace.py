@@ -6,7 +6,7 @@ from typing import Any
 
 
 def _isdir(path):
-    """Check if path is a directory (works on MicroPython)."""
+    """Check if path is a directory."""
     try:
         return (os.stat(path)[0] & 0x4000) != 0
     except OSError:
@@ -14,7 +14,7 @@ def _isdir(path):
 
 
 def _join(base, name):
-    """Join path components (works on MicroPython)."""
+    """Join path components."""
     if base.endswith("/"):
         return base + name
     return base + "/" + name
