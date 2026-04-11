@@ -17,39 +17,19 @@ class OsFileSystem(FileSystem):
             f.write(content)
 
     def exists(self, path: str) -> bool:
-        try:
-            os.stat(path)
-            return True
-        except OSError:
-            return False
+        return os.path.exists(path)
 
     def is_file(self, path: str) -> bool:
-        try:
-            return (os.stat(path)[0] & 0x8000) != 0
-        except OSError:
-            return False
+        return os.path.isfile(path)
 
     def is_dir(self, path: str) -> bool:
-        try:
-            return (os.stat(path)[0] & 0x4000) != 0
-        except OSError:
-            return False
+        return os.path.isdir(path)
 
     def delete(self, path: str) -> None:
         os.remove(path)
 
     def makedirs(self, path: str) -> None:
-        parts = path.replace("\\", "/").split("/")
-        current = ""
-        for part in parts:
-            if not part:
-                current = "/"
-                continue
-            current = current + part if current.endswith("/") else current + "/" + part
-            try:
-                os.mkdir(current)
-            except OSError:
-                pass
+        os.makedirs(path, exist_ok=True)
 
     def listdir(self, path: str) -> list[str]:
         return os.listdir(path)
