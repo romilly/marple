@@ -597,6 +597,18 @@ class MonadicDfnCall(Node):
         if isinstance(self.dfn, BesideDerived):
             return ctx.apply_beside_monadic(self.dfn, self.operand)
         dfn_val = ctx.evaluate(self.dfn)
+        # Post-evaluation dispatch: a Var may resolve to a derived
+        # function stored at assignment time (`f←+/⍤1`, `g←⍴∘⍴`).
+        # These get dispatched through the same apply_*_monadic
+        # methods the pre-evaluation path uses.
+        if isinstance(dfn_val, RankDerived):
+            return ctx.apply_rank_monadic(dfn_val, self.operand)
+        if isinstance(dfn_val, PowerDerived):
+            return ctx.apply_power_monadic(dfn_val, self.operand)
+        if isinstance(dfn_val, CommuteDerived):
+            return ctx.apply_commute_monadic(dfn_val, self.operand)
+        if isinstance(dfn_val, BesideDerived):
+            return ctx.apply_beside_monadic(dfn_val, self.operand)
         operand = ctx.evaluate(self.operand)
         if isinstance(dfn_val, DfnBinding):
             return dfn_val.apply(operand)
@@ -629,6 +641,16 @@ class DyadicDfnCall(Node):
         if isinstance(self.dfn, BesideDerived):
             return ctx.apply_beside_dyadic(self.dfn, self.left, self.right)
         dfn_val = ctx.evaluate(self.dfn)
+        # Post-evaluation dispatch for derived functions stored in
+        # variables — see MonadicDfnCall.execute for the rationale.
+        if isinstance(dfn_val, RankDerived):
+            return ctx.apply_rank_dyadic(dfn_val, self.left, self.right)
+        if isinstance(dfn_val, PowerDerived):
+            return ctx.apply_power_dyadic(dfn_val, self.left, self.right)
+        if isinstance(dfn_val, CommuteDerived):
+            return ctx.apply_commute_dyadic(dfn_val, self.left, self.right)
+        if isinstance(dfn_val, BesideDerived):
+            return ctx.apply_beside_dyadic(dfn_val, self.left, self.right)
         right = ctx.evaluate(self.right)
         left = ctx.evaluate(self.left)
         if isinstance(dfn_val, DfnBinding):

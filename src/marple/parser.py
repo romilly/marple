@@ -536,6 +536,47 @@ class Parser:
         "⍀": _bound_dyadic_reduce,
     }
 
+    def _bound_to_derived(self, bound: BoundOperator) -> object:
+        """Convert a BoundOperator to its unwrapped derived-function
+        form, for storage in a variable via assignment.
+
+        Unlike the `_bound_monadic_*` handlers, this does NOT wrap
+        the result in a `MonadicDfnCall` — we want the bare
+        `RankDerived` / `BesideDerived` / etc. so it can be stored
+        as the value of a Var and dispatched at application time.
+        """
+        op = bound.operator
+        if op == "⍤":
+            return RankDerived(bound.left_operand, bound.right_operand)
+        if op == "⍣":
+            return PowerDerived(bound.left_operand, bound.right_operand)
+        if op == "⍨":
+            return CommuteDerived(bound.left_operand)
+        if op == "∘":
+            return BesideDerived(bound.left_operand, bound.right_operand)
+        # For reduce / scan / other operators, there's no standalone
+        # derived class today — leave as-is and let the downstream
+        # path handle it (or raise).
+        return bound
+
+    def _resolve_assignment_value(self, value_node: object,
+                                  value_cat: int) -> object:
+        """Convert a Case 6 value_node into a form that `ctx.assign`
+        can store directly.
+
+        Node subclasses evaluate normally. Raw strings from CAT_VERB
+        (primitive glyphs like '+') wrap in FunctionRef. BoundOperator
+        instances from derived functions unwrap to the appropriate
+        *Derived class so that applying `f` later dispatches correctly.
+        """
+        if isinstance(value_node, Node):
+            return value_node
+        if value_cat == CAT_VERB and isinstance(value_node, str):
+            return FunctionRef(value_node)
+        if isinstance(value_node, BoundOperator):
+            return self._bound_to_derived(value_node)
+        return value_node
+
     # ── Iverson's stack-based parsing algorithm ──
 
     def _stack_parse(self, items: list[tuple[int, object]]) -> object:
@@ -680,6 +721,7 @@ class Parser:
                     name_str = name_node.name
                 else:
                     raise SyntaxError_(f"Invalid assignment target: {name_node}")
+                value_node = self._resolve_assignment_value(value_node, value_cat)
                 result = Assignment(name_str, value_node)
                 stack[-3:] = [(value_cat, result)]
                 matched = True

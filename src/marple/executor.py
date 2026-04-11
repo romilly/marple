@@ -61,7 +61,13 @@ def _apl_chars_to_str(data: Any) -> str:
 def _name_class(value: object) -> int:
     """Return the APL name class for a value."""
     from marple.dfn_binding import DfnBinding
-    if isinstance(value, DfnBinding):
+    from marple.nodes import (
+        BesideDerived, CommuteDerived, FunctionRef, IBeamDerived,
+        PowerDerived, RankDerived,
+    )
+    if isinstance(value, (DfnBinding, FunctionRef, RankDerived,
+                          BesideDerived, PowerDerived, CommuteDerived,
+                          IBeamDerived)):
         return NC_FUNCTION
     if isinstance(value, APLArray):
         return NC_ARRAY
@@ -184,8 +190,17 @@ class Executor:
     def assign(self, name: str, value_node: object) -> APLArray:
         if name in _READONLY_QUADS:
             raise DomainError(f"Cannot assign to read-only system variable {name}")
-        value = self.evaluate(value_node)
+        # Function-like values (FunctionRef, RankDerived, BesideDerived,
+        # etc.) are already in their stored form from the parser —
+        # they are not Node instances and should not be evaluated.
+        value: object
+        if isinstance(value_node, Node):
+            value = self.evaluate(value_node)
+        else:
+            value = value_node
         if name in ("⎕", "⍞"):
+            if not isinstance(value, APLArray):
+                raise DomainError(f"Cannot assign a function to {name}")
             return self._io_assign(name, value)
         if isinstance(value, APLArray) and is_numeric_array(value.data):
             value = APLArray.array(list(value.shape), maybe_downcast(value.data, _DOWNCAST_CT))
