@@ -198,11 +198,23 @@ def _reduce_first(
     cell_size = 1
     for s in cell_shape:
         cell_size *= s
-    acc = np.array(flat[:cell_size], dtype=flat.dtype)
-    for i in range(1, first):
-        cell = flat[i * cell_size : (i + 1) * cell_size]
-        for j in range(cell_size):
-            acc[j] = op(acc[j], cell[j])
+
+    def _do_reduce(data: Any) -> Any:
+        acc = np.array(data[:cell_size], dtype=data.dtype)
+        for i in range(1, first):
+            cell = data[i * cell_size : (i + 1) * cell_size]
+            for j in range(cell_size):
+                acc[j] = op(acc[j], cell[j])
+        return acc
+
+    try:
+        with np.errstate(over="raise", invalid="raise"):
+            acc = _do_reduce(flat)
+    except FloatingPointError:
+        with np.errstate(over="ignore", invalid="ignore"):
+            acc = _do_reduce(flat.astype(np.float64))
+        if np.any(np.isinf(acc)) or np.any(np.isnan(acc)):
+            raise DomainError("arithmetic overflow in reduce")
     return APLArray(cell_shape, acc.reshape(cell_shape))
 
 

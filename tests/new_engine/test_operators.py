@@ -46,6 +46,13 @@ class TestReduceOverflow:
         with pytest.raises(DomainError):
             Interpreter(io=1).run("×/⍳10000")
 
+    def test_reduce_first_product_overflow_raises(self) -> None:
+        # Rank-2 path: ×⌿ multiplies down each column. Float inputs
+        # that overflow on multiplication must raise DomainError
+        # rather than silently produce ∞.
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("×⌿2 2⍴1e200 1e200 1e200 1e200")
+
 
 class TestReduceFirst:
     def test_reduce_first_axis(self) -> None:
