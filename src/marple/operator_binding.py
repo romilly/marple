@@ -262,15 +262,26 @@ def _scan_first(
     for s in cell_shape:
         cell_size *= s
     flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
-    result = np.zeros(len(flat), dtype=flat.dtype)
-    # Copy first cell
-    result[:cell_size] = flat[:cell_size]
-    acc = np.array(flat[:cell_size], dtype=flat.dtype)
-    for i in range(1, first):
-        cell = flat[i * cell_size : (i + 1) * cell_size]
-        for j in range(cell_size):
-            acc[j] = op(acc[j], cell[j])
-        result[i * cell_size : (i + 1) * cell_size] = acc
+
+    def _do_scan(data: Any) -> Any:
+        result = np.zeros(len(data), dtype=data.dtype)
+        result[:cell_size] = data[:cell_size]
+        acc = np.array(data[:cell_size], dtype=data.dtype)
+        for i in range(1, first):
+            cell = data[i * cell_size : (i + 1) * cell_size]
+            for j in range(cell_size):
+                acc[j] = op(acc[j], cell[j])
+            result[i * cell_size : (i + 1) * cell_size] = acc
+        return result
+
+    try:
+        with np.errstate(over="raise", invalid="raise"):
+            result = _do_scan(flat)
+    except FloatingPointError:
+        with np.errstate(over="ignore", invalid="ignore"):
+            result = _do_scan(flat.astype(np.float64))
+        if np.any(np.isinf(result)) or np.any(np.isnan(result)):
+            raise DomainError("arithmetic overflow in scan")
     return APLArray(list(omega.shape), result.reshape(omega.shape))
 
 
