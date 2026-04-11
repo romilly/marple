@@ -34,6 +34,19 @@ class TestReduce:
         assert Interpreter(io=1).run("-/1 2 3 4") == S(-2)
 
 
+class TestReduceOverflow:
+    """`×/⍳10000` used to silently return 0 due to int64 wraparound.
+
+    Follow Dyalog's "upcast when you must, downcast when you can" rule:
+    stay in the integer path while the result fits, fall back to float64
+    on integer overflow, and raise DomainError on float64 overflow to ∞.
+    """
+
+    def test_product_reduce_huge_raises_domain_error(self) -> None:
+        with pytest.raises(DomainError):
+            Interpreter(io=1).run("×/⍳10000")
+
+
 class TestReduceFirst:
     def test_reduce_first_axis(self) -> None:
         result = Interpreter(io=1).run("+⌿2 3⍴⍳6")

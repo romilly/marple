@@ -47,11 +47,29 @@ _IDENTITY_ELEMENTS: dict[str, int | float] = {
 
 
 def _reduce_row(op: Any, data: Any, start: int, length: int) -> Any:
-    """Right-to-left reduce of a row, using numpy indexing."""
-    acc = data[start + length - 1]
-    for i in range(start + length - 2, start - 1, -1):
-        acc = op(data[i], acc)
-    return acc
+    """Right-to-left reduce of a row, using numpy indexing.
+
+    Follows Dyalog's "upcast when you must" rule: try the reduce in the
+    current dtype; if numpy signals overflow, retry with the row
+    upcast to float64. A float64 result that lands at ±inf or nan is
+    reported as a DomainError — the arithmetic cannot represent the
+    answer and silently returning a wrong value is worse than raising.
+    """
+    try:
+        with np.errstate(over="raise", invalid="raise"):
+            acc = data[start + length - 1]
+            for i in range(start + length - 2, start - 1, -1):
+                acc = op(data[i], acc)
+        return acc
+    except FloatingPointError:
+        float_data = data[start : start + length].astype(np.float64)
+        with np.errstate(over="ignore", invalid="ignore"):
+            acc = float_data[-1]
+            for i in range(len(float_data) - 2, -1, -1):
+                acc = op(float_data[i], acc)
+        if np.isinf(acc) or np.isnan(acc):
+            raise DomainError("arithmetic overflow in reduce")
+        return acc
 
 
 def _reduce(
