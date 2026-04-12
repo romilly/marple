@@ -16,7 +16,6 @@ from marple.monadic_functions import MonadicFunctionBinding
 from marple.operator_binding import DerivedFunctionBinding
 from marple.parser import (
     AtopDerived,
-    BoundOperator,
     Dfn,
     ForkDerived,
     FunctionRef,
@@ -301,48 +300,17 @@ class Executor:
         return self._rank_apply_monadic_core(rank_node.function, rank_spec_val, omega)
 
     def apply_func_monadic(self, func: object, omega: APLArray) -> APLArray:
-        """Apply a function monadically. Used by rank operator."""
-        if isinstance(func, FunctionRef):
-            return MonadicFunctionBinding(self.env).apply(func.glyph, omega)
-        if isinstance(func, BoundOperator) and func.operator == "⍤":
-            # Nested rank: the function we're applying is itself a
-            # rank-derived function — recursively decompose and apply.
-            rank_spec_val = self.evaluate(func.right_operand)
-            return self._rank_apply_monadic_core(func.left_operand, rank_spec_val, omega)
-        if isinstance(func, BoundOperator) and func.operator == "∘":
-            # Nested beside: func is (f∘g), apply monadically to
-            # omega — (f∘g) ω ≡ f (g ω).
-            g_result = self.apply_func_monadic(func.right_operand, omega)
-            return self.apply_func_monadic(func.left_operand, g_result)
-        if isinstance(func, BoundOperator) and isinstance(func.operator, str):
-            return DerivedFunctionBinding().apply(
-                func.operator, func.left_operand, omega)
-        if isinstance(func, AtopDerived):
-            h_result = self.apply_func_monadic(func.h, omega)
-            return self.apply_func_monadic(func.g, h_result)
-        if isinstance(func, ForkDerived):
-            right = self.apply_func_monadic(func.h, omega)
-            f_val = self._resolve_fork_operand(func.f)
-            if isinstance(f_val, APLArray):
-                left = f_val
-            else:
-                left = self.apply_func_monadic(f_val, omega)
-            return self._apply_func_dyadic(func.g, left, right)
-        # AST node (Var, Dfn, etc.) — evaluate to get the function value, then apply
-        from marple.dfn_binding import DfnBinding
+        """Apply a function monadically to an already-evaluated array.
+        Used by rank, power, commute, beside, atop, fork operators."""
+        from marple.nodes import Literal, UnappliedFunction
+        if isinstance(func, UnappliedFunction):
+            return func.apply_monadic(self, Literal(omega))  # type: ignore[arg-type]
+        # AST node (Var, Dfn, etc.) — evaluate to get the function value
         from marple.parser import Node
         if isinstance(func, Node):
             val = self.evaluate(func)
-            if isinstance(val, DfnBinding):
-                return val.apply(omega)
-            if isinstance(val, FunctionRef):
-                return MonadicFunctionBinding(self.env).apply(val.glyph, omega)
-            if hasattr(val, 'dfn') and hasattr(val, 'env'):
-                binding = DfnBinding(getattr(val, 'dfn'), self.env)
-                return binding.apply(omega)
-            # Derived functions (AtopDerived, ForkDerived, etc.)
-            # resolved from a variable — recurse.
-            return self.apply_func_monadic(val, omega)
+            if isinstance(val, UnappliedFunction):
+                return val.apply_monadic(self, Literal(omega))  # type: ignore[arg-type]
         raise DomainError(f"Expected function for rank, got {type(func)}")
 
     def _rank_apply_dyadic_core(
@@ -381,26 +349,16 @@ class Executor:
         return self._rank_apply_dyadic_core(rank_node.function, rank_spec_val, alpha, omega)
 
     def _apply_func_dyadic(self, func: object, alpha: APLArray, omega: APLArray) -> APLArray:
-        """Apply a function dyadically. Used by dyadic rank operator."""
-        from marple.parser import FunctionRef
-        if isinstance(func, FunctionRef):
-            return DyadicFunctionBinding(self.env).apply(func.glyph, alpha, omega)
-        if isinstance(func, BoundOperator) and func.operator == "⍤":
-            # Nested rank — recursively decompose and apply.
-            rank_spec_val = self.evaluate(func.right_operand)
-            return self._rank_apply_dyadic_core(func.left_operand, rank_spec_val, alpha, omega)
-        if isinstance(func, BoundOperator) and func.operator == "∘":
-            # Nested beside: α (f∘g) ω ≡ α f (g ω).
-            g_result = self.apply_func_monadic(func.right_operand, omega)
-            return self._apply_func_dyadic(func.left_operand, alpha, g_result)
-        from marple.dfn_binding import DfnBinding
+        """Apply a function dyadically to already-evaluated arrays.
+        Used by rank, power, commute, beside, atop, fork operators."""
+        from marple.nodes import Literal, UnappliedFunction
+        if isinstance(func, UnappliedFunction):
+            return func.apply_dyadic(self, Literal(alpha), Literal(omega))  # type: ignore[arg-type]
         from marple.parser import Node
         if isinstance(func, Node):
             val = self.evaluate(func)
-            if isinstance(val, DfnBinding):
-                return val.apply(omega, alpha=alpha)
-            if isinstance(val, FunctionRef):
-                return DyadicFunctionBinding(self.env).apply(val.glyph, alpha, omega)
+            if isinstance(val, UnappliedFunction):
+                return val.apply_dyadic(self, Literal(alpha), Literal(omega))  # type: ignore[arg-type]
         raise DomainError(f"Expected function for rank, got {type(func)}")
 
     # ── Commute operator (⍨) ──
@@ -469,8 +427,8 @@ class Executor:
         """Resolve a fork's f operand to either an APLArray or a callable form.
 
         For Agh-fork, f is a Num/Vector node that evaluates to an APLArray.
-        For fgh-fork, f is a glyph string, BoundOperator, or other callable
-        form left as-is for apply_func_monadic/_apply_func_dyadic to handle.
+        For fgh-fork, f is a FunctionRef or other UnappliedFunction
+        left as-is for apply_func_monadic/_apply_func_dyadic to handle.
         """
         from marple.parser import Node
         if isinstance(f, Node):

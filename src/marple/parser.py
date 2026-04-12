@@ -37,6 +37,8 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     Program,
     QualifiedVar,
     RankDerived,
+    ReduceDerived,
+    ScanDerived,
     Str,
     SysVar,
     UnappliedFunction,
@@ -415,19 +417,22 @@ class Parser:
         return DyadicFunc(bound.operator, operand, arg_node)
 
     def _bound_monadic_rank(self, bound: BoundOperator, arg_node: object) -> object:
-        rank_node = RankDerived(bound.left_operand, bound.right_operand)
+        rank_node = RankDerived(self._resolve_operand(bound.left_operand),
+                                self._resolve_operand(bound.right_operand))
         return MonadicDfnCall(rank_node, arg_node)
 
     def _bound_monadic_power(self, bound: BoundOperator, arg_node: object) -> object:
-        power_node = PowerDerived(bound.left_operand, bound.right_operand)
+        power_node = PowerDerived(self._resolve_operand(bound.left_operand),
+                                  self._resolve_operand(bound.right_operand))
         return MonadicDfnCall(power_node, arg_node)
 
     def _bound_monadic_commute(self, bound: BoundOperator, arg_node: object) -> object:
-        commute_node = CommuteDerived(bound.left_operand)
+        commute_node = CommuteDerived(self._resolve_operand(bound.left_operand))
         return MonadicDfnCall(commute_node, arg_node)
 
     def _bound_monadic_beside(self, bound: BoundOperator, arg_node: object) -> object:
-        beside_node = BesideDerived(bound.left_operand, bound.right_operand)
+        beside_node = BesideDerived(self._resolve_operand(bound.left_operand),
+                                    self._resolve_operand(bound.right_operand))
         return MonadicDfnCall(beside_node, arg_node)
 
     def _bound_monadic_inner(self, bound: BoundOperator, arg_node: object) -> object:
@@ -476,22 +481,25 @@ class Parser:
 
     def _bound_dyadic_rank(self, bound: BoundOperator,
                            left_node: object, right_node: object) -> object:
-        rank_node = RankDerived(bound.left_operand, bound.right_operand)
+        rank_node = RankDerived(self._resolve_operand(bound.left_operand),
+                                self._resolve_operand(bound.right_operand))
         return DyadicDfnCall(rank_node, left_node, right_node)
 
     def _bound_dyadic_power(self, bound: BoundOperator,
                             left_node: object, right_node: object) -> object:
-        power_node = PowerDerived(bound.left_operand, bound.right_operand)
+        power_node = PowerDerived(self._resolve_operand(bound.left_operand),
+                                  self._resolve_operand(bound.right_operand))
         return DyadicDfnCall(power_node, left_node, right_node)
 
     def _bound_dyadic_commute(self, bound: BoundOperator,
                               left_node: object, right_node: object) -> object:
-        commute_node = CommuteDerived(bound.left_operand)
+        commute_node = CommuteDerived(self._resolve_operand(bound.left_operand))
         return DyadicDfnCall(commute_node, left_node, right_node)
 
     def _bound_dyadic_beside(self, bound: BoundOperator,
                              left_node: object, right_node: object) -> object:
-        beside_node = BesideDerived(bound.left_operand, bound.right_operand)
+        beside_node = BesideDerived(self._resolve_operand(bound.left_operand),
+                                    self._resolve_operand(bound.right_operand))
         return DyadicDfnCall(beside_node, left_node, right_node)
 
     def _bound_dyadic_inner(self, bound: BoundOperator,
@@ -533,6 +541,12 @@ class Parser:
         "⍀": _bound_dyadic_reduce,
     }
 
+    def _resolve_operand(self, operand: object) -> object:
+        """If operand is a BoundOperator, resolve it to a derived type."""
+        if isinstance(operand, BoundOperator):
+            return self._bound_to_derived(operand)
+        return operand
+
     def _bound_to_derived(self, bound: BoundOperator) -> object:
         """Convert a BoundOperator to its unwrapped derived-function
         form, for storage in a variable via assignment.
@@ -543,18 +557,22 @@ class Parser:
         as the value of a Var and dispatched at application time.
         """
         op = bound.operator
+        left = self._resolve_operand(bound.left_operand)
         if op == "⍤":
-            return RankDerived(bound.left_operand, bound.right_operand)
+            return RankDerived(left, self._resolve_operand(bound.right_operand))
         if op == "⍣":
-            return PowerDerived(bound.left_operand, bound.right_operand)
+            return PowerDerived(left, self._resolve_operand(bound.right_operand))
         if op == "⍨":
-            return CommuteDerived(bound.left_operand)
+            return CommuteDerived(left)
         if op == "∘":
-            return BesideDerived(bound.left_operand, bound.right_operand)
-        # For reduce / scan / other operators, there's no standalone
-        # derived class today — leave as-is and let the downstream
-        # path handle it (or raise).
-        return bound
+            return BesideDerived(left, self._resolve_operand(bound.right_operand))
+        if op in ("/", "⌿"):
+            assert isinstance(op, str)
+            return ReduceDerived(op, left)
+        if op in ("\\", "⍀"):
+            assert isinstance(op, str)
+            return ScanDerived(op, left)
+        raise SyntaxError_(f"Cannot store operator {op} as a function")
 
     def _build_train(self, items: list[object]) -> object:
         """Build a train node from items (source left-to-right order).
@@ -731,7 +749,7 @@ class Parser:
                 while i <= len(stack):
                     cat, _node = stack[-i]
                     if cat == CAT_VERB:
-                        train_items.append(_node)
+                        train_items.append(self._resolve_operand(_node))
                     elif cat == CAT_NOUN and len(train_items) == 0:
                         train_items.append(_node)
                         leading_noun = True

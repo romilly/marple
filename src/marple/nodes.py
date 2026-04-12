@@ -184,6 +184,14 @@ class Node(ABC):
     def execute(self, ctx: ExecutionContext) -> object: ...
 
 
+class Literal(Node):
+    """Wrapper: an already-evaluated APLArray as a Node."""
+    def __init__(self, value: APLArray) -> None:
+        self.value = value
+    def execute(self, ctx: ExecutionContext) -> APLArray:
+        return self.value
+
+
 class Num(Node):
     def __init__(self, value: int | float) -> None:
         self.value = value
@@ -433,6 +441,40 @@ class ForkDerived(UnappliedFunction):
         return ctx.apply_fork_monadic(self, operand_node)
     def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
         return ctx.apply_fork_dyadic(self, left_node, right_node)
+
+
+class ReduceDerived(UnappliedFunction):
+    """Unapplied reduce-derived function: f/ or f⌿"""
+    def __init__(self, operator: str, function: object) -> None:
+        self.operator = operator
+        self.function = function
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ReduceDerived):
+            return NotImplemented
+        return self.operator == other.operator and self.function == other.function
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+        from marple.operator_binding import DerivedFunctionBinding
+        operand = ctx.evaluate(operand_node)
+        return DerivedFunctionBinding().apply(self.operator, self.function, operand)
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+        raise DomainError("Reduce cannot be applied dyadically")
+
+
+class ScanDerived(UnappliedFunction):
+    """Unapplied scan-derived function: f\\ or f⍀"""
+    def __init__(self, operator: str, function: object) -> None:
+        self.operator = operator
+        self.function = function
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ScanDerived):
+            return NotImplemented
+        return self.operator == other.operator and self.function == other.function
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+        from marple.operator_binding import DerivedFunctionBinding
+        operand = ctx.evaluate(operand_node)
+        return DerivedFunctionBinding().apply(self.operator, self.function, operand)
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+        raise DomainError("Scan cannot be applied dyadically")
 
 
 class IBeamDerived(UnappliedFunction, Node):
