@@ -321,11 +321,11 @@ class UnappliedFunction(APLValue):
     def name_class(self) -> int:
         return NC_FUNCTION
 
-    def apply_monadic(self, ctx: 'ExecutionContext', operand_node: object) -> 'APLArray':
-        raise NotImplementedError
+    @abstractmethod
+    def apply_monadic(self, ctx: 'ExecutionContext', operand_node: object) -> 'APLArray': ...
 
-    def apply_dyadic(self, ctx: 'ExecutionContext', left_node: object, right_node: object) -> 'APLArray':
-        raise NotImplementedError
+    @abstractmethod
+    def apply_dyadic(self, ctx: 'ExecutionContext', left_node: object, right_node: object) -> 'APLArray': ...
 
 
 class RankDerived(UnappliedFunction):
@@ -444,6 +444,8 @@ class IBeamDerived(UnappliedFunction, Node):
     def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
         operand = ctx.evaluate(operand_node)
         return ctx.call_ibeam(self.path, operand)
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+        raise DomainError("Dyadic i-beam not yet supported")
 
 
 class InnerProduct(Node):
