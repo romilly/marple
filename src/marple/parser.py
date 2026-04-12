@@ -19,6 +19,8 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     ExecutionContext,
     FmtArgs,
     ForkDerived,
+    Marker,
+    _MARKER,
     FunctionRef,
     Guard,
     IBeamDerived,
@@ -47,6 +49,8 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     Zilde,
 )
 from marple.tokenizer import Token, TokenType, Tokenizer
+
+StackItem = Node | BoundOperator | FmtArgs | Marker
 
 
 # ── Category constants for Iverson's stack-based parser ──
@@ -155,13 +159,13 @@ class Parser:
 
     # ── Item building (token → classified items) ──
 
-    def _build_items(self) -> list[tuple[int, object]]:
+    def _build_items(self) -> list[tuple[int, StackItem]]:
         """Build classified items from current position to expression end.
 
         Advances self._pos as tokens are consumed. Stops at statement
         boundaries (⋄, :, }, ], ;, EOF) at paren depth 0.
         """
-        items: list[tuple[int, object]] = []
+        items: list[tuple[int, StackItem]] = []
         paren_depth = 0
         stop_types = frozenset({
             TokenType.DIAMOND, TokenType.GUARD, TokenType.RBRACE,
@@ -177,7 +181,7 @@ class Parser:
 
             # Parens need inline handling — they track paren_depth state
             if tok.type == TokenType.LPAREN:
-                items.append((CAT_LP, None))
+                items.append((CAT_LP, _MARKER))
                 self._pos += 1
                 paren_depth += 1
                 continue
@@ -185,7 +189,7 @@ class Parser:
                 paren_depth -= 1
                 if paren_depth < 0:
                     break
-                items.append((CAT_RP, None))
+                items.append((CAT_RP, _MARKER))
                 self._pos += 1
                 # (expr)[idx] — bracket index binds to parenthesised expression
                 if (paren_depth == 0
@@ -364,7 +368,7 @@ class Parser:
 
     # ── AST construction helpers ──
 
-    def _make_monadic(self, verb_node: object, arg_node: object) -> object:
+    def _make_monadic(self, verb_node: StackItem, arg_node: Node) -> Node:
         """Create AST node for monadic verb application."""
         if isinstance(verb_node, FunctionRef):
             return MonadicFunc(verb_node.glyph, arg_node)
@@ -379,8 +383,8 @@ class Parser:
             return MonadicDfnCall(verb_node, arg_node)
         raise SyntaxError_(f"Cannot apply as monadic function: {type(verb_node)}")
 
-    def _make_dyadic(self, verb_node: object, left_node: object,
-                     right_node: object) -> object:
+    def _make_dyadic(self, verb_node: StackItem, left_node: Node,
+                     right_node: Node) -> Node:
         """Create AST node for dyadic verb application."""
         if isinstance(verb_node, FunctionRef):
             return DyadicFunc(verb_node.glyph, left_node, right_node)
@@ -606,16 +610,16 @@ class Parser:
 
     # ── Iverson's stack-based parsing algorithm ──
 
-    def _stack_parse(self, items: list[tuple[int, object]]) -> object:
+    def _stack_parse(self, items: list[tuple[int, StackItem]]) -> StackItem:
         """Run Iverson's 9-case stack-based parser on classified items.
 
         Items are processed right-to-left. The stack grows upward.
         stack[-1] = r0 (top/newest), stack[-2] = r1, etc.
         """
-        stack: list[tuple[int, object]] = []
+        stack: list[tuple[int, StackItem]] = []
         # Items in left-to-right order; pop from right = read right-to-left
         # END marker at position 0 = popped last = leftmost sentinel
-        input_q = [(CAT_END, None)] + items
+        input_q = [(CAT_END, _MARKER)] + items
 
         while True:
             n = len(stack)
@@ -798,7 +802,7 @@ class Parser:
                     break
 
         # Extract result — should be END + single result on stack
-        results = [(cat, node) for cat, node in stack if cat != CAT_END and node is not None]
+        results = [(cat, node) for cat, node in stack if cat != CAT_END and not isinstance(node, Marker)]
         if len(results) == 0:
             return Num(0)
         if len(results) > 1:

@@ -164,6 +164,13 @@ class ExecutionContext(Protocol):
     def call_ibeam(self, path: str, operand: APLArray) -> APLArray: ...
 
 
+class Marker:
+    """Sentinel for LP, RP, and END positions on the parser stack."""
+
+
+_MARKER = Marker()
+
+
 class Node(ABC):
     """Abstract base for all AST nodes that can be evaluated."""
     def __eq__(self, other: object) -> bool:
