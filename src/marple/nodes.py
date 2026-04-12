@@ -324,7 +324,7 @@ class DyadicDopCall(Evaluatable):
         return dop_val.apply(argument, alpha_alpha=left_operand, omega_omega=right_operand)
 
 
-class UnappliedFunction(APLValue):
+class UnappliedFunction(APLValue, Node):
     """Base class for all unapplied APL function values."""
 
     def name_class(self) -> int:
@@ -607,7 +607,7 @@ class ScanDerived(UnappliedFunction):
         raise DomainError("Scan cannot be applied dyadically")
 
 
-class IBeamDerived(UnappliedFunction, Evaluatable):
+class IBeamDerived(UnappliedFunction, Evaluatable):  # Evaluatable for execute()
     """I-beam derived function: ⌶'module.function'"""
     def __init__(self, path: str) -> None:
         self.path = path
@@ -721,7 +721,7 @@ class Alpha(Evaluatable):
         return ctx.env["⍺"]
 
 
-class FunctionRef(UnappliedFunction, Evaluatable):
+class FunctionRef(UnappliedFunction, Evaluatable):  # Evaluatable for execute()
     """A reference to a primitive function glyph, used as a dop operand."""
     def __init__(self, glyph: str) -> None:
         self.glyph = glyph
@@ -794,27 +794,19 @@ class Nabla(Evaluatable):
         return ctx.env["∇"]
 
 
-class Guard:
-    def __init__(self, condition: object, body: object) -> None:
+class Guard(Node):
+    def __init__(self, condition: Evaluatable, body: Evaluatable) -> None:
         self.condition = condition
         self.body = body
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Guard):
-            return NotImplemented
-        return self.condition == other.condition and self.body == other.body
 
 
-class AlphaDefault:
-    def __init__(self, default: object) -> None:
+class AlphaDefault(Node):
+    def __init__(self, default: Evaluatable) -> None:
         self.default = default
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, AlphaDefault):
-            return NotImplemented
-        return self.default == other.default
 
 
 class Dfn(Evaluatable):
-    def __init__(self, body: list[object]) -> None:
+    def __init__(self, body: list[Evaluatable | Guard | AlphaDefault]) -> None:
         self.body = body
     def execute(self, ctx: ExecutionContext) -> object:
         return ctx.create_binding(self)
