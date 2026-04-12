@@ -39,6 +39,7 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     RankDerived,
     Str,
     SysVar,
+    UnappliedFunction,
     Var,
     Vector,
     Zilde,
@@ -579,11 +580,11 @@ class Parser:
         appropriate *Derived class so that applying `f` later
         dispatches correctly.
         """
-        if isinstance(value_node, Node):
+        if isinstance(value_node, (Node, UnappliedFunction)):
             return value_node
         if isinstance(value_node, BoundOperator):
             return self._bound_to_derived(value_node)
-        return value_node
+        raise SyntaxError_(f"Invalid assignment value: {value_node}")
 
     # ── Iverson's stack-based parsing algorithm ──
 

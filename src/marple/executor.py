@@ -23,7 +23,7 @@ from marple.parser import (
     Node,
     RankDerived,
 )
-from marple.symbol_table import NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN
+from marple.symbol_table import NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN, APLValue
 
 from marple.environment import Environment
 from marple.ports.filesystem import FileSystem
@@ -58,12 +58,9 @@ def _apl_chars_to_str(data: Any) -> str:
     return chars_to_str(data)
 
 
-def _name_class(value: object) -> int:
+def _name_class(value: APLValue) -> int:
     """Return the APL name class for a value."""
-    from marple.symbol_table import APLValue
-    if isinstance(value, APLValue):
-        return value.name_class()
-    return NC_UNKNOWN
+    return value.name_class()
 
 
 class Executor:
@@ -176,10 +173,11 @@ class Executor:
         # Function-like values (FunctionRef, RankDerived, BesideDerived,
         # etc.) are already in their stored form from the parser —
         # they are not Node instances and should not be evaluated.
-        value: object
+        value: APLValue
         if isinstance(value_node, Node):
-            value = self.evaluate(value_node)
+            value = self.evaluate(value_node)  # type: ignore[assignment]
         else:
+            assert isinstance(value_node, APLValue)
             value = value_node
         if name in ("⎕", "⍞"):
             if not isinstance(value, APLArray):
