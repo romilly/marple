@@ -6,9 +6,10 @@ from marple.backend_functions import (
 )
 from marple.errors import DomainError, LengthError, RankError
 from marple.get_numpy import np
+from marple.symbol_table import NC_ARRAY, APLValue
 
 
-class APLArray:
+class APLArray(APLValue):
     """APL array backed by numpy arrays."""
 
     def __init__(self, shape: list[int], data: Any) -> None:
@@ -40,6 +41,9 @@ class APLArray:
 
     def is_scalar(self) -> bool:
         return self.shape == []
+
+    def name_class(self) -> int:
+        return NC_ARRAY
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, APLArray):

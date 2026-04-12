@@ -60,17 +60,9 @@ def _apl_chars_to_str(data: Any) -> str:
 
 def _name_class(value: object) -> int:
     """Return the APL name class for a value."""
-    from marple.dfn_binding import DfnBinding
-    from marple.nodes import (
-        AtopDerived, BesideDerived, CommuteDerived, ForkDerived,
-        FunctionRef, IBeamDerived, PowerDerived, RankDerived,
-    )
-    if isinstance(value, (DfnBinding, FunctionRef, RankDerived,
-                          BesideDerived, PowerDerived, CommuteDerived,
-                          IBeamDerived, AtopDerived, ForkDerived)):
-        return NC_FUNCTION
-    if isinstance(value, APLArray):
-        return NC_ARRAY
+    from marple.symbol_table import APLValue
+    if isinstance(value, APLValue):
+        return value.name_class()
     return NC_UNKNOWN
 
 

@@ -3,6 +3,7 @@
 
 from marple.numpy_array import APLArray, S
 from marple.executor import Executor
+from marple.nodes import UnappliedFunction
 from marple.parser import AlphaDefault, Dfn, Guard
 
 from marple.environment import Environment
@@ -27,7 +28,7 @@ def _is_tail_self_call(node: object) -> bool:
     return False
 
 
-class DfnBinding(Executor):
+class DfnBinding(UnappliedFunction, Executor):
     """A dfn or dop bound to the environment in which it was defined."""
 
     def __init__(self, dfn: Dfn, defining_env: Environment) -> None:

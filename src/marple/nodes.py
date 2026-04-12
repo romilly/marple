@@ -8,6 +8,7 @@ from typing import Any, Protocol
 from marple.numpy_array import APLArray, S
 from marple.backend_functions import is_numeric_array, maybe_upcast
 from marple.errors import DomainError, ValueError_
+from marple.symbol_table import NC_FUNCTION, APLValue
 
 
 _INNER_SCALAR_OPS: dict[str, Any] = {
@@ -314,7 +315,14 @@ class DyadicDopCall(Node):
         return dop_val.apply(argument, alpha_alpha=left_operand, omega_omega=right_operand)
 
 
-class RankDerived:
+class UnappliedFunction(APLValue):
+    """Base class for all unapplied APL function values."""
+
+    def name_class(self) -> int:
+        return NC_FUNCTION
+
+
+class RankDerived(UnappliedFunction):
     """Unapplied rank-derived function: f⍤k"""
     def __init__(self, function: object, rank_spec: object) -> None:
         self.function = function
@@ -325,14 +333,14 @@ class RankDerived:
         return self.function == other.function and self.rank_spec == other.rank_spec
 
 
-class PowerDerived:
+class PowerDerived(UnappliedFunction):
     """Unapplied power-derived function: f⍣g"""
     def __init__(self, function: object, right_operand: object) -> None:
         self.function = function
         self.right_operand = right_operand
 
 
-class CommuteDerived:
+class CommuteDerived(UnappliedFunction):
     """Unapplied commute-derived function: f⍨
 
     Monadic application:  f⍨ ω  ≡  ω f ω    (apply with both sides)
@@ -345,7 +353,7 @@ class CommuteDerived:
         self.function = function
 
 
-class BesideDerived:
+class BesideDerived(UnappliedFunction):
     """Unapplied beside-derived function: f∘g
 
     Monadic application:  (f∘g) ω  ≡  f (g ω)
@@ -364,7 +372,7 @@ class BesideDerived:
         return self.f == other.f and self.g == other.g
 
 
-class AtopDerived:
+class AtopDerived(UnappliedFunction):
     """(g h) — 2-train atop.
 
     Monadic: (g h) ω   ≡ g (h ω)
@@ -379,7 +387,7 @@ class AtopDerived:
         return self.g == other.g and self.h == other.h
 
 
-class ForkDerived:
+class ForkDerived(UnappliedFunction):
     """(f g h) — 3-train fork.
 
     f may be a function or an array (Agh-fork).
@@ -397,7 +405,7 @@ class ForkDerived:
         return self.f == other.f and self.g == other.g and self.h == other.h
 
 
-class IBeamDerived(Node):
+class IBeamDerived(UnappliedFunction, Node):
     """I-beam derived function: ⌶'module.function'"""
     def __init__(self, path: str) -> None:
         self.path = path
@@ -509,7 +517,7 @@ class Alpha(Node):
         return ctx.env["⍺"]
 
 
-class FunctionRef(Node):
+class FunctionRef(UnappliedFunction, Node):
     """A reference to a primitive function glyph, used as a dop operand."""
     def __init__(self, glyph: str) -> None:
         self.glyph = glyph
