@@ -149,39 +149,43 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
 class ExecutionContext(Protocol):
     """Interface that AST nodes use to evaluate sub-expressions."""
     env: Any
-    def evaluate(self, node: 'Node') -> APLArray: ...
+    def evaluate(self, node: 'Evaluatable') -> APLArray: ...
     def dispatch_monadic(self, glyph: str, operand: APLArray) -> APLArray: ...
     def dispatch_dyadic(self, glyph: str, left: APLArray, right: APLArray) -> APLArray: ...
     def apply_derived(self, operator: str, function: object, operand: APLArray) -> APLArray: ...
-    def assign(self, name: str, value_node: 'Node | UnappliedFunction') -> APLArray: ...
+    def assign(self, name: str, value_node: 'Evaluatable | UnappliedFunction') -> APLArray: ...
     def eval_sysvar(self, name: str) -> APLArray: ...
-    def create_binding(self, dfn_node: object) -> object: ...
-    def dispatch_sys_monadic(self, name: str, operand_node: 'Node') -> APLArray: ...
-    def dispatch_sys_dyadic(self, name: str, left_node: 'Node', right_node: 'Node') -> APLArray: ...
+    def create_binding(self, dfn_node: 'Evaluatable') -> object: ...
+    def dispatch_sys_monadic(self, name: str, operand_node: 'Evaluatable') -> APLArray: ...
+    def dispatch_sys_dyadic(self, name: str, left_node: 'Evaluatable', right_node: 'Evaluatable') -> APLArray: ...
     def apply_func_monadic(self, func: object, omega: 'APLArray') -> 'APLArray': ...
     def apply_func_dyadic(self, func: object, alpha: 'APLArray', omega: 'APLArray') -> 'APLArray': ...
     def resolve_qualified(self, parts: list[str]) -> object: ...
     def call_ibeam(self, path: str, operand: APLArray) -> APLArray: ...
 
 
-class Marker:
+class Node(ABC):
+    """Abstract base for all items on the parser stack."""
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return self.__dict__ == other.__dict__
+
+
+class Marker(Node):
     """Sentinel for LP, RP, and END positions on the parser stack."""
 
 
 _MARKER = Marker()
 
 
-class Node(ABC):
-    """Abstract base for all AST nodes that can be evaluated."""
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, self.__class__):
-            return NotImplemented
-        return self.__dict__ == other.__dict__
+class Evaluatable(Node):
+    """A Node that can be executed to produce a value."""
     @abstractmethod
     def execute(self, ctx: ExecutionContext) -> object: ...
 
 
-class Literal(Node):
+class Literal(Evaluatable):
     """Wrapper: an already-evaluated APLArray as a Node."""
     def __init__(self, value: APLArray) -> None:
         self.value = value
@@ -189,7 +193,7 @@ class Literal(Node):
         return self.value
 
 
-class Num(Node):
+class Num(Evaluatable):
     def __init__(self, value: int | float) -> None:
         self.value = value
     def execute(self, ctx: ExecutionContext) -> APLArray:
@@ -200,7 +204,7 @@ class Num(Node):
         return S(value)
 
 
-class Str(Node):
+class Str(Evaluatable):
     def __init__(self, value: str) -> None:
         self.value = value
     def execute(self, ctx: ExecutionContext) -> APLArray:
@@ -214,7 +218,7 @@ class Str(Node):
         return APLArray([len(self.value)], str_to_char_array(self.value))
 
 
-class Vector(Node):
+class Vector(Evaluatable):
     def __init__(self, elements: list[Num]) -> None:
         self.elements = elements
     def execute(self, ctx: ExecutionContext) -> APLArray:
@@ -222,14 +226,14 @@ class Vector(Node):
         return APLArray.array([len(values)], list(values))
 
 
-class Zilde(Node):
+class Zilde(Evaluatable):
     """⍬ — the empty numeric vector literal (equivalent to ⍳0)."""
     def execute(self, ctx: ExecutionContext) -> APLArray:
         return APLArray.array([0], [])
 
 
-class MonadicFunc(Node):
-    def __init__(self, function: str, operand: Node) -> None:
+class MonadicFunc(Evaluatable):
+    def __init__(self, function: str, operand: Evaluatable) -> None:
         self.function = function
         self.operand = operand
     def execute(self, ctx: ExecutionContext) -> APLArray:
@@ -237,8 +241,8 @@ class MonadicFunc(Node):
         return ctx.dispatch_monadic(self.function, operand)
 
 
-class DyadicFunc(Node):
-    def __init__(self, function: str, left: Node, right: Node) -> None:
+class DyadicFunc(Evaluatable):
+    def __init__(self, function: str, left: Evaluatable, right: Evaluatable) -> None:
         self.function = function
         self.left = left
         self.right = right
@@ -248,7 +252,7 @@ class DyadicFunc(Node):
         return ctx.dispatch_dyadic(self.function, left, right)
 
 
-class Assignment(Node):
+class Assignment(Evaluatable):
     def __init__(self, name: str, value: object) -> None:
         self.name = name
         self.value = value
@@ -256,7 +260,7 @@ class Assignment(Node):
         return ctx.assign(self.name, self.value)
 
 
-class Var(Node):
+class Var(Evaluatable):
     def __init__(self, name: str) -> None:
         self.name = name
     def execute(self, ctx: ExecutionContext) -> APLArray:
@@ -265,15 +269,15 @@ class Var(Node):
         return ctx.env[self.name]
 
 
-class QualifiedVar(Node):
+class QualifiedVar(Evaluatable):
     def __init__(self, parts: list[str]) -> None:
         self.parts = parts
     def execute(self, ctx: ExecutionContext) -> object:
         return ctx.resolve_qualified(self.parts)
 
 
-class DerivedFunc(Node):
-    def __init__(self, operator: str, function: object, operand: Node) -> None:
+class DerivedFunc(Evaluatable):
+    def __init__(self, operator: str, function: object, operand: Evaluatable) -> None:
         self.operator = operator
         self.function = function
         self.operand = operand
@@ -282,11 +286,11 @@ class DerivedFunc(Node):
         return ctx.apply_derived(self.operator, self.function, operand)
 
 
-class MonadicDopCall(Node):
+class MonadicDopCall(Evaluatable):
     """User-defined operator applied: (operand op) argument
     or: left (operand op) right (when derived verb is used dyadically)"""
-    def __init__(self, op_name: Node, operand: Node, argument: Node,
-                 alpha: Node | None = None) -> None:
+    def __init__(self, op_name: Evaluatable, operand: Evaluatable, argument: Evaluatable,
+                 alpha: Evaluatable | None = None) -> None:
         self.op_name = op_name
         self.operand = operand
         self.argument = argument
@@ -302,9 +306,9 @@ class MonadicDopCall(Node):
         return dop_val.apply(argument, alpha_alpha=operand, alpha=alpha)
 
 
-class DyadicDopCall(Node):
+class DyadicDopCall(Evaluatable):
     """User-defined operator applied dyadically: left (operand op) right"""
-    def __init__(self, op_name: Node, operand: Node, left: Node, right: Node) -> None:
+    def __init__(self, op_name: Evaluatable, operand: Evaluatable, left: Evaluatable, right: Evaluatable) -> None:
         self.op_name = op_name
         self.operand = operand
         self.left = left
@@ -327,10 +331,10 @@ class UnappliedFunction(APLValue):
         return NC_FUNCTION
 
     @abstractmethod
-    def apply_monadic(self, ctx: 'ExecutionContext', operand_node: 'Node') -> 'APLArray': ...
+    def apply_monadic(self, ctx: 'ExecutionContext', operand_node: 'Evaluatable') -> 'APLArray': ...
 
     @abstractmethod
-    def apply_dyadic(self, ctx: 'ExecutionContext', left_node: 'Node', right_node: 'Node') -> 'APLArray': ...
+    def apply_dyadic(self, ctx: 'ExecutionContext', left_node: 'Evaluatable', right_node: 'Evaluatable') -> 'APLArray': ...
 
 
 class RankDerived(UnappliedFunction):
@@ -342,7 +346,7 @@ class RankDerived(UnappliedFunction):
         if not isinstance(other, RankDerived):
             return NotImplemented
         return self.function == other.function and self.rank_spec == other.rank_spec
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
         omega = ctx.evaluate(operand_node)
         rank_spec_val = ctx.evaluate(self.rank_spec)
@@ -352,7 +356,7 @@ class RankDerived(UnappliedFunction):
         results = [ctx.apply_func_monadic(self.function, cell) for cell in cells]
         return reassemble(frame_shape, results)
 
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
         from marple.errors import LengthError
         alpha = ctx.evaluate(left_node)
@@ -401,7 +405,7 @@ class PowerDerived(UnappliedFunction):
                 return S(1 if left.data.item() == right.data.item() else 0)
         return ctx.apply_func_dyadic(func, left, right)
 
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         omega = ctx.evaluate(operand_node)
         right_val = self._resolve_right(ctx)
         if isinstance(right_val, APLArray) and right_val.is_scalar():
@@ -422,7 +426,7 @@ class PowerDerived(UnappliedFunction):
                 prev = curr
         raise DomainError("⍣ right operand must be integer or function")
 
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         alpha = ctx.evaluate(left_node)
         omega = ctx.evaluate(right_node)
         right_val = self._resolve_right(ctx)
@@ -456,11 +460,11 @@ class CommuteDerived(UnappliedFunction):
     """
     def __init__(self, function: object) -> None:
         self.function = function
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         """f⍨ ω ≡ ω f ω. Evaluates ω exactly once."""
         omega = ctx.evaluate(operand_node)
         return ctx.apply_func_dyadic(self.function, omega, omega)
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         """α f⍨ ω ≡ ω f α (swap arguments)."""
         alpha = ctx.evaluate(left_node)
         omega = ctx.evaluate(right_node)
@@ -484,12 +488,12 @@ class BesideDerived(UnappliedFunction):
         if not isinstance(other, BesideDerived):
             return NotImplemented
         return self.f == other.f and self.g == other.g
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         """(f∘g) ω ≡ f (g ω)."""
         omega = ctx.evaluate(operand_node)
         g_result = ctx.apply_func_monadic(self.g, omega)
         return ctx.apply_func_monadic(self.f, g_result)
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         """α (f∘g) ω ≡ α f (g ω)."""
         alpha = ctx.evaluate(left_node)
         omega = ctx.evaluate(right_node)
@@ -510,12 +514,12 @@ class AtopDerived(UnappliedFunction):
         if not isinstance(other, AtopDerived):
             return NotImplemented
         return self.g == other.g and self.h == other.h
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         """(g h) ω ≡ g (h ω)."""
         omega = ctx.evaluate(operand_node)
         h_result = ctx.apply_func_monadic(self.h, omega)
         return ctx.apply_func_monadic(self.g, h_result)
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         """α (g h) ω ≡ g (α h ω)."""
         alpha = ctx.evaluate(left_node)
         omega = ctx.evaluate(right_node)
@@ -545,7 +549,7 @@ class ForkDerived(UnappliedFunction):
             return ctx.evaluate(self.f)
         return self.f
 
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         """(f g h) ω ≡ (f ω) g (h ω). Agh-fork: A g (h ω)."""
         omega = ctx.evaluate(operand_node)
         right = ctx.apply_func_monadic(self.h, omega)
@@ -556,7 +560,7 @@ class ForkDerived(UnappliedFunction):
             left = ctx.apply_func_monadic(f_val, omega)
         return ctx.apply_func_dyadic(self.g, left, right)
 
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         """α (f g h) ω ≡ (α f ω) g (α h ω)."""
         alpha = ctx.evaluate(left_node)
         omega = ctx.evaluate(right_node)
@@ -578,11 +582,11 @@ class ReduceDerived(UnappliedFunction):
         if not isinstance(other, ReduceDerived):
             return NotImplemented
         return self.operator == other.operator and self.function == other.function
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         from marple.operator_binding import DerivedFunctionBinding
         operand = ctx.evaluate(operand_node)
         return DerivedFunctionBinding().apply(self.operator, self.function, operand)
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         raise DomainError("Reduce cannot be applied dyadically")
 
 
@@ -595,29 +599,29 @@ class ScanDerived(UnappliedFunction):
         if not isinstance(other, ScanDerived):
             return NotImplemented
         return self.operator == other.operator and self.function == other.function
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         from marple.operator_binding import DerivedFunctionBinding
         operand = ctx.evaluate(operand_node)
         return DerivedFunctionBinding().apply(self.operator, self.function, operand)
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         raise DomainError("Scan cannot be applied dyadically")
 
 
-class IBeamDerived(UnappliedFunction, Node):
+class IBeamDerived(UnappliedFunction, Evaluatable):
     """I-beam derived function: ⌶'module.function'"""
     def __init__(self, path: str) -> None:
         self.path = path
     def execute(self, ctx: ExecutionContext) -> object:
         return self
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         operand = ctx.evaluate(operand_node)
         return ctx.call_ibeam(self.path, operand)
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         raise DomainError("Dyadic i-beam not yet supported")
 
 
-class InnerProduct(Node):
-    def __init__(self, left_fn: object, right_fn: object, left: Node, right: Node) -> None:
+class InnerProduct(Evaluatable):
+    def __init__(self, left_fn: object, right_fn: object, left: Evaluatable, right: Evaluatable) -> None:
         self.left_fn = left_fn
         self.right_fn = right_fn
         self.left = left
@@ -630,8 +634,8 @@ class InnerProduct(Node):
         return _inner_product(left, right, alpha, omega)
 
 
-class OuterProduct(Node):
-    def __init__(self, function: object, left: Node, right: Node) -> None:
+class OuterProduct(Evaluatable):
+    def __init__(self, function: object, left: Evaluatable, right: Evaluatable) -> None:
         self.function = function
         self.left = left
         self.right = right
@@ -642,15 +646,15 @@ class OuterProduct(Node):
         return _outer_product(fn, alpha, omega)
 
 
-class SysVar(Node):
+class SysVar(Evaluatable):
     def __init__(self, name: str) -> None:
         self.name = name
     def execute(self, ctx: ExecutionContext) -> APLArray:
         return ctx.eval_sysvar(self.name)
 
 
-class Index(Node):
-    def __init__(self, array: Node, indices: list[Node | None]) -> None:
+class Index(Evaluatable):
+    def __init__(self, array: Evaluatable, indices: list[Evaluatable | None]) -> None:
         self.array = array
         self.indices = indices
     def execute(self, ctx: ExecutionContext) -> APLArray:
@@ -706,36 +710,36 @@ class Index(Node):
         return APLArray.array(result_shape, result_list)
 
 
-class Omega(Node):
+class Omega(Evaluatable):
     def execute(self, ctx: ExecutionContext) -> APLArray:
         if "⍵" not in ctx.env:
             raise ValueError_("⍵ used outside of dfn")
         return ctx.env["⍵"]
 
 
-class Alpha(Node):
+class Alpha(Evaluatable):
     def execute(self, ctx: ExecutionContext) -> APLArray:
         if "⍺" not in ctx.env:
             raise ValueError_("⍺ used outside of dfn")
         return ctx.env["⍺"]
 
 
-class FunctionRef(UnappliedFunction, Node):
+class FunctionRef(UnappliedFunction, Evaluatable):
     """A reference to a primitive function glyph, used as a dop operand."""
     def __init__(self, glyph: str) -> None:
         self.glyph = glyph
     def execute(self, ctx: ExecutionContext) -> object:
         return self
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         operand = ctx.evaluate(operand_node)
         return ctx.dispatch_monadic(self.glyph, operand)
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         left = ctx.evaluate(left_node)
         right = ctx.evaluate(right_node)
         return ctx.dispatch_dyadic(self.glyph, left, right)
 
 
-class AlphaAlpha(Node):
+class AlphaAlpha(Evaluatable):
     """⍺⍺ — left operand reference in a dop."""
     def execute(self, ctx: ExecutionContext) -> object:
         if "⍺⍺" not in ctx.env:
@@ -743,7 +747,7 @@ class AlphaAlpha(Node):
         return ctx.env["⍺⍺"]
 
 
-class OmegaOmega(Node):
+class OmegaOmega(Evaluatable):
     """⍵⍵ — right operand reference in a dop."""
     def execute(self, ctx: ExecutionContext) -> object:
         if "⍵⍵" not in ctx.env:
@@ -755,7 +759,7 @@ class OmegaOmega(Node):
 CAT_EMPTY = 8
 
 
-class BoundOperator:
+class BoundOperator(Node):
     """Operator bound to operand(s), not yet applied to argument."""
     def __init__(self, operator: str | Var,
                  left_operand, left_cat: int,
@@ -774,7 +778,7 @@ class BoundOperator:
                 self.right_operand == other.right_operand)
 
 
-class FmtArgs:
+class FmtArgs(Node):
     """List of semicolon-separated arguments for ⎕FMT."""
     def __init__(self, args: list[object]) -> None:
         self.args = args
@@ -784,7 +788,7 @@ class FmtArgs:
         return self.args == other.args
 
 
-class Nabla(Node):
+class Nabla(Evaluatable):
     def execute(self, ctx: ExecutionContext) -> object:
         if "∇" not in ctx.env:
             raise ValueError_("∇ used outside of dfn")
@@ -810,15 +814,15 @@ class AlphaDefault:
         return self.default == other.default
 
 
-class Dfn(Node):
+class Dfn(Evaluatable):
     def __init__(self, body: list[object]) -> None:
         self.body = body
     def execute(self, ctx: ExecutionContext) -> object:
         return ctx.create_binding(self)
 
 
-class MonadicDfnCall(Node):
-    def __init__(self, dfn: Node | UnappliedFunction, operand: Node) -> None:
+class MonadicDfnCall(Evaluatable):
+    def __init__(self, dfn: Evaluatable | UnappliedFunction, operand: Evaluatable) -> None:
         self.dfn = dfn
         self.operand = operand
     def execute(self, ctx: ExecutionContext) -> APLArray:
@@ -840,8 +844,8 @@ class MonadicDfnCall(Node):
         raise DomainError(f"Expected dfn, got {type(dfn_val)}")
 
 
-class DyadicDfnCall(Node):
-    def __init__(self, dfn: Node | UnappliedFunction, left: Node, right: Node) -> None:
+class DyadicDfnCall(Evaluatable):
+    def __init__(self, dfn: Evaluatable | UnappliedFunction, left: Evaluatable, right: Evaluatable) -> None:
         self.dfn = dfn
         self.left = left
         self.right = right
@@ -857,7 +861,7 @@ class DyadicDfnCall(Node):
         raise DomainError(f"Expected dfn, got {type(dfn_val)}")
 
 
-class Program(Node):
+class Program(Evaluatable):
     def __init__(self, statements: list[object]) -> None:
         self.statements = statements
     def execute(self, ctx: ExecutionContext) -> object:

@@ -16,6 +16,7 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     DyadicDfnCall,
     DyadicDopCall,
     DyadicFunc,
+    Evaluatable,
     ExecutionContext,
     FmtArgs,
     ForkDerived,
@@ -50,7 +51,7 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
 )
 from marple.tokenizer import Token, TokenType, Tokenizer
 
-StackItem = Node | BoundOperator | FmtArgs | Marker
+StackItem = Node  # All stack items are Node subclasses
 
 
 # ── Category constants for Iverson's stack-based parser ──
@@ -368,7 +369,7 @@ class Parser:
 
     # ── AST construction helpers ──
 
-    def _make_monadic(self, verb_node: StackItem, arg_node: Node) -> Node:
+    def _make_monadic(self, verb_node: StackItem, arg_node: Evaluatable) -> Evaluatable:
         """Create AST node for monadic verb application."""
         if isinstance(verb_node, FunctionRef):
             return MonadicFunc(verb_node.glyph, arg_node)
@@ -383,8 +384,8 @@ class Parser:
             return MonadicDfnCall(verb_node, arg_node)
         raise SyntaxError_(f"Cannot apply as monadic function: {type(verb_node)}")
 
-    def _make_dyadic(self, verb_node: StackItem, left_node: Node,
-                     right_node: Node) -> Node:
+    def _make_dyadic(self, verb_node: StackItem, left_node: Evaluatable,
+                     right_node: Evaluatable) -> Evaluatable:
         """Create AST node for dyadic verb application."""
         if isinstance(verb_node, FunctionRef):
             return DyadicFunc(verb_node.glyph, left_node, right_node)
@@ -602,10 +603,10 @@ class Parser:
         appropriate *Derived class so that applying `f` later
         dispatches correctly.
         """
-        if isinstance(value_node, (Node, UnappliedFunction)):
-            return value_node
         if isinstance(value_node, BoundOperator):
             return self._bound_to_derived(value_node)
+        if isinstance(value_node, (Evaluatable, UnappliedFunction)):
+            return value_node
         raise SyntaxError_(f"Invalid assignment value: {value_node}")
 
     # ── Iverson's stack-based parsing algorithm ──

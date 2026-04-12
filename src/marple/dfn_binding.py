@@ -3,7 +3,7 @@
 
 from marple.numpy_array import APLArray, S
 from marple.executor import Executor
-from marple.nodes import ExecutionContext, Node, UnappliedFunction
+from marple.nodes import Evaluatable, ExecutionContext, Node, UnappliedFunction
 from marple.parser import AlphaDefault, Dfn, Guard
 
 from marple.environment import Environment
@@ -36,11 +36,11 @@ class DfnBinding(UnappliedFunction, Executor):
         self.defining_env = defining_env
         self.env = defining_env  # current env; swapped during apply
 
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         operand = ctx.evaluate(operand_node)
         return self.apply(operand)
 
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         right = ctx.evaluate(right_node)
         left = ctx.evaluate(left_node)
         return self.apply(right, alpha=left)
