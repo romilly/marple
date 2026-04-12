@@ -157,7 +157,6 @@ class ExecutionContext(Protocol):
     def create_binding(self, dfn_node: object) -> object: ...
     def dispatch_sys_monadic(self, name: str, operand_node: object) -> APLArray: ...
     def apply_rank_monadic(self, rank_node: object, operand_node: object) -> APLArray: ...
-    def resolve_dyadic(self, fn: object) -> Any: ...
     def dispatch_sys_dyadic(self, name: str, left_node: object, right_node: object) -> APLArray: ...
     def apply_rank_dyadic(self, rank_node: object, left_node: object, right_node: object) -> APLArray: ...
     def apply_power_monadic(self, power_node: object, operand_node: object) -> APLArray: ...
@@ -396,26 +395,6 @@ class ForkDerived:
         if not isinstance(other, ForkDerived):
             return NotImplemented
         return self.f == other.f and self.g == other.g and self.h == other.h
-
-
-class ReduceOp:
-    """Unapplied reduce: f/ as a function value"""
-    def __init__(self, function: str) -> None:
-        self.function = function
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, ReduceOp):
-            return NotImplemented
-        return self.function == other.function
-
-
-class ScanOp:
-    """Unapplied scan: f\\ as a function value"""
-    def __init__(self, function: str) -> None:
-        self.function = function
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, ScanOp):
-            return NotImplemented
-        return self.function == other.function
 
 
 class IBeamDerived(Node):

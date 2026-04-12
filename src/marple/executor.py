@@ -22,8 +22,6 @@ from marple.parser import (
     FunctionRef,
     Node,
     RankDerived,
-    ReduceOp,
-    ScanOp,
 )
 from marple.symbol_table import NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN
 
@@ -135,15 +133,6 @@ class Executor:
 
     def dispatch_dyadic(self, glyph: str, left: APLArray, right: APLArray) -> APLArray:
         return DyadicFunctionBinding(self.env).apply(glyph, left, right)
-
-    def resolve_dyadic(self, fn: object) -> object:
-        """Resolve a function reference to a dyadic callable."""
-        from marple.parser import FunctionRef
-        glyph = fn.glyph if isinstance(fn, FunctionRef) else fn
-        if not isinstance(glyph, str):
-            raise DomainError(f"Expected function for operator, got {type(fn)}")
-        binding = DyadicFunctionBinding(self.env)
-        return binding.resolve_with_env(glyph)
 
     def call_ibeam(self, path: str, operand: APLArray) -> APLArray:
         """Call a Python function via i-beam."""
@@ -325,10 +314,6 @@ class Executor:
         """Apply a function monadically. Used by rank operator."""
         if isinstance(func, FunctionRef):
             return MonadicFunctionBinding(self.env).apply(func.glyph, omega)
-        if isinstance(func, ReduceOp):
-            return DerivedFunctionBinding().apply("/", func.function, omega)
-        if isinstance(func, ScanOp):
-            return DerivedFunctionBinding().apply("\\", func.function, omega)
         if isinstance(func, BoundOperator) and func.operator == "⍤":
             # Nested rank: the function we're applying is itself a
             # rank-derived function — recursively decompose and apply.

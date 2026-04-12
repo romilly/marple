@@ -37,8 +37,6 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     Program,
     QualifiedVar,
     RankDerived,
-    ReduceOp,
-    ScanOp,
     Str,
     SysVar,
     Var,
@@ -444,12 +442,9 @@ class Parser:
 
     def _apply_user_dop_monadic(self, bound: BoundOperator, arg_node: object) -> object:
         operand = bound.left_operand
-        op_operand = FunctionRef(operand) if isinstance(operand, str) else operand
         if bound.right_operand is not None:
-            r_operand = bound.right_operand
-            r_operand = FunctionRef(r_operand) if isinstance(r_operand, str) else r_operand
-            return DyadicDopCall(bound.operator, op_operand, r_operand, arg_node)
-        return MonadicDopCall(bound.operator, op_operand, arg_node)
+            return DyadicDopCall(bound.operator, operand, bound.right_operand, arg_node)
+        return MonadicDopCall(bound.operator, operand, arg_node)
 
     _BOUND_MONADIC_DISPATCH: dict[str, Callable[['Parser', BoundOperator, object], object]] = {
         "/": _bound_monadic_reduce,
@@ -520,12 +515,9 @@ class Parser:
     def _apply_user_dop_dyadic(self, bound: BoundOperator,
                                left_node: object, right_node: object) -> object:
         operand = bound.left_operand
-        op_operand = FunctionRef(operand) if isinstance(operand, str) else operand
         if bound.right_operand is not None:
-            r_operand = bound.right_operand
-            r_operand = FunctionRef(r_operand) if isinstance(r_operand, str) else r_operand
-            return DyadicDopCall(bound.operator, op_operand, r_operand, right_node)
-        return MonadicDopCall(bound.operator, op_operand, right_node, alpha=left_node)
+            return DyadicDopCall(bound.operator, operand, bound.right_operand, right_node)
+        return MonadicDopCall(bound.operator, operand, right_node, alpha=left_node)
 
     _BOUND_DYADIC_DISPATCH: dict[str, Callable[['Parser', BoundOperator, object, object], object]] = {
         "⍤": _bound_dyadic_rank,
@@ -582,15 +574,13 @@ class Parser:
         """Convert a Case 6 value_node into a form that `ctx.assign`
         can store directly.
 
-        Node subclasses evaluate normally. Raw strings from CAT_VERB
-        (primitive glyphs like '+') wrap in FunctionRef. BoundOperator
-        instances from derived functions unwrap to the appropriate
-        *Derived class so that applying `f` later dispatches correctly.
+        Node subclasses (including FunctionRef) are returned as-is.
+        BoundOperator instances from derived functions unwrap to the
+        appropriate *Derived class so that applying `f` later
+        dispatches correctly.
         """
         if isinstance(value_node, Node):
             return value_node
-        if value_cat == CAT_VERB and isinstance(value_node, str):
-            return FunctionRef(value_node)
         if isinstance(value_node, BoundOperator):
             return self._bound_to_derived(value_node)
         return value_node
