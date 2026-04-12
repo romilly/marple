@@ -186,7 +186,7 @@ class Executor:
             if isinstance(val, DfnBinding):
                 function = lambda a, o, _b=val: _b.apply(o, alpha=a)
             elif isinstance(val, FunctionRef):
-                function = val.glyph
+                function = val
         return DerivedFunctionBinding().apply(operator, function, operand)
 
     def assign(self, name: str, value_node: object) -> APLArray:
@@ -323,8 +323,6 @@ class Executor:
 
     def apply_func_monadic(self, func: object, omega: APLArray) -> APLArray:
         """Apply a function monadically. Used by rank operator."""
-        if isinstance(func, str):
-            return MonadicFunctionBinding(self.env).apply(func, omega)
         if isinstance(func, FunctionRef):
             return MonadicFunctionBinding(self.env).apply(func.glyph, omega)
         if isinstance(func, ReduceOp):
@@ -410,8 +408,6 @@ class Executor:
     def _apply_func_dyadic(self, func: object, alpha: APLArray, omega: APLArray) -> APLArray:
         """Apply a function dyadically. Used by dyadic rank operator."""
         from marple.parser import FunctionRef
-        if isinstance(func, str):
-            return DyadicFunctionBinding(self.env).apply(func, alpha, omega)
         if isinstance(func, FunctionRef):
             return DyadicFunctionBinding(self.env).apply(func.glyph, alpha, omega)
         if isinstance(func, BoundOperator) and func.operator == "⍤":

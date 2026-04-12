@@ -306,8 +306,6 @@ class DerivedFunctionBinding:
 
     def _resolve_function(self, function: object) -> tuple[Any, str | None]:
         """Resolve a function node to (dyadic callable, glyph or None)."""
-        if isinstance(function, str):
-            return DyadicFunctionBinding.resolve(function), function
         if isinstance(function, FunctionRef):
             return DyadicFunctionBinding.resolve(function.glyph), function.glyph
         raise DomainError("Operators require primitive function operands")

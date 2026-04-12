@@ -231,7 +231,7 @@ class Parser:
     def _item_function(self, tok: Token, items: list[tuple[int, object]]) -> None:
         self._pos += 1
         assert isinstance(tok.value, str)
-        items.append((CAT_VERB, tok.value))
+        items.append((CAT_VERB, FunctionRef(tok.value)))
 
     def _item_operator(self, tok: Token, items: list[tuple[int, object]]) -> None:
         assert isinstance(tok.value, str)
@@ -365,13 +365,13 @@ class Parser:
 
     def _make_monadic(self, verb_node: object, arg_node: object) -> object:
         """Create AST node for monadic verb application."""
-        if isinstance(verb_node, str):
-            return MonadicFunc(verb_node, arg_node)
+        if isinstance(verb_node, FunctionRef):
+            return MonadicFunc(verb_node.glyph, arg_node)
         if isinstance(verb_node, BoundOperator):
             return self._apply_bound_monadic(verb_node, arg_node)
         if isinstance(verb_node, (Var, Dfn, QualifiedVar, Nabla,
                                   AlphaAlpha, OmegaOmega,
-                                  RankDerived, IBeamDerived, FunctionRef,
+                                  RankDerived, IBeamDerived,
                                   AtopDerived, ForkDerived)):
             return MonadicDfnCall(verb_node, arg_node)
         if isinstance(verb_node, SysVar):
@@ -381,13 +381,13 @@ class Parser:
     def _make_dyadic(self, verb_node: object, left_node: object,
                      right_node: object) -> object:
         """Create AST node for dyadic verb application."""
-        if isinstance(verb_node, str):
-            return DyadicFunc(verb_node, left_node, right_node)
+        if isinstance(verb_node, FunctionRef):
+            return DyadicFunc(verb_node.glyph, left_node, right_node)
         if isinstance(verb_node, BoundOperator):
             return self._apply_bound_dyadic(verb_node, left_node, right_node)
         if isinstance(verb_node, (Var, Dfn, QualifiedVar, Nabla,
                                   AlphaAlpha, OmegaOmega,
-                                  RankDerived, IBeamDerived, FunctionRef,
+                                  RankDerived, IBeamDerived,
                                   AtopDerived, ForkDerived)):
             return DyadicDfnCall(verb_node, left_node, right_node)
         if isinstance(verb_node, SysVar):
@@ -692,9 +692,7 @@ class Parser:
                 operand_cat = stack[-2][0]
                 adv_node = stack[-3][1]
                 assert isinstance(adv_node, (str, Var))
-                assert isinstance(operand_node, (str, Node, BoundOperator))
-                if isinstance(operand_node, str) and operand_cat == CAT_VERB:
-                    operand_node = FunctionRef(operand_node)
+                assert isinstance(operand_node, (Node, BoundOperator))
                 bound = BoundOperator(adv_node, operand_node, operand_cat)
                 stack[-3:-1] = [(CAT_VERB, bound)]
                 matched = True
@@ -724,12 +722,8 @@ class Parser:
                 right_operand = stack[-4][1]
                 right_cat = stack[-4][0]
                 assert isinstance(conj_node, (str, Var))
-                assert isinstance(left_operand, (str, Node, BoundOperator))
-                assert isinstance(right_operand, (str, Node, BoundOperator))
-                if isinstance(left_operand, str) and left_cat == CAT_VERB:
-                    left_operand = FunctionRef(left_operand)
-                if isinstance(right_operand, str) and right_cat == CAT_VERB:
-                    right_operand = FunctionRef(right_operand)
+                assert isinstance(left_operand, (Node, BoundOperator))
+                assert isinstance(right_operand, (Node, BoundOperator))
                 bound = BoundOperator(conj_node, left_operand, left_cat,
                                       right_operand, right_cat)
                 stack[-4:-1] = [(CAT_VERB, bound)]
