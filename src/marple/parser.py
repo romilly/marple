@@ -369,6 +369,13 @@ class Parser:
 
     # ── AST construction helpers ──
 
+    @staticmethod
+    def _as_evaluatable(item: StackItem) -> Evaluatable:
+        """Narrow a stack item to Evaluatable. Items classified as
+        CAT_NOUN or used as operands are always Evaluatable."""
+        assert isinstance(item, Evaluatable)
+        return item
+
     def _make_monadic(self, verb_node: StackItem, arg_node: Evaluatable) -> Evaluatable:
         """Create AST node for monadic verb application."""
         if isinstance(verb_node, FunctionRef):
@@ -635,7 +642,7 @@ class Parser:
             if (c0 in _CTX_MONAD
                     and c1 == CAT_VERB and c2 == CAT_NOUN):
                 verb_node = stack[-2][1]
-                arg_node = stack[-3][1]
+                arg_node = self._as_evaluatable(stack[-3][1])
                 result = self._make_monadic(verb_node, arg_node)
                 stack[-3:-1] = [(CAT_NOUN, result)]
                 matched = True
@@ -649,7 +656,7 @@ class Parser:
                     and not (n >= 4 and c3 == CAT_NOUN
                              and self._is_callable_noun(stack[-3][1]))):
                 verb_node = stack[-2][1]
-                arg_node = stack[-3][1]
+                arg_node = self._as_evaluatable(stack[-3][1])
                 result = self._make_monadic(verb_node, arg_node)
                 stack[-3:-1] = [(CAT_NOUN, result)]
                 matched = True
@@ -658,7 +665,7 @@ class Parser:
             elif (c0 == CAT_CONJ and c1 == CAT_NOUN
                     and c2 == CAT_VERB and c3 == CAT_NOUN):
                 verb_node = stack[-3][1]
-                arg_node = stack[-4][1]
+                arg_node = self._as_evaluatable(stack[-4][1])
                 result = self._make_monadic(verb_node, arg_node)
                 stack[-4:-2] = [(CAT_NOUN, result)]
                 matched = True
@@ -667,9 +674,9 @@ class Parser:
             elif (c0 in _CTX_DYAD
                     and c1 == CAT_NOUN and c2 == CAT_VERB
                     and c3 == CAT_NOUN):
-                left_node = stack[-2][1]
+                left_node = self._as_evaluatable(stack[-2][1])
                 verb_node = stack[-3][1]
-                right_node = stack[-4][1]
+                right_node = self._as_evaluatable(stack[-4][1])
                 result = self._make_dyadic(verb_node, left_node, right_node)
                 stack[-4:-1] = [(CAT_NOUN, result)]
                 matched = True
@@ -681,9 +688,9 @@ class Parser:
                     and c3 == CAT_NOUN
                     and not self._is_callable_noun(stack[-2][1])
                     and self._is_callable_noun(stack[-3][1])):
-                left_node = stack[-2][1]
+                left_node = self._as_evaluatable(stack[-2][1])
                 verb_node = stack[-3][1]
-                right_node = stack[-4][1]
+                right_node = self._as_evaluatable(stack[-4][1])
                 result = self._make_dyadic(verb_node, left_node, right_node)
                 stack[-4:-1] = [(CAT_NOUN, result)]
                 matched = True
@@ -694,7 +701,7 @@ class Parser:
                     and c2 == CAT_NOUN and c3 == CAT_NOUN
                     and self._is_callable_noun(stack[-3][1])):
                 verb_node = stack[-3][1]
-                arg_node = stack[-4][1]
+                arg_node = self._as_evaluatable(stack[-4][1])
                 result = self._make_monadic(verb_node, arg_node)
                 stack[-4:-2] = [(CAT_NOUN, result)]
                 matched = True

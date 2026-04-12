@@ -762,8 +762,8 @@ CAT_EMPTY = 8
 class BoundOperator(Node):
     """Operator bound to operand(s), not yet applied to argument."""
     def __init__(self, operator: str | Var,
-                 left_operand, left_cat: int,
-                 right_operand=None,
+                 left_operand: Node, left_cat: int,
+                 right_operand: Node | None = None,
                  right_cat: int = CAT_EMPTY) -> None:
         self.operator = operator
         self.left_operand = left_operand
@@ -778,10 +778,12 @@ class BoundOperator(Node):
                 self.right_operand == other.right_operand)
 
 
-class FmtArgs(Node):
+class FmtArgs(Evaluatable):
     """List of semicolon-separated arguments for ⎕FMT."""
-    def __init__(self, args: list[object]) -> None:
+    def __init__(self, args: list[Evaluatable]) -> None:
         self.args = args
+    def execute(self, ctx: ExecutionContext) -> APLArray:
+        raise DomainError("FmtArgs cannot be evaluated directly")
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, FmtArgs):
             return NotImplemented
