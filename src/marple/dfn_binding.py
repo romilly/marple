@@ -40,6 +40,11 @@ class DfnBinding(UnappliedFunction, Executor):
         operand = ctx.evaluate(operand_node)
         return self.apply(operand)
 
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+        right = ctx.evaluate(right_node)
+        left = ctx.evaluate(left_node)
+        return self.apply(right, alpha=left)
+
     def apply(
         self,
         omega: APLArray,

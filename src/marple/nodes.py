@@ -324,6 +324,9 @@ class UnappliedFunction(APLValue):
     def apply_monadic(self, ctx: 'ExecutionContext', operand_node: object) -> 'APLArray':
         raise NotImplementedError
 
+    def apply_dyadic(self, ctx: 'ExecutionContext', left_node: object, right_node: object) -> 'APLArray':
+        raise NotImplementedError
+
 
 class RankDerived(UnappliedFunction):
     """Unapplied rank-derived function: f⍤k"""
@@ -336,6 +339,8 @@ class RankDerived(UnappliedFunction):
         return self.function == other.function and self.rank_spec == other.rank_spec
     def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
         return ctx.apply_rank_monadic(self, operand_node)
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+        return ctx.apply_rank_dyadic(self, left_node, right_node)
 
 
 class PowerDerived(UnappliedFunction):
@@ -345,6 +350,8 @@ class PowerDerived(UnappliedFunction):
         self.right_operand = right_operand
     def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
         return ctx.apply_power_monadic(self, operand_node)
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+        return ctx.apply_power_dyadic(self, left_node, right_node)
 
 
 class CommuteDerived(UnappliedFunction):
@@ -360,6 +367,8 @@ class CommuteDerived(UnappliedFunction):
         self.function = function
     def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
         return ctx.apply_commute_monadic(self, operand_node)
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+        return ctx.apply_commute_dyadic(self, left_node, right_node)
 
 
 class BesideDerived(UnappliedFunction):
@@ -381,6 +390,8 @@ class BesideDerived(UnappliedFunction):
         return self.f == other.f and self.g == other.g
     def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
         return ctx.apply_beside_monadic(self, operand_node)
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+        return ctx.apply_beside_dyadic(self, left_node, right_node)
 
 
 class AtopDerived(UnappliedFunction):
@@ -398,6 +409,8 @@ class AtopDerived(UnappliedFunction):
         return self.g == other.g and self.h == other.h
     def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
         return ctx.apply_atop_monadic(self, operand_node)
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+        return ctx.apply_atop_dyadic(self, left_node, right_node)
 
 
 class ForkDerived(UnappliedFunction):
@@ -418,6 +431,8 @@ class ForkDerived(UnappliedFunction):
         return self.f == other.f and self.g == other.g and self.h == other.h
     def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
         return ctx.apply_fork_monadic(self, operand_node)
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+        return ctx.apply_fork_dyadic(self, left_node, right_node)
 
 
 class IBeamDerived(UnappliedFunction, Node):
@@ -544,6 +559,10 @@ class FunctionRef(UnappliedFunction, Node):
     def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
         operand = ctx.evaluate(operand_node)
         return ctx.dispatch_monadic(self.glyph, operand)
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+        left = ctx.evaluate(left_node)
+        right = ctx.evaluate(right_node)
+        return ctx.dispatch_dyadic(self.glyph, left, right)
 
 
 class AlphaAlpha(Node):
@@ -660,35 +679,11 @@ class DyadicDfnCall(Node):
         from marple.dfn_binding import DfnBinding
         if isinstance(self.dfn, SysVar):
             return ctx.dispatch_sys_dyadic(self.dfn.name, self.left, self.right)
-        if isinstance(self.dfn, RankDerived):
-            return ctx.apply_rank_dyadic(self.dfn, self.left, self.right)
-        if isinstance(self.dfn, PowerDerived):
-            return ctx.apply_power_dyadic(self.dfn, self.left, self.right)
-        if isinstance(self.dfn, CommuteDerived):
-            return ctx.apply_commute_dyadic(self.dfn, self.left, self.right)
-        if isinstance(self.dfn, BesideDerived):
-            return ctx.apply_beside_dyadic(self.dfn, self.left, self.right)
-        if isinstance(self.dfn, AtopDerived):
-            return ctx.apply_atop_dyadic(self.dfn, self.left, self.right)
-        if isinstance(self.dfn, ForkDerived):
-            return ctx.apply_fork_dyadic(self.dfn, self.left, self.right)
+        if isinstance(self.dfn, UnappliedFunction):
+            return self.dfn.apply_dyadic(ctx, self.left, self.right)
         dfn_val = ctx.evaluate(self.dfn)
-        # Post-evaluation dispatch for derived functions stored in
-        # variables — see MonadicDfnCall.execute for the rationale.
-        if isinstance(dfn_val, RankDerived):
-            return ctx.apply_rank_dyadic(dfn_val, self.left, self.right)
-        if isinstance(dfn_val, PowerDerived):
-            return ctx.apply_power_dyadic(dfn_val, self.left, self.right)
-        if isinstance(dfn_val, CommuteDerived):
-            return ctx.apply_commute_dyadic(dfn_val, self.left, self.right)
-        if isinstance(dfn_val, BesideDerived):
-            return ctx.apply_beside_dyadic(dfn_val, self.left, self.right)
-        right = ctx.evaluate(self.right)
-        left = ctx.evaluate(self.left)
-        if isinstance(dfn_val, DfnBinding):
-            return dfn_val.apply(right, alpha=left)
-        if isinstance(dfn_val, FunctionRef):
-            return ctx.dispatch_dyadic(dfn_val.glyph, left, right)
+        if isinstance(dfn_val, UnappliedFunction):
+            return dfn_val.apply_dyadic(ctx, self.left, self.right)
         raise DomainError(f"Expected dfn, got {type(dfn_val)}")
 
 
