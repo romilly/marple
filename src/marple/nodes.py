@@ -253,7 +253,7 @@ class DyadicFunc(Evaluatable):
 
 
 class Assignment(Evaluatable):
-    def __init__(self, name: str, value: object) -> None:
+    def __init__(self, name: str, value: 'Evaluatable | UnappliedFunction') -> None:
         self.name = name
         self.value = value
     def execute(self, ctx: ExecutionContext) -> APLArray:
@@ -339,7 +339,7 @@ class UnappliedFunction(APLValue):
 
 class RankDerived(UnappliedFunction):
     """Unapplied rank-derived function: f⍤k"""
-    def __init__(self, function: object, rank_spec: object) -> None:
+    def __init__(self, function: Node, rank_spec: Evaluatable) -> None:
         self.function = function
         self.rank_spec = rank_spec
     def __eq__(self, other: object) -> bool:
@@ -384,7 +384,7 @@ class RankDerived(UnappliedFunction):
 
 class PowerDerived(UnappliedFunction):
     """Unapplied power-derived function: f⍣g"""
-    def __init__(self, function: object, right_operand: object) -> None:
+    def __init__(self, function: Node, right_operand: Evaluatable) -> None:
         self.function = function
         self.right_operand = right_operand
 
@@ -458,7 +458,7 @@ class CommuteDerived(UnappliedFunction):
     The argument is evaluated ONCE in the monadic case, even though
     it appears on both sides of the underlying call.
     """
-    def __init__(self, function: object) -> None:
+    def __init__(self, function: Node) -> None:
         self.function = function
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         """f⍨ ω ≡ ω f ω. Evaluates ω exactly once."""
@@ -481,7 +481,7 @@ class BesideDerived(UnappliedFunction):
     for monadic derived-function calls and dyadically for dyadic
     derived-function calls.
     """
-    def __init__(self, f: object, g: object) -> None:
+    def __init__(self, f: Node, g: Node) -> None:
         self.f = f
         self.g = g
     def __eq__(self, other: object) -> bool:
@@ -507,7 +507,7 @@ class AtopDerived(UnappliedFunction):
     Monadic: (g h) ω   ≡ g (h ω)
     Dyadic:  α (g h) ω ≡ g (α h ω)
     """
-    def __init__(self, g: object, h: object) -> None:
+    def __init__(self, g: Node, h: Node) -> None:
         self.g = g
         self.h = h
     def __eq__(self, other: object) -> bool:
@@ -535,7 +535,7 @@ class ForkDerived(UnappliedFunction):
     Dyadic:  α (f g h) ω ≡ (α f ω) g (α h ω)
     When f is an array: (A g h) ω ≡ A g (h ω)
     """
-    def __init__(self, f: object, g: object, h: object) -> None:
+    def __init__(self, f: Evaluatable | UnappliedFunction, g: Node, h: Node) -> None:
         self.f = f
         self.g = g
         self.h = h
@@ -545,7 +545,7 @@ class ForkDerived(UnappliedFunction):
         return self.f == other.f and self.g == other.g and self.h == other.h
     def _resolve_f(self, ctx: ExecutionContext) -> object:
         """Resolve f to an APLArray (Agh-fork) or leave as function."""
-        if isinstance(self.f, Node):
+        if isinstance(self.f, Evaluatable):
             return ctx.evaluate(self.f)
         return self.f
 
@@ -575,7 +575,7 @@ class ForkDerived(UnappliedFunction):
 
 class ReduceDerived(UnappliedFunction):
     """Unapplied reduce-derived function: f/ or f⌿"""
-    def __init__(self, operator: str, function: object) -> None:
+    def __init__(self, operator: str, function: Node) -> None:
         self.operator = operator
         self.function = function
     def __eq__(self, other: object) -> bool:
@@ -592,7 +592,7 @@ class ReduceDerived(UnappliedFunction):
 
 class ScanDerived(UnappliedFunction):
     """Unapplied scan-derived function: f\\ or f⍀"""
-    def __init__(self, operator: str, function: object) -> None:
+    def __init__(self, operator: str, function: Node) -> None:
         self.operator = operator
         self.function = function
     def __eq__(self, other: object) -> bool:
@@ -621,7 +621,7 @@ class IBeamDerived(UnappliedFunction, Evaluatable):
 
 
 class InnerProduct(Evaluatable):
-    def __init__(self, left_fn: object, right_fn: object, left: Evaluatable, right: Evaluatable) -> None:
+    def __init__(self, left_fn: 'FunctionRef', right_fn: 'FunctionRef', left: Evaluatable, right: Evaluatable) -> None:
         self.left_fn = left_fn
         self.right_fn = right_fn
         self.left = left
@@ -629,21 +629,18 @@ class InnerProduct(Evaluatable):
     def execute(self, ctx: ExecutionContext) -> APLArray:
         omega = ctx.evaluate(self.right)
         alpha = ctx.evaluate(self.left)
-        left = self.left_fn.glyph if isinstance(self.left_fn, FunctionRef) else self.left_fn
-        right = self.right_fn.glyph if isinstance(self.right_fn, FunctionRef) else self.right_fn
-        return _inner_product(left, right, alpha, omega)
+        return _inner_product(self.left_fn.glyph, self.right_fn.glyph, alpha, omega)
 
 
 class OuterProduct(Evaluatable):
-    def __init__(self, function: object, left: Evaluatable, right: Evaluatable) -> None:
+    def __init__(self, function: 'FunctionRef', left: Evaluatable, right: Evaluatable) -> None:
         self.function = function
         self.left = left
         self.right = right
     def execute(self, ctx: ExecutionContext) -> APLArray:
         omega = ctx.evaluate(self.right)
         alpha = ctx.evaluate(self.left)
-        fn = self.function.glyph if isinstance(self.function, FunctionRef) else self.function
-        return _outer_product(fn, alpha, omega)
+        return _outer_product(self.function.glyph, alpha, omega)
 
 
 class SysVar(Evaluatable):
@@ -864,10 +861,10 @@ class DyadicDfnCall(Evaluatable):
 
 
 class Program(Evaluatable):
-    def __init__(self, statements: list[object]) -> None:
+    def __init__(self, statements: list[Evaluatable]) -> None:
         self.statements = statements
-    def execute(self, ctx: ExecutionContext) -> object:
-        result: object = S(0)
+    def execute(self, ctx: ExecutionContext) -> APLArray:
+        result: APLArray = S(0)
         for stmt in self.statements:
             result = ctx.evaluate(stmt)
         return result

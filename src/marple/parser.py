@@ -347,7 +347,7 @@ class Parser:
     def _parse_fmt_args(self) -> FmtArgs:
         """Parse (val1;val2;...) for ⎕FMT. Similar to bracket indexing."""
         self._eat(TokenType.LPAREN)
-        args: list[object] = []
+        args: list[Evaluatable] = []
         args.append(self._parse_statement())
         while self._current().type == TokenType.SEMICOLON:
             self._eat(TokenType.SEMICOLON)
@@ -408,7 +408,7 @@ class Parser:
         raise SyntaxError_(f"Cannot apply as dyadic function: {type(verb_node)}")
 
     def _apply_bound_monadic(self, bound: BoundOperator,
-                             arg_node: object) -> object:
+                             arg_node: Evaluatable) -> Evaluatable:
         """Apply a bound operator (derived verb) monadically."""
         op = bound.operator
         if isinstance(op, Var):
@@ -420,51 +420,52 @@ class Parser:
             return handler(self, bound, arg_node)
         raise SyntaxError_(f"Unknown operator in bound form: {op}")
 
-    def _bound_monadic_reduce(self, bound: BoundOperator, arg_node: object) -> object:
+    def _bound_monadic_reduce(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         assert isinstance(bound.operator, str)
         operand = bound.left_operand
         if (bound.left_cat == CAT_VERB
                 or isinstance(operand, (AlphaAlpha, OmegaOmega))):
             return DerivedFunc(bound.operator, operand, arg_node)
-        return DyadicFunc(bound.operator, operand, arg_node)
+        return DyadicFunc(bound.operator, self._as_evaluatable(operand), arg_node)
 
-    def _bound_monadic_rank(self, bound: BoundOperator, arg_node: object) -> object:
+    def _bound_monadic_rank(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         rank_node = RankDerived(self._resolve_operand(bound.left_operand),
                                 self._resolve_operand(bound.right_operand))
         return MonadicDfnCall(rank_node, arg_node)
 
-    def _bound_monadic_power(self, bound: BoundOperator, arg_node: object) -> object:
+    def _bound_monadic_power(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         power_node = PowerDerived(self._resolve_operand(bound.left_operand),
                                   self._resolve_operand(bound.right_operand))
         return MonadicDfnCall(power_node, arg_node)
 
-    def _bound_monadic_commute(self, bound: BoundOperator, arg_node: object) -> object:
+    def _bound_monadic_commute(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         commute_node = CommuteDerived(self._resolve_operand(bound.left_operand))
         return MonadicDfnCall(commute_node, arg_node)
 
-    def _bound_monadic_beside(self, bound: BoundOperator, arg_node: object) -> object:
+    def _bound_monadic_beside(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         beside_node = BesideDerived(self._resolve_operand(bound.left_operand),
                                     self._resolve_operand(bound.right_operand))
         return MonadicDfnCall(beside_node, arg_node)
 
-    def _bound_monadic_inner(self, bound: BoundOperator, arg_node: object) -> object:
+    def _bound_monadic_inner(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         raise SyntaxError_("Inner product requires two arguments")
 
-    def _bound_monadic_outer(self, bound: BoundOperator, arg_node: object) -> object:
+    def _bound_monadic_outer(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         raise SyntaxError_("Outer product requires two arguments")
 
-    def _bound_monadic_ibeam(self, bound: BoundOperator, arg_node: object) -> object:
+    def _bound_monadic_ibeam(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         operand = bound.left_operand
         ibeam = IBeamDerived(operand) if isinstance(operand, str) else operand
         return MonadicDfnCall(ibeam, arg_node)
 
-    def _apply_user_dop_monadic(self, bound: BoundOperator, arg_node: object) -> object:
-        operand = bound.left_operand
+    def _apply_user_dop_monadic(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
+        assert isinstance(bound.operator, Var)
+        operand = self._as_evaluatable(bound.left_operand)
         if bound.right_operand is not None:
-            return DyadicDopCall(bound.operator, operand, bound.right_operand, arg_node)
+            return DyadicDopCall(bound.operator, operand, self._as_evaluatable(bound.right_operand), arg_node)
         return MonadicDopCall(bound.operator, operand, arg_node)
 
-    _BOUND_MONADIC_DISPATCH: dict[str, Callable[['Parser', BoundOperator, object], object]] = {
+    _BOUND_MONADIC_DISPATCH: dict[str, Callable[['Parser', BoundOperator, Evaluatable], Evaluatable]] = {
         "/": _bound_monadic_reduce,
         "\\": _bound_monadic_reduce,
         "⌿": _bound_monadic_reduce,
@@ -479,7 +480,7 @@ class Parser:
     }
 
     def _apply_bound_dyadic(self, bound: BoundOperator,
-                            left_node: object, right_node: object) -> object:
+                            left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
         """Apply a bound operator (derived verb) dyadically."""
         op = bound.operator
         if isinstance(op, Var):
@@ -492,55 +493,56 @@ class Parser:
         raise SyntaxError_(f"Unknown operator in bound dyadic form: {op}")
 
     def _bound_dyadic_rank(self, bound: BoundOperator,
-                           left_node: object, right_node: object) -> object:
+                           left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
         rank_node = RankDerived(self._resolve_operand(bound.left_operand),
                                 self._resolve_operand(bound.right_operand))
         return DyadicDfnCall(rank_node, left_node, right_node)
 
     def _bound_dyadic_power(self, bound: BoundOperator,
-                            left_node: object, right_node: object) -> object:
+                            left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
         power_node = PowerDerived(self._resolve_operand(bound.left_operand),
                                   self._resolve_operand(bound.right_operand))
         return DyadicDfnCall(power_node, left_node, right_node)
 
     def _bound_dyadic_commute(self, bound: BoundOperator,
-                              left_node: object, right_node: object) -> object:
+                              left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
         commute_node = CommuteDerived(self._resolve_operand(bound.left_operand))
         return DyadicDfnCall(commute_node, left_node, right_node)
 
     def _bound_dyadic_beside(self, bound: BoundOperator,
-                             left_node: object, right_node: object) -> object:
+                             left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
         beside_node = BesideDerived(self._resolve_operand(bound.left_operand),
                                     self._resolve_operand(bound.right_operand))
         return DyadicDfnCall(beside_node, left_node, right_node)
 
     def _bound_dyadic_inner(self, bound: BoundOperator,
-                            left_node: object, right_node: object) -> object:
+                            left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
         assert bound.right_operand is not None
         return InnerProduct(bound.left_operand, bound.right_operand,
                             left_node, right_node)
 
     def _bound_dyadic_outer(self, bound: BoundOperator,
-                            left_node: object, right_node: object) -> object:
+                            left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
         return OuterProduct(bound.left_operand, left_node, right_node)
 
     def _bound_dyadic_reduce(self, bound: BoundOperator,
-                             left_node: object, right_node: object) -> object:
+                             left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
         assert isinstance(bound.operator, str)
         operand = bound.left_operand
         if (bound.left_cat == CAT_VERB
                 or isinstance(operand, (AlphaAlpha, OmegaOmega))):
             return DerivedFunc(bound.operator, operand, right_node)
-        return DyadicFunc(bound.operator, operand, right_node)
+        return DyadicFunc(bound.operator, self._as_evaluatable(operand), right_node)
 
     def _apply_user_dop_dyadic(self, bound: BoundOperator,
-                               left_node: object, right_node: object) -> object:
-        operand = bound.left_operand
+                               left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
+        assert isinstance(bound.operator, Var)
+        operand = self._as_evaluatable(bound.left_operand)
         if bound.right_operand is not None:
-            return DyadicDopCall(bound.operator, operand, bound.right_operand, right_node)
+            return DyadicDopCall(bound.operator, operand, self._as_evaluatable(bound.right_operand), right_node)
         return MonadicDopCall(bound.operator, operand, right_node, alpha=left_node)
 
-    _BOUND_DYADIC_DISPATCH: dict[str, Callable[['Parser', BoundOperator, object, object], object]] = {
+    _BOUND_DYADIC_DISPATCH: dict[str, Callable[['Parser', BoundOperator, Evaluatable, Evaluatable], Evaluatable]] = {
         "⍤": _bound_dyadic_rank,
         "⍣": _bound_dyadic_power,
         "⍨": _bound_dyadic_commute,
@@ -553,13 +555,13 @@ class Parser:
         "⍀": _bound_dyadic_reduce,
     }
 
-    def _resolve_operand(self, operand: object) -> object:
+    def _resolve_operand(self, operand: Node) -> Node:
         """If operand is a BoundOperator, resolve it to a derived type."""
         if isinstance(operand, BoundOperator):
             return self._bound_to_derived(operand)
         return operand
 
-    def _bound_to_derived(self, bound: BoundOperator) -> object:
+    def _bound_to_derived(self, bound: BoundOperator) -> UnappliedFunction:
         """Convert a BoundOperator to its unwrapped derived-function
         form, for storage in a variable via assignment.
 
@@ -571,12 +573,15 @@ class Parser:
         op = bound.operator
         left = self._resolve_operand(bound.left_operand)
         if op == "⍤":
-            return RankDerived(left, self._resolve_operand(bound.right_operand))
+            assert bound.right_operand is not None
+            return RankDerived(left, self._as_evaluatable(self._resolve_operand(bound.right_operand)))
         if op == "⍣":
-            return PowerDerived(left, self._resolve_operand(bound.right_operand))
+            assert bound.right_operand is not None
+            return PowerDerived(left, self._as_evaluatable(self._resolve_operand(bound.right_operand)))
         if op == "⍨":
             return CommuteDerived(left)
         if op == "∘":
+            assert bound.right_operand is not None
             return BesideDerived(left, self._resolve_operand(bound.right_operand))
         if op in ("/", "⌿"):
             assert isinstance(op, str)
@@ -618,7 +623,7 @@ class Parser:
 
     # ── Iverson's stack-based parsing algorithm ──
 
-    def _stack_parse(self, items: list[tuple[int, StackItem]]) -> StackItem:
+    def _stack_parse(self, items: list[tuple[int, StackItem]]) -> Evaluatable:
         """Run Iverson's 9-case stack-based parser on classified items.
 
         Items are processed right-to-left. The stack grows upward.
@@ -992,7 +997,7 @@ class Parser:
             return func_token.value, op_token.value
         return func_token.value, None
 
-    def _parse_statement(self) -> object:
+    def _parse_statement(self) -> Evaluatable:
         """Parse a statement using Iverson's stack-based algorithm."""
         items = self._build_items()
         if not items:
@@ -1004,7 +1009,7 @@ class Parser:
             result = self._parse_bracket_index(result)
         return result
 
-    def parse(self) -> object:
+    def parse(self) -> Evaluatable:
         # Empty input (e.g. comment-only line) → return Num(0) as no-op
         if self._current().type == TokenType.EOF:
             return Num(0)
@@ -1020,7 +1025,7 @@ class Parser:
 
 
 def parse(source: str, name_table: dict[str, int] | None = None,
-          operator_arity: dict[str, int] | None = None) -> object:
+          operator_arity: dict[str, int] | None = None) -> Evaluatable:
     tokens = Tokenizer(source).tokenize()
     return Parser(tokens, name_table, operator_arity).parse()
 
