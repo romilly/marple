@@ -157,11 +157,7 @@ class ExecutionContext(Protocol):
     def eval_sysvar(self, name: str) -> APLArray: ...
     def create_binding(self, dfn_node: object) -> object: ...
     def dispatch_sys_monadic(self, name: str, operand_node: object) -> APLArray: ...
-    def apply_rank_monadic(self, rank_node: object, operand_node: object) -> APLArray: ...
     def dispatch_sys_dyadic(self, name: str, left_node: object, right_node: object) -> APLArray: ...
-    def apply_rank_dyadic(self, rank_node: object, left_node: object, right_node: object) -> APLArray: ...
-    def apply_power_monadic(self, power_node: object, operand_node: object) -> APLArray: ...
-    def apply_power_dyadic(self, power_node: object, left_node: object, right_node: object) -> APLArray: ...
     def apply_func_monadic(self, func: object, omega: 'APLArray') -> 'APLArray': ...
     def apply_func_dyadic(self, func: object, alpha: 'APLArray', omega: 'APLArray') -> 'APLArray': ...
     def resolve_qualified(self, parts: list[str]) -> object: ...
@@ -340,9 +336,39 @@ class RankDerived(UnappliedFunction):
             return NotImplemented
         return self.function == other.function and self.rank_spec == other.rank_spec
     def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
-        return ctx.apply_rank_monadic(self, operand_node)
+        from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
+        omega = ctx.evaluate(operand_node)
+        rank_spec_val = ctx.evaluate(self.rank_spec)
+        a, _, _ = resolve_rank_spec(rank_spec_val)
+        k = clamp_rank(a, len(omega.shape))
+        frame_shape, cells = decompose(omega, k)
+        results = [ctx.apply_func_monadic(self.function, cell) for cell in cells]
+        return reassemble(frame_shape, results)
+
     def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
-        return ctx.apply_rank_dyadic(self, left_node, right_node)
+        from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
+        from marple.errors import LengthError
+        alpha = ctx.evaluate(left_node)
+        omega = ctx.evaluate(right_node)
+        rank_spec_val = ctx.evaluate(self.rank_spec)
+        _, b_rank, c_rank = resolve_rank_spec(rank_spec_val)
+        b = clamp_rank(b_rank, len(alpha.shape))
+        c = clamp_rank(c_rank, len(omega.shape))
+        left_frame, left_cells = decompose(alpha, b)
+        right_frame, right_cells = decompose(omega, c)
+        if left_frame == right_frame:
+            pairs = list(zip(left_cells, right_cells))
+            frame = left_frame
+        elif left_frame == []:
+            pairs = [(left_cells[0], rc) for rc in right_cells]
+            frame = right_frame
+        elif right_frame == []:
+            pairs = [(lc, right_cells[0]) for lc in left_cells]
+            frame = left_frame
+        else:
+            raise LengthError(f"Frame mismatch: {left_frame} vs {right_frame}")
+        results = [ctx.apply_func_dyadic(self.function, lc, rc) for lc, rc in pairs]
+        return reassemble(frame, results)
 
 
 class PowerDerived(UnappliedFunction):
@@ -350,10 +376,66 @@ class PowerDerived(UnappliedFunction):
     def __init__(self, function: object, right_operand: object) -> None:
         self.function = function
         self.right_operand = right_operand
+
+    def _resolve_right(self, ctx: ExecutionContext) -> object:
+        """Resolve the right operand — may be a FunctionRef, Node, or value."""
+        right_op = self.right_operand
+        if isinstance(right_op, (UnappliedFunction, APLArray)):
+            return right_op
+        return ctx.evaluate(right_op)
+
+    def _test_convergence(self, func: object, left: APLArray,
+                          right: APLArray, ctx: ExecutionContext) -> APLArray:
+        """Apply convergence test function dyadically."""
+        if isinstance(func, FunctionRef):
+            if func.glyph == "≡":
+                return S(1 if left == right else 0)
+            if func.glyph == "=":
+                return S(1 if left.data.item() == right.data.item() else 0)
+        return ctx.apply_func_dyadic(func, left, right)
+
     def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
-        return ctx.apply_power_monadic(self, operand_node)
+        omega = ctx.evaluate(operand_node)
+        right_val = self._resolve_right(ctx)
+        if isinstance(right_val, APLArray) and right_val.is_scalar():
+            n = int(right_val.data.item())
+            if n < 0:
+                raise DomainError("DOMAIN ERROR: inverse (⍣ with negative) not supported")
+            result = omega
+            for _ in range(n):
+                result = ctx.apply_func_monadic(self.function, result)
+            return result
+        if isinstance(right_val, UnappliedFunction):
+            prev = omega
+            while True:
+                curr = ctx.apply_func_monadic(self.function, prev)
+                test = self._test_convergence(right_val, curr, prev, ctx)
+                if test.data.item():
+                    return curr
+                prev = curr
+        raise DomainError("⍣ right operand must be integer or function")
+
     def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
-        return ctx.apply_power_dyadic(self, left_node, right_node)
+        alpha = ctx.evaluate(left_node)
+        omega = ctx.evaluate(right_node)
+        right_val = self._resolve_right(ctx)
+        if isinstance(right_val, APLArray) and right_val.is_scalar():
+            n = int(right_val.data.item())
+            if n < 0:
+                raise DomainError("DOMAIN ERROR: inverse (⍣ with negative) not supported")
+            result = omega
+            for _ in range(n):
+                result = ctx.apply_func_dyadic(self.function, alpha, result)
+            return result
+        if isinstance(right_val, UnappliedFunction):
+            prev = omega
+            while True:
+                curr = ctx.apply_func_dyadic(self.function, alpha, prev)
+                test = self._test_convergence(right_val, curr, prev, ctx)
+                if test.data.item():
+                    return curr
+                prev = curr
+        raise DomainError("⍣ right operand must be integer or function")
 
 
 class CommuteDerived(UnappliedFunction):

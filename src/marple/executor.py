@@ -281,24 +281,6 @@ class Executor:
 
     # ── Rank operator ──
 
-    def _rank_apply_monadic_core(
-            self, func: object, rank_spec_val: APLArray,
-            omega: APLArray) -> APLArray:
-        """Core monadic rank application: decompose omega at rank and
-        apply `func` to each cell. Shared between top-level rank
-        application and nested rank (when one rank operator's left
-        operand is itself a rank-derived function)."""
-        a, _, _ = resolve_rank_spec(rank_spec_val)
-        k = clamp_rank(a, len(omega.shape))
-        frame_shape, cells = decompose(omega, k)
-        results = [self.apply_func_monadic(func, cell) for cell in cells]
-        return reassemble(frame_shape, results)
-
-    def apply_rank_monadic(self, rank_node: RankDerived, operand_node: object) -> APLArray:
-        omega = self.evaluate(operand_node)
-        rank_spec_val = self.evaluate(rank_node.rank_spec)
-        return self._rank_apply_monadic_core(rank_node.function, rank_spec_val, omega)
-
     def apply_func_monadic(self, func: object, omega: APLArray) -> APLArray:
         """Apply a function monadically to an already-evaluated array.
         Used by rank, power, commute, beside, atop, fork operators."""
@@ -313,41 +295,6 @@ class Executor:
                 return val.apply_monadic(self, Literal(omega))  # type: ignore[arg-type]
         raise DomainError(f"Expected function for rank, got {type(func)}")
 
-    def _rank_apply_dyadic_core(
-            self, func: object, rank_spec_val: APLArray,
-            alpha: APLArray, omega: APLArray) -> APLArray:
-        """Core dyadic rank application: decompose alpha and omega at
-        their respective ranks and apply `func` to each cell pair.
-        Shared between top-level rank application and nested rank.
-        """
-        from marple.errors import LengthError
-        _, b_rank, c_rank = resolve_rank_spec(rank_spec_val)
-        b = clamp_rank(b_rank, len(alpha.shape))
-        c = clamp_rank(c_rank, len(omega.shape))
-        left_frame, left_cells = decompose(alpha, b)
-        right_frame, right_cells = decompose(omega, c)
-        if left_frame == right_frame:
-            pairs = list(zip(left_cells, right_cells))
-            frame = left_frame
-        elif left_frame == []:
-            pairs = [(left_cells[0], rc) for rc in right_cells]
-            frame = right_frame
-        elif right_frame == []:
-            pairs = [(lc, right_cells[0]) for lc in left_cells]
-            frame = left_frame
-        else:
-            raise LengthError(f"Frame mismatch: {left_frame} vs {right_frame}")
-        results = [self.apply_func_dyadic(func, lc, rc) for lc, rc in pairs]
-        return reassemble(frame, results)
-
-    def apply_rank_dyadic(self, rank_node: object, left_node: object, right_node: object) -> APLArray:
-        from marple.parser import RankDerived
-        assert isinstance(rank_node, RankDerived)
-        alpha = self.evaluate(left_node)
-        omega = self.evaluate(right_node)
-        rank_spec_val = self.evaluate(rank_node.rank_spec)
-        return self._rank_apply_dyadic_core(rank_node.function, rank_spec_val, alpha, omega)
-
     def apply_func_dyadic(self, func: object, alpha: APLArray, omega: APLArray) -> APLArray:
         """Apply a function dyadically to already-evaluated arrays.
         Used by rank, power, commute, beside, atop, fork operators."""
@@ -360,89 +307,6 @@ class Executor:
             if isinstance(val, UnappliedFunction):
                 return val.apply_dyadic(self, Literal(alpha), Literal(omega))  # type: ignore[arg-type]
         raise DomainError(f"Expected function for rank, got {type(func)}")
-
-    # ── Commute operator (⍨) ──
-
-    # ── Power operator ──
-
-    def apply_power_monadic(self, power_node: object, operand_node: object) -> APLArray:
-        from marple.dfn_binding import DfnBinding
-        from marple.parser import PowerDerived
-        assert isinstance(power_node, PowerDerived)
-        omega = self.evaluate(operand_node)
-        right_op = power_node.right_operand
-        right_val = self._resolve_power_operand(right_op)
-        if isinstance(right_val, APLArray) and right_val.is_scalar():
-            n = int(right_val.data.item())
-            if n < 0:
-                raise DomainError("DOMAIN ERROR: inverse (⍣ with negative) not supported")
-            result = omega
-            for _ in range(n):
-                result = self.apply_func_monadic(power_node.function, result)
-            return result
-        if isinstance(right_val, (DfnBinding, FunctionRef)):
-            prev = omega
-            while True:
-                curr = self.apply_func_monadic(power_node.function, prev)
-                test = self.apply_func_dyadic_or_match(right_val, curr, prev)
-                if test.data.item():
-                    return curr
-                prev = curr
-        raise DomainError("⍣ right operand must be integer or function")
-
-    def apply_power_dyadic(self, power_node: object, left_node: object,
-                           right_node: object) -> APLArray:
-        from marple.dfn_binding import DfnBinding
-        from marple.parser import PowerDerived
-        assert isinstance(power_node, PowerDerived)
-        alpha = self.evaluate(left_node)
-        omega = self.evaluate(right_node)
-        right_op = power_node.right_operand
-        right_val = self._resolve_power_operand(right_op)
-        if isinstance(right_val, APLArray) and right_val.is_scalar():
-            n = int(right_val.data.item())
-            if n < 0:
-                raise DomainError("DOMAIN ERROR: inverse (⍣ with negative) not supported")
-            result = omega
-            for _ in range(n):
-                result = self.apply_func_dyadic(power_node.function, alpha, result)
-            return result
-        if isinstance(right_val, (DfnBinding, FunctionRef)):
-            prev = omega
-            while True:
-                curr = self.apply_func_dyadic(power_node.function, alpha, prev)
-                test = self.apply_func_dyadic_or_match(right_val, curr, prev)
-                if test.data.item():
-                    return curr
-                prev = curr
-        raise DomainError("⍣ right operand must be integer or function")
-
-    def _resolve_power_operand(self, right_op: object) -> object:
-        """Resolve the right operand of ⍣ — may be a glyph string, AST node, or value."""
-        from marple.dfn_binding import DfnBinding
-        if isinstance(right_op, str):
-            # Primitive glyph like ≡ or =
-            return FunctionRef(right_op)
-        if isinstance(right_op, FunctionRef):
-            return right_op
-        result = self.evaluate(right_op)
-        if isinstance(result, (DfnBinding, FunctionRef)):
-            return result
-        return result
-
-    def apply_func_dyadic_or_match(self, func: object, left: APLArray,
-                                     right: APLArray) -> APLArray:
-        """Apply a dyadic function for convergence test. Handles FunctionRef for ≡ and =."""
-        from marple.dfn_binding import DfnBinding
-        if isinstance(func, FunctionRef):
-            if func.glyph == "≡":
-                return S(1 if left == right else 0)
-            if func.glyph == "=":
-                return S(1 if left.data.item() == right.data.item() else 0)
-            return DyadicFunctionBinding(self.env).apply(func.glyph, left, right)
-        if isinstance(func, DfnBinding):
-            return func.apply(right, alpha=left)
-        raise DomainError("⍣ convergence function must be a function")
 
     # ── System functions ──
 
