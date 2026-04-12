@@ -337,7 +337,7 @@ class Executor:
             frame = left_frame
         else:
             raise LengthError(f"Frame mismatch: {left_frame} vs {right_frame}")
-        results = [self._apply_func_dyadic(func, lc, rc) for lc, rc in pairs]
+        results = [self.apply_func_dyadic(func, lc, rc) for lc, rc in pairs]
         return reassemble(frame, results)
 
     def apply_rank_dyadic(self, rank_node: object, left_node: object, right_node: object) -> APLArray:
@@ -348,7 +348,7 @@ class Executor:
         rank_spec_val = self.evaluate(rank_node.rank_spec)
         return self._rank_apply_dyadic_core(rank_node.function, rank_spec_val, alpha, omega)
 
-    def _apply_func_dyadic(self, func: object, alpha: APLArray, omega: APLArray) -> APLArray:
+    def apply_func_dyadic(self, func: object, alpha: APLArray, omega: APLArray) -> APLArray:
         """Apply a function dyadically to already-evaluated arrays.
         Used by rank, power, commute, beside, atop, fork operators."""
         from marple.nodes import Literal, UnappliedFunction
@@ -362,110 +362,6 @@ class Executor:
         raise DomainError(f"Expected function for rank, got {type(func)}")
 
     # ── Commute operator (⍨) ──
-
-    def apply_commute_monadic(self, commute_node: object, operand_node: object) -> APLArray:
-        """Apply f⍨ monadically: ω f ω. Evaluates ω exactly once."""
-        from marple.parser import CommuteDerived
-        assert isinstance(commute_node, CommuteDerived)
-        omega = self.evaluate(operand_node)
-        return self._apply_func_dyadic(commute_node.function, omega, omega)
-
-    def apply_commute_dyadic(self, commute_node: object,
-                             left_node: object, right_node: object) -> APLArray:
-        """Apply f⍨ dyadically: α f⍨ ω ≡ ω f α (swap arguments)."""
-        from marple.parser import CommuteDerived
-        assert isinstance(commute_node, CommuteDerived)
-        alpha = self.evaluate(left_node)
-        omega = self.evaluate(right_node)
-        return self._apply_func_dyadic(commute_node.function, omega, alpha)
-
-    # ── Beside operator (∘) ──
-
-    def apply_beside_monadic(self, beside_node: object,
-                             operand_node: object) -> APLArray:
-        """Apply (f∘g) monadically: (f∘g) ω ≡ f (g ω)."""
-        from marple.nodes import BesideDerived
-        assert isinstance(beside_node, BesideDerived)
-        omega = self.evaluate(operand_node)
-        g_result = self.apply_func_monadic(beside_node.g, omega)
-        return self.apply_func_monadic(beside_node.f, g_result)
-
-    def apply_beside_dyadic(self, beside_node: object,
-                            left_node: object, right_node: object) -> APLArray:
-        """Apply (f∘g) dyadically: α (f∘g) ω ≡ α f (g ω)."""
-        from marple.nodes import BesideDerived
-        assert isinstance(beside_node, BesideDerived)
-        alpha = self.evaluate(left_node)
-        omega = self.evaluate(right_node)
-        g_result = self.apply_func_monadic(beside_node.g, omega)
-        return self._apply_func_dyadic(beside_node.f, alpha, g_result)
-
-    # ── Atop (2-train) ──
-
-    def apply_atop_monadic(self, atop_node: object,
-                           operand_node: object) -> APLArray:
-        """Apply (g h) monadically: (g h) ω ≡ g (h ω)."""
-        from marple.nodes import AtopDerived
-        assert isinstance(atop_node, AtopDerived)
-        omega = self.evaluate(operand_node)
-        h_result = self.apply_func_monadic(atop_node.h, omega)
-        return self.apply_func_monadic(atop_node.g, h_result)
-
-    def apply_atop_dyadic(self, atop_node: object,
-                          left_node: object, right_node: object) -> APLArray:
-        """Apply (g h) dyadically: α (g h) ω ≡ g (α h ω)."""
-        from marple.nodes import AtopDerived
-        assert isinstance(atop_node, AtopDerived)
-        alpha = self.evaluate(left_node)
-        omega = self.evaluate(right_node)
-        h_result = self._apply_func_dyadic(atop_node.h, alpha, omega)
-        return self.apply_func_monadic(atop_node.g, h_result)
-
-    # ── Fork (3-train) ──
-
-    def _resolve_fork_operand(self, f: object) -> object:
-        """Resolve a fork's f operand to either an APLArray or a callable form.
-
-        For Agh-fork, f is a Num/Vector node that evaluates to an APLArray.
-        For fgh-fork, f is a FunctionRef or other UnappliedFunction
-        left as-is for apply_func_monadic/_apply_func_dyadic to handle.
-        """
-        from marple.parser import Node
-        if isinstance(f, Node):
-            return self.evaluate(f)
-        return f
-
-    def apply_fork_monadic(self, fork_node: object,
-                           operand_node: object) -> APLArray:
-        """Apply (f g h) monadically: (f ω) g (h ω).
-        For Agh-fork, f evaluates to an array and is used directly."""
-        from marple.nodes import ForkDerived
-        from marple.numpy_array import APLArray
-        assert isinstance(fork_node, ForkDerived)
-        omega = self.evaluate(operand_node)
-        right = self.apply_func_monadic(fork_node.h, omega)
-        f_val = self._resolve_fork_operand(fork_node.f)
-        if isinstance(f_val, APLArray):
-            left = f_val
-        else:
-            left = self.apply_func_monadic(f_val, omega)
-        return self._apply_func_dyadic(fork_node.g, left, right)
-
-    def apply_fork_dyadic(self, fork_node: object,
-                          left_node: object, right_node: object) -> APLArray:
-        """Apply (f g h) dyadically: (α f ω) g (α h ω)."""
-        from marple.nodes import ForkDerived
-        from marple.numpy_array import APLArray
-        assert isinstance(fork_node, ForkDerived)
-        alpha = self.evaluate(left_node)
-        omega = self.evaluate(right_node)
-        right = self._apply_func_dyadic(fork_node.h, alpha, omega)
-        f_val = self._resolve_fork_operand(fork_node.f)
-        if isinstance(f_val, APLArray):
-            left = f_val
-        else:
-            left = self._apply_func_dyadic(f_val, alpha, omega)
-        return self._apply_func_dyadic(fork_node.g, left, right)
 
     # ── Power operator ──
 
@@ -488,7 +384,7 @@ class Executor:
             prev = omega
             while True:
                 curr = self.apply_func_monadic(power_node.function, prev)
-                test = self._apply_func_dyadic_or_match(right_val, curr, prev)
+                test = self.apply_func_dyadic_or_match(right_val, curr, prev)
                 if test.data.item():
                     return curr
                 prev = curr
@@ -509,13 +405,13 @@ class Executor:
                 raise DomainError("DOMAIN ERROR: inverse (⍣ with negative) not supported")
             result = omega
             for _ in range(n):
-                result = self._apply_func_dyadic(power_node.function, alpha, result)
+                result = self.apply_func_dyadic(power_node.function, alpha, result)
             return result
         if isinstance(right_val, (DfnBinding, FunctionRef)):
             prev = omega
             while True:
-                curr = self._apply_func_dyadic(power_node.function, alpha, prev)
-                test = self._apply_func_dyadic_or_match(right_val, curr, prev)
+                curr = self.apply_func_dyadic(power_node.function, alpha, prev)
+                test = self.apply_func_dyadic_or_match(right_val, curr, prev)
                 if test.data.item():
                     return curr
                 prev = curr
@@ -534,7 +430,7 @@ class Executor:
             return result
         return result
 
-    def _apply_func_dyadic_or_match(self, func: object, left: APLArray,
+    def apply_func_dyadic_or_match(self, func: object, left: APLArray,
                                      right: APLArray) -> APLArray:
         """Apply a dyadic function for convergence test. Handles FunctionRef for ≡ and =."""
         from marple.dfn_binding import DfnBinding

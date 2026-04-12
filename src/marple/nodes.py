@@ -162,14 +162,8 @@ class ExecutionContext(Protocol):
     def apply_rank_dyadic(self, rank_node: object, left_node: object, right_node: object) -> APLArray: ...
     def apply_power_monadic(self, power_node: object, operand_node: object) -> APLArray: ...
     def apply_power_dyadic(self, power_node: object, left_node: object, right_node: object) -> APLArray: ...
-    def apply_commute_monadic(self, commute_node: object, operand_node: object) -> APLArray: ...
-    def apply_commute_dyadic(self, commute_node: object, left_node: object, right_node: object) -> APLArray: ...
-    def apply_beside_monadic(self, beside_node: object, operand_node: object) -> APLArray: ...
-    def apply_beside_dyadic(self, beside_node: object, left_node: object, right_node: object) -> APLArray: ...
-    def apply_atop_monadic(self, atop_node: object, operand_node: object) -> APLArray: ...
-    def apply_atop_dyadic(self, atop_node: object, left_node: object, right_node: object) -> APLArray: ...
-    def apply_fork_monadic(self, fork_node: object, operand_node: object) -> APLArray: ...
-    def apply_fork_dyadic(self, fork_node: object, left_node: object, right_node: object) -> APLArray: ...
+    def apply_func_monadic(self, func: object, omega: 'APLArray') -> 'APLArray': ...
+    def apply_func_dyadic(self, func: object, alpha: 'APLArray', omega: 'APLArray') -> 'APLArray': ...
     def resolve_qualified(self, parts: list[str]) -> object: ...
     def call_ibeam(self, path: str, operand: APLArray) -> APLArray: ...
 
@@ -374,9 +368,14 @@ class CommuteDerived(UnappliedFunction):
     def __init__(self, function: object) -> None:
         self.function = function
     def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
-        return ctx.apply_commute_monadic(self, operand_node)
+        """f⍨ ω ≡ ω f ω. Evaluates ω exactly once."""
+        omega = ctx.evaluate(operand_node)
+        return ctx.apply_func_dyadic(self.function, omega, omega)
     def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
-        return ctx.apply_commute_dyadic(self, left_node, right_node)
+        """α f⍨ ω ≡ ω f α (swap arguments)."""
+        alpha = ctx.evaluate(left_node)
+        omega = ctx.evaluate(right_node)
+        return ctx.apply_func_dyadic(self.function, omega, alpha)
 
 
 class BesideDerived(UnappliedFunction):
@@ -397,9 +396,16 @@ class BesideDerived(UnappliedFunction):
             return NotImplemented
         return self.f == other.f and self.g == other.g
     def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
-        return ctx.apply_beside_monadic(self, operand_node)
+        """(f∘g) ω ≡ f (g ω)."""
+        omega = ctx.evaluate(operand_node)
+        g_result = ctx.apply_func_monadic(self.g, omega)
+        return ctx.apply_func_monadic(self.f, g_result)
     def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
-        return ctx.apply_beside_dyadic(self, left_node, right_node)
+        """α (f∘g) ω ≡ α f (g ω)."""
+        alpha = ctx.evaluate(left_node)
+        omega = ctx.evaluate(right_node)
+        g_result = ctx.apply_func_monadic(self.g, omega)
+        return ctx.apply_func_dyadic(self.f, alpha, g_result)
 
 
 class AtopDerived(UnappliedFunction):
@@ -416,9 +422,16 @@ class AtopDerived(UnappliedFunction):
             return NotImplemented
         return self.g == other.g and self.h == other.h
     def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
-        return ctx.apply_atop_monadic(self, operand_node)
+        """(g h) ω ≡ g (h ω)."""
+        omega = ctx.evaluate(operand_node)
+        h_result = ctx.apply_func_monadic(self.h, omega)
+        return ctx.apply_func_monadic(self.g, h_result)
     def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
-        return ctx.apply_atop_dyadic(self, left_node, right_node)
+        """α (g h) ω ≡ g (α h ω)."""
+        alpha = ctx.evaluate(left_node)
+        omega = ctx.evaluate(right_node)
+        h_result = ctx.apply_func_dyadic(self.h, alpha, omega)
+        return ctx.apply_func_monadic(self.g, h_result)
 
 
 class ForkDerived(UnappliedFunction):
@@ -437,10 +450,34 @@ class ForkDerived(UnappliedFunction):
         if not isinstance(other, ForkDerived):
             return NotImplemented
         return self.f == other.f and self.g == other.g and self.h == other.h
+    def _resolve_f(self, ctx: ExecutionContext) -> object:
+        """Resolve f to an APLArray (Agh-fork) or leave as function."""
+        if isinstance(self.f, Node):
+            return ctx.evaluate(self.f)
+        return self.f
+
     def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
-        return ctx.apply_fork_monadic(self, operand_node)
+        """(f g h) ω ≡ (f ω) g (h ω). Agh-fork: A g (h ω)."""
+        omega = ctx.evaluate(operand_node)
+        right = ctx.apply_func_monadic(self.h, omega)
+        f_val = self._resolve_f(ctx)
+        if isinstance(f_val, APLArray):
+            left = f_val
+        else:
+            left = ctx.apply_func_monadic(f_val, omega)
+        return ctx.apply_func_dyadic(self.g, left, right)
+
     def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
-        return ctx.apply_fork_dyadic(self, left_node, right_node)
+        """α (f g h) ω ≡ (α f ω) g (α h ω)."""
+        alpha = ctx.evaluate(left_node)
+        omega = ctx.evaluate(right_node)
+        right = ctx.apply_func_dyadic(self.h, alpha, omega)
+        f_val = self._resolve_f(ctx)
+        if isinstance(f_val, APLArray):
+            left = f_val
+        else:
+            left = ctx.apply_func_dyadic(f_val, alpha, omega)
+        return ctx.apply_func_dyadic(self.g, left, right)
 
 
 class ReduceDerived(UnappliedFunction):
