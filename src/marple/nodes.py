@@ -321,6 +321,9 @@ class UnappliedFunction(APLValue):
     def name_class(self) -> int:
         return NC_FUNCTION
 
+    def apply_monadic(self, ctx: 'ExecutionContext', operand_node: object) -> 'APLArray':
+        raise NotImplementedError
+
 
 class RankDerived(UnappliedFunction):
     """Unapplied rank-derived function: f⍤k"""
@@ -331,6 +334,8 @@ class RankDerived(UnappliedFunction):
         if not isinstance(other, RankDerived):
             return NotImplemented
         return self.function == other.function and self.rank_spec == other.rank_spec
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+        return ctx.apply_rank_monadic(self, operand_node)
 
 
 class PowerDerived(UnappliedFunction):
@@ -338,6 +343,8 @@ class PowerDerived(UnappliedFunction):
     def __init__(self, function: object, right_operand: object) -> None:
         self.function = function
         self.right_operand = right_operand
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+        return ctx.apply_power_monadic(self, operand_node)
 
 
 class CommuteDerived(UnappliedFunction):
@@ -351,6 +358,8 @@ class CommuteDerived(UnappliedFunction):
     """
     def __init__(self, function: object) -> None:
         self.function = function
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+        return ctx.apply_commute_monadic(self, operand_node)
 
 
 class BesideDerived(UnappliedFunction):
@@ -370,6 +379,8 @@ class BesideDerived(UnappliedFunction):
         if not isinstance(other, BesideDerived):
             return NotImplemented
         return self.f == other.f and self.g == other.g
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+        return ctx.apply_beside_monadic(self, operand_node)
 
 
 class AtopDerived(UnappliedFunction):
@@ -385,6 +396,8 @@ class AtopDerived(UnappliedFunction):
         if not isinstance(other, AtopDerived):
             return NotImplemented
         return self.g == other.g and self.h == other.h
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+        return ctx.apply_atop_monadic(self, operand_node)
 
 
 class ForkDerived(UnappliedFunction):
@@ -403,6 +416,8 @@ class ForkDerived(UnappliedFunction):
         if not isinstance(other, ForkDerived):
             return NotImplemented
         return self.f == other.f and self.g == other.g and self.h == other.h
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+        return ctx.apply_fork_monadic(self, operand_node)
 
 
 class IBeamDerived(UnappliedFunction, Node):
@@ -411,6 +426,9 @@ class IBeamDerived(UnappliedFunction, Node):
         self.path = path
     def execute(self, ctx: ExecutionContext) -> object:
         return self
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+        operand = ctx.evaluate(operand_node)
+        return ctx.call_ibeam(self.path, operand)
 
 
 class InnerProduct(Node):
@@ -523,6 +541,9 @@ class FunctionRef(UnappliedFunction, Node):
         self.glyph = glyph
     def execute(self, ctx: ExecutionContext) -> object:
         return self
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+        operand = ctx.evaluate(operand_node)
+        return ctx.dispatch_monadic(self.glyph, operand)
 
 
 class AlphaAlpha(Node):
@@ -615,42 +636,14 @@ class MonadicDfnCall(Node):
         from marple.dfn_binding import DfnBinding
         if isinstance(self.dfn, SysVar):
             return ctx.dispatch_sys_monadic(self.dfn.name, self.operand)
-        if isinstance(self.dfn, RankDerived):
-            return ctx.apply_rank_monadic(self.dfn, self.operand)
-        if isinstance(self.dfn, PowerDerived):
-            return ctx.apply_power_monadic(self.dfn, self.operand)
-        if isinstance(self.dfn, CommuteDerived):
-            return ctx.apply_commute_monadic(self.dfn, self.operand)
-        if isinstance(self.dfn, BesideDerived):
-            return ctx.apply_beside_monadic(self.dfn, self.operand)
-        if isinstance(self.dfn, AtopDerived):
-            return ctx.apply_atop_monadic(self.dfn, self.operand)
-        if isinstance(self.dfn, ForkDerived):
-            return ctx.apply_fork_monadic(self.dfn, self.operand)
+        if isinstance(self.dfn, UnappliedFunction):
+            return self.dfn.apply_monadic(ctx, self.operand)
         dfn_val = ctx.evaluate(self.dfn)
-        # Post-evaluation dispatch: a Var may resolve to a derived
-        # function stored at assignment time (`f←+/⍤1`, `g←⍴∘⍴`).
-        # These get dispatched through the same apply_*_monadic
-        # methods the pre-evaluation path uses.
-        if isinstance(dfn_val, RankDerived):
-            return ctx.apply_rank_monadic(dfn_val, self.operand)
-        if isinstance(dfn_val, PowerDerived):
-            return ctx.apply_power_monadic(dfn_val, self.operand)
-        if isinstance(dfn_val, CommuteDerived):
-            return ctx.apply_commute_monadic(dfn_val, self.operand)
-        if isinstance(dfn_val, BesideDerived):
-            return ctx.apply_beside_monadic(dfn_val, self.operand)
-        if isinstance(dfn_val, AtopDerived):
-            return ctx.apply_atop_monadic(dfn_val, self.operand)
-        if isinstance(dfn_val, ForkDerived):
-            return ctx.apply_fork_monadic(dfn_val, self.operand)
+        if isinstance(dfn_val, UnappliedFunction):
+            return dfn_val.apply_monadic(ctx, self.operand)
         operand = ctx.evaluate(self.operand)
         if isinstance(dfn_val, DfnBinding):
             return dfn_val.apply(operand)
-        if isinstance(dfn_val, FunctionRef):
-            return ctx.dispatch_monadic(dfn_val.glyph, operand)
-        if isinstance(dfn_val, IBeamDerived):
-            return ctx.call_ibeam(dfn_val.path, operand)
         # Old-style _DfnBinding from namespace system — wrap and apply
         if hasattr(dfn_val, 'dfn') and hasattr(dfn_val, 'env'):
             binding = DfnBinding(getattr(dfn_val, 'dfn'), ctx.env)
