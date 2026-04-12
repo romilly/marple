@@ -435,7 +435,9 @@ class InnerProduct(Node):
     def execute(self, ctx: ExecutionContext) -> APLArray:
         omega = ctx.evaluate(self.right)
         alpha = ctx.evaluate(self.left)
-        return _inner_product(self.left_fn, self.right_fn, alpha, omega)
+        left = self.left_fn.glyph if isinstance(self.left_fn, FunctionRef) else self.left_fn
+        right = self.right_fn.glyph if isinstance(self.right_fn, FunctionRef) else self.right_fn
+        return _inner_product(left, right, alpha, omega)
 
 
 class OuterProduct(Node):
@@ -446,7 +448,8 @@ class OuterProduct(Node):
     def execute(self, ctx: ExecutionContext) -> APLArray:
         omega = ctx.evaluate(self.right)
         alpha = ctx.evaluate(self.left)
-        return _outer_product(self.function, alpha, omega)
+        fn = self.function.glyph if isinstance(self.function, FunctionRef) else self.function
+        return _outer_product(fn, alpha, omega)
 
 
 class SysVar(Node):

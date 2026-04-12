@@ -243,7 +243,7 @@ class Parser:
             self._pos += 1
             fn_tok = self._eat(TokenType.FUNCTION)
             assert isinstance(fn_tok.value, str)
-            bound = BoundOperator("∘.", fn_tok.value, CAT_VERB)
+            bound = BoundOperator("∘.", FunctionRef(fn_tok.value), CAT_VERB)
             items.append((CAT_VERB, bound))
         elif (op == "⌶" and self._pos < len(self._tokens)
                 and self._current().type == TokenType.STRING):
@@ -693,6 +693,8 @@ class Parser:
                 adv_node = stack[-3][1]
                 assert isinstance(adv_node, (str, Var))
                 assert isinstance(operand_node, (str, Node, BoundOperator))
+                if isinstance(operand_node, str) and operand_cat == CAT_VERB:
+                    operand_node = FunctionRef(operand_node)
                 bound = BoundOperator(adv_node, operand_node, operand_cat)
                 stack[-3:-1] = [(CAT_VERB, bound)]
                 matched = True
@@ -724,6 +726,10 @@ class Parser:
                 assert isinstance(conj_node, (str, Var))
                 assert isinstance(left_operand, (str, Node, BoundOperator))
                 assert isinstance(right_operand, (str, Node, BoundOperator))
+                if isinstance(left_operand, str) and left_cat == CAT_VERB:
+                    left_operand = FunctionRef(left_operand)
+                if isinstance(right_operand, str) and right_cat == CAT_VERB:
+                    right_operand = FunctionRef(right_operand)
                 bound = BoundOperator(conj_node, left_operand, left_cat,
                                       right_operand, right_cat)
                 stack[-4:-1] = [(CAT_VERB, bound)]
