@@ -17,10 +17,12 @@ from marple.operator_binding import DerivedFunctionBinding
 from marple.parser import (
     AtopDerived,
     Dfn,
+    FmtArgs,
     ForkDerived,
     FunctionRef,
     Node,
     RankDerived,
+    UnappliedFunction,
 )
 from marple.symbol_table import NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN, APLValue
 
@@ -100,7 +102,7 @@ class Executor:
 
     # ── Core evaluation ──
 
-    def evaluate(self, node: Node | object) -> APLArray:
+    def evaluate(self, node: Node) -> APLArray:
         """Evaluate an AST node by calling its execute method."""
         if isinstance(node, Node):
             return node.execute(self)  # type: ignore[return-value]
@@ -166,7 +168,7 @@ class Executor:
                 function = val
         return DerivedFunctionBinding().apply(operator, function, operand)
 
-    def assign(self, name: str, value_node: object) -> APLArray:
+    def assign(self, name: str, value_node: Node | UnappliedFunction) -> APLArray:
         if name in _READONLY_QUADS:
             raise DomainError(f"Cannot assign to read-only system variable {name}")
         # Function-like values (FunctionRef, RankDerived, BesideDerived,
@@ -316,7 +318,7 @@ class Executor:
         "⎕NWRITE": "_sys_nwrite",
     }
 
-    def dispatch_sys_monadic(self, name: str, operand_node: object) -> APLArray:
+    def dispatch_sys_monadic(self, name: str, operand_node: Node) -> APLArray:
         if name == "⎕FMT":
             return self._sys_fmt_monadic(operand_node)
         operand = self.evaluate(operand_node)
@@ -325,7 +327,7 @@ class Executor:
             return getattr(self, method_name)(operand)
         raise DomainError(f"Unknown system function: {name}")
 
-    def dispatch_sys_dyadic(self, name: str, left_node: object, right_node: object) -> APLArray:
+    def dispatch_sys_dyadic(self, name: str, left_node: Node, right_node: Node) -> APLArray:
         if name == "⎕FMT":
             return self._sys_fmt_dyadic(left_node, right_node)
         method_name = self._DYADIC_SYS_FN_DISPATCH.get(name)
@@ -434,7 +436,7 @@ class Executor:
             return APLArray(list(right.shape), data)
         raise DomainError("Invalid ⎕DR type code: " + str(target))
 
-    def _sys_fmt_monadic(self, operand_node: object) -> APLArray:
+    def _sys_fmt_monadic(self, operand_node: Node | FmtArgs) -> APLArray:
         """Monadic ⎕FMT — handles both regular operands and FmtArgs."""
         from marple.nodes import FmtArgs
         if isinstance(operand_node, FmtArgs):
@@ -458,7 +460,7 @@ class Executor:
             text = str(operand)
         return APLArray([len(text)], str_to_char_array(text))
 
-    def _sys_fmt_dyadic(self, left_node: object, right_node: object) -> APLArray:
+    def _sys_fmt_dyadic(self, left_node: Node, right_node: Node | FmtArgs) -> APLArray:
         """Dyadic ⎕FMT — format with specification string."""
         from marple.fmt import dyadic_fmt
         from marple.nodes import FmtArgs

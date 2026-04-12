@@ -149,15 +149,15 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
 class ExecutionContext(Protocol):
     """Interface that AST nodes use to evaluate sub-expressions."""
     env: Any
-    def evaluate(self, node: object) -> APLArray: ...
+    def evaluate(self, node: 'Node') -> APLArray: ...
     def dispatch_monadic(self, glyph: str, operand: APLArray) -> APLArray: ...
     def dispatch_dyadic(self, glyph: str, left: APLArray, right: APLArray) -> APLArray: ...
     def apply_derived(self, operator: str, function: object, operand: APLArray) -> APLArray: ...
-    def assign(self, name: str, value_node: object) -> APLArray: ...
+    def assign(self, name: str, value_node: 'Node | UnappliedFunction') -> APLArray: ...
     def eval_sysvar(self, name: str) -> APLArray: ...
     def create_binding(self, dfn_node: object) -> object: ...
-    def dispatch_sys_monadic(self, name: str, operand_node: object) -> APLArray: ...
-    def dispatch_sys_dyadic(self, name: str, left_node: object, right_node: object) -> APLArray: ...
+    def dispatch_sys_monadic(self, name: str, operand_node: 'Node') -> APLArray: ...
+    def dispatch_sys_dyadic(self, name: str, left_node: 'Node', right_node: 'Node') -> APLArray: ...
     def apply_func_monadic(self, func: object, omega: 'APLArray') -> 'APLArray': ...
     def apply_func_dyadic(self, func: object, alpha: 'APLArray', omega: 'APLArray') -> 'APLArray': ...
     def resolve_qualified(self, parts: list[str]) -> object: ...
@@ -222,7 +222,7 @@ class Zilde(Node):
 
 
 class MonadicFunc(Node):
-    def __init__(self, function: str, operand: object) -> None:
+    def __init__(self, function: str, operand: Node) -> None:
         self.function = function
         self.operand = operand
     def execute(self, ctx: ExecutionContext) -> APLArray:
@@ -231,7 +231,7 @@ class MonadicFunc(Node):
 
 
 class DyadicFunc(Node):
-    def __init__(self, function: str, left: object, right: object) -> None:
+    def __init__(self, function: str, left: Node, right: Node) -> None:
         self.function = function
         self.left = left
         self.right = right
@@ -266,7 +266,7 @@ class QualifiedVar(Node):
 
 
 class DerivedFunc(Node):
-    def __init__(self, operator: str, function, operand: object) -> None:
+    def __init__(self, operator: str, function: object, operand: Node) -> None:
         self.operator = operator
         self.function = function
         self.operand = operand
@@ -278,8 +278,8 @@ class DerivedFunc(Node):
 class MonadicDopCall(Node):
     """User-defined operator applied: (operand op) argument
     or: left (operand op) right (when derived verb is used dyadically)"""
-    def __init__(self, op_name: object, operand: object, argument: object,
-                 alpha: object = None) -> None:
+    def __init__(self, op_name: Node, operand: Node, argument: Node,
+                 alpha: Node | None = None) -> None:
         self.op_name = op_name
         self.operand = operand
         self.argument = argument
@@ -297,7 +297,7 @@ class MonadicDopCall(Node):
 
 class DyadicDopCall(Node):
     """User-defined operator applied dyadically: left (operand op) right"""
-    def __init__(self, op_name: object, operand: object, left: object, right: object) -> None:
+    def __init__(self, op_name: Node, operand: Node, left: Node, right: Node) -> None:
         self.op_name = op_name
         self.operand = operand
         self.left = left
@@ -320,10 +320,10 @@ class UnappliedFunction(APLValue):
         return NC_FUNCTION
 
     @abstractmethod
-    def apply_monadic(self, ctx: 'ExecutionContext', operand_node: object) -> 'APLArray': ...
+    def apply_monadic(self, ctx: 'ExecutionContext', operand_node: 'Node') -> 'APLArray': ...
 
     @abstractmethod
-    def apply_dyadic(self, ctx: 'ExecutionContext', left_node: object, right_node: object) -> 'APLArray': ...
+    def apply_dyadic(self, ctx: 'ExecutionContext', left_node: 'Node', right_node: 'Node') -> 'APLArray': ...
 
 
 class RankDerived(UnappliedFunction):
@@ -335,7 +335,7 @@ class RankDerived(UnappliedFunction):
         if not isinstance(other, RankDerived):
             return NotImplemented
         return self.function == other.function and self.rank_spec == other.rank_spec
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
         from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
         omega = ctx.evaluate(operand_node)
         rank_spec_val = ctx.evaluate(self.rank_spec)
@@ -345,7 +345,7 @@ class RankDerived(UnappliedFunction):
         results = [ctx.apply_func_monadic(self.function, cell) for cell in cells]
         return reassemble(frame_shape, results)
 
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
         from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
         from marple.errors import LengthError
         alpha = ctx.evaluate(left_node)
@@ -394,7 +394,7 @@ class PowerDerived(UnappliedFunction):
                 return S(1 if left.data.item() == right.data.item() else 0)
         return ctx.apply_func_dyadic(func, left, right)
 
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
         omega = ctx.evaluate(operand_node)
         right_val = self._resolve_right(ctx)
         if isinstance(right_val, APLArray) and right_val.is_scalar():
@@ -415,7 +415,7 @@ class PowerDerived(UnappliedFunction):
                 prev = curr
         raise DomainError("⍣ right operand must be integer or function")
 
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
         alpha = ctx.evaluate(left_node)
         omega = ctx.evaluate(right_node)
         right_val = self._resolve_right(ctx)
@@ -449,11 +449,11 @@ class CommuteDerived(UnappliedFunction):
     """
     def __init__(self, function: object) -> None:
         self.function = function
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
         """f⍨ ω ≡ ω f ω. Evaluates ω exactly once."""
         omega = ctx.evaluate(operand_node)
         return ctx.apply_func_dyadic(self.function, omega, omega)
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
         """α f⍨ ω ≡ ω f α (swap arguments)."""
         alpha = ctx.evaluate(left_node)
         omega = ctx.evaluate(right_node)
@@ -477,12 +477,12 @@ class BesideDerived(UnappliedFunction):
         if not isinstance(other, BesideDerived):
             return NotImplemented
         return self.f == other.f and self.g == other.g
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
         """(f∘g) ω ≡ f (g ω)."""
         omega = ctx.evaluate(operand_node)
         g_result = ctx.apply_func_monadic(self.g, omega)
         return ctx.apply_func_monadic(self.f, g_result)
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
         """α (f∘g) ω ≡ α f (g ω)."""
         alpha = ctx.evaluate(left_node)
         omega = ctx.evaluate(right_node)
@@ -503,12 +503,12 @@ class AtopDerived(UnappliedFunction):
         if not isinstance(other, AtopDerived):
             return NotImplemented
         return self.g == other.g and self.h == other.h
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
         """(g h) ω ≡ g (h ω)."""
         omega = ctx.evaluate(operand_node)
         h_result = ctx.apply_func_monadic(self.h, omega)
         return ctx.apply_func_monadic(self.g, h_result)
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
         """α (g h) ω ≡ g (α h ω)."""
         alpha = ctx.evaluate(left_node)
         omega = ctx.evaluate(right_node)
@@ -538,7 +538,7 @@ class ForkDerived(UnappliedFunction):
             return ctx.evaluate(self.f)
         return self.f
 
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
         """(f g h) ω ≡ (f ω) g (h ω). Agh-fork: A g (h ω)."""
         omega = ctx.evaluate(operand_node)
         right = ctx.apply_func_monadic(self.h, omega)
@@ -549,7 +549,7 @@ class ForkDerived(UnappliedFunction):
             left = ctx.apply_func_monadic(f_val, omega)
         return ctx.apply_func_dyadic(self.g, left, right)
 
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
         """α (f g h) ω ≡ (α f ω) g (α h ω)."""
         alpha = ctx.evaluate(left_node)
         omega = ctx.evaluate(right_node)
@@ -571,11 +571,11 @@ class ReduceDerived(UnappliedFunction):
         if not isinstance(other, ReduceDerived):
             return NotImplemented
         return self.operator == other.operator and self.function == other.function
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
         from marple.operator_binding import DerivedFunctionBinding
         operand = ctx.evaluate(operand_node)
         return DerivedFunctionBinding().apply(self.operator, self.function, operand)
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
         raise DomainError("Reduce cannot be applied dyadically")
 
 
@@ -588,11 +588,11 @@ class ScanDerived(UnappliedFunction):
         if not isinstance(other, ScanDerived):
             return NotImplemented
         return self.operator == other.operator and self.function == other.function
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
         from marple.operator_binding import DerivedFunctionBinding
         operand = ctx.evaluate(operand_node)
         return DerivedFunctionBinding().apply(self.operator, self.function, operand)
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
         raise DomainError("Scan cannot be applied dyadically")
 
 
@@ -602,15 +602,15 @@ class IBeamDerived(UnappliedFunction, Node):
         self.path = path
     def execute(self, ctx: ExecutionContext) -> object:
         return self
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
         operand = ctx.evaluate(operand_node)
         return ctx.call_ibeam(self.path, operand)
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
         raise DomainError("Dyadic i-beam not yet supported")
 
 
 class InnerProduct(Node):
-    def __init__(self, left_fn, right_fn, left: object, right: object) -> None:
+    def __init__(self, left_fn: object, right_fn: object, left: Node, right: Node) -> None:
         self.left_fn = left_fn
         self.right_fn = right_fn
         self.left = left
@@ -624,7 +624,7 @@ class InnerProduct(Node):
 
 
 class OuterProduct(Node):
-    def __init__(self, function, left: object, right: object) -> None:
+    def __init__(self, function: object, left: Node, right: Node) -> None:
         self.function = function
         self.left = left
         self.right = right
@@ -643,7 +643,7 @@ class SysVar(Node):
 
 
 class Index(Node):
-    def __init__(self, array: object, indices: list[object | None]) -> None:
+    def __init__(self, array: Node, indices: list[Node | None]) -> None:
         self.array = array
         self.indices = indices
     def execute(self, ctx: ExecutionContext) -> APLArray:
@@ -719,10 +719,10 @@ class FunctionRef(UnappliedFunction, Node):
         self.glyph = glyph
     def execute(self, ctx: ExecutionContext) -> object:
         return self
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: object) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Node) -> APLArray:
         operand = ctx.evaluate(operand_node)
         return ctx.dispatch_monadic(self.glyph, operand)
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: object, right_node: object) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Node, right_node: Node) -> APLArray:
         left = ctx.evaluate(left_node)
         right = ctx.evaluate(right_node)
         return ctx.dispatch_dyadic(self.glyph, left, right)
@@ -811,7 +811,7 @@ class Dfn(Node):
 
 
 class MonadicDfnCall(Node):
-    def __init__(self, dfn: object, operand: object) -> None:
+    def __init__(self, dfn: Node | UnappliedFunction, operand: Node) -> None:
         self.dfn = dfn
         self.operand = operand
     def execute(self, ctx: ExecutionContext) -> APLArray:
@@ -834,7 +834,7 @@ class MonadicDfnCall(Node):
 
 
 class DyadicDfnCall(Node):
-    def __init__(self, dfn: object, left: object, right: object) -> None:
+    def __init__(self, dfn: Node | UnappliedFunction, left: Node, right: Node) -> None:
         self.dfn = dfn
         self.left = left
         self.right = right
