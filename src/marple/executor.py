@@ -158,8 +158,7 @@ class Executor:
     def apply_derived(self, operator: str, function: object, operand: APLArray) -> APLArray:
         # If function is an AST node (e.g. Dfn), evaluate it first
         from marple.dfn_binding import DfnBinding
-        from marple.parser import Node as ParserNode
-        if isinstance(function, ParserNode):
+        if isinstance(function, Evaluatable):
             val = self.evaluate(function)
             if isinstance(val, DfnBinding):
                 function = lambda a, o, _b=val: _b.apply(o, alpha=a)
@@ -289,8 +288,7 @@ class Executor:
         if isinstance(func, UnappliedFunction):
             return func.apply_monadic(self, Literal(omega))  # type: ignore[arg-type]
         # AST node (Var, Dfn, etc.) — evaluate to get the function value
-        from marple.parser import Node
-        if isinstance(func, Node):
+        if isinstance(func, Evaluatable):
             val = self.evaluate(func)
             if isinstance(val, UnappliedFunction):
                 return val.apply_monadic(self, Literal(omega))  # type: ignore[arg-type]
@@ -302,8 +300,7 @@ class Executor:
         from marple.nodes import Literal, UnappliedFunction
         if isinstance(func, UnappliedFunction):
             return func.apply_dyadic(self, Literal(alpha), Literal(omega))  # type: ignore[arg-type]
-        from marple.parser import Node
-        if isinstance(func, Node):
+        if isinstance(func, Evaluatable):
             val = self.evaluate(func)
             if isinstance(val, UnappliedFunction):
                 return val.apply_dyadic(self, Literal(alpha), Literal(omega))  # type: ignore[arg-type]

@@ -51,7 +51,7 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
 )
 from marple.tokenizer import Token, TokenType, Tokenizer
 
-StackItem = Node  # All stack items are Node subclasses
+StackItem = Node | str  # Nodes + raw operator/assignment strings
 
 
 # ── Category constants for Iverson's stack-based parser ──
@@ -215,18 +215,18 @@ class Parser:
 
         return items
 
-    def _item_lbrace(self, tok: Token, items: list[tuple[int, object]]) -> None:
+    def _item_lbrace(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
         dfn = self._parse_dfn()
         cat = self._classify_dfn(dfn)
         items.append((cat, dfn))
 
-    def _item_number(self, tok: Token, items: list[tuple[int, object]]) -> None:
-        node: object = self._parse_array()
+    def _item_number(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
+        node: Evaluatable = self._parse_array()
         if self._current().type == TokenType.LBRACKET:
             node = self._parse_bracket_index(node)
         items.append((CAT_NOUN, node))
 
-    def _item_string(self, tok: Token, items: list[tuple[int, object]]) -> None:
+    def _item_string(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
         self._pos += 1
         assert isinstance(tok.value, str)
         node: object = Str(tok.value)
@@ -234,12 +234,12 @@ class Parser:
             node = self._parse_bracket_index(node)
         items.append((CAT_NOUN, node))
 
-    def _item_function(self, tok: Token, items: list[tuple[int, object]]) -> None:
+    def _item_function(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
         self._pos += 1
         assert isinstance(tok.value, str)
         items.append((CAT_VERB, FunctionRef(tok.value)))
 
-    def _item_operator(self, tok: Token, items: list[tuple[int, object]]) -> None:
+    def _item_operator(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
         assert isinstance(tok.value, str)
         op = tok.value
         self._pos += 1
@@ -260,11 +260,11 @@ class Parser:
             cat = self._classify_operator(op)
             items.append((cat, op))
 
-    def _item_assign(self, tok: Token, items: list[tuple[int, object]]) -> None:
+    def _item_assign(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
         self._pos += 1
         items.append((CAT_ASGN, "←"))
 
-    def _item_id(self, tok: Token, items: list[tuple[int, object]]) -> None:
+    def _item_id(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
         assert isinstance(tok.value, str)
         name = tok.value
         self._pos += 1
@@ -278,7 +278,7 @@ class Parser:
             cat = self._classify_name(name)
             items.append((cat, var_node))
 
-    def _item_sysvar(self, tok: Token, items: list[tuple[int, object]]) -> None:
+    def _item_sysvar(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
         assert isinstance(tok.value, str)
         name = tok.value
         self._pos += 1
@@ -297,36 +297,36 @@ class Parser:
             cat = self._classify_sysvar(name)
             items.append((cat, sv_node))
 
-    def _item_omega(self, tok: Token, items: list[tuple[int, object]]) -> None:
+    def _item_omega(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
         self._pos += 1
         items.append((CAT_NOUN, Omega()))
 
-    def _item_alpha(self, tok: Token, items: list[tuple[int, object]]) -> None:
+    def _item_alpha(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
         self._pos += 1
         items.append((CAT_NOUN, Alpha()))
 
-    def _item_alpha_alpha(self, tok: Token, items: list[tuple[int, object]]) -> None:
+    def _item_alpha_alpha(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
         self._pos += 1
         items.append((CAT_NOUN, AlphaAlpha()))
 
-    def _item_omega_omega(self, tok: Token, items: list[tuple[int, object]]) -> None:
+    def _item_omega_omega(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
         self._pos += 1
         items.append((CAT_NOUN, OmegaOmega()))
 
-    def _item_nabla(self, tok: Token, items: list[tuple[int, object]]) -> None:
+    def _item_nabla(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
         self._pos += 1
         items.append((CAT_VERB, Nabla()))
 
-    def _item_zilde(self, tok: Token, items: list[tuple[int, object]]) -> None:
+    def _item_zilde(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
         self._pos += 1
         items.append((CAT_NOUN, Zilde()))
 
-    def _item_qualified_name(self, tok: Token, items: list[tuple[int, object]]) -> None:
+    def _item_qualified_name(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
         assert isinstance(tok.value, str)
         self._pos += 1
         items.append((CAT_NOUN, QualifiedVar(tok.value.split("::"))))
 
-    _ITEM_DISPATCH: dict[str, Callable[['Parser', Token, list[tuple[int, object]]], None]] = {
+    _ITEM_DISPATCH: dict[str, Callable[['Parser', Token, list[tuple[int, StackItem]]], None]] = {
         TokenType.LBRACE: _item_lbrace,
         TokenType.NUMBER: _item_number,
         TokenType.STRING: _item_string,
@@ -455,8 +455,10 @@ class Parser:
 
     def _bound_monadic_ibeam(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         operand = bound.left_operand
-        ibeam = IBeamDerived(operand) if isinstance(operand, str) else operand
-        return MonadicDfnCall(ibeam, arg_node)
+        if isinstance(operand, str):
+            return MonadicDfnCall(IBeamDerived(operand), arg_node)
+        assert isinstance(operand, (Evaluatable, UnappliedFunction))
+        return MonadicDfnCall(operand, arg_node)
 
     def _apply_user_dop_monadic(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         assert isinstance(bound.operator, Var)
@@ -609,8 +611,8 @@ class Parser:
         inner = ForkDerived(items[-3], items[-2], items[-1])
         return self._build_train(items[:-3] + [inner])
 
-    def _resolve_assignment_value(self, value_node: object,
-                                  value_cat: int) -> object:
+    def _resolve_assignment_value(self, value_node: StackItem,
+                                  value_cat: int) -> Evaluatable | UnappliedFunction:
         """Convert a Case 6 value_node into a form that `ctx.assign`
         can store directly.
 
@@ -770,8 +772,10 @@ class Parser:
                 while i <= len(stack):
                     cat, _node = stack[-i]
                     if cat == CAT_VERB:
+                        assert isinstance(_node, Node)
                         train_items.append(self._resolve_operand(_node))
                     elif cat == CAT_NOUN and len(train_items) == 0:
+                        assert isinstance(_node, Node)
                         train_items.append(_node)
                         leading_noun = True
                     else:
@@ -826,7 +830,7 @@ class Parser:
             raise SyntaxError_(
                 "Expression could not be fully parsed"
             )
-        return results[0][1]
+        return self._as_evaluatable(results[0][1])
 
     def _current(self) -> Token:
         return self._tokens[self._pos]
@@ -846,7 +850,7 @@ class Parser:
     def _parse_dfn(self) -> Dfn:
         """Parse a dfn: { statement (⋄ statement)* }"""
         self._eat(TokenType.LBRACE)
-        statements: list[object] = []
+        statements: list[Evaluatable | Guard | AlphaDefault] = []
         while self._current().type not in (TokenType.RBRACE, TokenType.EOF):
             stmt = self._parse_dfn_statement()
             statements.append(stmt)
@@ -857,7 +861,7 @@ class Parser:
         self._eat(TokenType.RBRACE)
         return Dfn(statements)
 
-    def _parse_dfn_statement(self) -> object:
+    def _parse_dfn_statement(self) -> Evaluatable | Guard | AlphaDefault:
         """Parse a statement inside a dfn, handling guards and ⍺← default."""
         # Check for ⍺← default
         peek = self._peek()
@@ -879,7 +883,7 @@ class Parser:
             return Guard(stmt, body)
         return stmt
 
-    def _parse_atom(self) -> object:
+    def _parse_atom(self) -> Evaluatable:
         token = self._current()
         if token.type == TokenType.LPAREN:
             self._eat(TokenType.LPAREN)
@@ -938,17 +942,17 @@ class Parser:
             return self._parse_dfn()
         raise SyntaxError_(f"Unexpected token: {token}")
 
-    def _parse_atom_with_index(self) -> object:
+    def _parse_atom_with_index(self) -> Evaluatable:
         """Parse an atom, then check for bracket indexing."""
         atom = self._parse_atom()
         if self._current().type == TokenType.LBRACKET:
             return self._parse_bracket_index(atom)
         return atom
 
-    def _parse_bracket_index(self, array: object) -> Index:
+    def _parse_bracket_index(self, array: Evaluatable) -> Index:
         """Parse [idx] or [row;col] bracket indexing."""
         self._eat(TokenType.LBRACKET)
-        indices: list[object | None] = []
+        indices: list[Evaluatable | None] = []
         # First index (may be empty for [;col])
         if self._current().type == TokenType.SEMICOLON:
             indices.append(None)
@@ -975,7 +979,7 @@ class Parser:
             TokenType.SYSVAR, TokenType.ZILDE,
         )
 
-    def _parse_array(self) -> object:
+    def _parse_array(self) -> Evaluatable:
         """Parse one or more adjacent numeric atoms as a vector,
         or a single non-numeric atom."""
         first = self._parse_atom_with_index()

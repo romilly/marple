@@ -535,7 +535,7 @@ class ForkDerived(UnappliedFunction):
     Dyadic:  α (f g h) ω ≡ (α f ω) g (α h ω)
     When f is an array: (A g h) ω ≡ A g (h ω)
     """
-    def __init__(self, f: Evaluatable | UnappliedFunction, g: Node, h: Node) -> None:
+    def __init__(self, f: Node, g: Node, h: Node) -> None:
         self.f = f
         self.g = g
         self.h = h
