@@ -166,6 +166,10 @@ class ExecutionContext(Protocol):
     def apply_commute_dyadic(self, commute_node: object, left_node: object, right_node: object) -> APLArray: ...
     def apply_beside_monadic(self, beside_node: object, operand_node: object) -> APLArray: ...
     def apply_beside_dyadic(self, beside_node: object, left_node: object, right_node: object) -> APLArray: ...
+    def apply_atop_monadic(self, atop_node: object, operand_node: object) -> APLArray: ...
+    def apply_atop_dyadic(self, atop_node: object, left_node: object, right_node: object) -> APLArray: ...
+    def apply_fork_monadic(self, fork_node: object, operand_node: object) -> APLArray: ...
+    def apply_fork_dyadic(self, fork_node: object, left_node: object, right_node: object) -> APLArray: ...
     def resolve_qualified(self, parts: list[str]) -> object: ...
     def call_ibeam(self, path: str, operand: APLArray) -> APLArray: ...
 
@@ -359,6 +363,39 @@ class BesideDerived:
         if not isinstance(other, BesideDerived):
             return NotImplemented
         return self.f == other.f and self.g == other.g
+
+
+class AtopDerived:
+    """(g h) — 2-train atop.
+
+    Monadic: (g h) ω   ≡ g (h ω)
+    Dyadic:  α (g h) ω ≡ g (α h ω)
+    """
+    def __init__(self, g: object, h: object) -> None:
+        self.g = g
+        self.h = h
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, AtopDerived):
+            return NotImplemented
+        return self.g == other.g and self.h == other.h
+
+
+class ForkDerived:
+    """(f g h) — 3-train fork.
+
+    f may be a function or an array (Agh-fork).
+    Monadic: (f g h) ω   ≡ (f ω) g (h ω)
+    Dyadic:  α (f g h) ω ≡ (α f ω) g (α h ω)
+    When f is an array: (A g h) ω ≡ A g (h ω)
+    """
+    def __init__(self, f: object, g: object, h: object) -> None:
+        self.f = f
+        self.g = g
+        self.h = h
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ForkDerived):
+            return NotImplemented
+        return self.f == other.f and self.g == other.g and self.h == other.h
 
 
 class ReduceOp:
@@ -596,6 +633,10 @@ class MonadicDfnCall(Node):
             return ctx.apply_commute_monadic(self.dfn, self.operand)
         if isinstance(self.dfn, BesideDerived):
             return ctx.apply_beside_monadic(self.dfn, self.operand)
+        if isinstance(self.dfn, AtopDerived):
+            return ctx.apply_atop_monadic(self.dfn, self.operand)
+        if isinstance(self.dfn, ForkDerived):
+            return ctx.apply_fork_monadic(self.dfn, self.operand)
         dfn_val = ctx.evaluate(self.dfn)
         # Post-evaluation dispatch: a Var may resolve to a derived
         # function stored at assignment time (`f←+/⍤1`, `g←⍴∘⍴`).
@@ -609,6 +650,10 @@ class MonadicDfnCall(Node):
             return ctx.apply_commute_monadic(dfn_val, self.operand)
         if isinstance(dfn_val, BesideDerived):
             return ctx.apply_beside_monadic(dfn_val, self.operand)
+        if isinstance(dfn_val, AtopDerived):
+            return ctx.apply_atop_monadic(dfn_val, self.operand)
+        if isinstance(dfn_val, ForkDerived):
+            return ctx.apply_fork_monadic(dfn_val, self.operand)
         operand = ctx.evaluate(self.operand)
         if isinstance(dfn_val, DfnBinding):
             return dfn_val.apply(operand)
@@ -640,6 +685,10 @@ class DyadicDfnCall(Node):
             return ctx.apply_commute_dyadic(self.dfn, self.left, self.right)
         if isinstance(self.dfn, BesideDerived):
             return ctx.apply_beside_dyadic(self.dfn, self.left, self.right)
+        if isinstance(self.dfn, AtopDerived):
+            return ctx.apply_atop_dyadic(self.dfn, self.left, self.right)
+        if isinstance(self.dfn, ForkDerived):
+            return ctx.apply_fork_dyadic(self.dfn, self.left, self.right)
         dfn_val = ctx.evaluate(self.dfn)
         # Post-evaluation dispatch for derived functions stored in
         # variables — see MonadicDfnCall.execute for the rationale.

@@ -6,6 +6,7 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     AlphaAlpha,
     AlphaDefault,
     Assignment,
+    AtopDerived,
     BesideDerived,
     BoundOperator,
     CAT_EMPTY,
@@ -17,6 +18,7 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     DyadicFunc,
     ExecutionContext,
     FmtArgs,
+    ForkDerived,
     FunctionRef,
     Guard,
     IBeamDerived,
@@ -369,7 +371,8 @@ class Parser:
             return self._apply_bound_monadic(verb_node, arg_node)
         if isinstance(verb_node, (Var, Dfn, QualifiedVar, Nabla,
                                   AlphaAlpha, OmegaOmega,
-                                  RankDerived, IBeamDerived, FunctionRef)):
+                                  RankDerived, IBeamDerived, FunctionRef,
+                                  AtopDerived, ForkDerived)):
             return MonadicDfnCall(verb_node, arg_node)
         if isinstance(verb_node, SysVar):
             return MonadicDfnCall(verb_node, arg_node)
@@ -384,7 +387,8 @@ class Parser:
             return self._apply_bound_dyadic(verb_node, left_node, right_node)
         if isinstance(verb_node, (Var, Dfn, QualifiedVar, Nabla,
                                   AlphaAlpha, OmegaOmega,
-                                  RankDerived, IBeamDerived, FunctionRef)):
+                                  RankDerived, IBeamDerived, FunctionRef,
+                                  AtopDerived, ForkDerived)):
             return DyadicDfnCall(verb_node, left_node, right_node)
         if isinstance(verb_node, SysVar):
             return DyadicDfnCall(verb_node, left_node, right_node)
@@ -559,6 +563,20 @@ class Parser:
         # path handle it (or raise).
         return bound
 
+    def _build_train(self, items: list[object]) -> object:
+        """Build a train node from items (source left-to-right order).
+
+          2 items → AtopDerived(g, h)
+          3 items → ForkDerived(f, g, h)
+        """
+        if len(items) == 2:
+            return AtopDerived(items[0], items[1])
+        if len(items) == 3:
+            return ForkDerived(items[0], items[1], items[2])
+        # N items: bind rightmost 3 into a fork, recurse on (N-2) items
+        inner = ForkDerived(items[-3], items[-2], items[-1])
+        return self._build_train(items[:-3] + [inner])
+
     def _resolve_assignment_value(self, value_node: object,
                                   value_cat: int) -> object:
         """Convert a Case 6 value_node into a form that `ctx.assign`
@@ -710,6 +728,34 @@ class Parser:
                                       right_operand, right_cat)
                 stack[-4:-1] = [(CAT_VERB, bound)]
                 matched = True
+
+            # Case 6.5: Train reduction — LP V V ... boundary
+            # Also accepts a leading NOUN for Agh-fork: (A g h)
+            elif (c0 in (CAT_LP, CAT_ASGN, CAT_END)
+                    and c1 in (CAT_VERB, CAT_NOUN)
+                    and c2 == CAT_VERB):
+                train_items: list[object] = []
+                leading_noun = False
+                i = 2
+                while i <= len(stack):
+                    cat, _node = stack[-i]
+                    if cat == CAT_VERB:
+                        train_items.append(_node)
+                    elif cat == CAT_NOUN and len(train_items) == 0:
+                        train_items.append(_node)
+                        leading_noun = True
+                    else:
+                        break
+                    i += 1
+                # A leading noun is only valid in a 3-train (Agh-fork).
+                # In longer trains it would end up as atop's g, which
+                # is nonsense — don't match, let the parser error.
+                if leading_noun and len(train_items) != 3:
+                    pass
+                elif len(train_items) >= 2:
+                    train = self._build_train(train_items)
+                    stack[-(i - 1):-1] = [(CAT_VERB, train)]
+                    matched = True
 
             # Case 6: Assignment — N/name  ←  N/V/A/C  —
             elif (c0 in (CAT_NOUN,) and c1 == CAT_ASGN
