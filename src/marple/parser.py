@@ -430,12 +430,12 @@ class Parser:
 
     def _bound_monadic_rank(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         rank_node = RankDerived(self._resolve_operand(bound.left_operand),
-                                self._resolve_operand(bound.right_operand))
+                                self._as_evaluatable(self._resolve_right_operand(bound)))
         return MonadicDfnCall(rank_node, arg_node)
 
     def _bound_monadic_power(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         power_node = PowerDerived(self._resolve_operand(bound.left_operand),
-                                  self._resolve_operand(bound.right_operand))
+                                  self._as_evaluatable(self._resolve_right_operand(bound)))
         return MonadicDfnCall(power_node, arg_node)
 
     def _bound_monadic_commute(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
@@ -444,7 +444,7 @@ class Parser:
 
     def _bound_monadic_beside(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         beside_node = BesideDerived(self._resolve_operand(bound.left_operand),
-                                    self._resolve_operand(bound.right_operand))
+                                    self._resolve_right_operand(bound))
         return MonadicDfnCall(beside_node, arg_node)
 
     def _bound_monadic_inner(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
@@ -495,13 +495,13 @@ class Parser:
     def _bound_dyadic_rank(self, bound: BoundOperator,
                            left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
         rank_node = RankDerived(self._resolve_operand(bound.left_operand),
-                                self._resolve_operand(bound.right_operand))
+                                self._as_evaluatable(self._resolve_right_operand(bound)))
         return DyadicDfnCall(rank_node, left_node, right_node)
 
     def _bound_dyadic_power(self, bound: BoundOperator,
                             left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
         power_node = PowerDerived(self._resolve_operand(bound.left_operand),
-                                  self._resolve_operand(bound.right_operand))
+                                  self._as_evaluatable(self._resolve_right_operand(bound)))
         return DyadicDfnCall(power_node, left_node, right_node)
 
     def _bound_dyadic_commute(self, bound: BoundOperator,
@@ -512,17 +512,19 @@ class Parser:
     def _bound_dyadic_beside(self, bound: BoundOperator,
                              left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
         beside_node = BesideDerived(self._resolve_operand(bound.left_operand),
-                                    self._resolve_operand(bound.right_operand))
+                                    self._resolve_right_operand(bound))
         return DyadicDfnCall(beside_node, left_node, right_node)
 
     def _bound_dyadic_inner(self, bound: BoundOperator,
                             left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
-        assert bound.right_operand is not None
+        assert isinstance(bound.left_operand, FunctionRef)
+        assert isinstance(bound.right_operand, FunctionRef)
         return InnerProduct(bound.left_operand, bound.right_operand,
                             left_node, right_node)
 
     def _bound_dyadic_outer(self, bound: BoundOperator,
                             left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
+        assert isinstance(bound.left_operand, FunctionRef)
         return OuterProduct(bound.left_operand, left_node, right_node)
 
     def _bound_dyadic_reduce(self, bound: BoundOperator,
@@ -555,6 +557,11 @@ class Parser:
         "⍀": _bound_dyadic_reduce,
     }
 
+    def _resolve_right_operand(self, bound: BoundOperator) -> Node:
+        """Resolve the right operand of a conjunction (must exist)."""
+        assert bound.right_operand is not None
+        return self._resolve_operand(bound.right_operand)
+
     def _resolve_operand(self, operand: Node) -> Node:
         """If operand is a BoundOperator, resolve it to a derived type."""
         if isinstance(operand, BoundOperator):
@@ -573,16 +580,13 @@ class Parser:
         op = bound.operator
         left = self._resolve_operand(bound.left_operand)
         if op == "⍤":
-            assert bound.right_operand is not None
-            return RankDerived(left, self._as_evaluatable(self._resolve_operand(bound.right_operand)))
+            return RankDerived(left, self._as_evaluatable(self._resolve_right_operand(bound)))
         if op == "⍣":
-            assert bound.right_operand is not None
-            return PowerDerived(left, self._as_evaluatable(self._resolve_operand(bound.right_operand)))
+            return PowerDerived(left, self._as_evaluatable(self._resolve_right_operand(bound)))
         if op == "⍨":
             return CommuteDerived(left)
         if op == "∘":
-            assert bound.right_operand is not None
-            return BesideDerived(left, self._resolve_operand(bound.right_operand))
+            return BesideDerived(left, self._resolve_right_operand(bound))
         if op in ("/", "⌿"):
             assert isinstance(op, str)
             return ReduceDerived(op, left)
@@ -591,7 +595,7 @@ class Parser:
             return ScanDerived(op, left)
         raise SyntaxError_(f"Cannot store operator {op} as a function")
 
-    def _build_train(self, items: list[object]) -> object:
+    def _build_train(self, items: list[Node]) -> UnappliedFunction:
         """Build a train node from items (source left-to-right order).
 
           2 items → AtopDerived(g, h)
@@ -760,7 +764,7 @@ class Parser:
             elif (c0 in (CAT_LP, CAT_ASGN, CAT_END)
                     and c1 in (CAT_VERB, CAT_NOUN)
                     and c2 == CAT_VERB):
-                train_items: list[object] = []
+                train_items: list[Node] = []
                 leading_noun = False
                 i = 2
                 while i <= len(stack):
