@@ -46,6 +46,14 @@ class DfnBinding(UnappliedFunction, Executor):
         left = ctx.evaluate(left_node)
         return self.apply(right, alpha=left)
 
+    def apply_monadic_dop(self, ctx: ExecutionContext, argument: APLArray,
+                          operand: APLValue, alpha: APLArray | None = None) -> APLArray:
+        return self.apply(argument, alpha_alpha=operand, alpha=alpha)
+
+    def apply_dyadic_dop(self, ctx: ExecutionContext, argument: APLArray,
+                         left_operand: APLValue, right_operand: APLValue) -> APLArray:
+        return self.apply(argument, alpha_alpha=left_operand, omega_omega=right_operand)
+
     def apply(
         self,
         omega: APLArray,

@@ -204,6 +204,14 @@ class Applicable(Node):
     @abstractmethod
     def call_dyadic(self, ctx: ExecutionContext, left: 'Evaluatable', right: 'Evaluatable') -> APLArray: ...
 
+    def apply_monadic_dop(self, ctx: ExecutionContext, argument: APLArray,
+                          operand: APLValue, alpha: APLArray | None = None) -> APLArray:
+        raise DomainError(f"Cannot apply {type(self).__name__} as an operator")
+
+    def apply_dyadic_dop(self, ctx: ExecutionContext, argument: APLArray,
+                         left_operand: APLValue, right_operand: APLValue) -> APLArray:
+        raise DomainError(f"Cannot apply {type(self).__name__} as an operator")
+
 
 class Evaluatable(Applicable):
     """A Node that can be executed to produce a value."""
@@ -231,6 +239,18 @@ class Evaluatable(Applicable):
         val = self.execute(ctx)
         assert isinstance(val, Applicable)
         return val.call_dyadic(ctx, left, right)
+
+    def apply_monadic_dop(self, ctx: ExecutionContext, argument: APLArray,
+                          operand: APLValue, alpha: APLArray | None = None) -> APLArray:
+        val = self.execute(ctx)
+        assert isinstance(val, Applicable)
+        return val.apply_monadic_dop(ctx, argument, operand, alpha)
+
+    def apply_dyadic_dop(self, ctx: ExecutionContext, argument: APLArray,
+                         left_operand: APLValue, right_operand: APLValue) -> APLArray:
+        val = self.execute(ctx)
+        assert isinstance(val, Applicable)
+        return val.apply_dyadic_dop(ctx, argument, left_operand, right_operand)
 
 
 class Literal(Evaluatable):
@@ -337,37 +357,31 @@ class DerivedFunc(Evaluatable):
 class MonadicDopCall(Evaluatable):
     """User-defined operator applied: (operand op) argument
     or: left (operand op) right (when derived verb is used dyadically)"""
-    def __init__(self, op_name: Evaluatable, operand: Evaluatable, argument: Evaluatable,
+    def __init__(self, op_name: Applicable, operand: Evaluatable, argument: Evaluatable,
                  alpha: Evaluatable | None = None) -> None:
         self.op_name = op_name
         self.operand = operand
         self.argument = argument
         self.alpha = alpha
     def execute(self, ctx: ExecutionContext) -> APLArray:
-        from marple.dfn_binding import DfnBinding
-        dop_val = self.op_name.execute(ctx)
-        assert isinstance(dop_val, DfnBinding)
         operand = self.operand.execute(ctx)
         argument = ctx.evaluate(self.argument)
         alpha = ctx.evaluate(self.alpha) if self.alpha is not None else None
-        return dop_val.apply(argument, alpha_alpha=operand, alpha=alpha)
+        return self.op_name.apply_monadic_dop(ctx, argument, operand, alpha)
 
 
 class DyadicDopCall(Evaluatable):
     """User-defined operator applied dyadically: left (operand op) right"""
-    def __init__(self, op_name: Evaluatable, operand: Evaluatable, left: Evaluatable, right: Evaluatable) -> None:
+    def __init__(self, op_name: Applicable, operand: Evaluatable, left: Evaluatable, right: Evaluatable) -> None:
         self.op_name = op_name
         self.operand = operand
         self.left = left
         self.right = right
     def execute(self, ctx: ExecutionContext) -> APLArray:
-        from marple.dfn_binding import DfnBinding
-        dop_val = self.op_name.execute(ctx)
-        assert isinstance(dop_val, DfnBinding)
         left_operand = self.operand.execute(ctx)    # ⍺⍺
         right_operand = self.left.execute(ctx)      # ⍵⍵
         argument = ctx.evaluate(self.right)           # ⍵
-        return dop_val.apply(argument, alpha_alpha=left_operand, omega_omega=right_operand)
+        return self.op_name.apply_dyadic_dop(ctx, argument, left_operand, right_operand)
 
 
 class UnappliedFunction(APLValue, Applicable):
