@@ -3,8 +3,6 @@
 
 from typing import Any
 
-import numpy.typing as npt
-
 from marple.get_numpy import np
 
 from marple.numpy_array import APLArray, S
@@ -58,10 +56,6 @@ def _newlines_to_diamonds(source: str) -> str:
 def _ljust(s: str, width: int) -> str:
     return s + " " * max(0, width - len(s))
 
-
-def _apl_chars_to_str(data: npt.NDArray[np.uint32]) -> str:
-    """Convert an APLArray's character data to a Python string."""
-    return chars_to_str(data)
 
 
 def _name_class(value: APLValue) -> int:
@@ -338,17 +332,17 @@ class Executor:
         raise DomainError(f"Unknown dyadic system function: {name}")
 
     def _sys_nc(self, operand: APLArray) -> APLArray:
-        return S(self.env.name_class(_apl_chars_to_str(operand.data)))
+        return S(self.env.name_class(chars_to_str(operand.data)))
 
     def _sys_ex(self, operand: APLArray) -> APLArray:
         if len(operand.shape) == 2:
             return self._sys_ex_matrix(operand)
-        return self._expunge_name(_apl_chars_to_str(operand.data).rstrip())
+        return self._expunge_name(chars_to_str(operand.data).rstrip())
 
     def _sys_ex_matrix(self, operand: APLArray) -> APLArray:
         count = 0
         for r in range(operand.shape[0]):
-            name = _apl_chars_to_str(operand.data[r]).rstrip()
+            name = chars_to_str(operand.data[r]).rstrip()
             result = self._expunge_name(name)
             count += int(result.data.item())
         return S(count)
@@ -401,7 +395,7 @@ class Executor:
         """⎕EA: error-guarded execution. Try right; on error, execute left."""
         from marple.errors import APLError
         from marple.parser import parse
-        right_str = _apl_chars_to_str(right.data)
+        right_str = chars_to_str(right.data)
         try:
             tree = parse(right_str, self.env.class_dict())
             return self.evaluate(tree)
@@ -409,7 +403,7 @@ class Executor:
             self.env["⎕EN"] = S(e.code)
             msg = str(e)
             self.env["⎕DM"] = APLArray([len(msg)], str_to_char_array(msg))
-            left_str = _apl_chars_to_str(left.data)
+            left_str = chars_to_str(left.data)
             tree = parse(left_str, self.env.class_dict())
             return self.evaluate(tree)
 
@@ -465,7 +459,7 @@ class Executor:
         from marple.fmt import dyadic_fmt
         from marple.nodes import FmtArgs
         left = self.evaluate(left_node)
-        fmt_str = _apl_chars_to_str(left.data)
+        fmt_str = chars_to_str(left.data)
         if isinstance(right_node, FmtArgs):
             values = [self.evaluate(arg) for arg in right_node.args]
         else:
@@ -475,7 +469,7 @@ class Executor:
 
     def _sys_cr(self, operand: APLArray) -> APLArray:
         from marple.get_numpy import np
-        fn_name = _apl_chars_to_str(operand.data)
+        fn_name = chars_to_str(operand.data)
         source = self.env.get_source(fn_name)
         if source is None:
             raise DomainError("Not a defined function: " + fn_name)
@@ -498,11 +492,11 @@ class Executor:
         from marple.errors import APLError
         from marple.parser import parse
         if len(operand.shape) == 2:
-            lines = [_apl_chars_to_str(operand.data[r]).rstrip()
+            lines = [chars_to_str(operand.data[r]).rstrip()
                      for r in range(operand.shape[0])]
             text = "\n".join(lines)
         else:
-            text = _apl_chars_to_str(operand.data)
+            text = chars_to_str(operand.data)
         parts = text.split("←", 1)
         if len(parts) < 2:
             raise DomainError("⎕FX requires an assignment: name←{body}")
@@ -531,7 +525,7 @@ class Executor:
     def _sys_csv(self, operand: APLArray) -> APLArray:
         import csv as _csv
         import io as _io
-        path = _apl_chars_to_str(operand.data)
+        path = chars_to_str(operand.data)
         text = self.fs.read_text(path)
         reader = _csv.reader(_io.StringIO(text))
         headers = next(reader)
@@ -572,16 +566,16 @@ class Executor:
         return S(row_count)
 
     def _sys_nread(self, operand: APLArray) -> APLArray:
-        path = _apl_chars_to_str(operand.data)
+        path = chars_to_str(operand.data)
         text = self.fs.read_text(path)
         return APLArray([len(text)], str_to_char_array(text))
 
     def _sys_nexists(self, operand: APLArray) -> APLArray:
-        path = _apl_chars_to_str(operand.data)
+        path = chars_to_str(operand.data)
         return S(1 if self.fs.exists(path) else 0)
 
     def _sys_ndelete(self, operand: APLArray) -> APLArray:
-        path = _apl_chars_to_str(operand.data)
+        path = chars_to_str(operand.data)
         try:
             self.fs.delete(path)
         except OSError:
@@ -589,7 +583,7 @@ class Executor:
         return S(0)
 
     def _sys_nwrite(self, left: APLArray, right: APLArray) -> APLArray:
-        path = _apl_chars_to_str(right.data)
-        text = _apl_chars_to_str(left.data)
+        path = chars_to_str(right.data)
+        text = chars_to_str(left.data)
         self.fs.write_text(path, text)
         return APLArray.array([0], [])
