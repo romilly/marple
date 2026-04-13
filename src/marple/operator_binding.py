@@ -53,27 +53,20 @@ _IDENTITY_ELEMENTS: dict[str, int | float] = {
 def _reduce_row(op: Callable[[Any, Any], Any], data: npt.NDArray[Any], start: int, length: int) -> Any:
     """Right-to-left reduce of a row, using numpy indexing.
 
-    Follows Dyalog's "upcast when you must" rule: try the reduce in the
-    current dtype; if numpy signals overflow, retry with the row
-    upcast to float64. A float64 result that lands at ±inf or nan is
-    reported as a DomainError — the arithmetic cannot represent the
-    answer and silently returning a wrong value is worse than raising.
+    Upcasts integer data to float64 before the operation to prevent
+    silent overflow wrapping. Checks for inf/nan after the operation
+    and raises DomainError if the result cannot be represented.
     """
-    try:
-        with np.errstate(over="raise", invalid="raise"):
-            acc = data[start + length - 1]
-            for i in range(start + length - 2, start - 1, -1):
-                acc = op(data[i], acc)
-        return acc
-    except FloatingPointError:
-        float_data = data[start : start + length].astype(np.float64)
-        with np.errstate(over="ignore", invalid="ignore"):
-            acc = float_data[-1]
-            for i in range(len(float_data) - 2, -1, -1):
-                acc = op(float_data[i], acc)
-        if np.isinf(acc) or np.isnan(acc):
-            raise DomainError("arithmetic overflow in reduce")
-        return acc
+    row = data[start : start + length]
+    if is_numeric_array(row) and "int" in str(row.dtype):
+        row = row.astype(np.float64)
+    with np.errstate(over="ignore", invalid="ignore"):
+        acc = row[-1]
+        for i in range(len(row) - 2, -1, -1):
+            acc = op(row[i], acc)
+    if hasattr(acc, 'item') and (np.isinf(acc) or np.isnan(acc)):
+        raise DomainError("arithmetic overflow in reduce")
+    return acc
 
 
 def _reduce(
@@ -96,14 +89,18 @@ def _reduce(
     if op is None:
         raise DomainError(f"Unknown function for reduce: {glyph}")
     if len(omega.shape) <= 1:
-        return S(_reduce_row(op, flat, 0, n))
+        result_val = _reduce_row(op, flat, 0, n)
+        if hasattr(result_val, 'item'):
+            result_val = maybe_downcast(np.array([result_val]), _DOWNCAST_CT)[0]
+        return S(result_val)
     last = omega.shape[-1]
     new_shape = omega.shape[:-1]
     n_rows = n // last
-    result = np.zeros(n_rows, dtype=flat.dtype)
+    result = np.zeros(n_rows, dtype=np.float64)
     for i in range(n_rows):
         result[i] = _reduce_row(op, flat, i * last, last)
-    return APLArray(new_shape, result.reshape(new_shape))
+    result = maybe_downcast(result.reshape(new_shape), _DOWNCAST_CT)
+    return APLArray(new_shape, result)
 
 
 _ACCUMULATE_UFUNCS: dict[str, np.ufunc] = {}
@@ -140,8 +137,9 @@ def _scan_row_accumulate(ufunc: np.ufunc, data: npt.NDArray[Any], row_len: int) 
     """Apply ufunc.accumulate to each row of length row_len in flat data."""
     n = len(data)
     result = np.empty(n, dtype=data.dtype)
-    for i in range(0, n, row_len):
-        result[i:i + row_len] = ufunc.accumulate(data[i:i + row_len])
+    with np.errstate(over="ignore", invalid="ignore"):
+        for i in range(0, n, row_len):
+            result[i:i + row_len] = ufunc.accumulate(data[i:i + row_len])
     return result
 
 
@@ -149,14 +147,15 @@ def _scan_row_general(op: Callable[[Any, Any], Any], data: npt.NDArray[Any], row
     """O(n²) right-to-left reduce per prefix, row by row."""
     n = len(data)
     result = np.zeros(n, dtype=data.dtype)
-    for i in range(0, n, row_len):
-        row = data[i:i + row_len]
-        result[i] = row[0]
-        for k in range(1, row_len):
-            acc = row[k]
-            for j in range(k - 1, -1, -1):
-                acc = op(row[j], acc)
-            result[i + k] = acc
+    with np.errstate(over="ignore", invalid="ignore"):
+        for i in range(0, n, row_len):
+            row = data[i:i + row_len]
+            result[i] = row[0]
+            for k in range(1, row_len):
+                acc = row[k]
+                for j in range(k - 1, -1, -1):
+                    acc = op(row[j], acc)
+                result[i + k] = acc
     return result
 
 
@@ -173,37 +172,28 @@ def _scan(
         return APLArray.array([0], [])
     row_len = omega.shape[-1] if len(omega.shape) > 0 else n
 
-    # `np.multiply.accumulate` silently wraps on int64 overflow and
-    # does not honor np.errstate. For × on integer data, upcast to
-    # float64 before the scan so overflow becomes detectable as inf.
-    # Integer-valued float results are downcasted back at the end.
+    # Upcast integer data to float64 to prevent silent overflow wrapping.
     scan_data = flat
-    if glyph == "×" and is_numeric_array(flat) and "int" in str(flat.dtype):
+    if is_numeric_array(flat) and "int" in str(flat.dtype):
         scan_data = flat.astype(np.float64)
 
-    def _do_scan(data: npt.NDArray[Any]) -> npt.NDArray[Any]:
-        if glyph is not None:
-            ufunc = _ACCUMULATE_UFUNCS.get(glyph)
-            if ufunc is not None:
-                return _scan_row_accumulate(ufunc, data, row_len)
-        op = _SCALAR_OPS.get(glyph) if glyph is not None else None
-        if op is not None:
-            return _scan_row_general(op, data, row_len)
+    if glyph is not None:
+        ufunc = _ACCUMULATE_UFUNCS.get(glyph)
+        if ufunc is not None:
+            result = _scan_row_accumulate(ufunc, scan_data, row_len)
+        else:
+            op = _SCALAR_OPS.get(glyph)
+            if op is not None:
+                result = _scan_row_general(op, scan_data, row_len)
+            else:
+                raise DomainError(f"Unknown function for scan: {glyph}")
+    else:
         raise DomainError(f"Unknown function for scan: {glyph}")
 
-    try:
-        with np.errstate(over="raise", invalid="raise"):
-            result = _do_scan(scan_data)
-    except FloatingPointError:
-        with np.errstate(over="ignore", invalid="ignore"):
-            result = _do_scan(scan_data.astype(np.float64))
-
-    # Detect float overflow (inf/nan) whichever path we took.
     if hasattr(result, "dtype") and "float" in str(result.dtype):
         if np.any(np.isinf(result)) or np.any(np.isnan(result)):
             raise DomainError("arithmetic overflow in scan")
-        if scan_data is not flat:  # we eagerly upcasted — try to downcast
-            result = maybe_downcast(result, _DOWNCAST_CT)
+        result = maybe_downcast(result, _DOWNCAST_CT)
 
     return APLArray(list(omega.shape), result.reshape(omega.shape))
 
@@ -227,22 +217,21 @@ def _reduce_first(
     for s in cell_shape:
         cell_size *= s
 
-    def _do_reduce(data: npt.NDArray[Any]) -> npt.NDArray[Any]:
-        acc = np.array(data[:cell_size], dtype=data.dtype)
+    reduce_data = flat
+    if is_numeric_array(flat) and "int" in str(flat.dtype):
+        reduce_data = flat.astype(np.float64)
+
+    acc = np.array(reduce_data[:cell_size], dtype=reduce_data.dtype)
+    with np.errstate(over="ignore", invalid="ignore"):
         for i in range(1, first):
-            cell = data[i * cell_size : (i + 1) * cell_size]
+            cell = reduce_data[i * cell_size : (i + 1) * cell_size]
             for j in range(cell_size):
                 acc[j] = op(acc[j], cell[j])
-        return acc
 
-    try:
-        with np.errstate(over="raise", invalid="raise"):
-            acc = _do_reduce(flat)
-    except FloatingPointError:
-        with np.errstate(over="ignore", invalid="ignore"):
-            acc = _do_reduce(flat.astype(np.float64))
+    if hasattr(acc, "dtype") and "float" in str(acc.dtype):
         if np.any(np.isinf(acc)) or np.any(np.isnan(acc)):
             raise DomainError("arithmetic overflow in reduce")
+        acc = maybe_downcast(acc, _DOWNCAST_CT)
     return APLArray(cell_shape, acc.reshape(cell_shape))
 
 
@@ -264,26 +253,24 @@ def _scan_first(
     for s in cell_shape:
         cell_size *= s
     flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
+    scan_data = flat
+    if is_numeric_array(flat) and "int" in str(flat.dtype):
+        scan_data = flat.astype(np.float64)
 
-    def _do_scan(data: npt.NDArray[Any]) -> npt.NDArray[Any]:
-        result = np.zeros(len(data), dtype=data.dtype)
-        result[:cell_size] = data[:cell_size]
-        acc = np.array(data[:cell_size], dtype=data.dtype)
+    result = np.zeros(len(scan_data), dtype=scan_data.dtype)
+    result[:cell_size] = scan_data[:cell_size]
+    acc = np.array(scan_data[:cell_size], dtype=scan_data.dtype)
+    with np.errstate(over="ignore", invalid="ignore"):
         for i in range(1, first):
-            cell = data[i * cell_size : (i + 1) * cell_size]
+            cell = scan_data[i * cell_size : (i + 1) * cell_size]
             for j in range(cell_size):
                 acc[j] = op(acc[j], cell[j])
             result[i * cell_size : (i + 1) * cell_size] = acc
-        return result
 
-    try:
-        with np.errstate(over="raise", invalid="raise"):
-            result = _do_scan(flat)
-    except FloatingPointError:
-        with np.errstate(over="ignore", invalid="ignore"):
-            result = _do_scan(flat.astype(np.float64))
+    if hasattr(result, "dtype") and "float" in str(result.dtype):
         if np.any(np.isinf(result)) or np.any(np.isnan(result)):
             raise DomainError("arithmetic overflow in scan")
+        result = maybe_downcast(result, _DOWNCAST_CT)
     return APLArray(list(omega.shape), result.reshape(omega.shape))
 
 
