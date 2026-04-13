@@ -6,6 +6,7 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     Alpha,
     AlphaAlpha,
     AlphaDefault,
+    Applicable,
     AssignmentArrow,
     Assignment,
     Conjunction,
@@ -562,15 +563,16 @@ class Parser:
         "⍀": _bound_dyadic_reduce,
     }
 
-    def _resolve_right_operand(self, bound: BoundOperator) -> Node:
+    def _resolve_right_operand(self, bound: BoundOperator) -> Applicable:
         """Resolve the right operand of a conjunction (must exist)."""
         assert bound.right_operand is not None
         return self._resolve_operand(bound.right_operand)
 
-    def _resolve_operand(self, operand: Node) -> Node:
+    def _resolve_operand(self, operand: Node) -> Applicable:
         """If operand is a BoundOperator, resolve it to a derived type."""
         if isinstance(operand, BoundOperator):
             return self._bound_to_derived(operand)
+        assert isinstance(operand, Applicable)
         return operand
 
     def _bound_to_derived(self, bound: BoundOperator) -> UnappliedFunction:
@@ -599,7 +601,7 @@ class Parser:
             return ScanDerived(op, left)
         raise SyntaxError_(f"Cannot store operator {op} as a function")
 
-    def _build_train(self, items: list[Node]) -> UnappliedFunction:
+    def _build_train(self, items: list[Applicable]) -> UnappliedFunction:
         """Build a train node from items (source left-to-right order).
 
           2 items → AtopDerived(g, h)
@@ -768,16 +770,15 @@ class Parser:
             elif (c0 in (CAT_LP, CAT_ASGN, CAT_END)
                     and c1 in (CAT_VERB, CAT_NOUN)
                     and c2 == CAT_VERB):
-                train_items: list[Node] = []
+                train_items: list[Applicable] = []
                 leading_noun = False
                 i = 2
                 while i <= len(stack):
                     cat, _node = stack[-i]
                     if cat == CAT_VERB:
-                        assert isinstance(_node, Node)
                         train_items.append(self._resolve_operand(_node))
                     elif cat == CAT_NOUN and len(train_items) == 0:
-                        assert isinstance(_node, Node)
+                        assert isinstance(_node, Applicable)
                         train_items.append(_node)
                         leading_noun = True
                     else:

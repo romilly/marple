@@ -283,32 +283,6 @@ class Executor:
         self.env.console.writeln(line)
         return APLArray([len(line)], str_to_char_array(line))
 
-    # ── Rank operator ──
-
-    def apply_func_monadic(self, func: object, omega: APLArray) -> APLArray:
-        """Apply a function monadically to an already-evaluated array.
-        Used by rank, power, commute, beside, atop, fork operators."""
-        from marple.nodes import Literal, UnappliedFunction
-        if isinstance(func, UnappliedFunction):
-            return func.apply_monadic(self, Literal(omega))
-        if isinstance(func, Evaluatable):
-            val = func.execute(self)
-            if isinstance(val, UnappliedFunction):
-                return val.apply_monadic(self, Literal(omega))
-        raise DomainError(f"Expected function for rank, got {type(func)}")
-
-    def apply_func_dyadic(self, func: object, alpha: APLArray, omega: APLArray) -> APLArray:
-        """Apply a function dyadically to already-evaluated arrays.
-        Used by rank, power, commute, beside, atop, fork operators."""
-        from marple.nodes import Literal, UnappliedFunction
-        if isinstance(func, UnappliedFunction):
-            return func.apply_dyadic(self, Literal(alpha), Literal(omega))
-        if isinstance(func, Evaluatable):
-            val = func.execute(self)
-            if isinstance(val, UnappliedFunction):
-                return val.apply_dyadic(self, Literal(alpha), Literal(omega))
-        raise DomainError(f"Expected function for rank, got {type(func)}")
-
     # ── System functions ──
 
     _DYADIC_SYS_FN_DISPATCH: dict[str, str] = {

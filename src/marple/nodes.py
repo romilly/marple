@@ -158,8 +158,6 @@ class ExecutionContext(Protocol):
     def create_binding(self, dfn_node: 'Dfn') -> APLValue: ...
     def dispatch_sys_monadic(self, name: str, operand_node: 'Evaluatable') -> APLArray: ...
     def dispatch_sys_dyadic(self, name: str, left_node: 'Evaluatable', right_node: 'Evaluatable') -> APLArray: ...
-    def apply_func_monadic(self, func: object, omega: 'APLArray') -> 'APLArray': ...
-    def apply_func_dyadic(self, func: object, alpha: 'APLArray', omega: 'APLArray') -> 'APLArray': ...
     def resolve_qualified(self, parts: list[str]) -> APLValue: ...
     def call_ibeam(self, path: str, operand: APLArray) -> APLArray: ...
 
@@ -195,10 +193,30 @@ class Marker(Node):
 _MARKER = Marker()
 
 
-class Evaluatable(Node):
+class Applicable(Node):
+    """A Node that can be applied as a function to evaluated arguments."""
+    @abstractmethod
+    def apply_to_monadic(self, ctx: ExecutionContext, omega: APLArray) -> APLArray: ...
+    @abstractmethod
+    def apply_to_dyadic(self, ctx: ExecutionContext, alpha: APLArray, omega: APLArray) -> APLArray: ...
+
+
+class Evaluatable(Applicable):
     """A Node that can be executed to produce a value."""
     @abstractmethod
     def execute(self, ctx: ExecutionContext) -> APLValue: ...
+
+    def apply_to_monadic(self, ctx: ExecutionContext, omega: APLArray) -> APLArray:
+        val = self.execute(ctx)
+        if isinstance(val, UnappliedFunction):
+            return val.apply_to_monadic(ctx, omega)
+        raise DomainError(f"Expected function, got {type(val)}")
+
+    def apply_to_dyadic(self, ctx: ExecutionContext, alpha: APLArray, omega: APLArray) -> APLArray:
+        val = self.execute(ctx)
+        if isinstance(val, UnappliedFunction):
+            return val.apply_to_dyadic(ctx, alpha, omega)
+        raise DomainError(f"Expected function, got {type(val)}")
 
 
 class Literal(Evaluatable):
@@ -340,7 +358,7 @@ class DyadicDopCall(Evaluatable):
         return dop_val.apply(argument, alpha_alpha=left_operand, omega_omega=right_operand)
 
 
-class UnappliedFunction(APLValue, Node):
+class UnappliedFunction(APLValue, Applicable):
     """Base class for all unapplied APL function values."""
 
     def name_class(self) -> int:
@@ -352,10 +370,16 @@ class UnappliedFunction(APLValue, Node):
     @abstractmethod
     def apply_dyadic(self, ctx: 'ExecutionContext', left_node: 'Evaluatable', right_node: 'Evaluatable') -> 'APLArray': ...
 
+    def apply_to_monadic(self, ctx: ExecutionContext, omega: APLArray) -> APLArray:
+        return self.apply_monadic(ctx, Literal(omega))
+
+    def apply_to_dyadic(self, ctx: ExecutionContext, alpha: APLArray, omega: APLArray) -> APLArray:
+        return self.apply_dyadic(ctx, Literal(alpha), Literal(omega))
+
 
 class RankDerived(UnappliedFunction):
     """Unapplied rank-derived function: f⍤k"""
-    def __init__(self, function: Node, rank_spec: Evaluatable) -> None:
+    def __init__(self, function: Applicable, rank_spec: Evaluatable) -> None:
         self.function = function
         self.rank_spec = rank_spec
     def __eq__(self, other: object) -> bool:
@@ -369,7 +393,7 @@ class RankDerived(UnappliedFunction):
         a, _, _ = resolve_rank_spec(rank_spec_val)
         k = clamp_rank(a, len(omega.shape))
         frame_shape, cells = decompose(omega, k)
-        results = [ctx.apply_func_monadic(self.function, cell) for cell in cells]
+        results = [self.function.apply_to_monadic(ctx, cell) for cell in cells]
         return reassemble(frame_shape, results)
 
     def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
@@ -394,13 +418,13 @@ class RankDerived(UnappliedFunction):
             frame = left_frame
         else:
             raise LengthError(f"Frame mismatch: {left_frame} vs {right_frame}")
-        results = [ctx.apply_func_dyadic(self.function, lc, rc) for lc, rc in pairs]
+        results = [self.function.apply_to_dyadic(ctx, lc, rc) for lc, rc in pairs]
         return reassemble(frame, results)
 
 
 class PowerDerived(UnappliedFunction):
     """Unapplied power-derived function: f⍣g"""
-    def __init__(self, function: Node, right_operand: Evaluatable) -> None:
+    def __init__(self, function: Applicable, right_operand: Evaluatable) -> None:
         self.function = function
         self.right_operand = right_operand
 
@@ -411,7 +435,7 @@ class PowerDerived(UnappliedFunction):
             return right_op
         return right_op.execute(ctx)
 
-    def _test_convergence(self, func: object, left: APLArray,
+    def _test_convergence(self, func: Applicable, left: APLArray,
                           right: APLArray, ctx: ExecutionContext) -> APLArray:
         """Apply convergence test function dyadically."""
         if isinstance(func, FunctionRef):
@@ -419,7 +443,7 @@ class PowerDerived(UnappliedFunction):
                 return S(1 if left == right else 0)
             if func.glyph == "=":
                 return S(1 if left.data.item() == right.data.item() else 0)
-        return ctx.apply_func_dyadic(func, left, right)
+        return func.apply_to_dyadic(ctx, left, right)
 
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         omega = ctx.evaluate(operand_node)
@@ -430,12 +454,12 @@ class PowerDerived(UnappliedFunction):
                 raise DomainError("DOMAIN ERROR: inverse (⍣ with negative) not supported")
             result = omega
             for _ in range(n):
-                result = ctx.apply_func_monadic(self.function, result)
+                result = self.function.apply_to_monadic(ctx, result)
             return result
         if isinstance(right_val, UnappliedFunction):
             prev = omega
             while True:
-                curr = ctx.apply_func_monadic(self.function, prev)
+                curr = self.function.apply_to_monadic(ctx, prev)
                 test = self._test_convergence(right_val, curr, prev, ctx)
                 if test.data.item():
                     return curr
@@ -452,12 +476,12 @@ class PowerDerived(UnappliedFunction):
                 raise DomainError("DOMAIN ERROR: inverse (⍣ with negative) not supported")
             result = omega
             for _ in range(n):
-                result = ctx.apply_func_dyadic(self.function, alpha, result)
+                result = self.function.apply_to_dyadic(ctx, alpha, result)
             return result
         if isinstance(right_val, UnappliedFunction):
             prev = omega
             while True:
-                curr = ctx.apply_func_dyadic(self.function, alpha, prev)
+                curr = self.function.apply_to_dyadic(ctx, alpha, prev)
                 test = self._test_convergence(right_val, curr, prev, ctx)
                 if test.data.item():
                     return curr
@@ -474,17 +498,17 @@ class CommuteDerived(UnappliedFunction):
     The argument is evaluated ONCE in the monadic case, even though
     it appears on both sides of the underlying call.
     """
-    def __init__(self, function: Node) -> None:
+    def __init__(self, function: Applicable) -> None:
         self.function = function
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         """f⍨ ω ≡ ω f ω. Evaluates ω exactly once."""
         omega = ctx.evaluate(operand_node)
-        return ctx.apply_func_dyadic(self.function, omega, omega)
+        return self.function.apply_to_dyadic(ctx, omega, omega)
     def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         """α f⍨ ω ≡ ω f α (swap arguments)."""
         alpha = ctx.evaluate(left_node)
         omega = ctx.evaluate(right_node)
-        return ctx.apply_func_dyadic(self.function, omega, alpha)
+        return self.function.apply_to_dyadic(ctx, omega, alpha)
 
 
 class BesideDerived(UnappliedFunction):
@@ -497,7 +521,7 @@ class BesideDerived(UnappliedFunction):
     for monadic derived-function calls and dyadically for dyadic
     derived-function calls.
     """
-    def __init__(self, f: Node, g: Node) -> None:
+    def __init__(self, f: Applicable, g: Applicable) -> None:
         self.f = f
         self.g = g
     def __eq__(self, other: object) -> bool:
@@ -507,14 +531,14 @@ class BesideDerived(UnappliedFunction):
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         """(f∘g) ω ≡ f (g ω)."""
         omega = ctx.evaluate(operand_node)
-        g_result = ctx.apply_func_monadic(self.g, omega)
-        return ctx.apply_func_monadic(self.f, g_result)
+        g_result = self.g.apply_to_monadic(ctx, omega)
+        return self.f.apply_to_monadic(ctx, g_result)
     def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         """α (f∘g) ω ≡ α f (g ω)."""
         alpha = ctx.evaluate(left_node)
         omega = ctx.evaluate(right_node)
-        g_result = ctx.apply_func_monadic(self.g, omega)
-        return ctx.apply_func_dyadic(self.f, alpha, g_result)
+        g_result = self.g.apply_to_monadic(ctx, omega)
+        return self.f.apply_to_dyadic(ctx, alpha, g_result)
 
 
 class AtopDerived(UnappliedFunction):
@@ -523,7 +547,7 @@ class AtopDerived(UnappliedFunction):
     Monadic: (g h) ω   ≡ g (h ω)
     Dyadic:  α (g h) ω ≡ g (α h ω)
     """
-    def __init__(self, g: Node, h: Node) -> None:
+    def __init__(self, g: Applicable, h: Applicable) -> None:
         self.g = g
         self.h = h
     def __eq__(self, other: object) -> bool:
@@ -533,14 +557,14 @@ class AtopDerived(UnappliedFunction):
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         """(g h) ω ≡ g (h ω)."""
         omega = ctx.evaluate(operand_node)
-        h_result = ctx.apply_func_monadic(self.h, omega)
-        return ctx.apply_func_monadic(self.g, h_result)
+        h_result = self.h.apply_to_monadic(ctx, omega)
+        return self.g.apply_to_monadic(ctx, h_result)
     def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         """α (g h) ω ≡ g (α h ω)."""
         alpha = ctx.evaluate(left_node)
         omega = ctx.evaluate(right_node)
-        h_result = ctx.apply_func_dyadic(self.h, alpha, omega)
-        return ctx.apply_func_monadic(self.g, h_result)
+        h_result = self.h.apply_to_dyadic(ctx, alpha, omega)
+        return self.g.apply_to_monadic(ctx, h_result)
 
 
 class ForkDerived(UnappliedFunction):
@@ -551,7 +575,7 @@ class ForkDerived(UnappliedFunction):
     Dyadic:  α (f g h) ω ≡ (α f ω) g (α h ω)
     When f is an array: (A g h) ω ≡ A g (h ω)
     """
-    def __init__(self, f: Node, g: Node, h: Node) -> None:
+    def __init__(self, f: Applicable, g: Applicable, h: Applicable) -> None:
         self.f = f
         self.g = g
         self.h = h
@@ -569,30 +593,34 @@ class ForkDerived(UnappliedFunction):
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         """(f g h) ω ≡ (f ω) g (h ω). Agh-fork: A g (h ω)."""
         omega = ctx.evaluate(operand_node)
-        right = ctx.apply_func_monadic(self.h, omega)
+        right = self.h.apply_to_monadic(ctx, omega)
         f_val = self._resolve_f(ctx)
         if isinstance(f_val, APLArray):
             left = f_val
+        elif isinstance(f_val, Applicable):
+            left = f_val.apply_to_monadic(ctx, omega)
         else:
-            left = ctx.apply_func_monadic(f_val, omega)
-        return ctx.apply_func_dyadic(self.g, left, right)
+            raise DomainError(f"Expected function or array in fork, got {type(f_val)}")
+        return self.g.apply_to_dyadic(ctx, left, right)
 
     def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         """α (f g h) ω ≡ (α f ω) g (α h ω)."""
         alpha = ctx.evaluate(left_node)
         omega = ctx.evaluate(right_node)
-        right = ctx.apply_func_dyadic(self.h, alpha, omega)
+        right = self.h.apply_to_dyadic(ctx, alpha, omega)
         f_val = self._resolve_f(ctx)
         if isinstance(f_val, APLArray):
             left = f_val
+        elif isinstance(f_val, Applicable):
+            left = f_val.apply_to_dyadic(ctx, alpha, omega)
         else:
-            left = ctx.apply_func_dyadic(f_val, alpha, omega)
-        return ctx.apply_func_dyadic(self.g, left, right)
+            raise DomainError(f"Expected function or array in fork, got {type(f_val)}")
+        return self.g.apply_to_dyadic(ctx, left, right)
 
 
 class ReduceDerived(UnappliedFunction):
     """Unapplied reduce-derived function: f/ or f⌿"""
-    def __init__(self, operator: 'Adverb', function: Node) -> None:
+    def __init__(self, operator: 'Adverb', function: Applicable) -> None:
         self.operator = operator
         self.function = function
     def __eq__(self, other: object) -> bool:
@@ -609,7 +637,7 @@ class ReduceDerived(UnappliedFunction):
 
 class ScanDerived(UnappliedFunction):
     """Unapplied scan-derived function: f\\ or f⍀"""
-    def __init__(self, operator: 'Adverb', function: Node) -> None:
+    def __init__(self, operator: 'Adverb', function: Applicable) -> None:
         self.operator = operator
         self.function = function
     def __eq__(self, other: object) -> bool:
