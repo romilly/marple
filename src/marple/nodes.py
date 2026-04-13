@@ -199,6 +199,10 @@ class Applicable(Node):
     def apply_to_monadic(self, ctx: ExecutionContext, omega: APLArray) -> APLArray: ...
     @abstractmethod
     def apply_to_dyadic(self, ctx: ExecutionContext, alpha: APLArray, omega: APLArray) -> APLArray: ...
+    @abstractmethod
+    def call_monadic(self, ctx: ExecutionContext, operand: 'Evaluatable') -> APLArray: ...
+    @abstractmethod
+    def call_dyadic(self, ctx: ExecutionContext, left: 'Evaluatable', right: 'Evaluatable') -> APLArray: ...
 
 
 class Evaluatable(Applicable):
@@ -217,6 +221,16 @@ class Evaluatable(Applicable):
         if isinstance(val, UnappliedFunction):
             return val.apply_to_dyadic(ctx, alpha, omega)
         raise DomainError(f"Expected function, got {type(val)}")
+
+    def call_monadic(self, ctx: ExecutionContext, operand: 'Evaluatable') -> APLArray:
+        val = self.execute(ctx)
+        assert isinstance(val, Applicable)
+        return val.call_monadic(ctx, operand)
+
+    def call_dyadic(self, ctx: ExecutionContext, left: 'Evaluatable', right: 'Evaluatable') -> APLArray:
+        val = self.execute(ctx)
+        assert isinstance(val, Applicable)
+        return val.call_dyadic(ctx, left, right)
 
 
 class Literal(Evaluatable):
@@ -375,6 +389,12 @@ class UnappliedFunction(APLValue, Applicable):
 
     def apply_to_dyadic(self, ctx: ExecutionContext, alpha: APLArray, omega: APLArray) -> APLArray:
         return self.apply_dyadic(ctx, Literal(alpha), Literal(omega))
+
+    def call_monadic(self, ctx: ExecutionContext, operand: Evaluatable) -> APLArray:
+        return self.apply_monadic(ctx, operand)
+
+    def call_dyadic(self, ctx: ExecutionContext, left: Evaluatable, right: Evaluatable) -> APLArray:
+        return self.apply_dyadic(ctx, left, right)
 
 
 class RankDerived(UnappliedFunction):
@@ -693,6 +713,10 @@ class SysVar(Evaluatable):
         self.name = name
     def execute(self, ctx: ExecutionContext) -> APLArray:
         return ctx.eval_sysvar(self.name)
+    def call_monadic(self, ctx: ExecutionContext, operand: Evaluatable) -> APLArray:
+        return ctx.dispatch_sys_monadic(self.name, operand)
+    def call_dyadic(self, ctx: ExecutionContext, left: Evaluatable, right: Evaluatable) -> APLArray:
+        return ctx.dispatch_sys_dyadic(self.name, left, right)
 
 
 class Index(Evaluatable):
@@ -858,39 +882,20 @@ class Dfn(Evaluatable):
 
 
 class MonadicDfnCall(Evaluatable):
-    def __init__(self, dfn: Evaluatable | UnappliedFunction, operand: Evaluatable) -> None:
+    def __init__(self, dfn: Applicable, operand: Evaluatable) -> None:
         self.dfn = dfn
         self.operand = operand
     def execute(self, ctx: ExecutionContext) -> APLArray:
-        from marple.dfn_binding import DfnBinding
-        if isinstance(self.dfn, SysVar):
-            return ctx.dispatch_sys_monadic(self.dfn.name, self.operand)
-        if isinstance(self.dfn, UnappliedFunction):
-            return self.dfn.apply_monadic(ctx, self.operand)
-        dfn_val = self.dfn.execute(ctx)
-        if isinstance(dfn_val, UnappliedFunction):
-            return dfn_val.apply_monadic(ctx, self.operand)
-        operand = ctx.evaluate(self.operand)
-        if isinstance(dfn_val, APLArray):
-            raise DomainError(f"Expected dfn, got array")
-        raise DomainError(f"Expected dfn, got {type(dfn_val)}")
+        return self.dfn.call_monadic(ctx, self.operand)
 
 
 class DyadicDfnCall(Evaluatable):
-    def __init__(self, dfn: Evaluatable | UnappliedFunction, left: Evaluatable, right: Evaluatable) -> None:
+    def __init__(self, dfn: Applicable, left: Evaluatable, right: Evaluatable) -> None:
         self.dfn = dfn
         self.left = left
         self.right = right
     def execute(self, ctx: ExecutionContext) -> APLArray:
-        from marple.dfn_binding import DfnBinding
-        if isinstance(self.dfn, SysVar):
-            return ctx.dispatch_sys_dyadic(self.dfn.name, self.left, self.right)
-        if isinstance(self.dfn, UnappliedFunction):
-            return self.dfn.apply_dyadic(ctx, self.left, self.right)
-        dfn_val = self.dfn.execute(ctx)
-        if isinstance(dfn_val, UnappliedFunction):
-            return dfn_val.apply_dyadic(ctx, self.left, self.right)
-        raise DomainError(f"Expected dfn, got {type(dfn_val)}")
+        return self.dfn.call_dyadic(ctx, self.left, self.right)
 
 
 class Program(Evaluatable):
