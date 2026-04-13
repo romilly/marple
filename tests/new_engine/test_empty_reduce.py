@@ -1,6 +1,6 @@
 """Identity elements for reduce on empty arrays."""
 
-import math
+import numpy as np_
 
 from marple.numpy_array import S
 from marple.engine import Interpreter
@@ -20,10 +20,10 @@ class TestEmptyReduce:
         assert Interpreter(io=1).run("÷/⍳0") == S(1)
 
     def test_max(self) -> None:
-        assert Interpreter(io=1).run("⌈/⍳0") == S(float("-inf"))
+        assert Interpreter(io=1).run("⌈/⍳0") == S(-np_.finfo(np_.float64).max)
 
     def test_min(self) -> None:
-        assert Interpreter(io=1).run("⌊/⍳0") == S(float("inf"))
+        assert Interpreter(io=1).run("⌊/⍳0") == S(np_.finfo(np_.float64).max)
 
     def test_and(self) -> None:
         assert Interpreter(io=1).run("∧/⍳0") == S(1)

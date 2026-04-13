@@ -69,9 +69,7 @@ def is_float_dtype(arr: NDArray) -> bool:
 
 def maybe_upcast(data: NDArray) -> NDArray:
     """Convert integer arrays to float to prevent overflow."""
-    if not is_numeric_array(data):
-        return data
-    if not is_int_dtype(data):
+    if not is_numeric_array(data) or not is_int_dtype(data):
         return data
     return data.astype(np.float64)
 
@@ -85,16 +83,9 @@ def maybe_downcast(data: NDArray, ct: float) -> NDArray:
 
     Uses APL tolerance: |value - round(value)| <= ct * max(|value|, |round(value)|)
     """
-    if not is_numeric_array(data):
-        return data
-    if is_int_dtype(data):
-        return data
     if not is_float_dtype(data):
         return data
     if data.size == 0:
-        return data
-    # Non-finite values (inf, nan) can't be downcast
-    if not np.all(np.isfinite(data)):
         return data
     # Vectorised check: are all values close to whole numbers?
     rounded = np.round(data)
