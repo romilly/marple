@@ -103,7 +103,9 @@ class Executor:
 
     def evaluate(self, node: Evaluatable) -> APLArray:
         """Evaluate an AST node by calling its execute method."""
-        return node.execute(self)  # type: ignore[return-value]
+        result = node.execute(self)
+        assert isinstance(result, APLArray)
+        return result
 
     # ── Callback methods for node execute() ──
 
@@ -140,7 +142,7 @@ class Executor:
             raise DomainError(f"I-beam function must return APLArray: {path}")
         return result
 
-    def resolve_qualified(self, parts: list[str]) -> object:
+    def resolve_qualified(self, parts: list[str]) -> APLValue:
         from marple.namespace import Namespace, load_system_workspace
         if parts[0] == "$":
             import marple.stdlib
@@ -150,14 +152,16 @@ class Executor:
             result = sys_ws.resolve(parts[1:])
             if result is None:
                 raise DomainError("Undefined: " + "::".join(parts))
+            if isinstance(result, Namespace):
+                raise DomainError("Cannot use namespace as a value: " + "::".join(parts))
             return result
         raise DomainError(f"Undefined namespace: {parts[0]}")
 
     def apply_derived(self, operator: str, function: object, operand: APLArray) -> APLArray:
-        # If function is an AST node (e.g. Dfn), evaluate it first
+        # If function is an AST node (e.g. Dfn), execute it to get the function value
         from marple.dfn_binding import DfnBinding
         if isinstance(function, Evaluatable):
-            val = self.evaluate(function)
+            val = function.execute(self)
             if isinstance(val, DfnBinding):
                 function = lambda a, o, _b=val: _b.apply(o, alpha=a)
             elif isinstance(val, FunctionRef):
@@ -172,7 +176,7 @@ class Executor:
         # they are not Node instances and should not be evaluated.
         value: APLValue
         if isinstance(value_node, Evaluatable):
-            value = self.evaluate(value_node)  # type: ignore[assignment]
+            value = value_node.execute(self)
         else:
             assert isinstance(value_node, APLValue)
             value = value_node
@@ -216,7 +220,7 @@ class Executor:
         self.env.console.writeln(text + line)
         return APLArray([len(line)], str_to_char_array(line))
 
-    def create_binding(self, dfn_node: Dfn) -> object:
+    def create_binding(self, dfn_node: Dfn) -> APLValue:
         from marple.dfn_binding import DfnBinding
         # Store a reference to env, not a copy — names added later
         # (e.g. forward references) are visible at call time when
@@ -286,12 +290,11 @@ class Executor:
         Used by rank, power, commute, beside, atop, fork operators."""
         from marple.nodes import Literal, UnappliedFunction
         if isinstance(func, UnappliedFunction):
-            return func.apply_monadic(self, Literal(omega))  # type: ignore[arg-type]
-        # AST node (Var, Dfn, etc.) — evaluate to get the function value
+            return func.apply_monadic(self, Literal(omega))
         if isinstance(func, Evaluatable):
-            val = self.evaluate(func)
+            val = func.execute(self)
             if isinstance(val, UnappliedFunction):
-                return val.apply_monadic(self, Literal(omega))  # type: ignore[arg-type]
+                return val.apply_monadic(self, Literal(omega))
         raise DomainError(f"Expected function for rank, got {type(func)}")
 
     def apply_func_dyadic(self, func: object, alpha: APLArray, omega: APLArray) -> APLArray:
@@ -299,11 +302,11 @@ class Executor:
         Used by rank, power, commute, beside, atop, fork operators."""
         from marple.nodes import Literal, UnappliedFunction
         if isinstance(func, UnappliedFunction):
-            return func.apply_dyadic(self, Literal(alpha), Literal(omega))  # type: ignore[arg-type]
+            return func.apply_dyadic(self, Literal(alpha), Literal(omega))
         if isinstance(func, Evaluatable):
-            val = self.evaluate(func)
+            val = func.execute(self)
             if isinstance(val, UnappliedFunction):
-                return val.apply_dyadic(self, Literal(alpha), Literal(omega))  # type: ignore[arg-type]
+                return val.apply_dyadic(self, Literal(alpha), Literal(omega))
         raise DomainError(f"Expected function for rank, got {type(func)}")
 
     # ── System functions ──

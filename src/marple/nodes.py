@@ -155,12 +155,12 @@ class ExecutionContext(Protocol):
     def apply_derived(self, operator: str, function: object, operand: APLArray) -> APLArray: ...
     def assign(self, name: str, value_node: 'Evaluatable | UnappliedFunction') -> APLArray: ...
     def eval_sysvar(self, name: str) -> APLArray: ...
-    def create_binding(self, dfn_node: 'Evaluatable') -> object: ...
+    def create_binding(self, dfn_node: 'Dfn') -> APLValue: ...
     def dispatch_sys_monadic(self, name: str, operand_node: 'Evaluatable') -> APLArray: ...
     def dispatch_sys_dyadic(self, name: str, left_node: 'Evaluatable', right_node: 'Evaluatable') -> APLArray: ...
     def apply_func_monadic(self, func: object, omega: 'APLArray') -> 'APLArray': ...
     def apply_func_dyadic(self, func: object, alpha: 'APLArray', omega: 'APLArray') -> 'APLArray': ...
-    def resolve_qualified(self, parts: list[str]) -> object: ...
+    def resolve_qualified(self, parts: list[str]) -> APLValue: ...
     def call_ibeam(self, path: str, operand: APLArray) -> APLArray: ...
 
 
@@ -198,7 +198,7 @@ _MARKER = Marker()
 class Evaluatable(Node):
     """A Node that can be executed to produce a value."""
     @abstractmethod
-    def execute(self, ctx: ExecutionContext) -> object: ...
+    def execute(self, ctx: ExecutionContext) -> APLValue: ...
 
 
 class Literal(Evaluatable):
@@ -288,7 +288,7 @@ class Var(Evaluatable):
 class QualifiedVar(Evaluatable):
     def __init__(self, parts: list[str]) -> None:
         self.parts = parts
-    def execute(self, ctx: ExecutionContext) -> object:
+    def execute(self, ctx: ExecutionContext) -> APLValue:
         return ctx.resolve_qualified(self.parts)
 
 
@@ -313,10 +313,10 @@ class MonadicDopCall(Evaluatable):
         self.alpha = alpha
     def execute(self, ctx: ExecutionContext) -> APLArray:
         from marple.dfn_binding import DfnBinding
-        dop_val = ctx.evaluate(self.op_name)
+        dop_val = self.op_name.execute(ctx)
         if not isinstance(dop_val, DfnBinding):
             raise DomainError(f"Expected operator, got {type(dop_val)}")
-        operand = ctx.evaluate(self.operand)
+        operand = self.operand.execute(ctx)
         argument = ctx.evaluate(self.argument)
         alpha = ctx.evaluate(self.alpha) if self.alpha is not None else None
         return dop_val.apply(argument, alpha_alpha=operand, alpha=alpha)
@@ -331,11 +331,11 @@ class DyadicDopCall(Evaluatable):
         self.right = right
     def execute(self, ctx: ExecutionContext) -> APLArray:
         from marple.dfn_binding import DfnBinding
-        dop_val = ctx.evaluate(self.op_name)
+        dop_val = self.op_name.execute(ctx)
         if not isinstance(dop_val, DfnBinding):
             raise DomainError(f"Expected operator, got {type(dop_val)}")
-        left_operand = ctx.evaluate(self.operand)    # ⍺⍺
-        right_operand = ctx.evaluate(self.left)      # ⍵⍵
+        left_operand = self.operand.execute(ctx)    # ⍺⍺
+        right_operand = self.left.execute(ctx)      # ⍵⍵
         argument = ctx.evaluate(self.right)           # ⍵
         return dop_val.apply(argument, alpha_alpha=left_operand, omega_omega=right_operand)
 
@@ -404,12 +404,12 @@ class PowerDerived(UnappliedFunction):
         self.function = function
         self.right_operand = right_operand
 
-    def _resolve_right(self, ctx: ExecutionContext) -> object:
+    def _resolve_right(self, ctx: ExecutionContext) -> APLValue:
         """Resolve the right operand — may be a FunctionRef, Node, or value."""
         right_op = self.right_operand
         if isinstance(right_op, (UnappliedFunction, APLArray)):
             return right_op
-        return ctx.evaluate(right_op)
+        return right_op.execute(ctx)
 
     def _test_convergence(self, func: object, left: APLArray,
                           right: APLArray, ctx: ExecutionContext) -> APLArray:
@@ -559,10 +559,11 @@ class ForkDerived(UnappliedFunction):
         if not isinstance(other, ForkDerived):
             return NotImplemented
         return self.f == other.f and self.g == other.g and self.h == other.h
-    def _resolve_f(self, ctx: ExecutionContext) -> object:
+    def _resolve_f(self, ctx: ExecutionContext) -> APLValue:
         """Resolve f to an APLArray (Agh-fork) or leave as function."""
         if isinstance(self.f, Evaluatable):
-            return ctx.evaluate(self.f)
+            return self.f.execute(ctx)
+        assert isinstance(self.f, APLValue)
         return self.f
 
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
@@ -627,7 +628,7 @@ class IBeamDerived(UnappliedFunction, Evaluatable):  # Evaluatable for execute()
     """I-beam derived function: ⌶'module.function'"""
     def __init__(self, path: str) -> None:
         self.path = path
-    def execute(self, ctx: ExecutionContext) -> object:
+    def execute(self, ctx: ExecutionContext) -> APLValue:
         return self
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         operand = ctx.evaluate(operand_node)
@@ -741,7 +742,7 @@ class FunctionRef(UnappliedFunction, Evaluatable):  # Evaluatable for execute()
     """A reference to a primitive function glyph, used as a dop operand."""
     def __init__(self, glyph: str) -> None:
         self.glyph = glyph
-    def execute(self, ctx: ExecutionContext) -> object:
+    def execute(self, ctx: ExecutionContext) -> APLValue:
         return self
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         operand = ctx.evaluate(operand_node)
@@ -754,7 +755,7 @@ class FunctionRef(UnappliedFunction, Evaluatable):  # Evaluatable for execute()
 
 class AlphaAlpha(Evaluatable):
     """⍺⍺ — left operand reference in a dop."""
-    def execute(self, ctx: ExecutionContext) -> object:
+    def execute(self, ctx: ExecutionContext) -> APLValue:
         if "⍺⍺" not in ctx.env:
             raise ValueError_("⍺⍺ used outside of dop")
         return ctx.env["⍺⍺"]
@@ -762,7 +763,7 @@ class AlphaAlpha(Evaluatable):
 
 class OmegaOmega(Evaluatable):
     """⍵⍵ — right operand reference in a dop."""
-    def execute(self, ctx: ExecutionContext) -> object:
+    def execute(self, ctx: ExecutionContext) -> APLValue:
         if "⍵⍵" not in ctx.env:
             raise ValueError_("⍵⍵ used outside of dop")
         return ctx.env["⍵⍵"]
@@ -804,7 +805,7 @@ class FmtArgs(Evaluatable):
 
 
 class Nabla(Evaluatable):
-    def execute(self, ctx: ExecutionContext) -> object:
+    def execute(self, ctx: ExecutionContext) -> APLValue:
         if "∇" not in ctx.env:
             raise ValueError_("∇ used outside of dfn")
         return ctx.env["∇"]
@@ -824,7 +825,7 @@ class AlphaDefault(Node):
 class Dfn(Evaluatable):
     def __init__(self, body: list[Evaluatable | Guard | AlphaDefault]) -> None:
         self.body = body
-    def execute(self, ctx: ExecutionContext) -> object:
+    def execute(self, ctx: ExecutionContext) -> APLValue:
         return ctx.create_binding(self)
 
 
@@ -838,16 +839,12 @@ class MonadicDfnCall(Evaluatable):
             return ctx.dispatch_sys_monadic(self.dfn.name, self.operand)
         if isinstance(self.dfn, UnappliedFunction):
             return self.dfn.apply_monadic(ctx, self.operand)
-        dfn_val = ctx.evaluate(self.dfn)
+        dfn_val = self.dfn.execute(ctx)
         if isinstance(dfn_val, UnappliedFunction):
             return dfn_val.apply_monadic(ctx, self.operand)
         operand = ctx.evaluate(self.operand)
-        if isinstance(dfn_val, DfnBinding):
-            return dfn_val.apply(operand)
-        # Old-style _DfnBinding from namespace system — wrap and apply
-        if hasattr(dfn_val, 'dfn') and hasattr(dfn_val, 'env'):
-            binding = DfnBinding(getattr(dfn_val, 'dfn'), ctx.env)
-            return binding.apply(operand)
+        if isinstance(dfn_val, APLArray):
+            raise DomainError(f"Expected dfn, got array")
         raise DomainError(f"Expected dfn, got {type(dfn_val)}")
 
 
@@ -862,7 +859,7 @@ class DyadicDfnCall(Evaluatable):
             return ctx.dispatch_sys_dyadic(self.dfn.name, self.left, self.right)
         if isinstance(self.dfn, UnappliedFunction):
             return self.dfn.apply_dyadic(ctx, self.left, self.right)
-        dfn_val = ctx.evaluate(self.dfn)
+        dfn_val = self.dfn.execute(ctx)
         if isinstance(dfn_val, UnappliedFunction):
             return dfn_val.apply_dyadic(ctx, self.left, self.right)
         raise DomainError(f"Expected dfn, got {type(dfn_val)}")
