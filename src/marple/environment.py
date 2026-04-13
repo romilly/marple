@@ -7,7 +7,9 @@ from marple.numpy_array import APLArray, S
 from marple.ports.console import Console
 from marple.ports.filesystem import FileSystem
 from marple.ports.timer import Timer
-from marple.symbol_table import APLValue, SymbolTable
+from marple.symbol_table import (
+    APLValue, NC_ARRAY, NC_FUNCTION, NC_OPERATOR, SymbolTable,
+)
 
 
 _QUAD_DEFAULTS: dict[str, APLArray] = {
@@ -119,8 +121,11 @@ class Environment:
 
     def user_names(self) -> list[str]:
         """Return sorted list of user-defined names in the symbol table."""
-        return sorted(n for n in self.symbols._values.keys()
-                       if not n.startswith("__"))
+        return sorted(
+            self.symbols.names_of_class(NC_ARRAY)
+            + self.symbols.names_of_class(NC_FUNCTION)
+            + self.symbols.names_of_class(NC_OPERATOR)
+        )
 
     def list_variables(self) -> list[tuple[str, list[int]]]:
         """Return sorted list of (name, shape) for all user variables."""
