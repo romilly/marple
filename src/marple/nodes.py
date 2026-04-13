@@ -346,8 +346,7 @@ class MonadicDopCall(Evaluatable):
     def execute(self, ctx: ExecutionContext) -> APLArray:
         from marple.dfn_binding import DfnBinding
         dop_val = self.op_name.execute(ctx)
-        if not isinstance(dop_val, DfnBinding):
-            raise DomainError(f"Expected operator, got {type(dop_val)}")
+        assert isinstance(dop_val, DfnBinding)
         operand = self.operand.execute(ctx)
         argument = ctx.evaluate(self.argument)
         alpha = ctx.evaluate(self.alpha) if self.alpha is not None else None
@@ -364,8 +363,7 @@ class DyadicDopCall(Evaluatable):
     def execute(self, ctx: ExecutionContext) -> APLArray:
         from marple.dfn_binding import DfnBinding
         dop_val = self.op_name.execute(ctx)
-        if not isinstance(dop_val, DfnBinding):
-            raise DomainError(f"Expected operator, got {type(dop_val)}")
+        assert isinstance(dop_val, DfnBinding)
         left_operand = self.operand.execute(ctx)    # ⍺⍺
         right_operand = self.left.execute(ctx)      # ⍵⍵
         argument = ctx.evaluate(self.right)           # ⍵
