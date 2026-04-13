@@ -1,6 +1,6 @@
 """APL environment (workspace state) for MARPLE."""
 
-from typing import Any
+from collections.abc import ItemsView
 
 from marple.backend_functions import str_to_char_array
 from marple.numpy_array import APLArray, S
@@ -34,7 +34,7 @@ class Environment:
                  timer: 'Timer | None' = None) -> None:
         self._quad_vars: dict[str, APLArray] = dict(_QUAD_DEFAULTS)
         self.symbols = SymbolTable()
-        self._locals: dict[str, Any] = {}
+        self._locals: dict[str, APLValue] = {}
         self.console: Console | None = console
         if io is not None:
             self._quad_vars["⎕IO"] = S(io)
@@ -150,7 +150,7 @@ class Environment:
     # ── Dict-like interface ──
     # Lookup order: quad vars, then symbols, then locals (⍵, ⍺, ∇, etc.)
 
-    def __getitem__(self, key: str) -> Any:
+    def __getitem__(self, key: str) -> APLValue:
         if key in self._quad_vars:
             return self._quad_vars[key]
         val = self.symbols.get(key)
@@ -158,8 +158,9 @@ class Environment:
             return val
         return self._locals[key]
 
-    def __setitem__(self, key: str, value: Any) -> None:
+    def __setitem__(self, key: str, value: APLValue) -> None:
         if key in self._quad_vars:
+            assert isinstance(value, APLArray)
             self._quad_vars[key] = value
         else:
             self._locals[key] = value
@@ -173,7 +174,7 @@ class Environment:
         if key in self._locals:
             del self._locals[key]
 
-    def get(self, key: str, default: Any = None) -> Any:
+    def get(self, key: str, default: APLValue | None = None) -> APLValue | None:
         if key in self._quad_vars:
             return self._quad_vars[key]
         val = self.symbols.get(key)
@@ -181,13 +182,13 @@ class Environment:
             return val
         return self._locals.get(key, default)
 
-    def setdefault(self, key: str, default: Any) -> Any:
+    def setdefault(self, key: str, default: APLValue) -> APLValue:
         return self._locals.setdefault(key, default)
 
-    def pop(self, key: str, *args: Any) -> Any:
+    def pop(self, key: str, *args: APLValue) -> APLValue:
         return self._locals.pop(key, *args)
 
-    def items(self) -> Any:
+    def items(self) -> 'ItemsView[str, APLValue]':
         return self._locals.items()
 
     def copy(self) -> 'Environment':

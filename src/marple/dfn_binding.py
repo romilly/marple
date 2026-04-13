@@ -2,6 +2,7 @@
 
 
 from marple.numpy_array import APLArray, S
+from marple.symbol_table import APLValue
 from marple.executor import Executor
 from marple.nodes import Evaluatable, ExecutionContext, Node, UnappliedFunction
 from marple.parser import AlphaDefault, Dfn, Guard
@@ -49,8 +50,8 @@ class DfnBinding(UnappliedFunction, Executor):
         self,
         omega: APLArray,
         alpha: APLArray | None = None,
-        alpha_alpha: object | None = None,
-        omega_omega: object | None = None,
+        alpha_alpha: APLValue | None = None,
+        omega_omega: APLValue | None = None,
     ) -> APLArray:
         """Apply this dfn or dop to its arguments."""
         saved_env = self.env
@@ -70,8 +71,8 @@ class DfnBinding(UnappliedFunction, Executor):
         self,
         omega: APLArray,
         alpha: APLArray | None,
-        alpha_alpha: object | None,
-        omega_omega: object | None,
+        alpha_alpha: APLValue | None,
+        omega_omega: APLValue | None,
     ) -> Environment:
         """Build the local environment for this call."""
         local_env = self.defining_env.copy()

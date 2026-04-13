@@ -11,6 +11,13 @@ from marple.formatting import format_result
 from marple.engine import Interpreter
 
 
+def _get_wsid(interp: Interpreter) -> str:
+    """Get the workspace ID as a Python string."""
+    wsid_val = interp.env["⎕WSID"]
+    assert isinstance(wsid_val, APLArray)
+    return chars_to_str(wsid_val.data)
+
+
 SystemCommandHandler = Callable[[Interpreter, str], tuple[str, bool]]
 
 
@@ -39,7 +46,7 @@ def _cmd_wsid(interp: Interpreter, line: str) -> tuple[str, bool]:
         name = parts[1].strip()
         interp.env["⎕WSID"] = APLArray([len(name)], str_to_char_array(name))
         return name, False
-    return chars_to_str(interp.env["⎕WSID"].data), False
+    return _get_wsid(interp), False
 
 
 def _cmd_ops(interp: Interpreter, line: str) -> tuple[str, bool]:
@@ -85,7 +92,7 @@ def _cmd_save(interp: Interpreter, line: str) -> tuple[str, bool]:
     if len(parts) > 1:
         name = parts[1].strip()
         interp.env["⎕WSID"] = APLArray([len(name)], str_to_char_array(name))
-    wsid = chars_to_str(interp.env["⎕WSID"].data)
+    wsid = _get_wsid(interp)
     if wsid == "CLEAR WS":
         return "ERROR: No workspace ID set. Use )WSID name first.", False
     ws_root = interp.config.get_workspaces_dir()
@@ -115,7 +122,7 @@ def _cmd_load(interp: Interpreter, line: str) -> tuple[str, bool]:
     from marple.environment import Environment
     interp.env = Environment(io=1)
     lx_result = load_workspace(interp.env, ws_dir, evaluate=interp.run)
-    wsid = chars_to_str(interp.env["⎕WSID"].data)
+    wsid = _get_wsid(interp)
     output = wsid
     if lx_result is not None:
         output += "\n" + format_result(lx_result, interp.env)

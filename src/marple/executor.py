@@ -231,7 +231,9 @@ class Executor:
             if name in self._SYS_FN_DISPATCH or name in self._DYADIC_SYS_FN_DISPATCH:
                 raise SyntaxError_(f"{name} is a system function — it requires an argument")
             raise ValueError_(f"Undefined system variable: {name}")
-        return self.env[name]
+        val = self.env[name]
+        assert isinstance(val, APLArray)
+        return val
 
     # ── System variables ──
 
