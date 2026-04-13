@@ -3,7 +3,7 @@
 
 from abc import ABC, abstractmethod
 from itertools import product
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 from marple.numpy_array import APLArray, S
 from marple.backend_functions import is_numeric_array, maybe_upcast
@@ -11,7 +11,7 @@ from marple.errors import DomainError, ValueError_
 from marple.symbol_table import NC_FUNCTION, APLValue
 
 
-_INNER_SCALAR_OPS: dict[str, Any] = {
+_INNER_SCALAR_OPS: dict[str, Callable[[Any, Any], Any]] = {
     "+": lambda a, b: a + b,
     "-": lambda a, b: a - b,
     "×": lambda a, b: a * b,
@@ -85,7 +85,7 @@ def _inner_product(
     return APLArray(result_shape, result)
 
 
-_OUTER_UFUNCS: dict[str, Any] = {
+_OUTER_UFUNCS: dict[str, str] = {
     "+": 'add',
     "-": 'subtract',
     "×": 'multiply',

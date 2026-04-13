@@ -1,9 +1,14 @@
 """Shared formatting for MARPLE display and ⍕."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from marple.backend_functions import chars_to_str, is_char_array
 from marple.numpy_array import APLArray
+
+if TYPE_CHECKING:
+    from marple.environment import Environment
 
 
 def format_num(x: Any, pp: int = 10) -> str:
@@ -57,7 +62,7 @@ def _format_matrix(result: APLArray, pp: int) -> str:
     return "\n".join(lines)
 
 
-def format_result(result: APLArray, env: Any = None) -> str:
+def format_result(result: APLArray, env: 'Environment | None' = None) -> str:
     """Format an APLArray for display."""
     pp = 10
     if env is not None:

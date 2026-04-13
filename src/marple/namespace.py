@@ -1,7 +1,7 @@
 import os
 import os.path
 
-from typing import Any
+from marple.symbol_table import APLValue
 
 
 class Namespace:
@@ -9,9 +9,9 @@ class Namespace:
 
     def __init__(self, name: str) -> None:
         self.name = name
-        self.entries: dict[str, Any] = {}
+        self.entries: dict[str, 'Namespace | APLValue'] = {}
 
-    def resolve(self, parts: list[str]) -> Any:
+    def resolve(self, parts: list[str]) -> 'Namespace | APLValue | None':
         """Walk the namespace tree to find a value."""
         if len(parts) == 0:
             return self
@@ -25,7 +25,7 @@ class Namespace:
             return val.resolve(parts[1:])
         return None
 
-    def register(self, name: str, value: Any) -> None:
+    def register(self, name: str, value: 'Namespace | APLValue') -> None:
         self.entries[name] = value
 
     def list_names(self) -> list[str]:

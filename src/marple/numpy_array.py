@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Callable
 
 from marple.backend_functions import (
     is_char_array, is_ndarray, is_numeric_array, maybe_upcast,
@@ -80,7 +80,7 @@ class APLArray(APLValue):
         return f"APLArray({self.shape}, {to_list(self.data)})"
 
     def _dyadic(self, other: 'APLArray',
-                f: Any, bool_result: bool = False) -> 'APLArray':
+                f: Callable[[Any, Any], Any], bool_result: bool = False) -> 'APLArray':
         """Pervade a dyadic function element-wise with scalar extension."""
         a_data = to_list(self.data)
         b_data = to_list(other.data)
@@ -106,7 +106,7 @@ class APLArray(APLValue):
             data = to_bool_array(data)
         return APLArray.array(list(self.shape), data)
 
-    def _numeric_dyadic_op(self, other: 'APLArray', op: Any, upcast: bool = False) -> 'APLArray':
+    def _numeric_dyadic_op(self, other: 'APLArray', op: Callable[[Any, Any], Any], upcast: bool = False) -> 'APLArray':
         """Apply a numeric operator (+, -, *, etc.) on numpy data.
 
         `maybe_upcast` promotes integer arrays to float64 before the
@@ -204,7 +204,7 @@ class APLArray(APLValue):
     def circular(self, other: 'APLArray') -> 'APLArray':
         self._reject_chars(other, "○")
         import math
-        _CIRCULAR: dict[int, Any] = {
+        _CIRCULAR: dict[int, Callable[[float], float]] = {
             0: lambda x: math.sqrt(1 - x * x),
             1: math.sin, 2: math.cos, 3: math.tan,
             4: lambda x: math.sqrt(1 + x * x),
@@ -234,7 +234,7 @@ class APLArray(APLValue):
             return a == b
         return abs(a - b) <= ct * np.maximum(abs(a), abs(b))
 
-    def _compare(self, other: 'APLArray', op: Any, ct: float = 0) -> 'APLArray':
+    def _compare(self, other: 'APLArray', op: Callable[[Any, Any, Any], Any], ct: float = 0) -> 'APLArray':
         """Comparison with numpy fast path and tolerant equality."""
         if not is_numeric_array(self.data) or not is_numeric_array(other.data):
             ct = 0

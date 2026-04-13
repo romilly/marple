@@ -2,6 +2,8 @@
 
 from typing import Any, Callable
 
+import numpy.typing as npt
+
 from marple.numpy_array import APLArray, S
 from marple.backend_functions import (
     _DOWNCAST_CT, is_char_array, is_numeric_array, maybe_downcast, to_list,
@@ -48,7 +50,7 @@ _IDENTITY_ELEMENTS: dict[str, int | float] = {
 }
 
 
-def _reduce_row(op: Any, data: Any, start: int, length: int) -> Any:
+def _reduce_row(op: Callable[[Any, Any], Any], data: npt.NDArray[Any], start: int, length: int) -> Any:
     """Right-to-left reduce of a row, using numpy indexing.
 
     Follows Dyalog's "upcast when you must" rule: try the reduce in the
@@ -104,7 +106,7 @@ def _reduce(
     return APLArray(new_shape, result.reshape(new_shape))
 
 
-_ACCUMULATE_UFUNCS: dict[str, Any] = {}
+_ACCUMULATE_UFUNCS: dict[str, np.ufunc] = {}
 if hasattr(np, 'add') and hasattr(np.add, 'accumulate'):
     _ACCUMULATE_UFUNCS = {
         "+": np.add,
@@ -113,7 +115,7 @@ if hasattr(np, 'add') and hasattr(np.add, 'accumulate'):
         "⌊": np.minimum,
     }
 
-_SCALAR_OPS: dict[str, Any] = {
+_SCALAR_OPS: dict[str, Callable[[Any, Any], Any]] = {
     "+": lambda a, b: a + b,
     "-": lambda a, b: a - b,
     "×": lambda a, b: a * b,
@@ -134,7 +136,7 @@ _SCALAR_OPS: dict[str, Any] = {
 }
 
 
-def _scan_row_accumulate(ufunc: Any, data: Any, row_len: int) -> Any:
+def _scan_row_accumulate(ufunc: np.ufunc, data: npt.NDArray[Any], row_len: int) -> npt.NDArray[Any]:
     """Apply ufunc.accumulate to each row of length row_len in flat data."""
     n = len(data)
     result = np.empty(n, dtype=data.dtype)
@@ -143,7 +145,7 @@ def _scan_row_accumulate(ufunc: Any, data: Any, row_len: int) -> Any:
     return result
 
 
-def _scan_row_general(op: Any, data: Any, row_len: int) -> Any:
+def _scan_row_general(op: Callable[[Any, Any], Any], data: npt.NDArray[Any], row_len: int) -> npt.NDArray[Any]:
     """O(n²) right-to-left reduce per prefix, row by row."""
     n = len(data)
     result = np.zeros(n, dtype=data.dtype)
@@ -179,7 +181,7 @@ def _scan(
     if glyph == "×" and is_numeric_array(flat) and "int" in str(flat.dtype):
         scan_data = flat.astype(np.float64)
 
-    def _do_scan(data: Any) -> Any:
+    def _do_scan(data: npt.NDArray[Any]) -> npt.NDArray[Any]:
         if glyph is not None:
             ufunc = _ACCUMULATE_UFUNCS.get(glyph)
             if ufunc is not None:
@@ -225,7 +227,7 @@ def _reduce_first(
     for s in cell_shape:
         cell_size *= s
 
-    def _do_reduce(data: Any) -> Any:
+    def _do_reduce(data: npt.NDArray[Any]) -> npt.NDArray[Any]:
         acc = np.array(data[:cell_size], dtype=data.dtype)
         for i in range(1, first):
             cell = data[i * cell_size : (i + 1) * cell_size]
@@ -263,7 +265,7 @@ def _scan_first(
         cell_size *= s
     flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
 
-    def _do_scan(data: Any) -> Any:
+    def _do_scan(data: npt.NDArray[Any]) -> npt.NDArray[Any]:
         result = np.zeros(len(data), dtype=data.dtype)
         result[:cell_size] = data[:cell_size]
         acc = np.array(data[:cell_size], dtype=data.dtype)
@@ -285,7 +287,7 @@ def _scan_first(
     return APLArray(list(omega.shape), result.reshape(omega.shape))
 
 
-_OPERATOR_DISPATCH: dict[str, Any] = {
+_OPERATOR_DISPATCH: dict[str, Callable[..., APLArray]] = {
     "/": _reduce,
     "⌿": _reduce_first,
     "\\": _scan,

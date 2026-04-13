@@ -1,5 +1,7 @@
 from typing import Any
 
+import numpy.typing as npt
+
 from marple.get_numpy import np
 
 
@@ -13,17 +15,17 @@ def chars_to_str(data: Any) -> str:
     return ''.join(chr(int(x)) for x in data.flat)
 
 
-def str_to_char_array(s: str) -> Any:
+def str_to_char_array(s: str) -> npt.NDArray[np.uint32]:
     """Convert a Python string to a uint32 numpy array of codepoints."""
     return np.array([ord(c) for c in s], dtype=np.uint32)
 
 
-def char_fill() -> Any:
+def char_fill() -> np.uint32:
     """Return the fill element for character arrays: space as uint32."""
     return np.uint32(32)
 
 
-def to_array(data: list[Any], dtype_hint: str | None = None) -> Any:
+def to_array(data: list[Any], dtype_hint: str | None = None) -> npt.NDArray[Any]:
     """Convert a Python list to a numpy ndarray.
 
     After Step 5 of the character migration, character data is always
@@ -88,13 +90,13 @@ def is_numeric_array(data: Any) -> bool:
     return str(data.dtype) != 'uint32'
 
 
-def _is_int_dtype(arr: Any) -> bool:
+def _is_int_dtype(arr: npt.NDArray[Any]) -> bool:
     """Check if an ndarray has an integer dtype."""
     dtype_str = str(arr.dtype)
     return "int" in dtype_str
 
 
-def _is_float_dtype(arr: Any) -> bool:
+def _is_float_dtype(arr: npt.NDArray[Any]) -> bool:
     """Check if an ndarray has a float dtype."""
     dtype_str = str(arr.dtype)
     return "float" in dtype_str
@@ -178,7 +180,7 @@ def data_type_code(data: Any) -> int:
     return 323
 
 
-def to_bool_array(data: Any) -> Any:
+def to_bool_array(data: Any) -> npt.NDArray[np.uint8]:
     """Convert data to a uint8 boolean array (0/1 values)."""
     dt = getattr(np, "uint8", None)
     if dt is None:

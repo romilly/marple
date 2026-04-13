@@ -52,14 +52,14 @@ def _cmd_fns(interp: Interpreter, line: str) -> tuple[str, bool]:
     if len(parts) > 1:
         ns_name = parts[1].strip()
         if ns_name.startswith("$"):
-            from marple.namespace import load_system_workspace
+            from marple.namespace import Namespace, load_system_workspace
             import marple.stdlib
             f = marple.stdlib.__file__
             stdlib_path = f[:f.rfind("/")] if "/" in f else f[:f.rfind("\\")]
             sys_ws = load_system_workspace(stdlib_path)
             ns_parts = ns_name.split("::")[1:] if "::" in ns_name else []
             ns = sys_ws.resolve(ns_parts) if ns_parts else sys_ws
-            if ns is not None and hasattr(ns, "list_names"):
+            if isinstance(ns, Namespace):
                 return "  ".join(ns.list_names()), False
             return f"Namespace not found: {ns_name}", False
         return f"Namespace not found: {ns_name}", False
