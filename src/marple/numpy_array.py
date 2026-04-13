@@ -1,7 +1,7 @@
 from typing import Any, Callable
 
 from marple.backend_functions import (
-    is_char_array, is_ndarray, is_numeric_array, maybe_upcast,
+    is_char_array, is_numeric_array, maybe_upcast,
     str_to_char_array, to_array, to_bool_array, to_list,
 )
 from marple.errors import DomainError, LengthError, RankError

@@ -2,7 +2,7 @@
 
 from typing import Any, Callable
 
-import numpy.typing as npt
+from marple.backend_functions import NDArray
 
 from marple.numpy_array import APLArray, S
 from marple.backend_functions import (
@@ -50,7 +50,7 @@ _IDENTITY_ELEMENTS: dict[str, int | float] = {
 }
 
 
-def _reduce_row(op: Callable[[Any, Any], Any], data: npt.NDArray[Any], start: int, length: int) -> Any:
+def _reduce_row(op: Callable[[Any, Any], Any], data: NDArray, start: int, length: int) -> Any:
     """Right-to-left reduce of a row, using numpy indexing.
 
     Upcasts integer data to float64 before the operation to prevent
@@ -133,7 +133,7 @@ _SCALAR_OPS: dict[str, Callable[[Any, Any], Any]] = {
 }
 
 
-def _scan_row_accumulate(ufunc: np.ufunc, data: npt.NDArray[Any], row_len: int) -> npt.NDArray[Any]:
+def _scan_row_accumulate(ufunc: np.ufunc, data: NDArray, row_len: int) -> NDArray:
     """Apply ufunc.accumulate to each row of length row_len in flat data."""
     rows = data.reshape(-1, row_len)
     with np.errstate(over="ignore", invalid="ignore"):
@@ -141,7 +141,7 @@ def _scan_row_accumulate(ufunc: np.ufunc, data: npt.NDArray[Any], row_len: int) 
     return result.flatten()
 
 
-def _scan_row_general(op: Callable[[Any, Any], Any], data: npt.NDArray[Any], row_len: int) -> npt.NDArray[Any]:
+def _scan_row_general(op: Callable[[Any, Any], Any], data: NDArray, row_len: int) -> NDArray:
     """O(n²) right-to-left reduce per prefix, row by row."""
     rows = data.reshape(-1, row_len)
     result = np.zeros_like(rows)

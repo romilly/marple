@@ -8,7 +8,7 @@ consumers using `if is_numeric_array(...)` as a fast path will silently
 apply arithmetic to character codepoints.
 """
 
-from marple.backend_functions import is_char_array, is_ndarray, is_numeric_array
+from marple.backend_functions import is_char_array, is_numeric_array
 from marple.get_numpy import np
 
 
@@ -43,34 +43,3 @@ class TestPredicatesDisjoint:
         data = np.array([0, 1, 1], dtype=np.uint8)
         assert is_numeric_array(data)
         assert not is_char_array(data)
-
-
-
-class TestIsNdarray:
-    """is_ndarray answers the layout question: 'can I call .flatten() on it'.
-
-    It is True for *any* ndarray (numeric or uint32 char), False for
-    Python lists. Use is_ndarray for shape/order operations; use
-    is_numeric_array for arithmetic dispatch.
-    """
-
-    def test_int64_is_ndarray(self) -> None:
-        assert is_ndarray(np.array([1, 2], dtype=np.int64))
-
-    def test_float64_is_ndarray(self) -> None:
-        assert is_ndarray(np.array([1.0], dtype=np.float64))
-
-    def test_uint32_is_ndarray(self) -> None:
-        assert is_ndarray(np.array([97], dtype=np.uint32))
-
-    def test_uint8_is_ndarray(self) -> None:
-        assert is_ndarray(np.array([0, 1], dtype=np.uint8))
-
-    def test_list_of_str_is_not_ndarray(self) -> None:
-        assert not is_ndarray(['a', 'b'])
-
-    def test_empty_list_is_not_ndarray(self) -> None:
-        assert not is_ndarray([])
-
-    def test_python_list_of_int_is_not_ndarray(self) -> None:
-        assert not is_ndarray([1, 2, 3])

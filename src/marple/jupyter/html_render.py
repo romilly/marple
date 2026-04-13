@@ -4,7 +4,7 @@ import html as _html
 
 from marple.numpy_array import APLArray
 from marple.formatting import format_num
-from marple.backend_functions import chars_to_str, is_char_array
+from marple.backend_functions import NDArray, chars_to_str, is_char_array
 
 ARRAY_CSS = """<style>
 .apl-array {
@@ -33,7 +33,7 @@ ARRAY_CSS = """<style>
 </style>"""
 
 
-def _is_char_data(data: object) -> bool:
+def _is_char_data(data: NDArray) -> bool:
     return is_char_array(data)
 
 

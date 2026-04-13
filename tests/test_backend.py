@@ -70,11 +70,8 @@ class TestIsCharArray:
     def test_float_array_is_not_char(self) -> None:
         assert not is_char_array(np.array([1.0, 2.0]))
 
-    def test_empty_list_is_not_char(self) -> None:
-        assert not is_char_array([])
-
-    def test_numeric_list_is_not_char(self) -> None:
-        assert not is_char_array([1, 2, 3])
+    def test_empty_array_is_not_char(self) -> None:
+        assert not is_char_array(np.array([]))
 
 
 class TestCharsToStr:

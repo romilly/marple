@@ -1,16 +1,18 @@
-from typing import Any
+from typing import Any, TypeAlias
 
 import numpy.typing as npt
 
 from marple.get_numpy import np
 
+NDArray: TypeAlias = npt.NDArray[Any]
 
-def is_char_array(data: Any) -> bool:
+
+def is_char_array(data: NDArray) -> bool:
     """Check if data represents character data (uint32 ndarray of codepoints)."""
-    return hasattr(data, 'dtype') and str(data.dtype) == 'uint32'
+    return str(data.dtype) == 'uint32'
 
 
-def chars_to_str(data: Any) -> str:
+def chars_to_str(data: npt.NDArray[np.uint32]) -> str:
     """Convert character array data (uint32 ndarray) to Python string."""
     return ''.join(chr(int(x)) for x in data.flat)
 
@@ -25,7 +27,7 @@ def char_fill() -> np.uint32:
     return np.uint32(32)
 
 
-def to_array(data: list[Any], dtype_hint: str | None = None) -> npt.NDArray[Any]:
+def to_array(data: list[Any], dtype_hint: str | None = None) -> NDArray:
     """Convert a Python list to a numpy ndarray.
 
     After Step 5 of the character migration, character data is always
@@ -67,17 +69,7 @@ def to_list(data: Any) -> list[Any]:
     return data.tolist()  # type: ignore[union-attr]
 
 
-def is_ndarray(data: Any) -> bool:
-    """Check if data is an ndarray of any dtype (the layout question).
-
-    Use this for shape/order operations like .flatten(), .reshape(),
-    .copy() that don't care about element type. For arithmetic dispatch
-    use is_numeric_array, which excludes uint32 character arrays.
-    """
-    return hasattr(data, "dtype")
-
-
-def is_numeric_array(data: Any) -> bool:
+def is_numeric_array(data: NDArray) -> bool:
     """Check if data is a numeric ndarray from the active backend.
 
     uint32 arrays are reserved for character data (Unicode codepoints)
@@ -85,28 +77,23 @@ def is_numeric_array(data: Any) -> bool:
     disjoint, which is what allows the dyadic-arithmetic fast paths
     to use is_numeric_array as a safe gate after the char guards run.
     """
-    if not hasattr(data, "dtype"):
-        return False
     return str(data.dtype) != 'uint32'
 
 
-def _is_int_dtype(arr: npt.NDArray[Any]) -> bool:
+def _is_int_dtype(arr: NDArray) -> bool:
     """Check if an ndarray has an integer dtype."""
     dtype_str = str(arr.dtype)
     return "int" in dtype_str
 
 
-def _is_float_dtype(arr: npt.NDArray[Any]) -> bool:
+def _is_float_dtype(arr: NDArray) -> bool:
     """Check if an ndarray has a float dtype."""
     dtype_str = str(arr.dtype)
     return "float" in dtype_str
 
 
-def maybe_upcast(data: Any) -> Any:
-    """Convert integer arrays to float to prevent overflow.
-
-    Returns non-array data unchanged.
-    """
+def maybe_upcast(data: NDArray) -> NDArray:
+    """Convert integer arrays to float to prevent overflow."""
     if not is_numeric_array(data):
         return data
     if not _is_int_dtype(data):
@@ -118,11 +105,10 @@ def maybe_upcast(data: Any) -> Any:
 _DOWNCAST_CT: float = 1e-14
 
 
-def maybe_downcast(data: Any, ct: float) -> Any:
+def maybe_downcast(data: NDArray, ct: float) -> NDArray:
     """Convert float arrays to int if all elements are close to whole numbers.
 
     Uses APL tolerance: |value - round(value)| <= ct * max(|value|, |round(value)|)
-    Returns non-array or already-integer data unchanged.
     """
     if not is_numeric_array(data):
         return data
@@ -155,7 +141,7 @@ def maybe_downcast(data: Any, ct: float) -> Any:
     return int_arr
 
 
-def data_type_code(data: Any) -> int:
+def data_type_code(data: NDArray) -> int:
     """Return the ⎕DR type code for the given data.
 
     Encoding: first digits = bit width, last digit = type

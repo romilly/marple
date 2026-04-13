@@ -3,6 +3,10 @@
 
 from typing import Any
 
+import numpy.typing as npt
+
+from marple.get_numpy import np
+
 from marple.numpy_array import APLArray, S
 from marple.formatting import format_num, format_result
 from marple.backend_functions import (
@@ -55,7 +59,7 @@ def _ljust(s: str, width: int) -> str:
     return s + " " * max(0, width - len(s))
 
 
-def _apl_chars_to_str(data: Any) -> str:
+def _apl_chars_to_str(data: npt.NDArray[np.uint32]) -> str:
     """Convert an APLArray's character data to a Python string."""
     return chars_to_str(data)
 

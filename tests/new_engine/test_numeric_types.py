@@ -277,10 +277,6 @@ class TestMaybeDowncast:
         result = maybe_downcast(arr, 1e-14)
         assert result.tolist() == []
 
-    def test_plain_list_unchanged(self) -> None:
-        data = [1.0, 2.0]
-        result = maybe_downcast(data, 1e-14)
-        assert result is data
 
 
 class TestMaybeUpcast:
@@ -299,7 +295,3 @@ class TestMaybeUpcast:
         result = maybe_upcast(arr)
         assert result.tolist() == [1.0, 2.0, 3.0]
 
-    def test_plain_list_unchanged(self) -> None:
-        data = [1, 2, 3]
-        result = maybe_upcast(data)
-        assert result is data
