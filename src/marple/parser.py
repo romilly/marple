@@ -54,7 +54,6 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
 )
 from marple.tokenizer import Token, TokenType, Tokenizer
 
-StackItem = Node
 
 
 # ── Category constants for Iverson's stack-based parser ──
@@ -163,13 +162,13 @@ class Parser:
 
     # ── Item building (token → classified items) ──
 
-    def _build_items(self) -> list[tuple[int, StackItem]]:
+    def _build_items(self) -> list[tuple[int, Node]]:
         """Build classified items from current position to expression end.
 
         Advances self._pos as tokens are consumed. Stops at statement
         boundaries (⋄, :, }, ], ;, EOF) at paren depth 0.
         """
-        items: list[tuple[int, StackItem]] = []
+        items: list[tuple[int, Node]] = []
         paren_depth = 0
         stop_types = frozenset({
             TokenType.DIAMOND, TokenType.GUARD, TokenType.RBRACE,
@@ -218,18 +217,18 @@ class Parser:
 
         return items
 
-    def _item_lbrace(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
+    def _item_lbrace(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         dfn = self._parse_dfn()
         cat = self._classify_dfn(dfn)
         items.append((cat, dfn))
 
-    def _item_number(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
+    def _item_number(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         node: Evaluatable = self._parse_array()
         if self._current().type == TokenType.LBRACKET:
             node = self._parse_bracket_index(node)
         items.append((CAT_NOUN, node))
 
-    def _item_string(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
+    def _item_string(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         self._pos += 1
         assert isinstance(tok.value, str)
         node: object = Str(tok.value)
@@ -237,12 +236,12 @@ class Parser:
             node = self._parse_bracket_index(node)
         items.append((CAT_NOUN, node))
 
-    def _item_function(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
+    def _item_function(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         self._pos += 1
         assert isinstance(tok.value, str)
         items.append((CAT_VERB, FunctionRef(tok.value)))
 
-    def _item_operator(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
+    def _item_operator(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         assert isinstance(tok.value, str)
         op = tok.value
         self._pos += 1
@@ -264,11 +263,11 @@ class Parser:
             token: Adverb | Conjunction = Adverb(op) if cat == CAT_ADV else Conjunction(op)
             items.append((cat, token))
 
-    def _item_assign(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
+    def _item_assign(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         self._pos += 1
         items.append((CAT_ASGN, AssignmentArrow()))
 
-    def _item_id(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
+    def _item_id(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         assert isinstance(tok.value, str)
         name = tok.value
         self._pos += 1
@@ -282,7 +281,7 @@ class Parser:
             cat = self._classify_name(name)
             items.append((cat, var_node))
 
-    def _item_sysvar(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
+    def _item_sysvar(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         assert isinstance(tok.value, str)
         name = tok.value
         self._pos += 1
@@ -301,36 +300,36 @@ class Parser:
             cat = self._classify_sysvar(name)
             items.append((cat, sv_node))
 
-    def _item_omega(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
+    def _item_omega(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         self._pos += 1
         items.append((CAT_NOUN, Omega()))
 
-    def _item_alpha(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
+    def _item_alpha(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         self._pos += 1
         items.append((CAT_NOUN, Alpha()))
 
-    def _item_alpha_alpha(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
+    def _item_alpha_alpha(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         self._pos += 1
         items.append((CAT_NOUN, AlphaAlpha()))
 
-    def _item_omega_omega(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
+    def _item_omega_omega(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         self._pos += 1
         items.append((CAT_NOUN, OmegaOmega()))
 
-    def _item_nabla(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
+    def _item_nabla(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         self._pos += 1
         items.append((CAT_VERB, Nabla()))
 
-    def _item_zilde(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
+    def _item_zilde(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         self._pos += 1
         items.append((CAT_NOUN, Zilde()))
 
-    def _item_qualified_name(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
+    def _item_qualified_name(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         assert isinstance(tok.value, str)
         self._pos += 1
         items.append((CAT_NOUN, QualifiedVar(tok.value.split("::"))))
 
-    _ITEM_DISPATCH: dict[str, Callable[['Parser', Token, list[tuple[int, StackItem]]], None]] = {
+    _ITEM_DISPATCH: dict[str, Callable[['Parser', Token, list[tuple[int, Node]]], None]] = {
         TokenType.LBRACE: _item_lbrace,
         TokenType.NUMBER: _item_number,
         TokenType.STRING: _item_string,
@@ -374,13 +373,13 @@ class Parser:
     # ── AST construction helpers ──
 
     @staticmethod
-    def _as_evaluatable(item: StackItem) -> Evaluatable:
+    def _as_evaluatable(item: Node) -> Evaluatable:
         """Narrow a stack item to Evaluatable. Items classified as
         CAT_NOUN or used as operands are always Evaluatable."""
         assert isinstance(item, Evaluatable)
         return item
 
-    def _make_monadic(self, verb_node: StackItem, arg_node: Evaluatable) -> Evaluatable:
+    def _make_monadic(self, verb_node: Node, arg_node: Evaluatable) -> Evaluatable:
         """Create AST node for monadic verb application."""
         if isinstance(verb_node, FunctionRef):
             return MonadicFunc(verb_node.glyph, arg_node)
@@ -395,7 +394,7 @@ class Parser:
             return MonadicDfnCall(verb_node, arg_node)
         raise SyntaxError_(f"Cannot apply as monadic function: {type(verb_node)}")
 
-    def _make_dyadic(self, verb_node: StackItem, left_node: Evaluatable,
+    def _make_dyadic(self, verb_node: Node, left_node: Evaluatable,
                      right_node: Evaluatable) -> Evaluatable:
         """Create AST node for dyadic verb application."""
         if isinstance(verb_node, FunctionRef):
@@ -614,7 +613,7 @@ class Parser:
         inner = ForkDerived(items[-3], items[-2], items[-1])
         return self._build_train(items[:-3] + [inner])
 
-    def _resolve_assignment_value(self, value_node: StackItem,
+    def _resolve_assignment_value(self, value_node: Node,
                                   value_cat: int) -> Evaluatable | UnappliedFunction:
         """Convert a Case 6 value_node into a form that `ctx.assign`
         can store directly.
@@ -632,13 +631,13 @@ class Parser:
 
     # ── Iverson's stack-based parsing algorithm ──
 
-    def _stack_parse(self, items: list[tuple[int, StackItem]]) -> Evaluatable:
+    def _stack_parse(self, items: list[tuple[int, Node]]) -> Evaluatable:
         """Run Iverson's 9-case stack-based parser on classified items.
 
         Items are processed right-to-left. The stack grows upward.
         stack[-1] = r0 (top/newest), stack[-2] = r1, etc.
         """
-        stack: list[tuple[int, StackItem]] = []
+        stack: list[tuple[int, Node]] = []
         # Items in left-to-right order; pop from right = read right-to-left
         # END marker at position 0 = popped last = leftmost sentinel
         input_q = [(CAT_END, _MARKER)] + items
