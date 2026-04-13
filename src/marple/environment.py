@@ -124,17 +124,15 @@ class Environment:
 
     def list_variables(self) -> list[tuple[str, list[int]]]:
         """Return sorted list of (name, shape) for all user variables."""
-        return [(name, list(val.shape))
-                for name in self.names_of_class(2)
-                if isinstance((val := self.symbols.get(name)), APLArray)]
+        return [(name, list(val.shape)) for name, val in self.symbols.arrays()]
 
     def list_functions(self) -> list[tuple[str, str | None]]:
         """Return sorted list of (name, source_or_None) for all user functions."""
-        return [(name, self.get_source(name)) for name in self.names_of_class(3)]
+        return [(name, self.get_source(name)) for name, _ in self.symbols.functions()]
 
     def list_operators(self) -> list[tuple[str, str | None]]:
         """Return sorted list of (name, source_or_None) for all user operators."""
-        return [(name, self.get_source(name)) for name in self.names_of_class(4)]
+        return [(name, self.get_source(name)) for name, _ in self.symbols.operators()]
 
     # ── Dict-like interface ──
     # Lookup order: quad vars, then symbols, then locals (⍵, ⍺, ∇, etc.)

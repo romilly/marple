@@ -1,6 +1,12 @@
 """Symbol table for user-defined names in MARPLE."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from marple.numpy_array import APLArray
 
 # Name classes (following Dyalog ⎕NC convention)
 NC_UNKNOWN = 0
@@ -79,6 +85,29 @@ class SymbolTable:
         return sorted(
             n for n, c in self._classes.items()
             if c == nc and not n.startswith("⎕") and not n.startswith("__")
+        )
+
+    def arrays(self) -> list[tuple[str, APLArray]]:
+        """Return sorted list of (name, value) for user arrays."""
+        from marple.numpy_array import APLArray as _APLArray
+        return sorted(
+            (n, v) for n, c in self._classes.items()
+            if c == NC_ARRAY and not n.startswith("⎕") and not n.startswith("__")
+            and isinstance((v := self._values[n]), _APLArray)
+        )
+
+    def functions(self) -> list[tuple[str, APLValue]]:
+        """Return sorted list of (name, value) for user functions."""
+        return sorted(
+            (n, self._values[n]) for n, c in self._classes.items()
+            if c == NC_FUNCTION and not n.startswith("⎕") and not n.startswith("__")
+        )
+
+    def operators(self) -> list[tuple[str, APLValue]]:
+        """Return sorted list of (name, value) for user operators."""
+        return sorted(
+            (n, self._values[n]) for n, c in self._classes.items()
+            if c == NC_OPERATOR and not n.startswith("⎕") and not n.startswith("__")
         )
 
     def class_dict(self) -> dict[str, int]:
