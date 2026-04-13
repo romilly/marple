@@ -95,7 +95,6 @@ def _cmd_save(interp: Interpreter, line: str) -> tuple[str, bool]:
     for name in interp.env.user_names():
         env_dict[name] = interp.env[name]
     env_dict["__sources__"] = interp.env.sources()
-    env_dict["__wsid__"] = wsid
     try:
         save_workspace(env_dict, ws_root + "/" + wsid)
         return f"{wsid} SAVED", False

@@ -1,7 +1,6 @@
 """Symbol table for user-defined names in MARPLE."""
 
 from abc import ABC, abstractmethod
-from typing import Any
 
 # Name classes (following Dyalog ⎕NC convention)
 NC_UNKNOWN = 0
@@ -21,12 +20,12 @@ class SymbolTable:
     """Tracks user-defined names, their values, and their name classes."""
 
     def __init__(self) -> None:
-        self._values: dict[str, Any] = {}
+        self._values: dict[str, APLValue] = {}
         self._classes: dict[str, int] = {}
         self._operator_arity: dict[str, int] = {}
         self._sources: dict[str, str] = {}
 
-    def bind(self, name: str, value: Any, name_class: int) -> None:
+    def bind(self, name: str, value: APLValue, name_class: int) -> None:
         """Store a name with its value and class."""
         self._values[name] = value
         self._classes[name] = name_class
@@ -35,7 +34,7 @@ class SymbolTable:
         """Set a name's class without storing a value (e.g. system functions)."""
         self._classes[name] = name_class
 
-    def get(self, name: str) -> Any:
+    def get(self, name: str) -> APLValue | None:
         """Return the value bound to a name, or None if not found."""
         return self._values.get(name)
 

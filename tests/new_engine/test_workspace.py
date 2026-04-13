@@ -4,6 +4,7 @@ import os
 import tempfile
 
 from marple.numpy_array import APLArray, S
+from marple.backend_functions import str_to_char_array
 from marple.engine import Interpreter
 from marple.workspace import save_workspace, load_workspace, list_workspaces
 
@@ -17,8 +18,6 @@ def _save_env_as_dict(interp: Interpreter) -> dict[str, object]:
     for name in env.user_names():
         result[name] = env[name]
     result["__sources__"] = env.sources()
-    wsid = "".join(str(c) for c in env["⎕WSID"].data)
-    result["__wsid__"] = wsid
     return result
 
 
@@ -161,7 +160,7 @@ class TestListWorkspaces:
         with tempfile.TemporaryDirectory() as root:
             for name in ("alpha", "beta"):
                 ws_dir = os.path.join(root, name)
-                env: dict[str, object] = {"__wsid__": name, "⎕IO": S(1)}
+                env: dict[str, object] = {"⎕WSID": APLArray([len(name)], str_to_char_array(name)), "⎕IO": S(1)}
                 save_workspace(env, ws_dir)
             os.makedirs(os.path.join(root, "notaws"))
             assert sorted(list_workspaces(root)) == ["alpha", "beta"]

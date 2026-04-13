@@ -75,11 +75,11 @@ def save_workspace(env: dict[str, Any], ws_dir: str,
     fs.makedirs(ws_dir)
 
     # Write .ws marker
-    wsid_val = env.get("⎕WSID", env.get("__wsid__", "CLEAR WS"))
-    if isinstance(wsid_val, APLArray):
-        wsid = chars_to_str(wsid_val.data)
+    wsid_val = env.get("⎕WSID")
+    if wsid_val is None:
+        wsid = "CLEAR WS"
     else:
-        wsid = str(wsid_val)
+        wsid = chars_to_str(wsid_val.data)
     fs.write_text(ws_dir + "/" + ".ws", wsid + "\n")
 
     # Track which files we write so we can clean up stale ones
@@ -144,7 +144,6 @@ def load_workspace(env: Any, ws_dir: str,
     if fs.is_file(ws_file):
         text = fs.read_text(ws_file)
         wsid = text.split("\n")[0].strip()
-        env["__wsid__"] = wsid
         env["⎕WSID"] = APLArray([len(wsid)], str_to_char_array(wsid))
 
     # Collect .apl files, system vars first

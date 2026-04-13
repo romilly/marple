@@ -7,7 +7,7 @@ from marple.numpy_array import APLArray, S
 from marple.ports.console import Console
 from marple.ports.filesystem import FileSystem
 from marple.ports.timer import Timer
-from marple.symbol_table import SymbolTable
+from marple.symbol_table import APLValue, SymbolTable
 
 
 _QUAD_DEFAULTS: dict[str, APLArray] = {
@@ -69,7 +69,7 @@ class Environment:
 
     # ── Symbol table delegation ──
 
-    def bind_name(self, name: str, value: object, name_class: int) -> None:
+    def bind_name(self, name: str, value: APLValue, name_class: int) -> None:
         """Store a user-defined name with its value and class."""
         self.symbols.bind(name, value, name_class)
 

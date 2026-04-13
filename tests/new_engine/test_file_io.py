@@ -3,6 +3,7 @@
 import pytest
 
 from marple.numpy_array import APLArray, S
+from marple.backend_functions import str_to_char_array
 from marple.engine import Interpreter
 from marple.errors import DomainError
 from tests.adapters.fake_filesystem import FakeFileSystem
@@ -84,7 +85,6 @@ class TestWorkspaceWithFakeFS:
         for name in i.env.user_names():
             env_dict[name] = i.env[name]
         env_dict["__sources__"] = i.env.sources()
-        env_dict["__wsid__"] = "test_ws"
         save_workspace(env_dict, "/ws/test_ws", fs=fs)
         # Load into fresh interpreter
         i2 = Interpreter(io=1, fs=fs)
@@ -95,7 +95,7 @@ class TestWorkspaceWithFakeFS:
         from marple.workspace import save_workspace, list_workspaces
         fs = FakeFileSystem()
         for name in ("alpha", "beta"):
-            env: dict[str, object] = {"__wsid__": name, "⎕IO": S(1)}
+            env: dict[str, object] = {"⎕WSID": APLArray([len(name)], str_to_char_array(name)), "⎕IO": S(1)}
             save_workspace(env, f"/ws/{name}", fs=fs)
         assert sorted(list_workspaces("/ws", fs=fs)) == ["alpha", "beta"]
 

@@ -33,7 +33,6 @@ class TestLXOnLoad:
         for name in i.env.user_names():
             env_dict[name] = i.env[name]
         env_dict["__sources__"] = i.env.sources()
-        env_dict["__wsid__"] = "test"
         save_workspace(env_dict, "/ws/test", fs=fs)
         # Load into fresh interpreter — ⎕LX should execute
         i2 = Interpreter(io=1, fs=fs)
@@ -51,7 +50,6 @@ class TestLXOnLoad:
         for name in i.env.user_names():
             env_dict[name] = i.env[name]
         env_dict["__sources__"] = i.env.sources()
-        env_dict["__wsid__"] = "test"
         save_workspace(env_dict, "/ws/test", fs=fs)
         i2 = Interpreter(io=1, fs=fs)
         load_workspace(i2.env, "/ws/test", evaluate=i2.run, fs=fs)

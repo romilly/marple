@@ -108,8 +108,7 @@ class Interpreter(Executor):
             raise ValueError_(f"Import from non-system namespace not yet supported: {qualified}")
         result = self.resolve_qualified(name_parts)
         bind_name = alias if alias else name_parts[-1]
-        if isinstance(result, (DfnBinding, IBeamDerived)) or (
-                hasattr(result, 'dfn') and hasattr(result, 'env')):
+        if isinstance(result, (DfnBinding, IBeamDerived)):
             self.env.bind_name(bind_name, result, NC_FUNCTION)
         elif isinstance(result, APLArray):
             from marple.symbol_table import NC_ARRAY
