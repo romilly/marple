@@ -95,10 +95,10 @@ def _reduce(
         return S(result_val)
     last = omega.shape[-1]
     new_shape = omega.shape[:-1]
-    n_rows = n // last
-    result = np.zeros(n_rows, dtype=np.float64)
-    for i in range(n_rows):
-        result[i] = _reduce_row(op, flat, i * last, last)
+    rows = flat.reshape(-1, last)
+    result = np.zeros(len(rows), dtype=np.float64)
+    for r, row in enumerate(rows):
+        result[r] = _reduce_row(op, row, 0, last)
     result = maybe_downcast(result.reshape(new_shape), _DOWNCAST_CT)
     return APLArray(new_shape, result)
 
@@ -135,28 +135,25 @@ _SCALAR_OPS: dict[str, Callable[[Any, Any], Any]] = {
 
 def _scan_row_accumulate(ufunc: np.ufunc, data: npt.NDArray[Any], row_len: int) -> npt.NDArray[Any]:
     """Apply ufunc.accumulate to each row of length row_len in flat data."""
-    n = len(data)
-    result = np.empty(n, dtype=data.dtype)
+    rows = data.reshape(-1, row_len)
     with np.errstate(over="ignore", invalid="ignore"):
-        for i in range(0, n, row_len):
-            result[i:i + row_len] = ufunc.accumulate(data[i:i + row_len])
-    return result
+        result = ufunc.accumulate(rows, axis=1)
+    return result.flatten()
 
 
 def _scan_row_general(op: Callable[[Any, Any], Any], data: npt.NDArray[Any], row_len: int) -> npt.NDArray[Any]:
     """O(n²) right-to-left reduce per prefix, row by row."""
-    n = len(data)
-    result = np.zeros(n, dtype=data.dtype)
+    rows = data.reshape(-1, row_len)
+    result = np.zeros_like(rows)
     with np.errstate(over="ignore", invalid="ignore"):
-        for i in range(0, n, row_len):
-            row = data[i:i + row_len]
-            result[i] = row[0]
+        for r, row in enumerate(rows):
+            result[r, 0] = row[0]
             for k in range(1, row_len):
                 acc = row[k]
                 for j in range(k - 1, -1, -1):
                     acc = op(row[j], acc)
-                result[i + k] = acc
-    return result
+                result[r, k] = acc
+    return result.flatten()
 
 
 def _scan(
@@ -221,10 +218,10 @@ def _reduce_first(
     if is_numeric_array(flat) and "int" in str(flat.dtype):
         reduce_data = flat.astype(np.float64)
 
-    acc = np.array(reduce_data[:cell_size], dtype=reduce_data.dtype)
+    cells = reduce_data.reshape(first, cell_size)
+    acc = cells[0].copy()
     with np.errstate(over="ignore", invalid="ignore"):
-        for i in range(1, first):
-            cell = reduce_data[i * cell_size : (i + 1) * cell_size]
+        for cell in cells[1:]:
             for j in range(cell_size):
                 acc[j] = op(acc[j], cell[j])
 
@@ -257,21 +254,22 @@ def _scan_first(
     if is_numeric_array(flat) and "int" in str(flat.dtype):
         scan_data = flat.astype(np.float64)
 
-    result = np.zeros(len(scan_data), dtype=scan_data.dtype)
-    result[:cell_size] = scan_data[:cell_size]
-    acc = np.array(scan_data[:cell_size], dtype=scan_data.dtype)
+    cells = scan_data.reshape(first, cell_size)
+    result = np.zeros_like(cells)
+    result[0] = cells[0]
+    acc = cells[0].copy()
     with np.errstate(over="ignore", invalid="ignore"):
-        for i in range(1, first):
-            cell = scan_data[i * cell_size : (i + 1) * cell_size]
+        for i, cell in enumerate(cells[1:], 1):
             for j in range(cell_size):
                 acc[j] = op(acc[j], cell[j])
-            result[i * cell_size : (i + 1) * cell_size] = acc
+            result[i] = acc
 
-    if hasattr(result, "dtype") and "float" in str(result.dtype):
-        if np.any(np.isinf(result)) or np.any(np.isnan(result)):
+    flat_result = result.flatten()
+    if hasattr(flat_result, "dtype") and "float" in str(flat_result.dtype):
+        if np.any(np.isinf(flat_result)) or np.any(np.isnan(flat_result)):
             raise DomainError("arithmetic overflow in scan")
-        result = maybe_downcast(result, _DOWNCAST_CT)
-    return APLArray(list(omega.shape), result.reshape(omega.shape))
+        flat_result = maybe_downcast(flat_result, _DOWNCAST_CT)
+    return APLArray(list(omega.shape), flat_result.reshape(omega.shape))
 
 
 _OPERATOR_DISPATCH: dict[str, Callable[..., APLArray]] = {
