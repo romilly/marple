@@ -13,7 +13,7 @@ from marple.ports.filesystem import FileSystem
 from marple.ports.timer import Timer
 from marple.executor import Executor, _newlines_to_diamonds
 from marple.parser import Assignment, Program, parse
-from marple.symbol_table import NC_FUNCTION, NC_OPERATOR
+from marple.apl_value import NC_FUNCTION, NC_OPERATOR
 
 
 class EvalResult:
@@ -111,7 +111,7 @@ class Interpreter(Executor):
         if isinstance(result, (DfnBinding, IBeamDerived)):
             self.env.bind_name(bind_name, result, NC_FUNCTION)
         elif isinstance(result, APLArray):
-            from marple.symbol_table import NC_ARRAY
+            from marple.apl_value import NC_ARRAY
             self.env.bind_name(bind_name, result, NC_ARRAY)
         return S(0)
 

@@ -1,7 +1,7 @@
 import os
 import os.path
 
-from marple.symbol_table import APLValue
+from marple.apl_value import APLValue
 
 
 class Namespace:

@@ -6,7 +6,7 @@ from marple.backend_functions import (
 )
 from marple.errors import DomainError, LengthError, RankError
 from marple.get_numpy import np
-from marple.symbol_table import NC_ARRAY, APLValue
+from marple.apl_value import NC_ARRAY, APLValue
 
 
 class APLArray(APLValue):

@@ -2,24 +2,12 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
+
+from marple.apl_value import APLValue, NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN
 
 if TYPE_CHECKING:
     from marple.numpy_array import APLArray
-
-# Name classes (following Dyalog ⎕NC convention)
-NC_UNKNOWN = 0
-NC_ARRAY = 2
-NC_FUNCTION = 3
-NC_OPERATOR = 4
-
-
-class APLValue(ABC):
-    """Base class for all APL values (arrays and unapplied functions)."""
-
-    @abstractmethod
-    def name_class(self) -> int: ...
 
 
 class SymbolTable:

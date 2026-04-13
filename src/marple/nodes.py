@@ -8,7 +8,7 @@ from typing import Any, Callable, Protocol
 from marple.numpy_array import APLArray, S
 from marple.backend_functions import is_numeric_array, maybe_upcast
 from marple.errors import DomainError, ValueError_
-from marple.symbol_table import NC_FUNCTION, APLValue
+from marple.apl_value import NC_FUNCTION, APLValue
 
 
 _INNER_SCALAR_OPS: dict[str, Callable[[Any, Any], Any]] = {

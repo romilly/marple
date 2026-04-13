@@ -7,9 +7,8 @@ from marple.numpy_array import APLArray, S
 from marple.ports.console import Console
 from marple.ports.filesystem import FileSystem
 from marple.ports.timer import Timer
-from marple.symbol_table import (
-    APLValue, NC_ARRAY, NC_FUNCTION, NC_OPERATOR, SymbolTable,
-)
+from marple.apl_value import APLValue, NC_ARRAY, NC_FUNCTION, NC_OPERATOR
+from marple.symbol_table import SymbolTable
 
 
 _QUAD_DEFAULTS: dict[str, APLArray] = {

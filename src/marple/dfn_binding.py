@@ -2,7 +2,7 @@
 
 
 from marple.numpy_array import APLArray, S
-from marple.symbol_table import APLValue
+from marple.apl_value import APLValue
 from marple.executor import Executor
 from marple.nodes import Evaluatable, ExecutionContext, Node, UnappliedFunction
 from marple.parser import AlphaDefault, Dfn, Guard

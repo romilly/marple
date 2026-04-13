@@ -27,7 +27,7 @@ from marple.parser import (
     RankDerived,
     UnappliedFunction,
 )
-from marple.symbol_table import NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN, APLValue
+from marple.apl_value import NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN, APLValue
 
 from marple.environment import Environment
 from marple.ports.filesystem import FileSystem
