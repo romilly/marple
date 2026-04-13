@@ -72,11 +72,10 @@ def aplarray_to_html(arr: APLArray) -> str:
 
 def _matrix_html(arr: APLArray, is_char: bool) -> str:
     rows, cols = arr.shape
-    flat = arr.data.flatten()
     html_rows = []
     for r in range(rows):
         cells = ''.join(
-            _cell_html(flat[r * cols + c], is_char) for c in range(cols))
+            _cell_html(arr.data[r, c], is_char) for c in range(cols))
         html_rows.append(f'<tr>{cells}</tr>')
     return f'<table class="apl-array">{"".join(html_rows)}</table>'
 
