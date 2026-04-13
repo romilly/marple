@@ -203,14 +203,14 @@ class Applicable(Node):
     def call_monadic(self, ctx: ExecutionContext, operand: 'Evaluatable') -> APLArray: ...
     @abstractmethod
     def call_dyadic(self, ctx: ExecutionContext, left: 'Evaluatable', right: 'Evaluatable') -> APLArray: ...
-
+    @abstractmethod
     def apply_monadic_dop(self, ctx: ExecutionContext, argument: APLArray,
-                          operand: APLValue, alpha: APLArray | None = None) -> APLArray:
-        raise DomainError(f"Cannot apply {type(self).__name__} as an operator")
-
+                          operand: APLValue, alpha: APLArray | None = None) -> APLArray: ...
+    @abstractmethod
     def apply_dyadic_dop(self, ctx: ExecutionContext, argument: APLArray,
-                         left_operand: APLValue, right_operand: APLValue) -> APLArray:
-        raise DomainError(f"Cannot apply {type(self).__name__} as an operator")
+                         left_operand: APLValue, right_operand: APLValue) -> APLArray: ...
+    @abstractmethod
+    def as_power_strategy(self, ctx: ExecutionContext) -> '_PowerStrategy': ...
 
 
 class Evaluatable(Applicable):
@@ -219,38 +219,27 @@ class Evaluatable(Applicable):
     def execute(self, ctx: ExecutionContext) -> APLValue: ...
 
     def apply_to_monadic(self, ctx: ExecutionContext, omega: APLArray) -> APLArray:
-        val = self.execute(ctx)
-        if isinstance(val, UnappliedFunction):
-            return val.apply_to_monadic(ctx, omega)
-        raise DomainError(f"Expected function, got {type(val)}")
+        return self.execute(ctx).apply_to_monadic(ctx, omega)
 
     def apply_to_dyadic(self, ctx: ExecutionContext, alpha: APLArray, omega: APLArray) -> APLArray:
-        val = self.execute(ctx)
-        if isinstance(val, UnappliedFunction):
-            return val.apply_to_dyadic(ctx, alpha, omega)
-        raise DomainError(f"Expected function, got {type(val)}")
+        return self.execute(ctx).apply_to_dyadic(ctx, alpha, omega)
 
     def call_monadic(self, ctx: ExecutionContext, operand: 'Evaluatable') -> APLArray:
-        val = self.execute(ctx)
-        assert isinstance(val, Applicable)
-        return val.call_monadic(ctx, operand)
+        return self.execute(ctx).call_monadic(ctx, operand)
 
     def call_dyadic(self, ctx: ExecutionContext, left: 'Evaluatable', right: 'Evaluatable') -> APLArray:
-        val = self.execute(ctx)
-        assert isinstance(val, Applicable)
-        return val.call_dyadic(ctx, left, right)
+        return self.execute(ctx).call_dyadic(ctx, left, right)
 
     def apply_monadic_dop(self, ctx: ExecutionContext, argument: APLArray,
                           operand: APLValue, alpha: APLArray | None = None) -> APLArray:
-        val = self.execute(ctx)
-        assert isinstance(val, Applicable)
-        return val.apply_monadic_dop(ctx, argument, operand, alpha)
+        return self.execute(ctx).apply_monadic_dop(ctx, argument, operand, alpha)
 
     def apply_dyadic_dop(self, ctx: ExecutionContext, argument: APLArray,
                          left_operand: APLValue, right_operand: APLValue) -> APLArray:
-        val = self.execute(ctx)
-        assert isinstance(val, Applicable)
-        return val.apply_dyadic_dop(ctx, argument, left_operand, right_operand)
+        return self.execute(ctx).apply_dyadic_dop(ctx, argument, left_operand, right_operand)
+
+    def as_power_strategy(self, ctx: ExecutionContext) -> '_PowerStrategy':
+        return self.execute(ctx).as_power_strategy(ctx)
 
 
 class Literal(Evaluatable):
@@ -408,6 +397,9 @@ class UnappliedFunction(APLValue, Applicable):
     def call_dyadic(self, ctx: ExecutionContext, left: Evaluatable, right: Evaluatable) -> APLArray:
         return self.apply_dyadic(ctx, left, right)
 
+    def as_power_strategy(self, ctx: ExecutionContext) -> '_PowerStrategy':
+        return _PowerByConvergence(self, ctx)
+
 
 class RankDerived(UnappliedFunction):
     """Unapplied rank-derived function: f⍤k"""
@@ -495,16 +487,7 @@ class PowerDerived(UnappliedFunction):
 
     def _resolve_strategy(self, ctx: ExecutionContext) -> _PowerStrategy:
         """Resolve the right operand to an iteration strategy."""
-        right_op = self.right_operand
-        if isinstance(right_op, UnappliedFunction):
-            return _PowerByConvergence(right_op, ctx)
-        assert isinstance(right_op, Evaluatable)
-        right_val = right_op.execute(ctx)
-        if isinstance(right_val, APLArray) and right_val.is_scalar():
-            return _PowerByCount(int(right_val.data.item()))
-        if isinstance(right_val, UnappliedFunction):
-            return _PowerByConvergence(right_val, ctx)
-        raise DomainError("⍣ right operand must be integer or function")
+        return self.right_operand.as_power_strategy(ctx)
 
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         omega = ctx.evaluate(operand_node)
