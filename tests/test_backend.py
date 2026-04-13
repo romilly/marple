@@ -52,9 +52,6 @@ class TestToList:
         assert isinstance(result, list)
         assert result == [1, 2, 3]
 
-    def test_list_passes_through(self) -> None:
-        original = [1, 2, 3]
-        assert to_list(original) is original
 
 
 

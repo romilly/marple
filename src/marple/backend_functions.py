@@ -32,30 +32,15 @@ def to_array(data: list[Any]) -> NDArray:
     return np.array(data)
 
 
-def _to_python(x: Any) -> Any:
-    """Convert a numpy scalar to a native Python type."""
-    if hasattr(x, "item"):
-        return x.item()  # type: ignore[union-attr]
-    return x
+def to_list(data: NDArray) -> list[Any]:
+    """Convert an ndarray to a Python list with native types.
 
-
-def to_list(data: Any) -> list[Any]:
-    """Convert an ndarray or list to a Python list with native types.
-
-    Always returns a Python list — including for 0-d numpy input,
-    where `ndarray.tolist()` would otherwise return the bare scalar
-    value rather than a 1-element list. Without this guard, every
-    `for x in to_list(...)` consumer would break with a TypeError
-    after the scalar storage convention migration.
+    For 0-d numpy input, returns a 1-element list rather than a bare
+    scalar, so `for x in to_list(...)` always works.
     """
-    if isinstance(data, list):
-        # Only convert if list might contain numpy scalars
-        if data and hasattr(data[0], "item"):
-            return [_to_python(x) for x in data]
-        return data
-    if hasattr(data, "ndim") and data.ndim == 0:
+    if data.ndim == 0:
         return [data.item()]
-    return data.tolist()  # type: ignore[union-attr]
+    return data.tolist()
 
 
 def is_numeric_array(data: NDArray) -> bool:
