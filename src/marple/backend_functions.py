@@ -7,9 +7,12 @@ from marple.get_numpy import np
 NDArray: TypeAlias = npt.NDArray[Any]
 
 
+_CHAR_DTYPE = np.dtype(np.uint32)
+
+
 def is_char_array(data: NDArray) -> bool:
     """Check if data represents character data (uint32 ndarray of codepoints)."""
-    return str(data.dtype) == 'uint32'
+    return data.dtype == _CHAR_DTYPE
 
 
 def chars_to_str(data: npt.NDArray[np.uint32]) -> str:
@@ -51,26 +54,24 @@ def is_numeric_array(data: NDArray) -> bool:
     disjoint, which is what allows the dyadic-arithmetic fast paths
     to use is_numeric_array as a safe gate after the char guards run.
     """
-    return str(data.dtype) != 'uint32'
+    return data.dtype != _CHAR_DTYPE
 
 
-def _is_int_dtype(arr: NDArray) -> bool:
+def is_int_dtype(arr: NDArray) -> bool:
     """Check if an ndarray has an integer dtype."""
-    dtype_str = str(arr.dtype)
-    return "int" in dtype_str
+    return np.issubdtype(arr.dtype, np.integer)
 
 
-def _is_float_dtype(arr: NDArray) -> bool:
+def is_float_dtype(arr: NDArray) -> bool:
     """Check if an ndarray has a float dtype."""
-    dtype_str = str(arr.dtype)
-    return "float" in dtype_str
+    return np.issubdtype(arr.dtype, np.floating)
 
 
 def maybe_upcast(data: NDArray) -> NDArray:
     """Convert integer arrays to float to prevent overflow."""
     if not is_numeric_array(data):
         return data
-    if not _is_int_dtype(data):
+    if not is_int_dtype(data):
         return data
     return data.astype(np.float64)
 
@@ -86,9 +87,9 @@ def maybe_downcast(data: NDArray, ct: float) -> NDArray:
     """
     if not is_numeric_array(data):
         return data
-    if _is_int_dtype(data):
+    if is_int_dtype(data):
         return data
-    if not _is_float_dtype(data):
+    if not is_float_dtype(data):
         return data
     if data.size == 0:
         return data
@@ -115,36 +116,27 @@ def maybe_downcast(data: NDArray, ct: float) -> NDArray:
     return int_arr
 
 
+_DR_CODES: dict[np.dtype[Any], int] = {
+    np.dtype(np.uint8): 81,
+    np.dtype(np.int8): 83,
+    np.dtype(np.int16): 163,
+    np.dtype(np.int32): 323,
+    np.dtype(np.int64): 643,
+    np.dtype(np.float32): 325,
+    np.dtype(np.float64): 645,
+    np.dtype(np.uint32): 320,  # character
+}
+
+
 def data_type_code(data: NDArray) -> int:
     """Return the ⎕DR type code for the given data.
 
     Encoding: first digits = bit width, last digit = type
     (0=char, 1=boolean, 3=signed int, 5=float, 7=decimal, 9=complex).
     """
-    if is_numeric_array(data):
-        dtype_str = str(data.dtype)
-        if "uint8" in dtype_str:
-            return 81
-        if "int8" in dtype_str and "int16" not in dtype_str and "int32" not in dtype_str and "int64" not in dtype_str:
-            return 83
-        if "int16" in dtype_str:
-            return 163
-        if "int32" in dtype_str:
-            return 323
-        if "int64" in dtype_str:
-            return 643
-        if _is_float_dtype(data):
-            return 645
-    if is_char_array(data):
-        return 320
-    return 323
+    return _DR_CODES.get(data.dtype, 323)
 
 
-def to_bool_array(data: Any) -> npt.NDArray[np.uint8]:
+def to_bool_array(data: NDArray | list[int]) -> npt.NDArray[np.uint8]:
     """Convert data to a uint8 boolean array (0/1 values)."""
-    dt = getattr(np, "uint8", None)
-    if dt is None:
-        return data
-    if hasattr(data, "dtype"):
-        return np.array(data.tolist(), dtype=dt)
-    return np.array(data, dtype=dt)
+    return np.asarray(data, dtype=np.uint8)

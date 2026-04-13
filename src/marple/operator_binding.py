@@ -6,7 +6,7 @@ from marple.backend_functions import NDArray
 
 from marple.numpy_array import APLArray, S
 from marple.backend_functions import (
-    _DOWNCAST_CT, is_char_array, is_numeric_array, maybe_downcast, to_list,
+    _DOWNCAST_CT, is_char_array, is_int_dtype, is_numeric_array, maybe_downcast, to_list,
 )
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.errors import DomainError
@@ -58,7 +58,7 @@ def _reduce_row(op: Callable[[Any, Any], Any], data: NDArray, start: int, length
     and raises DomainError if the result cannot be represented.
     """
     row = data[start : start + length]
-    if is_numeric_array(row) and "int" in str(row.dtype):
+    if is_numeric_array(row) and is_int_dtype(row):
         row = row.astype(np.float64)
     with np.errstate(over="ignore", invalid="ignore"):
         acc = row[-1]
@@ -171,7 +171,7 @@ def _scan(
 
     # Upcast integer data to float64 to prevent silent overflow wrapping.
     scan_data = flat
-    if is_numeric_array(flat) and "int" in str(flat.dtype):
+    if is_numeric_array(flat) and is_int_dtype(flat):
         scan_data = flat.astype(np.float64)
 
     if glyph is not None:
@@ -215,7 +215,7 @@ def _reduce_first(
         cell_size *= s
 
     reduce_data = flat
-    if is_numeric_array(flat) and "int" in str(flat.dtype):
+    if is_numeric_array(flat) and is_int_dtype(flat):
         reduce_data = flat.astype(np.float64)
 
     cells = reduce_data.reshape(first, cell_size)
@@ -251,7 +251,7 @@ def _scan_first(
         cell_size *= s
     flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
     scan_data = flat
-    if is_numeric_array(flat) and "int" in str(flat.dtype):
+    if is_numeric_array(flat) and is_int_dtype(flat):
         scan_data = flat.astype(np.float64)
 
     cells = scan_data.reshape(first, cell_size)
