@@ -27,19 +27,8 @@ def char_fill() -> np.uint32:
     return np.uint32(32)
 
 
-def to_array(data: list[Any], dtype_hint: str | None = None) -> NDArray:
-    """Convert a Python list to a numpy ndarray.
-
-    After Step 5 of the character migration, character data is always
-    constructed via str_to_char_array. to_array only handles numeric
-    lists. dtype_hint='char' with empty input returns a uint32 empty
-    array so character-producing sites can make that choice explicitly
-    without needing non-empty content to trigger dtype detection.
-    """
-    if len(data) == 0:
-        if dtype_hint == 'char':
-            return np.array([], dtype=np.uint32)
-        return np.array(data)
+def to_array(data: list[Any]) -> NDArray:
+    """Convert a Python list to a numpy ndarray."""
     return np.array(data)
 
 
