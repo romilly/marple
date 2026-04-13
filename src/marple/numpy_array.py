@@ -3,7 +3,8 @@ from __future__ import annotations
 from typing import Any, Callable, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from marple.nodes import ExecutionContext, _PowerStrategy
+    from marple.apl_value import PowerStrategy
+    from marple.nodes import ExecutionContext
 
 from marple.backend_functions import (
     is_char_array, is_numeric_array, maybe_upcast,
@@ -517,12 +518,12 @@ class APLArray(APLValue):
         flat = self.data.flatten()
         return APLArray([len(flat)], flat)
 
-    def as_power_strategy(self, ctx: 'ExecutionContext') -> '_PowerStrategy':
-        from marple.nodes import _PowerByCount
+    def as_power_strategy(self, ctx: 'ExecutionContext') -> 'PowerStrategy':
+        from marple.apl_value import PowerByCount
         if not self.is_scalar():
             from marple.errors import DomainError
             raise DomainError("⍣ right operand must be scalar integer or function")
-        return _PowerByCount(int(self.data.item()))
+        return PowerByCount(int(self.data.item()))
 
 
 def S(value: Any) -> APLArray:

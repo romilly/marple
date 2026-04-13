@@ -8,7 +8,7 @@ from typing import Any, Callable, Protocol
 from marple.numpy_array import APLArray, S
 from marple.backend_functions import is_numeric_array, maybe_upcast
 from marple.errors import DomainError, ValueError_
-from marple.apl_value import NC_FUNCTION, APLValue
+from marple.apl_value import NC_FUNCTION, APLValue, PowerByConvergence, PowerByCount, PowerStrategy
 
 
 _INNER_SCALAR_OPS: dict[str, Callable[[Any, Any], Any]] = {
@@ -210,7 +210,7 @@ class Applicable(Node):
     def apply_dyadic_dop(self, ctx: ExecutionContext, argument: APLArray,
                          left_operand: APLValue, right_operand: APLValue) -> APLArray: ...
     @abstractmethod
-    def as_power_strategy(self, ctx: ExecutionContext) -> '_PowerStrategy': ...
+    def as_power_strategy(self, ctx: ExecutionContext) -> 'PowerStrategy': ...
 
 
 class Evaluatable(Applicable):
@@ -238,7 +238,7 @@ class Evaluatable(Applicable):
                          left_operand: APLValue, right_operand: APLValue) -> APLArray:
         return self.execute(ctx).apply_dyadic_dop(ctx, argument, left_operand, right_operand)
 
-    def as_power_strategy(self, ctx: ExecutionContext) -> '_PowerStrategy':
+    def as_power_strategy(self, ctx: ExecutionContext) -> 'PowerStrategy':
         return self.execute(ctx).as_power_strategy(ctx)
 
 
@@ -397,8 +397,8 @@ class UnappliedFunction(APLValue, Applicable):
     def call_dyadic(self, ctx: ExecutionContext, left: Evaluatable, right: Evaluatable) -> APLArray:
         return self.apply_dyadic(ctx, left, right)
 
-    def as_power_strategy(self, ctx: ExecutionContext) -> '_PowerStrategy':
-        return _PowerByConvergence(self, ctx)
+    def as_power_strategy(self, ctx: ExecutionContext) -> 'PowerStrategy':
+        return PowerByConvergence(self, ctx)
 
 
 class RankDerived(UnappliedFunction):
@@ -446,38 +446,6 @@ class RankDerived(UnappliedFunction):
         return reassemble(frame, results)
 
 
-class _PowerStrategy(ABC):
-    """Iteration strategy for the power operator (f⍣g)."""
-    @abstractmethod
-    def iterate(self, step: Callable[[APLArray], APLArray], omega: APLArray) -> APLArray: ...
-
-
-class _PowerByCount(_PowerStrategy):
-    """Repeat f exactly n times."""
-    def __init__(self, n: int) -> None:
-        if n < 0:
-            raise DomainError("DOMAIN ERROR: inverse (⍣ with negative) not supported")
-        self.n = n
-    def iterate(self, step: Callable[[APLArray], APLArray], omega: APLArray) -> APLArray:
-        result = omega
-        for _ in range(self.n):
-            result = step(result)
-        return result
-
-
-class _PowerByConvergence(_PowerStrategy):
-    """Repeat f until test_fn says consecutive results match."""
-    def __init__(self, test_fn: Applicable, ctx: ExecutionContext) -> None:
-        self.test_fn = test_fn
-        self.ctx = ctx
-    def iterate(self, step: Callable[[APLArray], APLArray], omega: APLArray) -> APLArray:
-        prev = omega
-        while True:
-            curr = step(prev)
-            if self.test_fn.apply_to_dyadic(self.ctx, curr, prev).data.item():
-                return curr
-            prev = curr
-
 
 class PowerDerived(UnappliedFunction):
     """Unapplied power-derived function: f⍣g"""
@@ -485,7 +453,7 @@ class PowerDerived(UnappliedFunction):
         self.function = function
         self.right_operand = right_operand
 
-    def _resolve_strategy(self, ctx: ExecutionContext) -> _PowerStrategy:
+    def _resolve_strategy(self, ctx: ExecutionContext) -> PowerStrategy:
         """Resolve the right operand to an iteration strategy."""
         return self.right_operand.as_power_strategy(ctx)
 

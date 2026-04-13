@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
-    from marple.nodes import ExecutionContext, Evaluatable, _PowerStrategy
+    from marple.nodes import ExecutionContext, Evaluatable
     from marple.numpy_array import APLArray
 
 # Name classes (following Dyalog ⎕NC convention)
@@ -48,6 +48,40 @@ class APLValue(ABC):
         from marple.errors import DomainError
         raise DomainError(f"Cannot apply {type(self).__name__} as an operator")
 
-    def as_power_strategy(self, ctx: ExecutionContext) -> _PowerStrategy:
+    def as_power_strategy(self, ctx: ExecutionContext) -> PowerStrategy:
         from marple.errors import DomainError
         raise DomainError("⍣ right operand must be integer or function")
+
+
+class PowerStrategy(ABC):
+    """Iteration strategy for the power operator (f⍣g)."""
+    @abstractmethod
+    def iterate(self, step: Callable[[APLArray], APLArray], omega: APLArray) -> APLArray: ...
+
+
+class PowerByCount(PowerStrategy):
+    """Repeat f exactly n times."""
+    def __init__(self, n: int) -> None:
+        from marple.errors import DomainError
+        if n < 0:
+            raise DomainError("DOMAIN ERROR: inverse (⍣ with negative) not supported")
+        self.n = n
+    def iterate(self, step: Callable[[APLArray], APLArray], omega: APLArray) -> APLArray:
+        result = omega
+        for _ in range(self.n):
+            result = step(result)
+        return result
+
+
+class PowerByConvergence(PowerStrategy):
+    """Repeat f until test_fn says consecutive results match."""
+    def __init__(self, test_fn: APLValue, ctx: ExecutionContext) -> None:
+        self.test_fn = test_fn
+        self.ctx = ctx
+    def iterate(self, step: Callable[[APLArray], APLArray], omega: APLArray) -> APLArray:
+        prev = omega
+        while True:
+            curr = step(prev)
+            if self.test_fn.apply_to_dyadic(self.ctx, curr, prev).data.item():
+                return curr
+            prev = curr
