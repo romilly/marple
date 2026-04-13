@@ -2,10 +2,13 @@ from typing import Callable
 
 from marple.errors import SyntaxError_
 from marple.nodes import (  # noqa: F401 — re-exported for backward compatibility
+    Adverb,
     Alpha,
     AlphaAlpha,
     AlphaDefault,
+    AssignmentArrow,
     Assignment,
+    Conjunction,
     AtopDerived,
     BesideDerived,
     BoundOperator,
@@ -51,7 +54,7 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
 )
 from marple.tokenizer import Token, TokenType, Tokenizer
 
-StackItem = Node | str  # Nodes + raw operator/assignment strings
+StackItem = Node
 
 
 # ── Category constants for Iverson's stack-based parser ──
@@ -249,7 +252,7 @@ class Parser:
             self._pos += 1
             fn_tok = self._eat(TokenType.FUNCTION)
             assert isinstance(fn_tok.value, str)
-            bound = BoundOperator("∘.", FunctionRef(fn_tok.value), CAT_VERB)
+            bound = BoundOperator(Adverb("∘."), FunctionRef(fn_tok.value), CAT_VERB)
             items.append((CAT_VERB, bound))
         elif (op == "⌶" and self._pos < len(self._tokens)
                 and self._current().type == TokenType.STRING):
@@ -258,11 +261,12 @@ class Parser:
             items.append((CAT_VERB, IBeamDerived(path_tok.value)))
         else:
             cat = self._classify_operator(op)
-            items.append((cat, op))
+            token: Adverb | Conjunction = Adverb(op) if cat == CAT_ADV else Conjunction(op)
+            items.append((cat, token))
 
     def _item_assign(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
         self._pos += 1
-        items.append((CAT_ASGN, "←"))
+        items.append((CAT_ASGN, AssignmentArrow()))
 
     def _item_id(self, tok: Token, items: list[tuple[int, StackItem]]) -> None:
         assert isinstance(tok.value, str)
@@ -413,20 +417,20 @@ class Parser:
         op = bound.operator
         if isinstance(op, Var):
             return self._apply_user_dop_monadic(bound, arg_node)
-        if not isinstance(op, str):
+        if not isinstance(op, (Adverb, Conjunction)):
             raise SyntaxError_(f"Unknown operator in bound form: {op}")
-        handler = self._BOUND_MONADIC_DISPATCH.get(op)
+        handler = self._BOUND_MONADIC_DISPATCH.get(op.symbol)
         if handler is not None:
             return handler(self, bound, arg_node)
         raise SyntaxError_(f"Unknown operator in bound form: {op}")
 
     def _bound_monadic_reduce(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
-        assert isinstance(bound.operator, str)
+        assert isinstance(bound.operator, Adverb)
         operand = bound.left_operand
         if (bound.left_cat == CAT_VERB
                 or isinstance(operand, (AlphaAlpha, OmegaOmega))):
             return DerivedFunc(bound.operator, operand, arg_node)
-        return DyadicFunc(bound.operator, self._as_evaluatable(operand), arg_node)
+        return DyadicFunc(bound.operator.symbol, self._as_evaluatable(operand), arg_node)
 
     def _bound_monadic_rank(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         rank_node = RankDerived(self._resolve_operand(bound.left_operand),
@@ -455,8 +459,8 @@ class Parser:
 
     def _bound_monadic_ibeam(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         operand = bound.left_operand
-        if isinstance(operand, str):
-            return MonadicDfnCall(IBeamDerived(operand), arg_node)
+        if isinstance(operand, (Adverb, Conjunction)):
+            return MonadicDfnCall(IBeamDerived(operand.symbol), arg_node)
         assert isinstance(operand, (Evaluatable, UnappliedFunction))
         return MonadicDfnCall(operand, arg_node)
 
@@ -487,9 +491,9 @@ class Parser:
         op = bound.operator
         if isinstance(op, Var):
             return self._apply_user_dop_dyadic(bound, left_node, right_node)
-        if not isinstance(op, str):
+        if not isinstance(op, (Adverb, Conjunction)):
             raise SyntaxError_(f"Unknown operator in bound dyadic form: {op}")
-        handler = self._BOUND_DYADIC_DISPATCH.get(op)
+        handler = self._BOUND_DYADIC_DISPATCH.get(op.symbol)
         if handler is not None:
             return handler(self, bound, left_node, right_node)
         raise SyntaxError_(f"Unknown operator in bound dyadic form: {op}")
@@ -531,12 +535,12 @@ class Parser:
 
     def _bound_dyadic_reduce(self, bound: BoundOperator,
                              left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
-        assert isinstance(bound.operator, str)
+        assert isinstance(bound.operator, Adverb)
         operand = bound.left_operand
         if (bound.left_cat == CAT_VERB
                 or isinstance(operand, (AlphaAlpha, OmegaOmega))):
             return DerivedFunc(bound.operator, operand, right_node)
-        return DyadicFunc(bound.operator, self._as_evaluatable(operand), right_node)
+        return DyadicFunc(bound.operator.symbol, self._as_evaluatable(operand), right_node)
 
     def _apply_user_dop_dyadic(self, bound: BoundOperator,
                                left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
@@ -581,19 +585,18 @@ class Parser:
         """
         op = bound.operator
         left = self._resolve_operand(bound.left_operand)
-        if op == "⍤":
+        assert isinstance(op, (Adverb, Conjunction))
+        if op.symbol == "⍤":
             return RankDerived(left, self._as_evaluatable(self._resolve_right_operand(bound)))
-        if op == "⍣":
+        if op.symbol == "⍣":
             return PowerDerived(left, self._as_evaluatable(self._resolve_right_operand(bound)))
-        if op == "⍨":
+        if op.symbol == "⍨":
             return CommuteDerived(left)
-        if op == "∘":
+        if op.symbol == "∘":
             return BesideDerived(left, self._resolve_right_operand(bound))
-        if op in ("/", "⌿"):
-            assert isinstance(op, str)
+        if isinstance(op, Adverb) and op.symbol in ("/", "⌿"):
             return ReduceDerived(op, left)
-        if op in ("\\", "⍀"):
-            assert isinstance(op, str)
+        if isinstance(op, Adverb) and op.symbol in ("\\", "⍀"):
             return ScanDerived(op, left)
         raise SyntaxError_(f"Cannot store operator {op} as a function")
 
@@ -723,7 +726,7 @@ class Parser:
                 operand_node = stack[-2][1]
                 operand_cat = stack[-2][0]
                 adv_node = stack[-3][1]
-                assert isinstance(adv_node, (str, Var))
+                assert isinstance(adv_node, (Adverb, Var))
                 assert isinstance(operand_node, (Node, BoundOperator))
                 bound = BoundOperator(adv_node, operand_node, operand_cat)
                 stack[-3:-1] = [(CAT_VERB, bound)]
@@ -738,10 +741,10 @@ class Parser:
             elif (c0 in (CAT_END, CAT_LP, CAT_ASGN)
                     and c1 == CAT_ADV
                     and c2 == CAT_CONJ
-                    and stack[-2][1] in _ADV_AS_FN_GLYPHS):
-                glyph = stack[-2][1]
-                assert isinstance(glyph, str)
-                stack[-2] = (CAT_VERB, FunctionRef(glyph))
+                    and isinstance(stack[-2][1], Adverb)
+                    and stack[-2][1].symbol in _ADV_AS_FN_GLYPHS):
+                adv = stack[-2][1]
+                stack[-2] = (CAT_VERB, FunctionRef(adv.symbol))
                 matched = True
 
             # Case 5: Conjunction binding — E/N/A/V/←/LP  N/V  C  N/V
@@ -753,7 +756,7 @@ class Parser:
                 conj_node = stack[-3][1]
                 right_operand = stack[-4][1]
                 right_cat = stack[-4][0]
-                assert isinstance(conj_node, (str, Var))
+                assert isinstance(conj_node, (Conjunction, Var))
                 assert isinstance(left_operand, (Node, BoundOperator))
                 assert isinstance(right_operand, (Node, BoundOperator))
                 bound = BoundOperator(conj_node, left_operand, left_cat,

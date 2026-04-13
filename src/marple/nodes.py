@@ -172,6 +172,22 @@ class Node(ABC):
         return self.__dict__ == other.__dict__
 
 
+class Adverb(Node):
+    """Wraps a monadic operator symbol on the parser stack."""
+    def __init__(self, symbol: str) -> None:
+        self.symbol = symbol
+
+
+class Conjunction(Node):
+    """Wraps a dyadic operator symbol on the parser stack."""
+    def __init__(self, symbol: str) -> None:
+        self.symbol = symbol
+
+
+class AssignmentArrow(Node):
+    """Sentinel for the assignment arrow (←) on the parser stack."""
+
+
 class Marker(Node):
     """Sentinel for LP, RP, and END positions on the parser stack."""
 
@@ -277,13 +293,13 @@ class QualifiedVar(Evaluatable):
 
 
 class DerivedFunc(Evaluatable):
-    def __init__(self, operator: str, function: object, operand: Evaluatable) -> None:
+    def __init__(self, operator: 'Adverb | Conjunction', function: object, operand: Evaluatable) -> None:
         self.operator = operator
         self.function = function
         self.operand = operand
     def execute(self, ctx: ExecutionContext) -> APLArray:
         operand = ctx.evaluate(self.operand)
-        return ctx.apply_derived(self.operator, self.function, operand)
+        return ctx.apply_derived(self.operator.symbol, self.function, operand)
 
 
 class MonadicDopCall(Evaluatable):
@@ -575,7 +591,7 @@ class ForkDerived(UnappliedFunction):
 
 class ReduceDerived(UnappliedFunction):
     """Unapplied reduce-derived function: f/ or f⌿"""
-    def __init__(self, operator: str, function: Node) -> None:
+    def __init__(self, operator: 'Adverb', function: Node) -> None:
         self.operator = operator
         self.function = function
     def __eq__(self, other: object) -> bool:
@@ -585,14 +601,14 @@ class ReduceDerived(UnappliedFunction):
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         from marple.operator_binding import DerivedFunctionBinding
         operand = ctx.evaluate(operand_node)
-        return DerivedFunctionBinding().apply(self.operator, self.function, operand)
+        return DerivedFunctionBinding().apply(self.operator.symbol, self.function, operand)
     def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         raise DomainError("Reduce cannot be applied dyadically")
 
 
 class ScanDerived(UnappliedFunction):
     """Unapplied scan-derived function: f\\ or f⍀"""
-    def __init__(self, operator: str, function: Node) -> None:
+    def __init__(self, operator: 'Adverb', function: Node) -> None:
         self.operator = operator
         self.function = function
     def __eq__(self, other: object) -> bool:
@@ -602,7 +618,7 @@ class ScanDerived(UnappliedFunction):
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         from marple.operator_binding import DerivedFunctionBinding
         operand = ctx.evaluate(operand_node)
-        return DerivedFunctionBinding().apply(self.operator, self.function, operand)
+        return DerivedFunctionBinding().apply(self.operator.symbol, self.function, operand)
     def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         raise DomainError("Scan cannot be applied dyadically")
 
@@ -758,7 +774,7 @@ CAT_EMPTY = 8
 
 class BoundOperator(Node):
     """Operator bound to operand(s), not yet applied to argument."""
-    def __init__(self, operator: str | Var,
+    def __init__(self, operator: 'Adverb | Conjunction | Var',
                  left_operand: Node, left_cat: int,
                  right_operand: Node | None = None,
                  right_cat: int = CAT_EMPTY) -> None:
