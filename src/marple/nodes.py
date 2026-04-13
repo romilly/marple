@@ -454,71 +454,68 @@ class RankDerived(UnappliedFunction):
         return reassemble(frame, results)
 
 
+class _PowerStrategy(ABC):
+    """Iteration strategy for the power operator (f⍣g)."""
+    @abstractmethod
+    def iterate(self, step: Callable[[APLArray], APLArray], omega: APLArray) -> APLArray: ...
+
+
+class _PowerByCount(_PowerStrategy):
+    """Repeat f exactly n times."""
+    def __init__(self, n: int) -> None:
+        if n < 0:
+            raise DomainError("DOMAIN ERROR: inverse (⍣ with negative) not supported")
+        self.n = n
+    def iterate(self, step: Callable[[APLArray], APLArray], omega: APLArray) -> APLArray:
+        result = omega
+        for _ in range(self.n):
+            result = step(result)
+        return result
+
+
+class _PowerByConvergence(_PowerStrategy):
+    """Repeat f until test_fn says consecutive results match."""
+    def __init__(self, test_fn: Applicable, ctx: ExecutionContext) -> None:
+        self.test_fn = test_fn
+        self.ctx = ctx
+    def iterate(self, step: Callable[[APLArray], APLArray], omega: APLArray) -> APLArray:
+        prev = omega
+        while True:
+            curr = step(prev)
+            if self.test_fn.apply_to_dyadic(self.ctx, curr, prev).data.item():
+                return curr
+            prev = curr
+
+
 class PowerDerived(UnappliedFunction):
     """Unapplied power-derived function: f⍣g"""
-    def __init__(self, function: Applicable, right_operand: Evaluatable) -> None:
+    def __init__(self, function: Applicable, right_operand: Applicable) -> None:
         self.function = function
         self.right_operand = right_operand
 
-    def _resolve_right(self, ctx: ExecutionContext) -> APLValue:
-        """Resolve the right operand — may be a FunctionRef, Node, or value."""
+    def _resolve_strategy(self, ctx: ExecutionContext) -> _PowerStrategy:
+        """Resolve the right operand to an iteration strategy."""
         right_op = self.right_operand
-        if isinstance(right_op, (UnappliedFunction, APLArray)):
-            return right_op
-        return right_op.execute(ctx)
-
-    def _test_convergence(self, func: Applicable, left: APLArray,
-                          right: APLArray, ctx: ExecutionContext) -> APLArray:
-        """Apply convergence test function dyadically."""
-        if isinstance(func, FunctionRef):
-            if func.glyph == "≡":
-                return S(1 if left == right else 0)
-            if func.glyph == "=":
-                return S(1 if left.data.item() == right.data.item() else 0)
-        return func.apply_to_dyadic(ctx, left, right)
+        if isinstance(right_op, UnappliedFunction):
+            return _PowerByConvergence(right_op, ctx)
+        assert isinstance(right_op, Evaluatable)
+        right_val = right_op.execute(ctx)
+        if isinstance(right_val, APLArray) and right_val.is_scalar():
+            return _PowerByCount(int(right_val.data.item()))
+        if isinstance(right_val, UnappliedFunction):
+            return _PowerByConvergence(right_val, ctx)
+        raise DomainError("⍣ right operand must be integer or function")
 
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         omega = ctx.evaluate(operand_node)
-        right_val = self._resolve_right(ctx)
-        if isinstance(right_val, APLArray) and right_val.is_scalar():
-            n = int(right_val.data.item())
-            if n < 0:
-                raise DomainError("DOMAIN ERROR: inverse (⍣ with negative) not supported")
-            result = omega
-            for _ in range(n):
-                result = self.function.apply_to_monadic(ctx, result)
-            return result
-        if isinstance(right_val, UnappliedFunction):
-            prev = omega
-            while True:
-                curr = self.function.apply_to_monadic(ctx, prev)
-                test = self._test_convergence(right_val, curr, prev, ctx)
-                if test.data.item():
-                    return curr
-                prev = curr
-        raise DomainError("⍣ right operand must be integer or function")
+        strategy = self._resolve_strategy(ctx)
+        return strategy.iterate(lambda o: self.function.apply_to_monadic(ctx, o), omega)
 
     def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         alpha = ctx.evaluate(left_node)
         omega = ctx.evaluate(right_node)
-        right_val = self._resolve_right(ctx)
-        if isinstance(right_val, APLArray) and right_val.is_scalar():
-            n = int(right_val.data.item())
-            if n < 0:
-                raise DomainError("DOMAIN ERROR: inverse (⍣ with negative) not supported")
-            result = omega
-            for _ in range(n):
-                result = self.function.apply_to_dyadic(ctx, alpha, result)
-            return result
-        if isinstance(right_val, UnappliedFunction):
-            prev = omega
-            while True:
-                curr = self.function.apply_to_dyadic(ctx, alpha, prev)
-                test = self._test_convergence(right_val, curr, prev, ctx)
-                if test.data.item():
-                    return curr
-                prev = curr
-        raise DomainError("⍣ right operand must be integer or function")
+        strategy = self._resolve_strategy(ctx)
+        return strategy.iterate(lambda o: self.function.apply_to_dyadic(ctx, alpha, o), omega)
 
 
 class CommuteDerived(UnappliedFunction):
