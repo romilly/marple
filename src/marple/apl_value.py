@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
-    from marple.nodes import ExecutionContext, Evaluatable
+    from marple.nodes import Applicable, ExecutionContext, Evaluatable
     from marple.numpy_array import APLArray
 
 # Name classes (following Dyalog ⎕NC convention)
@@ -89,11 +89,11 @@ class Operator(APLValue):
     def name_class(self) -> int:
         return NC_OPERATOR
 
-    def derive_monadic(self, ctx: ExecutionContext, operand: APLValue) -> Function:
+    def derive_monadic(self, operand: Applicable) -> Function:
         from marple.errors import DomainError
         raise DomainError(f"{type(self).__name__} is not a monadic operator")
 
-    def derive_dyadic(self, ctx: ExecutionContext, left: APLValue, right: APLValue) -> Function:
+    def derive_dyadic(self, left: Applicable, right: Applicable) -> Function:
         from marple.errors import DomainError
         raise DomainError(f"{type(self).__name__} is not a dyadic operator")
 

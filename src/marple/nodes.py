@@ -7,7 +7,7 @@ from typing import Any, Callable, Protocol
 
 from marple.numpy_array import APLArray, S
 from marple.backend_functions import is_numeric_array, maybe_upcast
-from marple.errors import DomainError, ValueError_
+from marple.errors import DomainError, SyntaxError_, ValueError_
 from marple.apl_value import NC_FUNCTION, APLValue, Function, Operator, PowerByConvergence, PowerByCount, PowerStrategy
 
 
@@ -175,11 +175,31 @@ class Adverb(Operator, Node):
     def __init__(self, symbol: str) -> None:
         self.symbol = symbol
 
+    def derive_monadic(self, operand: 'Applicable') -> Function:
+        if self.symbol == "⍨":
+            return CommuteDerived(operand)
+        if self.symbol in ("/", "⌿"):
+            return ReduceDerived(self, operand)
+        if self.symbol in ("\\", "⍀"):
+            return ScanDerived(self, operand)
+        raise SyntaxError_(f"Cannot store adverb {self.symbol} as a function")
+
 
 class Conjunction(Operator, Node):
     """Wraps a dyadic operator symbol on the parser stack."""
     def __init__(self, symbol: str) -> None:
         self.symbol = symbol
+
+    def derive_dyadic(self, left: 'Applicable', right: 'Applicable') -> Function:
+        if self.symbol == "⍤":
+            assert isinstance(right, Evaluatable)
+            return RankDerived(left, right)
+        if self.symbol == "⍣":
+            assert isinstance(right, Evaluatable)
+            return PowerDerived(left, right)
+        if self.symbol == "∘":
+            return BesideDerived(left, right)
+        raise SyntaxError_(f"Cannot store conjunction {self.symbol} as a function")
 
 
 class AssignmentArrow(Node):

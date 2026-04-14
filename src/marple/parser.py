@@ -1,5 +1,6 @@
 from typing import Callable
 
+from marple.apl_value import Function, Operator
 from marple.errors import SyntaxError_
 from marple.nodes import (  # noqa: F401 — re-exported for backward compatibility
     Adverb,
@@ -434,23 +435,16 @@ class Parser:
         return DyadicFunc(bound.operator.symbol, self._as_evaluatable(operand), arg_node)
 
     def _bound_monadic_rank(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
-        rank_node = RankDerived(self._resolve_operand(bound.left_operand),
-                                self._as_evaluatable(self._resolve_right_operand(bound)))
-        return MonadicDfnCall(rank_node, arg_node)
+        return MonadicDfnCall(self._bound_to_derived(bound), arg_node)
 
     def _bound_monadic_power(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
-        power_node = PowerDerived(self._resolve_operand(bound.left_operand),
-                                  self._as_evaluatable(self._resolve_right_operand(bound)))
-        return MonadicDfnCall(power_node, arg_node)
+        return MonadicDfnCall(self._bound_to_derived(bound), arg_node)
 
     def _bound_monadic_commute(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
-        commute_node = CommuteDerived(self._resolve_operand(bound.left_operand))
-        return MonadicDfnCall(commute_node, arg_node)
+        return MonadicDfnCall(self._bound_to_derived(bound), arg_node)
 
     def _bound_monadic_beside(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
-        beside_node = BesideDerived(self._resolve_operand(bound.left_operand),
-                                    self._resolve_right_operand(bound))
-        return MonadicDfnCall(beside_node, arg_node)
+        return MonadicDfnCall(self._bound_to_derived(bound), arg_node)
 
     def _bound_monadic_inner(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         raise SyntaxError_("Inner product requires two arguments")
@@ -501,26 +495,19 @@ class Parser:
 
     def _bound_dyadic_rank(self, bound: BoundOperator,
                            left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
-        rank_node = RankDerived(self._resolve_operand(bound.left_operand),
-                                self._as_evaluatable(self._resolve_right_operand(bound)))
-        return DyadicDfnCall(rank_node, left_node, right_node)
+        return DyadicDfnCall(self._bound_to_derived(bound), left_node, right_node)
 
     def _bound_dyadic_power(self, bound: BoundOperator,
                             left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
-        power_node = PowerDerived(self._resolve_operand(bound.left_operand),
-                                  self._as_evaluatable(self._resolve_right_operand(bound)))
-        return DyadicDfnCall(power_node, left_node, right_node)
+        return DyadicDfnCall(self._bound_to_derived(bound), left_node, right_node)
 
     def _bound_dyadic_commute(self, bound: BoundOperator,
                               left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
-        commute_node = CommuteDerived(self._resolve_operand(bound.left_operand))
-        return DyadicDfnCall(commute_node, left_node, right_node)
+        return DyadicDfnCall(self._bound_to_derived(bound), left_node, right_node)
 
     def _bound_dyadic_beside(self, bound: BoundOperator,
                              left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
-        beside_node = BesideDerived(self._resolve_operand(bound.left_operand),
-                                    self._resolve_right_operand(bound))
-        return DyadicDfnCall(beside_node, left_node, right_node)
+        return DyadicDfnCall(self._bound_to_derived(bound), left_node, right_node)
 
     def _bound_dyadic_inner(self, bound: BoundOperator,
                             left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
@@ -581,27 +568,22 @@ class Parser:
         """Convert a BoundOperator to its unwrapped derived-function
         form, for storage in a variable via assignment.
 
-        Unlike the `_bound_monadic_*` handlers, this does NOT wrap
-        the result in a `MonadicDfnCall` — we want the bare
-        `RankDerived` / `BesideDerived` / etc. so it can be stored
-        as the value of a Var and dispatched at application time.
+        Resolves operands then delegates to the operator's own
+        derive_monadic / derive_dyadic so the dispatch lives with the
+        operator type, not here.
         """
         op = bound.operator
+        assert isinstance(op, Operator)
         left = self._resolve_operand(bound.left_operand)
-        assert isinstance(op, (Adverb, Conjunction))
-        if op.symbol == "⍤":
-            return RankDerived(left, self._as_evaluatable(self._resolve_right_operand(bound)))
-        if op.symbol == "⍣":
-            return PowerDerived(left, self._as_evaluatable(self._resolve_right_operand(bound)))
-        if op.symbol == "⍨":
-            return CommuteDerived(left)
-        if op.symbol == "∘":
-            return BesideDerived(left, self._resolve_right_operand(bound))
-        if isinstance(op, Adverb) and op.symbol in ("/", "⌿"):
-            return ReduceDerived(op, left)
-        if isinstance(op, Adverb) and op.symbol in ("\\", "⍀"):
-            return ScanDerived(op, left)
-        raise SyntaxError_(f"Cannot store operator {op} as a function")
+        if isinstance(op, Adverb):
+            result = op.derive_monadic(left)
+        elif isinstance(op, Conjunction):
+            right = self._resolve_right_operand(bound)
+            result = op.derive_dyadic(left, right)
+        else:
+            raise SyntaxError_(f"Cannot store operator {op} as a function")
+        assert isinstance(result, UnappliedFunction)
+        return result
 
     def _build_train(self, items: list[Applicable]) -> UnappliedFunction:
         """Build a train node from items (source left-to-right order).
