@@ -5,7 +5,7 @@ values bound to the environment in which they were defined."""
 from marple.numpy_array import APLArray, S
 from marple.apl_value import APLValue, Operator
 from marple.executor import Executor
-from marple.nodes import Evaluatable, ExecutionContext, Node, UnappliedFunction
+from marple.nodes import Executable, ExecutionContext, Node, UnappliedFunction
 from marple.parser import AlphaDefault, Dfn, Guard
 
 from marple.environment import Environment
@@ -124,11 +124,11 @@ class _DfnExecutor(Executor):
 class DfnBinding(UnappliedFunction, _DfnExecutor):
     """User-defined function value: bound dfn that takes ⍵ (and optionally ⍺)."""
 
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Executable) -> APLArray:
         operand = ctx.evaluate(operand_node)
         return self.apply(operand)
 
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Executable, right_node: Executable) -> APLArray:
         right = ctx.evaluate(right_node)
         left = ctx.evaluate(left_node)
         return self.apply(right, alpha=left)

@@ -19,7 +19,7 @@ from marple.operator_binding import DerivedFunctionBinding
 from marple.parser import (
     AtopDerived,
     Dfn,
-    Evaluatable,
+    Executable,
     FmtArgs,
     ForkDerived,
     PrimitiveFunction,
@@ -101,7 +101,7 @@ class Executor:
 
     # ── Core evaluation ──
 
-    def evaluate(self, node: Evaluatable) -> APLArray:
+    def evaluate(self, node: Executable) -> APLArray:
         """Evaluate an AST node by calling its execute method."""
         result = node.execute(self)
         assert isinstance(result, APLArray)
@@ -138,18 +138,18 @@ class Executor:
             return result
         raise DomainError(f"Undefined namespace: {parts[0]}")
 
-    def apply_derived(self, operator: str, function: Evaluatable, operand: APLArray, axis: int | None = None) -> APLArray:
+    def apply_derived(self, operator: str, function: Executable, operand: APLArray, axis: int | None = None) -> APLArray:
         val = function.execute(self)
         return DerivedFunctionBinding().apply(operator, val, operand, axis)
 
-    def assign(self, name: str, value_node: Evaluatable | UnappliedFunction) -> APLArray:
+    def assign(self, name: str, value_node: Executable | UnappliedFunction) -> APLArray:
         if name in _READONLY_QUADS:
             raise DomainError(f"Cannot assign to read-only system variable {name}")
         # Function-like values (PrimitiveFunction, RankDerived, BesideDerived,
         # etc.) are already in their stored form from the parser —
         # they are not Node instances and should not be evaluated.
         value: APLValue
-        if isinstance(value_node, Evaluatable):
+        if isinstance(value_node, Executable):
             value = value_node.execute(self)
         else:
             assert isinstance(value_node, APLValue)
@@ -267,7 +267,7 @@ class Executor:
         "⎕NWRITE": "_sys_nwrite",
     }
 
-    def dispatch_sys_monadic(self, name: str, operand_node: Evaluatable) -> APLArray:
+    def dispatch_sys_monadic(self, name: str, operand_node: Executable) -> APLArray:
         if name == "⎕FMT":
             return self._sys_fmt_monadic(operand_node)
         operand = self.evaluate(operand_node)
@@ -276,7 +276,7 @@ class Executor:
             return getattr(self, method_name)(operand)
         raise DomainError(f"Unknown system function: {name}")
 
-    def dispatch_sys_dyadic(self, name: str, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
+    def dispatch_sys_dyadic(self, name: str, left_node: Executable, right_node: Executable) -> APLArray:
         if name == "⎕FMT":
             return self._sys_fmt_dyadic(left_node, right_node)
         method_name = self._DYADIC_SYS_FN_DISPATCH.get(name)
@@ -385,7 +385,7 @@ class Executor:
             return APLArray(list(right.shape), data)
         raise DomainError("Invalid ⎕DR type code: " + str(target))
 
-    def _sys_fmt_monadic(self, operand_node: Evaluatable | FmtArgs) -> APLArray:
+    def _sys_fmt_monadic(self, operand_node: Executable | FmtArgs) -> APLArray:
         """Monadic ⎕FMT — handles both regular operands and FmtArgs."""
         from marple.nodes import FmtArgs
         if isinstance(operand_node, FmtArgs):
@@ -409,7 +409,7 @@ class Executor:
             text = str(operand)
         return APLArray([len(text)], str_to_char_array(text))
 
-    def _sys_fmt_dyadic(self, left_node: Evaluatable, right_node: Evaluatable | FmtArgs) -> APLArray:
+    def _sys_fmt_dyadic(self, left_node: Executable, right_node: Executable | FmtArgs) -> APLArray:
         """Dyadic ⎕FMT — format with specification string."""
         from marple.fmt import dyadic_fmt
         from marple.nodes import FmtArgs

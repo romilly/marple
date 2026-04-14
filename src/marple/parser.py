@@ -27,7 +27,7 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     DyadicDfnCall,
     DyadicDopCall,
     DyadicFunc,
-    Evaluatable,
+    Executable,
     ExecutionContext,
     FmtArgs,
     ForkDerived,
@@ -228,7 +228,7 @@ class Parser:
         items.append((cat, dfn))
 
     def _item_number(self, tok: Token, items: list[tuple[int, Node]]) -> None:
-        node: Evaluatable = self._parse_array()
+        node: Executable = self._parse_array()
         if self._current().type == TokenType.LBRACKET:
             node = self._parse_bracket_index(node)
         items.append((CAT_NOUN, node))
@@ -260,7 +260,7 @@ class Parser:
             items.append((CAT_VERB, bound))
         else:
             cat = self._classify_operator(op)
-            axis: Evaluatable | None = None
+            axis: Executable | None = None
             if cat == CAT_ADV and op in ("/", "\\", "⌿", "⍀") \
                     and self._current().type == TokenType.LBRACKET:
                 axis = self._parse_axis_spec()
@@ -269,7 +269,7 @@ class Parser:
             )
             items.append((cat, token))
 
-    def _parse_axis_spec(self) -> Evaluatable:
+    def _parse_axis_spec(self) -> Executable:
         """Parse a bracketed axis expression: `[expr]`."""
         self._eat(TokenType.LBRACKET)
         start = self._pos
@@ -380,7 +380,7 @@ class Parser:
     def _parse_fmt_args(self) -> FmtArgs:
         """Parse (val1;val2;...) for ⎕FMT. Similar to bracket indexing."""
         self._eat(TokenType.LPAREN)
-        args: list[Evaluatable] = []
+        args: list[Executable] = []
         args.append(self._parse_statement())
         while self._current().type == TokenType.SEMICOLON:
             self._eat(TokenType.SEMICOLON)
@@ -403,35 +403,35 @@ class Parser:
     # ── AST construction helpers ──
 
     @staticmethod
-    def _as_evaluatable(item: Node) -> Evaluatable:
-        """Narrow a stack item to Evaluatable. Items classified as
-        CAT_NOUN or used as operands are always Evaluatable."""
-        assert isinstance(item, Evaluatable)
+    def _as_evaluatable(item: Node) -> Executable:
+        """Narrow a stack item to Executable. Items classified as
+        CAT_NOUN or used as operands are always Executable."""
+        assert isinstance(item, Executable)
         return item
 
-    def _make_monadic(self, verb_node: Node, arg_node: Evaluatable) -> Evaluatable:
+    def _make_monadic(self, verb_node: Node, arg_node: Executable) -> Executable:
         """Create AST node for monadic verb application."""
         if isinstance(verb_node, PrimitiveFunction):
             return MonadicFunc(verb_node.glyph, arg_node)
         if isinstance(verb_node, BoundOperator):
             return self._apply_bound_monadic(verb_node, arg_node)
-        if isinstance(verb_node, (Evaluatable, UnappliedFunction)):
+        if isinstance(verb_node, (Executable, UnappliedFunction)):
             return MonadicDfnCall(verb_node, arg_node)
         raise SyntaxError_(f"Cannot apply as monadic function: {type(verb_node)}")
 
-    def _make_dyadic(self, verb_node: Node, left_node: Evaluatable,
-                     right_node: Evaluatable) -> Evaluatable:
+    def _make_dyadic(self, verb_node: Node, left_node: Executable,
+                     right_node: Executable) -> Executable:
         """Create AST node for dyadic verb application."""
         if isinstance(verb_node, PrimitiveFunction):
             return DyadicFunc(verb_node.glyph, left_node, right_node)
         if isinstance(verb_node, BoundOperator):
             return self._apply_bound_dyadic(verb_node, left_node, right_node)
-        if isinstance(verb_node, (Evaluatable, UnappliedFunction)):
+        if isinstance(verb_node, (Executable, UnappliedFunction)):
             return DyadicDfnCall(verb_node, left_node, right_node)
         raise SyntaxError_(f"Cannot apply as dyadic function: {type(verb_node)}")
 
     def _apply_bound_monadic(self, bound: BoundOperator,
-                             arg_node: Evaluatable) -> Evaluatable:
+                             arg_node: Executable) -> Executable:
         """Apply a bound operator (derived verb) monadically."""
         op = bound.operator
         if isinstance(op, Var):
@@ -444,16 +444,16 @@ class Parser:
             raise SyntaxError_(f"{type(op).__name__} requires two arguments")
         return MonadicDfnCall(self._bound_to_derived(bound), arg_node)
 
-    def _bound_monadic_reduce(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
+    def _bound_monadic_reduce(self, bound: BoundOperator, arg_node: Executable) -> Executable:
         assert isinstance(bound.operator, (ReduceAdverb, ScanAdverb))
         operand = bound.left_operand
         if (bound.left_cat == CAT_VERB
                 or isinstance(operand, (AlphaAlpha, OmegaOmega))):
-            assert isinstance(operand, Evaluatable)
+            assert isinstance(operand, Executable)
             return DerivedFunc(bound.operator, operand, arg_node)
         return DyadicFunc(bound.operator.symbol, self._as_evaluatable(operand), arg_node)
 
-    def _apply_user_dop_monadic(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
+    def _apply_user_dop_monadic(self, bound: BoundOperator, arg_node: Executable) -> Executable:
         assert isinstance(bound.operator, Var)
         operand = self._as_evaluatable(bound.left_operand)
         if bound.right_operand is not None:
@@ -461,7 +461,7 @@ class Parser:
         return MonadicDopCall(bound.operator, operand, arg_node)
 
     def _apply_bound_dyadic(self, bound: BoundOperator,
-                            left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
+                            left_node: Executable, right_node: Executable) -> Executable:
         """Apply a bound operator (derived verb) dyadically."""
         op = bound.operator
         if isinstance(op, Var):
@@ -473,17 +473,17 @@ class Parser:
         return DyadicDfnCall(self._bound_to_derived(bound), left_node, right_node)
 
     def _bound_dyadic_reduce(self, bound: BoundOperator,
-                             left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
+                             left_node: Executable, right_node: Executable) -> Executable:
         assert isinstance(bound.operator, (ReduceAdverb, ScanAdverb))
         operand = bound.left_operand
         if (bound.left_cat == CAT_VERB
                 or isinstance(operand, (AlphaAlpha, OmegaOmega))):
-            assert isinstance(operand, Evaluatable)
+            assert isinstance(operand, Executable)
             return DerivedFunc(bound.operator, operand, right_node)
         return DyadicFunc(bound.operator.symbol, self._as_evaluatable(operand), right_node)
 
     def _apply_user_dop_dyadic(self, bound: BoundOperator,
-                               left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
+                               left_node: Executable, right_node: Executable) -> Executable:
         assert isinstance(bound.operator, Var)
         operand = self._as_evaluatable(bound.left_operand)
         if bound.right_operand is not None:
@@ -538,7 +538,7 @@ class Parser:
         return self._build_train(items[:-3] + [inner])
 
     def _resolve_assignment_value(self, value_node: Node,
-                                  value_cat: int) -> Evaluatable | UnappliedFunction:
+                                  value_cat: int) -> Executable | UnappliedFunction:
         """Convert a Case 6 value_node into a form that `ctx.assign`
         can store directly.
 
@@ -549,13 +549,13 @@ class Parser:
         """
         if isinstance(value_node, BoundOperator):
             return self._bound_to_derived(value_node)
-        if isinstance(value_node, (Evaluatable, UnappliedFunction)):
+        if isinstance(value_node, (Executable, UnappliedFunction)):
             return value_node
         raise SyntaxError_(f"Invalid assignment value: {value_node}")
 
     # ── Iverson's stack-based parsing algorithm ──
 
-    def _stack_parse(self, items: list[tuple[int, Node]]) -> Evaluatable:
+    def _stack_parse(self, items: list[tuple[int, Node]]) -> Executable:
         """Run Iverson's 9-case stack-based parser on classified items.
 
         Items are processed right-to-left. The stack grows upward.
@@ -775,7 +775,7 @@ class Parser:
     def _parse_dfn(self) -> Dfn:
         """Parse a dfn: { statement (⋄ statement)* }"""
         self._eat(TokenType.LBRACE)
-        statements: list[Evaluatable | Guard | AlphaDefault] = []
+        statements: list[Executable | Guard | AlphaDefault] = []
         while self._current().type not in (TokenType.RBRACE, TokenType.EOF):
             stmt = self._parse_dfn_statement()
             statements.append(stmt)
@@ -786,7 +786,7 @@ class Parser:
         self._eat(TokenType.RBRACE)
         return Dfn(statements)
 
-    def _parse_dfn_statement(self) -> Evaluatable | Guard | AlphaDefault:
+    def _parse_dfn_statement(self) -> Executable | Guard | AlphaDefault:
         """Parse a statement inside a dfn, handling guards and ⍺← default."""
         # Check for ⍺← default
         peek = self._peek()
@@ -808,7 +808,7 @@ class Parser:
             return Guard(stmt, body)
         return stmt
 
-    def _parse_atom(self) -> Evaluatable:
+    def _parse_atom(self) -> Executable:
         token = self._current()
         if token.type == TokenType.LPAREN:
             self._eat(TokenType.LPAREN)
@@ -867,17 +867,17 @@ class Parser:
             return self._parse_dfn()
         raise SyntaxError_(f"Unexpected token: {token}")
 
-    def _parse_atom_with_index(self) -> Evaluatable:
+    def _parse_atom_with_index(self) -> Executable:
         """Parse an atom, then check for bracket indexing."""
         atom = self._parse_atom()
         if self._current().type == TokenType.LBRACKET:
             return self._parse_bracket_index(atom)
         return atom
 
-    def _parse_bracket_index(self, array: Evaluatable) -> Index:
+    def _parse_bracket_index(self, array: Executable) -> Index:
         """Parse [idx] or [row;col] bracket indexing."""
         self._eat(TokenType.LBRACKET)
-        indices: list[Evaluatable | None] = []
+        indices: list[Executable | None] = []
         # First index (may be empty for [;col])
         if self._current().type == TokenType.SEMICOLON:
             indices.append(None)
@@ -904,7 +904,7 @@ class Parser:
             TokenType.SYSVAR, TokenType.ZILDE,
         )
 
-    def _parse_array(self) -> Evaluatable:
+    def _parse_array(self) -> Executable:
         """Parse one or more adjacent numeric atoms as a vector,
         or a single non-numeric atom."""
         first = self._parse_atom_with_index()
@@ -930,7 +930,7 @@ class Parser:
             return func_token.value, op_token.value
         return func_token.value, None
 
-    def _parse_statement(self) -> Evaluatable:
+    def _parse_statement(self) -> Executable:
         """Parse a statement using Iverson's stack-based algorithm."""
         items = self._build_items()
         if not items:
@@ -942,7 +942,7 @@ class Parser:
             result = self._parse_bracket_index(result)
         return result
 
-    def parse(self) -> Evaluatable:
+    def parse(self) -> Executable:
         # Empty input (e.g. comment-only line) → return Num(0) as no-op
         if self._current().type == TokenType.EOF:
             return Num(0)
@@ -958,7 +958,7 @@ class Parser:
 
 
 def parse(source: str, name_table: dict[str, int] | None = None,
-          operator_arity: dict[str, int] | None = None) -> Evaluatable:
+          operator_arity: dict[str, int] | None = None) -> Executable:
     tokens = Tokenizer(source).tokenize()
     return Parser(tokens, name_table, operator_arity).parse()
 

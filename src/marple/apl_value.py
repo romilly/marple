@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
-    from marple.nodes import Applicable, ExecutionContext, Evaluatable
+    from marple.nodes import Applicable, ExecutionContext, Executable
     from marple.numpy_array import APLArray
 
 # Name classes (following Dyalog ⎕NC convention)
@@ -30,11 +30,11 @@ class APLValue(ABC):
         from marple.errors import DomainError
         raise DomainError(f"Cannot apply {type(self).__name__} as a function")
 
-    def call_monadic(self, ctx: ExecutionContext, operand: Evaluatable) -> APLArray:
+    def call_monadic(self, ctx: ExecutionContext, operand: Executable) -> APLArray:
         from marple.errors import DomainError
         raise DomainError(f"Cannot call {type(self).__name__} as a function")
 
-    def call_dyadic(self, ctx: ExecutionContext, left: Evaluatable, right: Evaluatable) -> APLArray:
+    def call_dyadic(self, ctx: ExecutionContext, left: Executable, right: Executable) -> APLArray:
         from marple.errors import DomainError
         raise DomainError(f"Cannot call {type(self).__name__} as a function")
 
@@ -60,10 +60,10 @@ class Function(APLValue):
         return NC_FUNCTION
 
     @abstractmethod
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray: ...
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Executable) -> APLArray: ...
 
     @abstractmethod
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray: ...
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Executable, right_node: Executable) -> APLArray: ...
 
     def apply_to_monadic(self, ctx: ExecutionContext, omega: APLArray) -> APLArray:
         from marple.nodes import Literal
@@ -73,10 +73,10 @@ class Function(APLValue):
         from marple.nodes import Literal
         return self.apply_dyadic(ctx, Literal(alpha), Literal(omega))
 
-    def call_monadic(self, ctx: ExecutionContext, operand: Evaluatable) -> APLArray:
+    def call_monadic(self, ctx: ExecutionContext, operand: Executable) -> APLArray:
         return self.apply_monadic(ctx, operand)
 
-    def call_dyadic(self, ctx: ExecutionContext, left: Evaluatable, right: Evaluatable) -> APLArray:
+    def call_dyadic(self, ctx: ExecutionContext, left: Executable, right: Executable) -> APLArray:
         return self.apply_dyadic(ctx, left, right)
 
     def as_power_strategy(self, ctx: ExecutionContext) -> PowerStrategy:
