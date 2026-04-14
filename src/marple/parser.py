@@ -260,8 +260,38 @@ class Parser:
             items.append((CAT_VERB, bound))
         else:
             cat = self._classify_operator(op)
-            token: Adverb | Conjunction = make_adverb(op) if cat == CAT_ADV else make_conjunction(op)
+            axis: Evaluatable | None = None
+            if cat == CAT_ADV and op in ("/", "\\", "⌿", "⍀") \
+                    and self._current().type == TokenType.LBRACKET:
+                axis = self._parse_axis_spec()
+            token: Adverb | Conjunction = (
+                make_adverb(op, axis) if cat == CAT_ADV else make_conjunction(op)
+            )
             items.append((cat, token))
+
+    def _parse_axis_spec(self) -> Evaluatable:
+        """Parse a bracketed axis expression: `[expr]`."""
+        self._eat(TokenType.LBRACKET)
+        start = self._pos
+        depth = 0
+        while self._pos < len(self._tokens):
+            tok = self._current()
+            if tok.type == TokenType.LBRACKET:
+                depth += 1
+            elif tok.type == TokenType.RBRACKET:
+                if depth == 0:
+                    break
+                depth -= 1
+            self._pos += 1
+        if self._pos >= len(self._tokens):
+            raise SyntaxError_("Unterminated axis specifier")
+        axis_tokens = self._tokens[start:self._pos]
+        self._eat(TokenType.RBRACKET)
+        if not axis_tokens:
+            raise SyntaxError_("Empty axis specifier")
+        sub_parser = Parser(axis_tokens + [Token(TokenType.EOF, "")],
+                             self._name_table, self._operator_arity)
+        return sub_parser.parse()
 
     def _item_assign(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         self._pos += 1

@@ -6,7 +6,7 @@ from marple.backend_functions import NDArray
 
 from marple.numpy_array import APLArray, S
 from marple.backend_functions import (
-    _DOWNCAST_CT, is_char_array, is_int_dtype, is_numeric_array, maybe_downcast, to_list,
+    _DOWNCAST_CT, is_char_array, is_int_dtype, is_numeric_array, maybe_downcast,
 )
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.errors import DomainError
@@ -72,35 +72,55 @@ def _reduce_row(op: Callable[[Any, Any], Any], data: NDArray, start: int, length
 def _reduce(
     func: Callable[[APLArray, APLArray], APLArray],
     omega: APLArray,
-    glyph: str | None = None,
+    glyph: str | None,
+    axis: int,
 ) -> APLArray:
-    """Reduce along the last axis."""
+    """Reduce along `axis` (0-based).
+
+    Moves `axis` to last position and reuses last-axis row-wise fold.
+    """
     _reject_chars_for_op(omega, glyph, "reduce")
-    data = omega.data
-    flat = data.flatten() if is_numeric_array(data) else data
-    n = len(flat)
-    if n == 0:
-        if glyph is not None:
-            identity = _IDENTITY_ELEMENTS.get(glyph)
-            if identity is not None:
-                return S(identity)
-        raise DomainError("Cannot reduce empty array")
+    shape = list(omega.shape)
+    rank = len(shape)
+    if rank == 0:
+        # Reducing a scalar returns it unchanged.
+        return omega
+    if axis < 0 or axis >= rank:
+        raise DomainError(f"Axis out of range for rank-{rank} array")
     op = _SCALAR_OPS.get(glyph) if glyph is not None else None
     if op is None:
         raise DomainError(f"Unknown function for reduce: {glyph}")
-    if len(omega.shape) <= 1:
+
+    n = shape[axis]
+    result_shape = shape[:axis] + shape[axis + 1:]
+
+    # Empty reduce: identity-filled result.
+    if n == 0:
+        identity = _IDENTITY_ELEMENTS.get(glyph) if glyph is not None else None
+        if identity is None:
+            raise DomainError("Cannot reduce empty array")
+        if not result_shape:
+            return S(identity)
+        return APLArray(result_shape, np.full(result_shape, identity, dtype=np.float64))
+
+    # Move target axis to last position; reduce along rows of length n.
+    moved = np.moveaxis(omega.data, axis, rank - 1)
+    flat = moved.flatten() if is_numeric_array(moved) else moved
+    if is_numeric_array(flat) and is_int_dtype(flat):
+        flat = flat.astype(np.float64)
+
+    if rank == 1:
         result_val = _reduce_row(op, flat, 0, n)
         if hasattr(result_val, 'item'):
             result_val = maybe_downcast(np.array([result_val]), _DOWNCAST_CT)[0]
         return S(result_val)
-    last = omega.shape[-1]
-    new_shape = omega.shape[:-1]
-    rows = flat.reshape(-1, last)
+
+    rows = flat.reshape(-1, n)
     result = np.zeros(len(rows), dtype=np.float64)
     for r, row in enumerate(rows):
-        result[r] = _reduce_row(op, row, 0, last)
-    result = maybe_downcast(result.reshape(new_shape), _DOWNCAST_CT)
-    return APLArray(new_shape, result)
+        result[r] = _reduce_row(op, row, 0, n)
+    result = maybe_downcast(result.reshape(result_shape), _DOWNCAST_CT)
+    return APLArray(result_shape, result)
 
 
 _ACCUMULATE_UFUNCS: dict[str, np.ufunc] = {}
@@ -159,137 +179,82 @@ def _scan_row_general(op: Callable[[Any, Any], Any], data: NDArray, row_len: int
 def _scan(
     func: Callable[[APLArray, APLArray], APLArray],
     omega: APLArray,
-    glyph: str | None = None,
+    glyph: str | None,
+    axis: int,
 ) -> APLArray:
-    """Scan along the last axis."""
-    _reject_chars_for_op(omega, glyph, "scan")
-    flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
-    n = len(flat)
-    if n == 0:
-        return APLArray.array([0], [])
-    row_len = omega.shape[-1] if len(omega.shape) > 0 else n
+    """Scan along `axis` (0-based).
 
-    # Upcast integer data to float64 to prevent silent overflow wrapping.
-    scan_data = flat
+    Moves `axis` to last position, runs last-axis row-scan, moves back.
+    """
+    _reject_chars_for_op(omega, glyph, "scan")
+    shape = list(omega.shape)
+    rank = len(shape)
+    if rank == 0:
+        return omega
+    if axis < 0 or axis >= rank:
+        raise DomainError(f"Axis out of range for rank-{rank} array")
+
+    n = shape[axis]
+    if n == 0:
+        return APLArray(shape, omega.data)
+
+    moved = np.moveaxis(omega.data, axis, rank - 1)
+    moved_shape = list(moved.shape)
+    flat = moved.flatten() if is_numeric_array(moved) else moved
     if is_numeric_array(flat) and is_int_dtype(flat):
-        scan_data = flat.astype(np.float64)
+        flat = flat.astype(np.float64)
 
     if glyph is not None:
         ufunc = _ACCUMULATE_UFUNCS.get(glyph)
         if ufunc is not None:
-            result = _scan_row_accumulate(ufunc, scan_data, row_len)
+            scanned = _scan_row_accumulate(ufunc, flat, n)
         else:
             op = _SCALAR_OPS.get(glyph)
             if op is not None:
-                result = _scan_row_general(op, scan_data, row_len)
+                scanned = _scan_row_general(op, flat, n)
             else:
                 raise DomainError(f"Unknown function for scan: {glyph}")
     else:
         raise DomainError(f"Unknown function for scan: {glyph}")
 
-    if hasattr(result, "dtype") and "float" in str(result.dtype):
-        if np.any(np.isinf(result)) or np.any(np.isnan(result)):
+    if hasattr(scanned, "dtype") and "float" in str(scanned.dtype):
+        if np.any(np.isinf(scanned)) or np.any(np.isnan(scanned)):
             raise DomainError("arithmetic overflow in scan")
-        result = maybe_downcast(result, _DOWNCAST_CT)
+        scanned = maybe_downcast(scanned, _DOWNCAST_CT)
 
-    return APLArray(list(omega.shape), result.reshape(omega.shape))
-
-
-def _reduce_first(
-    func: Callable[[APLArray, APLArray], APLArray],
-    omega: APLArray,
-    glyph: str | None = None,
-) -> APLArray:
-    """Reduce along the first axis (⌿)."""
-    _reject_chars_for_op(omega, glyph, "reduce")
-    if len(omega.shape) <= 1:
-        return _reduce(func, omega, glyph)
-    op = _SCALAR_OPS.get(glyph) if glyph is not None else None
-    if op is None:
-        raise DomainError(f"Unknown function for reduce: {glyph}")
-    first = omega.shape[0]
-    cell_shape = omega.shape[1:]
-    flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
-    cell_size = 1
-    for s in cell_shape:
-        cell_size *= s
-
-    reduce_data = flat
-    if is_numeric_array(flat) and is_int_dtype(flat):
-        reduce_data = flat.astype(np.float64)
-
-    cells = reduce_data.reshape(first, cell_size)
-    acc = cells[0].copy()
-    with np.errstate(over="ignore", invalid="ignore"):
-        for cell in cells[1:]:
-            for j in range(cell_size):
-                acc[j] = op(acc[j], cell[j])
-
-    if hasattr(acc, "dtype") and "float" in str(acc.dtype):
-        if np.any(np.isinf(acc)) or np.any(np.isnan(acc)):
-            raise DomainError("arithmetic overflow in reduce")
-        acc = maybe_downcast(acc, _DOWNCAST_CT)
-    return APLArray(cell_shape, acc.reshape(cell_shape))
+    scanned_arr = scanned.reshape(moved_shape)
+    final = np.moveaxis(scanned_arr, rank - 1, axis)
+    return APLArray(shape, final.reshape(shape))
 
 
-def _scan_first(
-    func: Callable[[APLArray, APLArray], APLArray],
-    omega: APLArray,
-    glyph: str | None = None,
-) -> APLArray:
-    """Scan along the first axis (⍀)."""
-    _reject_chars_for_op(omega, glyph, "scan")
-    if len(omega.shape) <= 1:
-        return _scan(func, omega, glyph)
-    op = _SCALAR_OPS.get(glyph) if glyph is not None else None
-    if op is None:
-        raise DomainError(f"Unknown function for scan: {glyph}")
-    first = omega.shape[0]
-    cell_shape = omega.shape[1:]
-    cell_size = 1
-    for s in cell_shape:
-        cell_size *= s
-    flat = omega.data.flatten() if is_numeric_array(omega.data) else omega.data
-    scan_data = flat
-    if is_numeric_array(flat) and is_int_dtype(flat):
-        scan_data = flat.astype(np.float64)
-
-    cells = scan_data.reshape(first, cell_size)
-    result = np.zeros_like(cells)
-    result[0] = cells[0]
-    acc = cells[0].copy()
-    with np.errstate(over="ignore", invalid="ignore"):
-        for i, cell in enumerate(cells[1:], 1):
-            for j in range(cell_size):
-                acc[j] = op(acc[j], cell[j])
-            result[i] = acc
-
-    flat_result = result.flatten()
-    if hasattr(flat_result, "dtype") and "float" in str(flat_result.dtype):
-        if np.any(np.isinf(flat_result)) or np.any(np.isnan(flat_result)):
-            raise DomainError("arithmetic overflow in scan")
-        flat_result = maybe_downcast(flat_result, _DOWNCAST_CT)
-    return APLArray(list(omega.shape), flat_result.reshape(omega.shape))
+# Default axis (0-based, relative to the argument's rank) per operator glyph.
+# Subtract from rank to get last-axis; 0 means first axis.
+_DEFAULT_LAST_AXIS = {"/", "\\"}
+_DEFAULT_FIRST_AXIS = {"⌿", "⍀"}
 
 
-_OPERATOR_DISPATCH: dict[str, Callable[..., APLArray]] = {
-    "/": _reduce,
-    "⌿": _reduce_first,
-    "\\": _scan,
-    "⍀": _scan_first,
-}
+def _default_axis(operator: str, rank: int) -> int:
+    if operator in _DEFAULT_LAST_AXIS:
+        return rank - 1
+    if operator in _DEFAULT_FIRST_AXIS:
+        return 0
+    raise DomainError(f"Unknown operator: {operator}")
 
 
 class DerivedFunctionBinding:
     """A derived function: an operator applied to a function operand."""
 
-    def apply(self, operator: str, function: object, operand: APLArray) -> APLArray:
+    def apply(self, operator: str, function: object, operand: APLArray,
+              axis: int | None = None) -> APLArray:
         """Apply the derived function (operator + function) to an operand."""
         func, glyph = self._resolve_function(function)
-        op_fn = _OPERATOR_DISPATCH.get(operator)
-        if op_fn is None:
-            raise DomainError(f"Unknown operator: {operator}")
-        return op_fn(func, operand, glyph)
+        if axis is None:
+            axis = _default_axis(operator, len(operand.shape))
+        if operator in ("/", "⌿"):
+            return _reduce(func, operand, glyph, axis)
+        if operator in ("\\", "⍀"):
+            return _scan(func, operand, glyph, axis)
+        raise DomainError(f"Unknown operator: {operator}")
 
     def _resolve_function(self, function: object) -> tuple[Any, str | None]:
         """Resolve a function node to (dyadic callable, glyph or None)."""

@@ -138,9 +138,9 @@ class Executor:
             return result
         raise DomainError(f"Undefined namespace: {parts[0]}")
 
-    def apply_derived(self, operator: str, function: Evaluatable, operand: APLArray) -> APLArray:
+    def apply_derived(self, operator: str, function: Evaluatable, operand: APLArray, axis: int | None = None) -> APLArray:
         val = function.execute(self)
-        return DerivedFunctionBinding().apply(operator, val, operand)
+        return DerivedFunctionBinding().apply(operator, val, operand, axis)
 
     def assign(self, name: str, value_node: Evaluatable | UnappliedFunction) -> APLArray:
         if name in _READONLY_QUADS:

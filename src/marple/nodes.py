@@ -152,7 +152,7 @@ class ExecutionContext(Protocol):
     def evaluate(self, node: 'Evaluatable') -> APLArray: ...
     def dispatch_monadic(self, glyph: str, operand: APLArray) -> APLArray: ...
     def dispatch_dyadic(self, glyph: str, left: APLArray, right: APLArray) -> APLArray: ...
-    def apply_derived(self, operator: str, function: 'Evaluatable', operand: APLArray) -> APLArray: ...
+    def apply_derived(self, operator: str, function: 'Evaluatable', operand: APLArray, axis: int | None = None) -> APLArray: ...
     def assign(self, name: str, value_node: 'Evaluatable | UnappliedFunction') -> APLArray: ...
     def eval_sysvar(self, name: str) -> APLArray: ...
     def create_binding(self, dfn_node: 'Dfn') -> APLValue: ...
@@ -196,12 +196,12 @@ class CommuteAdverb(Adverb):
 class ReduceAdverb(Adverb):
     """Monadic operator / or ⌿ — reduce along last or first axis.
 
-    Carries the symbol because last-axis vs first-axis is a runtime
-    distinction flowing through to DerivedFunctionBinding.
+    Carries the symbol (/ vs ⌿ — default axis distinction) and an
+    optional explicit axis from a bracketed specifier `/[k]`.
     """
-    def __init__(self, symbol: str) -> None:
+    def __init__(self, symbol: str, axis: 'Evaluatable | None' = None) -> None:
         self.symbol = symbol
-
+        self.axis = axis
 
     def derive_monadic(self, operand: 'Applicable') -> Function:
         return ReduceDerived(self, operand)
@@ -209,9 +209,9 @@ class ReduceAdverb(Adverb):
 
 class ScanAdverb(Adverb):
     """Monadic operator \\ or ⍀ — scan along last or first axis."""
-    def __init__(self, symbol: str) -> None:
+    def __init__(self, symbol: str, axis: 'Evaluatable | None' = None) -> None:
         self.symbol = symbol
-
+        self.axis = axis
 
     def derive_monadic(self, operand: 'Applicable') -> Function:
         return ScanDerived(self, operand)
@@ -267,14 +267,14 @@ class IBeamAdverb(Adverb):
         return IBeamFunction(operand)
 
 
-_ADVERB_FACTORIES: dict[str, Callable[[str], Adverb]] = {
-    "⍨": lambda _s: CommuteAdverb(),
-    "/": lambda s: ReduceAdverb(s),
-    "⌿": lambda s: ReduceAdverb(s),
-    "\\": lambda s: ScanAdverb(s),
-    "⍀": lambda s: ScanAdverb(s),
-    "∘.": lambda _s: OuterProductAdverb(),
-    "⌶": lambda _s: IBeamAdverb(),
+_ADVERB_FACTORIES: dict[str, Callable[[str, 'Evaluatable | None'], Adverb]] = {
+    "⍨": lambda _s, _a: CommuteAdverb(),
+    "/": lambda s, a: ReduceAdverb(s, a),
+    "⌿": lambda s, a: ReduceAdverb(s, a),
+    "\\": lambda s, a: ScanAdverb(s, a),
+    "⍀": lambda s, a: ScanAdverb(s, a),
+    "∘.": lambda _s, _a: OuterProductAdverb(),
+    "⌶": lambda _s, _a: IBeamAdverb(),
 }
 
 
@@ -286,12 +286,16 @@ _CONJUNCTION_FACTORIES: dict[str, Callable[[], Conjunction]] = {
 }
 
 
-def make_adverb(symbol: str) -> Adverb:
-    """Construct the Adverb subclass for a glyph. Raises on unknown glyph."""
+def make_adverb(symbol: str, axis: 'Evaluatable | None' = None) -> Adverb:
+    """Construct the Adverb subclass for a glyph. Raises on unknown glyph.
+
+    `axis` is an Evaluatable for bracketed forms like /[k]; only reduce
+    and scan variants consult it, others ignore.
+    """
     factory = _ADVERB_FACTORIES.get(symbol)
     if factory is None:
         raise ValueError_(f"Unknown adverb glyph: {symbol}")
-    return factory(symbol)
+    return factory(symbol, axis)
 
 
 def make_conjunction(symbol: str) -> Conjunction:
@@ -440,6 +444,22 @@ class QualifiedVar(Evaluatable):
         return ctx.resolve_qualified(self.parts)
 
 
+def _resolve_axis(op: 'ReduceAdverb | ScanAdverb', ctx: 'ExecutionContext') -> int | None:
+    """Evaluate the bracketed axis expression on a reduce/scan operator.
+
+    Returns a 0-based axis index (with ⎕IO adjustment applied), or None
+    if the operator carries no explicit axis (the backend will apply
+    the per-glyph default).
+    """
+    if op.axis is None:
+        return None
+    value = ctx.evaluate(op.axis)
+    if list(value.shape) != []:
+        raise DomainError("Axis specifier must be a scalar")
+    axis_io = int(value.data.item())
+    return axis_io - ctx.env.io
+
+
 class DerivedFunc(Evaluatable):
     def __init__(self, operator: 'ReduceAdverb | ScanAdverb', function: Evaluatable, operand: Evaluatable) -> None:
         self.operator = operator
@@ -447,7 +467,8 @@ class DerivedFunc(Evaluatable):
         self.operand = operand
     def execute(self, ctx: ExecutionContext) -> APLArray:
         operand = ctx.evaluate(self.operand)
-        return ctx.apply_derived(self.operator.symbol, self.function, operand)
+        axis = _resolve_axis(self.operator, ctx)
+        return ctx.apply_derived(self.operator.symbol, self.function, operand, axis)
 
 
 class MonadicDopCall(Evaluatable):
@@ -698,7 +719,8 @@ class ReduceDerived(UnappliedFunction):
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         from marple.operator_binding import DerivedFunctionBinding
         operand = ctx.evaluate(operand_node)
-        return DerivedFunctionBinding().apply(self.operator.symbol, self.function, operand)
+        axis = _resolve_axis(self.operator, ctx)
+        return DerivedFunctionBinding().apply(self.operator.symbol, self.function, operand, axis)
     def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         raise DomainError("Reduce cannot be applied dyadically")
 
@@ -715,7 +737,8 @@ class ScanDerived(UnappliedFunction):
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
         from marple.operator_binding import DerivedFunctionBinding
         operand = ctx.evaluate(operand_node)
-        return DerivedFunctionBinding().apply(self.operator.symbol, self.function, operand)
+        axis = _resolve_axis(self.operator, ctx)
+        return DerivedFunctionBinding().apply(self.operator.symbol, self.function, operand, axis)
     def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
         raise DomainError("Scan cannot be applied dyadically")
 
