@@ -53,6 +53,32 @@ class APLValue(ABC):
         raise DomainError("⍣ right operand must be integer or function")
 
 
+class Function(APLValue):
+    """An APL function value: can be applied to one or two array arguments."""
+
+    def name_class(self) -> int:
+        return NC_FUNCTION
+
+    @abstractmethod
+    def apply_to_monadic(self, ctx: ExecutionContext, omega: APLArray) -> APLArray: ...
+
+    @abstractmethod
+    def apply_to_dyadic(self, ctx: ExecutionContext, alpha: APLArray, omega: APLArray) -> APLArray: ...
+
+
+class Operator(APLValue):
+    """An APL operator value: takes function operand(s) and derives a function."""
+
+    def name_class(self) -> int:
+        return NC_OPERATOR
+
+    @abstractmethod
+    def derive_monadic(self, ctx: ExecutionContext, operand: APLValue) -> Function: ...
+
+    @abstractmethod
+    def derive_dyadic(self, ctx: ExecutionContext, left: APLValue, right: APLValue) -> Function: ...
+
+
 class PowerStrategy(ABC):
     """Iteration strategy for the power operator (f⍣g)."""
     @abstractmethod
