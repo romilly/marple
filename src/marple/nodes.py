@@ -213,27 +213,7 @@ class Marker(Node):
 _MARKER = Marker()
 
 
-class Applicable(Node):
-    """A Node that can be applied as a function to evaluated arguments."""
-    @abstractmethod
-    def apply_to_monadic(self, ctx: ExecutionContext, omega: APLArray) -> APLArray: ...
-    @abstractmethod
-    def apply_to_dyadic(self, ctx: ExecutionContext, alpha: APLArray, omega: APLArray) -> APLArray: ...
-    @abstractmethod
-    def call_monadic(self, ctx: ExecutionContext, operand: 'Evaluatable') -> APLArray: ...
-    @abstractmethod
-    def call_dyadic(self, ctx: ExecutionContext, left: 'Evaluatable', right: 'Evaluatable') -> APLArray: ...
-    @abstractmethod
-    def apply_monadic_dop(self, ctx: ExecutionContext, argument: APLArray,
-                          operand: APLValue, alpha: APLArray | None = None) -> APLArray: ...
-    @abstractmethod
-    def apply_dyadic_dop(self, ctx: ExecutionContext, argument: APLArray,
-                         left_operand: APLValue, right_operand: APLValue) -> APLArray: ...
-    @abstractmethod
-    def as_power_strategy(self, ctx: ExecutionContext) -> 'PowerStrategy': ...
-
-
-class Evaluatable(Applicable):
+class Evaluatable(Node):
     """A Node that can be executed to produce a value."""
     @abstractmethod
     def execute(self, ctx: ExecutionContext) -> APLValue: ...
@@ -260,6 +240,13 @@ class Evaluatable(Applicable):
 
     def as_power_strategy(self, ctx: ExecutionContext) -> 'PowerStrategy':
         return self.execute(ctx).as_power_strategy(ctx)
+
+
+# `Applicable` is the set of things that can be applied as a function:
+# Function values, and Evaluatable AST nodes that execute to one.
+# Runtime union so both type annotations and isinstance checks work
+# (Python 3.10+ supports `isinstance(x, A | B)`).
+Applicable = Function | Evaluatable
 
 
 class Literal(Evaluatable):
@@ -393,13 +380,12 @@ class DyadicDopCall(Evaluatable):
         return self.op_name.apply_dyadic_dop(ctx, argument, left_operand, right_operand)
 
 
-class UnappliedFunction(Function, Applicable):
+class UnappliedFunction(Function, Node):
     """Bridge class for function values that also participate as AST nodes.
 
-    All apply/call behaviour is inherited from `Function`. This class
-    exists only to keep subclasses in the `Node` hierarchy (via
-    `Applicable`) during the Function/Operator migration. Subclasses
-    will inherit `Function` directly once `Applicable` is removed in B4.
+    All apply/call behaviour is inherited from `Function`. Node is
+    inherited so derived-function values can live on the parser stack
+    alongside other nodes.
     """
 
 
