@@ -237,12 +237,32 @@ class BesideConjunction(Conjunction):
         return BesideDerived(left, right)
 
 
+class InnerProductConjunction(Conjunction):
+    """Dyadic operator `.` — inner product (e.g. +.× for dot-product / matrix-multiply)."""
+    def derive_dyadic(self, left: 'Applicable', right: 'Applicable') -> Function:
+        assert isinstance(left, PrimitiveFunction)
+        assert isinstance(right, PrimitiveFunction)
+        return InnerDerived(left, right)
+
+
+class OuterProductAdverb(Adverb):
+    """Monadic operator `∘.` — outer product (e.g. ∘.× for multiplication table).
+
+    Parser combines the `∘`, `.`, and the function token into a pre-bound
+    unit at parse time; the function becomes the single operand here.
+    """
+    def derive_monadic(self, operand: 'Applicable') -> Function:
+        assert isinstance(operand, PrimitiveFunction)
+        return OuterDerived(operand)
+
+
 _ADVERB_CLASSES: dict[str, type[Adverb]] = {
     "⍨": CommuteAdverb,
     "/": ReduceAdverb,
     "⌿": ReduceAdverb,
     "\\": ScanAdverb,
     "⍀": ScanAdverb,
+    "∘.": OuterProductAdverb,
 }
 
 
@@ -250,6 +270,7 @@ _CONJUNCTION_CLASSES: dict[str, type[Conjunction]] = {
     "⍤": RankConjunction,
     "⍣": PowerConjunction,
     "∘": BesideConjunction,
+    ".": InnerProductConjunction,
 }
 
 
@@ -694,26 +715,36 @@ class IBeamDerived(UnappliedFunction, Evaluatable):  # Evaluatable for execute()
         raise DomainError("Dyadic i-beam not yet supported")
 
 
-class InnerProduct(Evaluatable):
-    def __init__(self, left_fn: 'PrimitiveFunction', right_fn: 'PrimitiveFunction', left: Evaluatable, right: Evaluatable) -> None:
+class InnerDerived(UnappliedFunction):
+    """Stored function form of `.` — inner product f.g."""
+    def __init__(self, left_fn: 'PrimitiveFunction', right_fn: 'PrimitiveFunction') -> None:
         self.left_fn = left_fn
         self.right_fn = right_fn
-        self.left = left
-        self.right = right
-    def execute(self, ctx: ExecutionContext) -> APLArray:
-        omega = ctx.evaluate(self.right)
-        alpha = ctx.evaluate(self.left)
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, InnerDerived):
+            return NotImplemented
+        return self.left_fn == other.left_fn and self.right_fn == other.right_fn
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
+        raise DomainError("Inner product cannot be applied monadically")
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
+        omega = ctx.evaluate(right_node)
+        alpha = ctx.evaluate(left_node)
         return _inner_product(self.left_fn.glyph, self.right_fn.glyph, alpha, omega)
 
 
-class OuterProduct(Evaluatable):
-    def __init__(self, function: 'PrimitiveFunction', left: Evaluatable, right: Evaluatable) -> None:
+class OuterDerived(UnappliedFunction):
+    """Stored function form of `∘.` — outer product ∘.g."""
+    def __init__(self, function: 'PrimitiveFunction') -> None:
         self.function = function
-        self.left = left
-        self.right = right
-    def execute(self, ctx: ExecutionContext) -> APLArray:
-        omega = ctx.evaluate(self.right)
-        alpha = ctx.evaluate(self.left)
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, OuterDerived):
+            return NotImplemented
+        return self.function == other.function
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
+        raise DomainError("Outer product cannot be applied monadically")
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
+        omega = ctx.evaluate(right_node)
+        alpha = ctx.evaluate(left_node)
         return _outer_product(self.function.glyph, alpha, omega)
 
 

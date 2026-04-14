@@ -35,7 +35,6 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     Guard,
     IBeamDerived,
     Index,
-    InnerProduct,
     MonadicDfnCall,
     MonadicDopCall,
     MonadicFunc,
@@ -44,7 +43,6 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     Num,
     Omega,
     OmegaOmega,
-    OuterProduct,
     PowerDerived,
     Program,
     QualifiedVar,
@@ -457,23 +455,7 @@ class Parser:
             raise SyntaxError_(f"Unknown operator in bound dyadic form: {op}")
         if isinstance(op, (ReduceAdverb, ScanAdverb)):
             return self._bound_dyadic_reduce(bound, left_node, right_node)
-        if op.symbol == ".":
-            return self._bound_dyadic_inner(bound, left_node, right_node)
-        if op.symbol == "∘.":
-            return self._bound_dyadic_outer(bound, left_node, right_node)
         return DyadicDfnCall(self._bound_to_derived(bound), left_node, right_node)
-
-    def _bound_dyadic_inner(self, bound: BoundOperator,
-                            left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
-        assert isinstance(bound.left_operand, PrimitiveFunction)
-        assert isinstance(bound.right_operand, PrimitiveFunction)
-        return InnerProduct(bound.left_operand, bound.right_operand,
-                            left_node, right_node)
-
-    def _bound_dyadic_outer(self, bound: BoundOperator,
-                            left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
-        assert isinstance(bound.left_operand, PrimitiveFunction)
-        return OuterProduct(bound.left_operand, left_node, right_node)
 
     def _bound_dyadic_reduce(self, bound: BoundOperator,
                              left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:

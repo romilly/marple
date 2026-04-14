@@ -116,3 +116,36 @@ class TestOuterProduct:
     def test_outer_equality(self) -> None:
         result = Interpreter(io=1).run("1 2 3∘.=1 3")
         assert result == APLArray.array([3, 2], [[1, 0], [0, 0], [0, 1]])
+
+
+class TestInnerProductAssignment:
+    """f←+.× produces a stored function applicable later."""
+
+    def test_assign_and_apply_dot_product(self) -> None:
+        i = Interpreter(io=1)
+        i.run("f←+.×")
+        assert i.run("1 2 3 f 4 5 6") == S(32)
+
+    def test_assign_and_matrix_multiply(self) -> None:
+        i = Interpreter(io=1)
+        i.run("dot←+.×")
+        i.run("A←2 2⍴1 2 3 4")
+        i.run("B←2 2⍴5 6 7 8")
+        result = i.run("A dot B")
+        assert result == APLArray.array([2, 2], [[19, 22], [43, 50]])
+
+
+class TestOuterProductAssignment:
+    """f←∘.× produces a stored function applicable later."""
+
+    def test_assign_and_apply_outer_multiply(self) -> None:
+        i = Interpreter(io=1)
+        i.run("f←∘.×")
+        result = i.run("1 2 3 f 4 5 6")
+        assert result == APLArray.array([3, 3], [[4, 5, 6], [8, 10, 12], [12, 15, 18]])
+
+    def test_assign_and_apply_outer_equality(self) -> None:
+        i = Interpreter(io=1)
+        i.run("eq←∘.=")
+        result = i.run("1 2 3 eq 1 3")
+        assert result == APLArray.array([3, 2], [[1, 0], [0, 0], [0, 1]])
