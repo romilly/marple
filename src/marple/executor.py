@@ -27,7 +27,7 @@ from marple.parser import (
     RankDerived,
     UnappliedFunction,
 )
-from marple.apl_value import NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN, APLValue
+from marple.apl_value import NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN, APLValue, Function, Operator
 
 from marple.environment import Environment
 from marple.ports.filesystem import FileSystem
@@ -462,7 +462,6 @@ class Executor:
         return APLArray([len(lines), max_len], data)
 
     def _sys_fx(self, operand: APLArray) -> APLArray:
-        from marple.dfn_binding import DfnBinding
         from marple.errors import APLError
         from marple.parser import parse
         if len(operand.shape) == 2:
@@ -483,11 +482,10 @@ class Executor:
         except APLError:
             raise DomainError("⎕FX: invalid function definition")
         val = self.env.get(fn_name)
-        from marple.dfn_binding import DopBinding
-        if not isinstance(val, (DfnBinding, DopBinding)):
+        if not isinstance(val, (Function, Operator)):
             raise DomainError("⎕FX did not produce a function")
         self.env.set_source(fn_name, text.strip())
-        if isinstance(val, DopBinding):
+        if isinstance(val, Operator):
             self.env.classify(fn_name, NC_OPERATOR)
             self.env.set_operator_arity(fn_name, 2 if "⍵⍵" in text else 1)
         return APLArray([len(fn_name)], str_to_char_array(fn_name))

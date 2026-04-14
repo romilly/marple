@@ -4,7 +4,6 @@ from marple.numpy_array import APLArray, S
 from marple.backend_functions import (
     _DOWNCAST_CT, is_numeric_array, maybe_downcast,
 )
-from marple.dfn_binding import DfnBinding
 from marple.environment import Environment
 from marple.formatting import format_result
 from marple.ports.config import Config
@@ -13,7 +12,7 @@ from marple.ports.filesystem import FileSystem
 from marple.ports.timer import Timer
 from marple.executor import Executor, _newlines_to_diamonds
 from marple.parser import Assignment, Program, parse
-from marple.apl_value import NC_FUNCTION, NC_OPERATOR
+from marple.apl_value import NC_FUNCTION, NC_OPERATOR, Function, Operator
 
 
 class EvalResult:
@@ -60,7 +59,7 @@ class Interpreter(Executor):
         result = self.evaluate(tree)
         if isinstance(tree, Assignment):
             self._track_dfn_source(tree.name, source)
-        if isinstance(result, DfnBinding):
+        if isinstance(result, (Function, Operator)):
             return S(0)
         if isinstance(result, APLArray) and is_numeric_array(result.data):
             result = APLArray.array(list(result.shape), maybe_downcast(result.data, _DOWNCAST_CT))
@@ -108,8 +107,10 @@ class Interpreter(Executor):
             raise ValueError_(f"Import from non-system namespace not yet supported: {qualified}")
         result = self.resolve_qualified(name_parts)
         bind_name = alias if alias else name_parts[-1]
-        if isinstance(result, (DfnBinding, IBeamDerived)):
+        if isinstance(result, Function):
             self.env.bind_name(bind_name, result, NC_FUNCTION)
+        elif isinstance(result, Operator):
+            self.env.bind_name(bind_name, result, NC_OPERATOR)
         elif isinstance(result, APLArray):
             from marple.apl_value import NC_ARRAY
             self.env.bind_name(bind_name, result, NC_ARRAY)
@@ -117,12 +118,11 @@ class Interpreter(Executor):
 
     def _track_dfn_source(self, name: str, source: str) -> None:
         """Record source text for dfn/dop assignments (for workspace save)."""
-        from marple.dfn_binding import DopBinding
         value = self.env.get(name)
-        if not isinstance(value, (DfnBinding, DopBinding)):
+        if not isinstance(value, (Function, Operator)):
             return
         self.env.set_source(name, source.strip())
-        if not isinstance(value, DopBinding):
+        if not isinstance(value, Operator):
             return
         self.env.classify(name, NC_OPERATOR)
         self.env.set_operator_arity(name, 2 if "⍵⍵" in source else 1)
