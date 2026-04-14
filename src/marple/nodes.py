@@ -171,35 +171,96 @@ class Node(ABC):
 
 
 class Adverb(Operator, Node):
-    """Wraps a monadic operator symbol on the parser stack."""
+    """Wraps a monadic operator symbol on the parser stack.
+
+    Concrete subclasses per glyph (CommuteAdverb, ReduceAdverb, …)
+    override derive_monadic with glyph-specific behaviour. The base
+    class is used for adverbs that do not produce a stored function
+    (e.g. ⌶, ∘.), whose derive_monadic falls through to Operator's
+    default-raise.
+    """
     def __init__(self, symbol: str) -> None:
         self.symbol = symbol
-
-    def derive_monadic(self, operand: 'Applicable') -> Function:
-        if self.symbol == "⍨":
-            return CommuteDerived(operand)
-        if self.symbol in ("/", "⌿"):
-            return ReduceDerived(self, operand)
-        if self.symbol in ("\\", "⍀"):
-            return ScanDerived(self, operand)
-        raise SyntaxError_(f"Cannot store adverb {self.symbol} as a function")
 
 
 class Conjunction(Operator, Node):
-    """Wraps a dyadic operator symbol on the parser stack."""
+    """Wraps a dyadic operator symbol on the parser stack.
+
+    Concrete subclasses per glyph (RankConjunction, PowerConjunction,
+    BesideConjunction) override derive_dyadic with glyph-specific
+    behaviour. The base is used for conjunctions without a stored-
+    function form (e.g. ., ∘., ⌶).
+    """
     def __init__(self, symbol: str) -> None:
         self.symbol = symbol
 
+
+class CommuteAdverb(Adverb):
+    """Monadic operator ⍨ — commute."""
+    def derive_monadic(self, operand: 'Applicable') -> Function:
+        return CommuteDerived(operand)
+
+
+class ReduceAdverb(Adverb):
+    """Monadic operator / or ⌿ — reduce along last or first axis.
+
+    The symbol is carried because last-axis vs first-axis is a
+    runtime distinction, not a class one.
+    """
+    def derive_monadic(self, operand: 'Applicable') -> Function:
+        return ReduceDerived(self, operand)
+
+
+class ScanAdverb(Adverb):
+    """Monadic operator \\ or ⍀ — scan along last or first axis."""
+    def derive_monadic(self, operand: 'Applicable') -> Function:
+        return ScanDerived(self, operand)
+
+
+class RankConjunction(Conjunction):
+    """Dyadic operator ⍤ — rank."""
     def derive_dyadic(self, left: 'Applicable', right: 'Applicable') -> Function:
-        if self.symbol == "⍤":
-            assert isinstance(right, Evaluatable)
-            return RankDerived(left, right)
-        if self.symbol == "⍣":
-            assert isinstance(right, Evaluatable)
-            return PowerDerived(left, right)
-        if self.symbol == "∘":
-            return BesideDerived(left, right)
-        raise SyntaxError_(f"Cannot store conjunction {self.symbol} as a function")
+        assert isinstance(right, Evaluatable)
+        return RankDerived(left, right)
+
+
+class PowerConjunction(Conjunction):
+    """Dyadic operator ⍣ — power."""
+    def derive_dyadic(self, left: 'Applicable', right: 'Applicable') -> Function:
+        assert isinstance(right, Evaluatable)
+        return PowerDerived(left, right)
+
+
+class BesideConjunction(Conjunction):
+    """Dyadic operator ∘ — composition / beside."""
+    def derive_dyadic(self, left: 'Applicable', right: 'Applicable') -> Function:
+        return BesideDerived(left, right)
+
+
+_ADVERB_CLASSES: dict[str, type[Adverb]] = {
+    "⍨": CommuteAdverb,
+    "/": ReduceAdverb,
+    "⌿": ReduceAdverb,
+    "\\": ScanAdverb,
+    "⍀": ScanAdverb,
+}
+
+
+_CONJUNCTION_CLASSES: dict[str, type[Conjunction]] = {
+    "⍤": RankConjunction,
+    "⍣": PowerConjunction,
+    "∘": BesideConjunction,
+}
+
+
+def make_adverb(symbol: str) -> Adverb:
+    """Construct the right Adverb subclass for a glyph."""
+    return _ADVERB_CLASSES.get(symbol, Adverb)(symbol)
+
+
+def make_conjunction(symbol: str) -> Conjunction:
+    """Construct the right Conjunction subclass for a glyph."""
+    return _CONJUNCTION_CLASSES.get(symbol, Conjunction)(symbol)
 
 
 class AssignmentArrow(Node):

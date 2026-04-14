@@ -4,6 +4,10 @@ from marple.apl_value import Function, Operator
 from marple.errors import SyntaxError_
 from marple.nodes import (  # noqa: F401 — re-exported for backward compatibility
     Adverb,
+    make_adverb,
+    make_conjunction,
+    ReduceAdverb,
+    ScanAdverb,
     Alpha,
     AlphaAlpha,
     AlphaDefault,
@@ -253,7 +257,7 @@ class Parser:
             self._pos += 1
             fn_tok = self._eat(TokenType.FUNCTION)
             assert isinstance(fn_tok.value, str)
-            bound = BoundOperator(Adverb("∘."), PrimitiveFunction(fn_tok.value), CAT_VERB)
+            bound = BoundOperator(make_adverb("∘."), PrimitiveFunction(fn_tok.value), CAT_VERB)
             items.append((CAT_VERB, bound))
         elif (op == "⌶" and self._pos < len(self._tokens)
                 and self._current().type == TokenType.STRING):
@@ -262,7 +266,7 @@ class Parser:
             items.append((CAT_VERB, IBeamDerived(path_tok.value)))
         else:
             cat = self._classify_operator(op)
-            token: Adverb | Conjunction = Adverb(op) if cat == CAT_ADV else Conjunction(op)
+            token: Adverb | Conjunction = make_adverb(op) if cat == CAT_ADV else make_conjunction(op)
             items.append((cat, token))
 
     def _item_assign(self, tok: Token, items: list[tuple[int, Node]]) -> None:
@@ -402,7 +406,6 @@ class Parser:
             return DyadicDfnCall(verb_node, left_node, right_node)
         raise SyntaxError_(f"Cannot apply as dyadic function: {type(verb_node)}")
 
-    _REDUCE_SCAN_SYMBOLS = ("/", "\\", "⌿", "⍀")
     _DYADIC_ONLY_SYMBOLS = (".", "∘.")
 
     def _apply_bound_monadic(self, bound: BoundOperator,
@@ -413,7 +416,7 @@ class Parser:
             return self._apply_user_dop_monadic(bound, arg_node)
         if not isinstance(op, (Adverb, Conjunction)):
             raise SyntaxError_(f"Unknown operator in bound form: {op}")
-        if isinstance(op, Adverb) and op.symbol in self._REDUCE_SCAN_SYMBOLS:
+        if isinstance(op, (ReduceAdverb, ScanAdverb)):
             return self._bound_monadic_reduce(bound, arg_node)
         if op.symbol == "⌶":
             return self._bound_monadic_ibeam(bound, arg_node)
@@ -452,7 +455,7 @@ class Parser:
             return self._apply_user_dop_dyadic(bound, left_node, right_node)
         if not isinstance(op, (Adverb, Conjunction)):
             raise SyntaxError_(f"Unknown operator in bound dyadic form: {op}")
-        if isinstance(op, Adverb) and op.symbol in self._REDUCE_SCAN_SYMBOLS:
+        if isinstance(op, (ReduceAdverb, ScanAdverb)):
             return self._bound_dyadic_reduce(bound, left_node, right_node)
         if op.symbol == ".":
             return self._bound_dyadic_inner(bound, left_node, right_node)
