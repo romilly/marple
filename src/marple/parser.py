@@ -412,6 +412,9 @@ class Parser:
             return DyadicDfnCall(verb_node, left_node, right_node)
         raise SyntaxError_(f"Cannot apply as dyadic function: {type(verb_node)}")
 
+    _REDUCE_SCAN_SYMBOLS = ("/", "\\", "⌿", "⍀")
+    _DYADIC_ONLY_SYMBOLS = (".", "∘.")
+
     def _apply_bound_monadic(self, bound: BoundOperator,
                              arg_node: Evaluatable) -> Evaluatable:
         """Apply a bound operator (derived verb) monadically."""
@@ -420,10 +423,13 @@ class Parser:
             return self._apply_user_dop_monadic(bound, arg_node)
         if not isinstance(op, (Adverb, Conjunction)):
             raise SyntaxError_(f"Unknown operator in bound form: {op}")
-        handler = self._BOUND_MONADIC_DISPATCH.get(op.symbol)
-        if handler is not None:
-            return handler(self, bound, arg_node)
-        raise SyntaxError_(f"Unknown operator in bound form: {op}")
+        if isinstance(op, Adverb) and op.symbol in self._REDUCE_SCAN_SYMBOLS:
+            return self._bound_monadic_reduce(bound, arg_node)
+        if op.symbol == "⌶":
+            return self._bound_monadic_ibeam(bound, arg_node)
+        if op.symbol in self._DYADIC_ONLY_SYMBOLS:
+            raise SyntaxError_(f"{op.symbol} requires two arguments")
+        return MonadicDfnCall(self._bound_to_derived(bound), arg_node)
 
     def _bound_monadic_reduce(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         assert isinstance(bound.operator, Adverb)
@@ -433,24 +439,6 @@ class Parser:
             assert isinstance(operand, Evaluatable)
             return DerivedFunc(bound.operator, operand, arg_node)
         return DyadicFunc(bound.operator.symbol, self._as_evaluatable(operand), arg_node)
-
-    def _bound_monadic_rank(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
-        return MonadicDfnCall(self._bound_to_derived(bound), arg_node)
-
-    def _bound_monadic_power(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
-        return MonadicDfnCall(self._bound_to_derived(bound), arg_node)
-
-    def _bound_monadic_commute(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
-        return MonadicDfnCall(self._bound_to_derived(bound), arg_node)
-
-    def _bound_monadic_beside(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
-        return MonadicDfnCall(self._bound_to_derived(bound), arg_node)
-
-    def _bound_monadic_inner(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
-        raise SyntaxError_("Inner product requires two arguments")
-
-    def _bound_monadic_outer(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
-        raise SyntaxError_("Outer product requires two arguments")
 
     def _bound_monadic_ibeam(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         operand = bound.left_operand
@@ -466,20 +454,6 @@ class Parser:
             return DyadicDopCall(bound.operator, operand, self._as_evaluatable(bound.right_operand), arg_node)
         return MonadicDopCall(bound.operator, operand, arg_node)
 
-    _BOUND_MONADIC_DISPATCH: dict[str, Callable[['Parser', BoundOperator, Evaluatable], Evaluatable]] = {
-        "/": _bound_monadic_reduce,
-        "\\": _bound_monadic_reduce,
-        "⌿": _bound_monadic_reduce,
-        "⍀": _bound_monadic_reduce,
-        "⍤": _bound_monadic_rank,
-        "⍣": _bound_monadic_power,
-        "⍨": _bound_monadic_commute,
-        "∘": _bound_monadic_beside,
-        ".": _bound_monadic_inner,
-        "∘.": _bound_monadic_outer,
-        "⌶": _bound_monadic_ibeam,
-    }
-
     def _apply_bound_dyadic(self, bound: BoundOperator,
                             left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
         """Apply a bound operator (derived verb) dyadically."""
@@ -488,25 +462,12 @@ class Parser:
             return self._apply_user_dop_dyadic(bound, left_node, right_node)
         if not isinstance(op, (Adverb, Conjunction)):
             raise SyntaxError_(f"Unknown operator in bound dyadic form: {op}")
-        handler = self._BOUND_DYADIC_DISPATCH.get(op.symbol)
-        if handler is not None:
-            return handler(self, bound, left_node, right_node)
-        raise SyntaxError_(f"Unknown operator in bound dyadic form: {op}")
-
-    def _bound_dyadic_rank(self, bound: BoundOperator,
-                           left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
-        return DyadicDfnCall(self._bound_to_derived(bound), left_node, right_node)
-
-    def _bound_dyadic_power(self, bound: BoundOperator,
-                            left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
-        return DyadicDfnCall(self._bound_to_derived(bound), left_node, right_node)
-
-    def _bound_dyadic_commute(self, bound: BoundOperator,
-                              left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
-        return DyadicDfnCall(self._bound_to_derived(bound), left_node, right_node)
-
-    def _bound_dyadic_beside(self, bound: BoundOperator,
-                             left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
+        if isinstance(op, Adverb) and op.symbol in self._REDUCE_SCAN_SYMBOLS:
+            return self._bound_dyadic_reduce(bound, left_node, right_node)
+        if op.symbol == ".":
+            return self._bound_dyadic_inner(bound, left_node, right_node)
+        if op.symbol == "∘.":
+            return self._bound_dyadic_outer(bound, left_node, right_node)
         return DyadicDfnCall(self._bound_to_derived(bound), left_node, right_node)
 
     def _bound_dyadic_inner(self, bound: BoundOperator,
@@ -538,19 +499,6 @@ class Parser:
         if bound.right_operand is not None:
             return DyadicDopCall(bound.operator, operand, self._as_evaluatable(bound.right_operand), right_node)
         return MonadicDopCall(bound.operator, operand, right_node, alpha=left_node)
-
-    _BOUND_DYADIC_DISPATCH: dict[str, Callable[['Parser', BoundOperator, Evaluatable, Evaluatable], Evaluatable]] = {
-        "⍤": _bound_dyadic_rank,
-        "⍣": _bound_dyadic_power,
-        "⍨": _bound_dyadic_commute,
-        "∘": _bound_dyadic_beside,
-        ".": _bound_dyadic_inner,
-        "∘.": _bound_dyadic_outer,
-        "/": _bound_dyadic_reduce,
-        "\\": _bound_dyadic_reduce,
-        "⌿": _bound_dyadic_reduce,
-        "⍀": _bound_dyadic_reduce,
-    }
 
     def _resolve_right_operand(self, bound: BoundOperator) -> Applicable:
         """Resolve the right operand of a conjunction (must exist)."""
