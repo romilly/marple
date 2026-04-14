@@ -8,6 +8,8 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     make_conjunction,
     ReduceAdverb,
     ScanAdverb,
+    InnerProductConjunction,
+    OuterProductAdverb,
     Alpha,
     AlphaAlpha,
     AlphaDefault,
@@ -398,8 +400,6 @@ class Parser:
             return DyadicDfnCall(verb_node, left_node, right_node)
         raise SyntaxError_(f"Cannot apply as dyadic function: {type(verb_node)}")
 
-    _DYADIC_ONLY_SYMBOLS = (".", "∘.")
-
     def _apply_bound_monadic(self, bound: BoundOperator,
                              arg_node: Evaluatable) -> Evaluatable:
         """Apply a bound operator (derived verb) monadically."""
@@ -410,12 +410,12 @@ class Parser:
             raise SyntaxError_(f"Unknown operator in bound form: {op}")
         if isinstance(op, (ReduceAdverb, ScanAdverb)):
             return self._bound_monadic_reduce(bound, arg_node)
-        if op.symbol in self._DYADIC_ONLY_SYMBOLS:
-            raise SyntaxError_(f"{op.symbol} requires two arguments")
+        if isinstance(op, (InnerProductConjunction, OuterProductAdverb)):
+            raise SyntaxError_(f"{type(op).__name__} requires two arguments")
         return MonadicDfnCall(self._bound_to_derived(bound), arg_node)
 
     def _bound_monadic_reduce(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
-        assert isinstance(bound.operator, Adverb)
+        assert isinstance(bound.operator, (ReduceAdverb, ScanAdverb))
         operand = bound.left_operand
         if (bound.left_cat == CAT_VERB
                 or isinstance(operand, (AlphaAlpha, OmegaOmega))):
@@ -444,7 +444,7 @@ class Parser:
 
     def _bound_dyadic_reduce(self, bound: BoundOperator,
                              left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
-        assert isinstance(bound.operator, Adverb)
+        assert isinstance(bound.operator, (ReduceAdverb, ScanAdverb))
         operand = bound.left_operand
         if (bound.left_cat == CAT_VERB
                 or isinstance(operand, (AlphaAlpha, OmegaOmega))):
@@ -634,7 +634,7 @@ class Parser:
             elif (c0 in (CAT_END, CAT_LP, CAT_ASGN)
                     and c1 == CAT_ADV
                     and c2 == CAT_CONJ
-                    and isinstance(stack[-2][1], Adverb)
+                    and isinstance(stack[-2][1], (ReduceAdverb, ScanAdverb))
                     and stack[-2][1].symbol in _ADV_AS_FN_GLYPHS):
                 adv = stack[-2][1]
                 stack[-2] = (CAT_VERB, PrimitiveFunction(adv.symbol))

@@ -170,28 +170,21 @@ class Node(ABC):
 
 
 class Adverb(Operator, Node):
-    """Wraps a monadic operator symbol on the parser stack.
+    """Abstract base: a monadic operator on the parser stack.
 
     Concrete subclasses per glyph (CommuteAdverb, ReduceAdverb, …)
     override derive_monadic with glyph-specific behaviour. The base
-    class is used for symbols that somehow reach this code path
-    without a concrete subclass; derive_monadic falls through to
-    Operator's default-raise.
+    carries no state; instances are only created via `make_adverb`.
     """
-    def __init__(self, symbol: str) -> None:
-        self.symbol = symbol
 
 
 class Conjunction(Operator, Node):
-    """Wraps a dyadic operator symbol on the parser stack.
+    """Abstract base: a dyadic operator on the parser stack.
 
     Concrete subclasses per glyph (RankConjunction, PowerConjunction,
-    BesideConjunction, InnerProductConjunction) override derive_dyadic
-    with glyph-specific behaviour. The base is used if an unrecognised
-    glyph reaches this code path.
+    BesideConjunction, InnerProductConjunction) override derive_dyadic.
+    The base carries no state.
     """
-    def __init__(self, symbol: str) -> None:
-        self.symbol = symbol
 
 
 class CommuteAdverb(Adverb):
@@ -203,15 +196,23 @@ class CommuteAdverb(Adverb):
 class ReduceAdverb(Adverb):
     """Monadic operator / or ⌿ — reduce along last or first axis.
 
-    The symbol is carried because last-axis vs first-axis is a
-    runtime distinction, not a class one.
+    Carries the symbol because last-axis vs first-axis is a runtime
+    distinction flowing through to DerivedFunctionBinding.
     """
+    def __init__(self, symbol: str) -> None:
+        self.symbol = symbol
+
+
     def derive_monadic(self, operand: 'Applicable') -> Function:
         return ReduceDerived(self, operand)
 
 
 class ScanAdverb(Adverb):
     """Monadic operator \\ or ⍀ — scan along last or first axis."""
+    def __init__(self, symbol: str) -> None:
+        self.symbol = symbol
+
+
     def derive_monadic(self, operand: 'Applicable') -> Function:
         return ScanDerived(self, operand)
 
@@ -266,18 +267,18 @@ class IBeamAdverb(Adverb):
         return IBeamFunction(operand)
 
 
-_ADVERB_CLASSES: dict[str, type[Adverb]] = {
-    "⍨": CommuteAdverb,
-    "/": ReduceAdverb,
-    "⌿": ReduceAdverb,
-    "\\": ScanAdverb,
-    "⍀": ScanAdverb,
-    "∘.": OuterProductAdverb,
-    "⌶": IBeamAdverb,
+_ADVERB_FACTORIES: dict[str, Callable[[str], Adverb]] = {
+    "⍨": lambda _s: CommuteAdverb(),
+    "/": lambda s: ReduceAdverb(s),
+    "⌿": lambda s: ReduceAdverb(s),
+    "\\": lambda s: ScanAdverb(s),
+    "⍀": lambda s: ScanAdverb(s),
+    "∘.": lambda _s: OuterProductAdverb(),
+    "⌶": lambda _s: IBeamAdverb(),
 }
 
 
-_CONJUNCTION_CLASSES: dict[str, type[Conjunction]] = {
+_CONJUNCTION_FACTORIES: dict[str, Callable[[], Conjunction]] = {
     "⍤": RankConjunction,
     "⍣": PowerConjunction,
     "∘": BesideConjunction,
@@ -286,13 +287,19 @@ _CONJUNCTION_CLASSES: dict[str, type[Conjunction]] = {
 
 
 def make_adverb(symbol: str) -> Adverb:
-    """Construct the right Adverb subclass for a glyph."""
-    return _ADVERB_CLASSES.get(symbol, Adverb)(symbol)
+    """Construct the Adverb subclass for a glyph. Raises on unknown glyph."""
+    factory = _ADVERB_FACTORIES.get(symbol)
+    if factory is None:
+        raise ValueError_(f"Unknown adverb glyph: {symbol}")
+    return factory(symbol)
 
 
 def make_conjunction(symbol: str) -> Conjunction:
-    """Construct the right Conjunction subclass for a glyph."""
-    return _CONJUNCTION_CLASSES.get(symbol, Conjunction)(symbol)
+    """Construct the Conjunction subclass for a glyph. Raises on unknown glyph."""
+    factory = _CONJUNCTION_FACTORIES.get(symbol)
+    if factory is None:
+        raise ValueError_(f"Unknown conjunction glyph: {symbol}")
+    return factory()
 
 
 class AssignmentArrow(Node):
@@ -434,7 +441,7 @@ class QualifiedVar(Evaluatable):
 
 
 class DerivedFunc(Evaluatable):
-    def __init__(self, operator: 'Adverb | Conjunction', function: Evaluatable, operand: Evaluatable) -> None:
+    def __init__(self, operator: 'ReduceAdverb | ScanAdverb', function: Evaluatable, operand: Evaluatable) -> None:
         self.operator = operator
         self.function = function
         self.operand = operand
@@ -681,7 +688,7 @@ class ForkDerived(UnappliedFunction):
 
 class ReduceDerived(UnappliedFunction):
     """Unapplied reduce-derived function: f/ or f⌿"""
-    def __init__(self, operator: 'Adverb', function: Applicable) -> None:
+    def __init__(self, operator: 'ReduceAdverb', function: Applicable) -> None:
         self.operator = operator
         self.function = function
     def __eq__(self, other: object) -> bool:
@@ -698,7 +705,7 @@ class ReduceDerived(UnappliedFunction):
 
 class ScanDerived(UnappliedFunction):
     """Unapplied scan-derived function: f\\ or f⍀"""
-    def __init__(self, operator: 'Adverb', function: Applicable) -> None:
+    def __init__(self, operator: 'ScanAdverb', function: Applicable) -> None:
         self.operator = operator
         self.function = function
     def __eq__(self, other: object) -> bool:
