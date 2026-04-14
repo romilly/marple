@@ -8,7 +8,7 @@ from typing import Any, Callable, Protocol
 from marple.numpy_array import APLArray, S
 from marple.backend_functions import is_numeric_array, maybe_upcast
 from marple.errors import DomainError, ValueError_
-from marple.apl_value import NC_FUNCTION, APLValue, PowerByConvergence, PowerByCount, PowerStrategy
+from marple.apl_value import NC_FUNCTION, APLValue, Function, Operator, PowerByConvergence, PowerByCount, PowerStrategy
 
 
 _INNER_SCALAR_OPS: dict[str, Callable[[Any, Any], Any]] = {
@@ -170,13 +170,13 @@ class Node(ABC):
         return self.__dict__ == other.__dict__
 
 
-class Adverb(Node):
+class Adverb(Operator, Node):
     """Wraps a monadic operator symbol on the parser stack."""
     def __init__(self, symbol: str) -> None:
         self.symbol = symbol
 
 
-class Conjunction(Node):
+class Conjunction(Operator, Node):
     """Wraps a dyadic operator symbol on the parser stack."""
     def __init__(self, symbol: str) -> None:
         self.symbol = symbol
@@ -373,7 +373,7 @@ class DyadicDopCall(Evaluatable):
         return self.op_name.apply_dyadic_dop(ctx, argument, left_operand, right_operand)
 
 
-class UnappliedFunction(APLValue, Applicable):
+class UnappliedFunction(Function, Applicable):
     """Base class for all unapplied APL function values."""
 
     def name_class(self) -> int:
