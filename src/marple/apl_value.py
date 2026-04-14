@@ -19,33 +19,10 @@ NC_OPERATOR = 4
 
 
 class APLValue(ABC):
-    """Base class for all APL values (arrays and unapplied functions)."""
+    """Base class for all APL values: APLArray, Function, Operator."""
 
     @abstractmethod
     def name_class(self) -> int: ...
-
-    def apply_to_monadic(self, ctx: ExecutionContext, omega: APLArray) -> APLArray:
-        raise DomainError(f"Cannot apply {type(self).__name__} as a function")
-
-    def apply_to_dyadic(self, ctx: ExecutionContext, alpha: APLArray, omega: APLArray) -> APLArray:
-        raise DomainError(f"Cannot apply {type(self).__name__} as a function")
-
-    def call_monadic(self, ctx: ExecutionContext, operand: Executable) -> APLArray:
-        raise DomainError(f"Cannot call {type(self).__name__} as a function")
-
-    def call_dyadic(self, ctx: ExecutionContext, left: Executable, right: Executable) -> APLArray:
-        raise DomainError(f"Cannot call {type(self).__name__} as a function")
-
-    def apply_monadic_dop(self, ctx: ExecutionContext, argument: APLArray,
-                          operand: APLValue, alpha: APLArray | None = None) -> APLArray:
-        raise DomainError(f"Cannot apply {type(self).__name__} as an operator")
-
-    def apply_dyadic_dop(self, ctx: ExecutionContext, argument: APLArray,
-                         left_operand: APLValue, right_operand: APLValue) -> APLArray:
-        raise DomainError(f"Cannot apply {type(self).__name__} as an operator")
-
-    def as_power_strategy(self, ctx: ExecutionContext) -> PowerStrategy:
-        raise DomainError("⍣ right operand must be integer or function")
 
 
 class Function(APLValue):
@@ -90,6 +67,14 @@ class Operator(APLValue):
     def derive_dyadic(self, left: Applicable, right: Applicable) -> Function:
         raise DomainError(f"{type(self).__name__} is not a dyadic operator")
 
+    def apply_monadic_dop(self, ctx: ExecutionContext, argument: APLArray,
+                          operand: APLValue, alpha: APLArray | None = None) -> APLArray:
+        raise DomainError(f"Cannot apply {type(self).__name__} as an operator")
+
+    def apply_dyadic_dop(self, ctx: ExecutionContext, argument: APLArray,
+                         left_operand: APLValue, right_operand: APLValue) -> APLArray:
+        raise DomainError(f"Cannot apply {type(self).__name__} as an operator")
+
 
 class PowerStrategy(ABC):
     """Iteration strategy for the power operator (f⍣g)."""
@@ -112,7 +97,7 @@ class PowerByCount(PowerStrategy):
 
 class PowerByConvergence(PowerStrategy):
     """Repeat f until test_fn says consecutive results match."""
-    def __init__(self, test_fn: APLValue, ctx: ExecutionContext) -> None:
+    def __init__(self, test_fn: 'Function', ctx: ExecutionContext) -> None:
         self.test_fn = test_fn
         self.ctx = ctx
     def iterate(self, step: Callable[[APLArray], APLArray], omega: APLArray) -> APLArray:

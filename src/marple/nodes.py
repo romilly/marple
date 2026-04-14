@@ -318,32 +318,52 @@ _MARKER = Marker()
 
 
 class Executable(Node):
-    """A Node that can be executed to produce a value."""
+    """A Node that can be executed to produce a value.
+
+    Convenience apply/call/dop/power methods execute then dispatch;
+    each narrows the executed value to the kind it needs (Function,
+    Operator, or — for power — APLArray).
+    """
     @abstractmethod
     def execute(self, ctx: ExecutionContext) -> APLValue: ...
 
+    def _as_function(self, ctx: ExecutionContext) -> Function:
+        val = self.execute(ctx)
+        if not isinstance(val, Function):
+            raise DomainError(f"Cannot apply {type(val).__name__} as a function")
+        return val
+
+    def _as_operator(self, ctx: ExecutionContext) -> Operator:
+        val = self.execute(ctx)
+        if not isinstance(val, Operator):
+            raise DomainError(f"Cannot apply {type(val).__name__} as an operator")
+        return val
+
     def apply_to_monadic(self, ctx: ExecutionContext, omega: APLArray) -> APLArray:
-        return self.execute(ctx).apply_to_monadic(ctx, omega)
+        return self._as_function(ctx).apply_to_monadic(ctx, omega)
 
     def apply_to_dyadic(self, ctx: ExecutionContext, alpha: APLArray, omega: APLArray) -> APLArray:
-        return self.execute(ctx).apply_to_dyadic(ctx, alpha, omega)
+        return self._as_function(ctx).apply_to_dyadic(ctx, alpha, omega)
 
     def call_monadic(self, ctx: ExecutionContext, operand: 'Executable') -> APLArray:
-        return self.execute(ctx).call_monadic(ctx, operand)
+        return self._as_function(ctx).call_monadic(ctx, operand)
 
     def call_dyadic(self, ctx: ExecutionContext, left: 'Executable', right: 'Executable') -> APLArray:
-        return self.execute(ctx).call_dyadic(ctx, left, right)
+        return self._as_function(ctx).call_dyadic(ctx, left, right)
 
     def apply_monadic_dop(self, ctx: ExecutionContext, argument: APLArray,
                           operand: APLValue, alpha: APLArray | None = None) -> APLArray:
-        return self.execute(ctx).apply_monadic_dop(ctx, argument, operand, alpha)
+        return self._as_operator(ctx).apply_monadic_dop(ctx, argument, operand, alpha)
 
     def apply_dyadic_dop(self, ctx: ExecutionContext, argument: APLArray,
                          left_operand: APLValue, right_operand: APLValue) -> APLArray:
-        return self.execute(ctx).apply_dyadic_dop(ctx, argument, left_operand, right_operand)
+        return self._as_operator(ctx).apply_dyadic_dop(ctx, argument, left_operand, right_operand)
 
     def as_power_strategy(self, ctx: ExecutionContext) -> 'PowerStrategy':
-        return self.execute(ctx).as_power_strategy(ctx)
+        val = self.execute(ctx)
+        if not isinstance(val, (Function, APLArray)):
+            raise DomainError("⍣ right operand must be integer or function")
+        return val.as_power_strategy(ctx)
 
 
 # `Applicable` is the set of things that can be applied as a function:
@@ -474,7 +494,7 @@ class DerivedFunc(Executable):
 class MonadicDopCall(Executable):
     """User-defined operator applied: (operand op) argument
     or: left (operand op) right (when derived verb is used dyadically)"""
-    def __init__(self, op_name: Applicable, operand: Executable, argument: Executable,
+    def __init__(self, op_name: 'Executable', operand: Executable, argument: Executable,
                  alpha: Executable | None = None) -> None:
         self.op_name = op_name
         self.operand = operand
@@ -489,7 +509,7 @@ class MonadicDopCall(Executable):
 
 class DyadicDopCall(Executable):
     """User-defined operator applied dyadically: left (operand op) right"""
-    def __init__(self, op_name: Applicable, operand: Executable, left: Executable, right: Executable) -> None:
+    def __init__(self, op_name: 'Executable', operand: Executable, left: Executable, right: Executable) -> None:
         self.op_name = op_name
         self.operand = operand
         self.left = left
