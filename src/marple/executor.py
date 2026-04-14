@@ -123,25 +123,6 @@ class Executor:
     def dispatch_dyadic(self, glyph: str, left: APLArray, right: APLArray) -> APLArray:
         return DyadicFunctionBinding(self.env).apply(glyph, left, right)
 
-    def call_ibeam(self, path: str, operand: APLArray) -> APLArray:
-        """Call a Python function via i-beam."""
-        import importlib
-        parts = path.rsplit(".", 1)
-        if len(parts) != 2:
-            raise DomainError(f"Invalid i-beam path: {path}")
-        module_name, func_name = parts
-        try:
-            mod = importlib.import_module(module_name)
-        except ImportError:
-            raise DomainError(f"Cannot import module: {module_name}")
-        func = getattr(mod, func_name, None)
-        if func is None:
-            raise DomainError(f"Function not found: {path}")
-        result = func(operand)
-        if not isinstance(result, APLArray):
-            raise DomainError(f"I-beam function must return APLArray: {path}")
-        return result
-
     def resolve_qualified(self, parts: list[str]) -> APLValue:
         from marple.namespace import Namespace, load_system_workspace
         if parts[0] == "$":

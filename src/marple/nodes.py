@@ -159,7 +159,6 @@ class ExecutionContext(Protocol):
     def dispatch_sys_monadic(self, name: str, operand_node: 'Evaluatable') -> APLArray: ...
     def dispatch_sys_dyadic(self, name: str, left_node: 'Evaluatable', right_node: 'Evaluatable') -> APLArray: ...
     def resolve_qualified(self, parts: list[str]) -> APLValue: ...
-    def call_ibeam(self, path: str, operand: APLArray) -> APLArray: ...
 
 
 class Node(ABC):
@@ -175,9 +174,9 @@ class Adverb(Operator, Node):
 
     Concrete subclasses per glyph (CommuteAdverb, ReduceAdverb, …)
     override derive_monadic with glyph-specific behaviour. The base
-    class is used for adverbs that do not produce a stored function
-    (e.g. ⌶, ∘.), whose derive_monadic falls through to Operator's
-    default-raise.
+    class is used for symbols that somehow reach this code path
+    without a concrete subclass; derive_monadic falls through to
+    Operator's default-raise.
     """
     def __init__(self, symbol: str) -> None:
         self.symbol = symbol
@@ -187,9 +186,9 @@ class Conjunction(Operator, Node):
     """Wraps a dyadic operator symbol on the parser stack.
 
     Concrete subclasses per glyph (RankConjunction, PowerConjunction,
-    BesideConjunction) override derive_dyadic with glyph-specific
-    behaviour. The base is used for conjunctions without a stored-
-    function form (e.g. ., ∘., ⌶).
+    BesideConjunction, InnerProductConjunction) override derive_dyadic
+    with glyph-specific behaviour. The base is used if an unrecognised
+    glyph reaches this code path.
     """
     def __init__(self, symbol: str) -> None:
         self.symbol = symbol
@@ -256,6 +255,17 @@ class OuterProductAdverb(Adverb):
         return OuterDerived(operand)
 
 
+class IBeamAdverb(Adverb):
+    """Monadic operator ⌶ — selects a built-in i-beam service by integer code.
+
+    `(A⌶)` derives a function that, when applied, evaluates A, looks up
+    the registered Python implementation, and invokes it.
+    """
+    def derive_monadic(self, operand: 'Applicable') -> Function:
+        assert isinstance(operand, Evaluatable)
+        return IBeamFunction(operand)
+
+
 _ADVERB_CLASSES: dict[str, type[Adverb]] = {
     "⍨": CommuteAdverb,
     "/": ReduceAdverb,
@@ -263,6 +273,7 @@ _ADVERB_CLASSES: dict[str, type[Adverb]] = {
     "\\": ScanAdverb,
     "⍀": ScanAdverb,
     "∘.": OuterProductAdverb,
+    "⌶": IBeamAdverb,
 }
 
 
@@ -702,17 +713,32 @@ class ScanDerived(UnappliedFunction):
         raise DomainError("Scan cannot be applied dyadically")
 
 
-class IBeamDerived(UnappliedFunction, Evaluatable):  # Evaluatable for execute()
-    """I-beam derived function: ⌶'module.function'"""
-    def __init__(self, path: str) -> None:
-        self.path = path
-    def execute(self, ctx: ExecutionContext) -> APLValue:
-        return self
+class IBeamFunction(UnappliedFunction):
+    """Derived function (A⌶): applies built-in i-beam service A.
+
+    Stores the AST for A so the integer is evaluated per apply; the
+    registry lookup then dispatches to the Python implementation.
+    """
+    def __init__(self, code_node: Evaluatable) -> None:
+        self.code_node = code_node
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, IBeamFunction):
+            return NotImplemented
+        return self.code_node == other.code_node
+    def _resolve(self, ctx: ExecutionContext) -> Callable[[APLArray, APLArray | None], APLArray]:
+        from marple.ibeam_registry import lookup
+        code_val = ctx.evaluate(self.code_node)
+        code = int(code_val.data.item())
+        return lookup(code)
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
-        operand = ctx.evaluate(operand_node)
-        return ctx.call_ibeam(self.path, operand)
+        impl = self._resolve(ctx)
+        omega = ctx.evaluate(operand_node)
+        return impl(omega, None)
     def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
-        raise DomainError("Dyadic i-beam not yet supported")
+        impl = self._resolve(ctx)
+        omega = ctx.evaluate(right_node)
+        alpha = ctx.evaluate(left_node)
+        return impl(omega, alpha)
 
 
 class InnerDerived(UnappliedFunction):

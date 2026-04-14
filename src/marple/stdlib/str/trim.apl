@@ -1,1 +1,1 @@
-trim←{(⌶'marple.stdlib.str_impl.trim') ⍵}
+trim←{(102⌶) ⍵}

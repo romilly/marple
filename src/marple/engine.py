@@ -96,7 +96,6 @@ class Interpreter(Executor):
     def _handle_import(self, source: str) -> APLArray:
         """Handle #import directive."""
         from marple.errors import DomainError, ValueError_
-        from marple.nodes import IBeamDerived
         parts = source.split()
         if len(parts) < 2:
             raise DomainError("Invalid #import directive")

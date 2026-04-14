@@ -1,1 +1,1 @@
-upper←{(⌶'marple.stdlib.str_impl.upper') ⍵}
+upper←{(100⌶) ⍵}

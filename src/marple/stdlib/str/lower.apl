@@ -1,1 +1,1 @@
-lower←{(⌶'marple.stdlib.str_impl.lower') ⍵}
+lower←{(101⌶) ⍵}

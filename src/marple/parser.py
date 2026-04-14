@@ -33,7 +33,6 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     _MARKER,
     PrimitiveFunction,
     Guard,
-    IBeamDerived,
     Index,
     MonadicDfnCall,
     MonadicDopCall,
@@ -135,9 +134,9 @@ class Parser:
 
     def _classify_operator(self, op: str) -> int:
         """Classify an operator token as adverb or conjunction."""
-        if op in ("/", "\\", "⌿", "⍀", "∘.", "⍨"):
+        if op in ("/", "\\", "⌿", "⍀", "∘.", "⍨", "⌶"):
             return CAT_ADV
-        if op in ("⍤", "⍣", "⌶", ".", "∘"):
+        if op in ("⍤", "⍣", ".", "∘"):
             return CAT_CONJ
         return CAT_ADV
 
@@ -257,11 +256,6 @@ class Parser:
             assert isinstance(fn_tok.value, str)
             bound = BoundOperator(make_adverb("∘."), PrimitiveFunction(fn_tok.value), CAT_VERB)
             items.append((CAT_VERB, bound))
-        elif (op == "⌶" and self._pos < len(self._tokens)
-                and self._current().type == TokenType.STRING):
-            path_tok = self._eat(TokenType.STRING)
-            assert isinstance(path_tok.value, str)
-            items.append((CAT_VERB, IBeamDerived(path_tok.value)))
         else:
             cat = self._classify_operator(op)
             token: Adverb | Conjunction = make_adverb(op) if cat == CAT_ADV else make_conjunction(op)
@@ -416,8 +410,6 @@ class Parser:
             raise SyntaxError_(f"Unknown operator in bound form: {op}")
         if isinstance(op, (ReduceAdverb, ScanAdverb)):
             return self._bound_monadic_reduce(bound, arg_node)
-        if op.symbol == "⌶":
-            return self._bound_monadic_ibeam(bound, arg_node)
         if op.symbol in self._DYADIC_ONLY_SYMBOLS:
             raise SyntaxError_(f"{op.symbol} requires two arguments")
         return MonadicDfnCall(self._bound_to_derived(bound), arg_node)
@@ -430,13 +422,6 @@ class Parser:
             assert isinstance(operand, Evaluatable)
             return DerivedFunc(bound.operator, operand, arg_node)
         return DyadicFunc(bound.operator.symbol, self._as_evaluatable(operand), arg_node)
-
-    def _bound_monadic_ibeam(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
-        operand = bound.left_operand
-        if isinstance(operand, (Adverb, Conjunction)):
-            return MonadicDfnCall(IBeamDerived(operand.symbol), arg_node)
-        assert isinstance(operand, (Evaluatable, UnappliedFunction))
-        return MonadicDfnCall(operand, arg_node)
 
     def _apply_user_dop_monadic(self, bound: BoundOperator, arg_node: Evaluatable) -> Evaluatable:
         assert isinstance(bound.operator, Var)
