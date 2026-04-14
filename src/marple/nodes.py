@@ -841,6 +841,24 @@ class Dfn(Evaluatable):
         self.body = body
     def execute(self, ctx: ExecutionContext) -> APLValue:
         return ctx.create_binding(self)
+    def is_operator(self) -> bool:
+        """True if the body references ⍺⍺ or ⍵⍵ — i.e. the dfn is a dop."""
+        return _dfn_references(self, (AlphaAlpha, OmegaOmega))
+
+
+def _dfn_references(node: object, targets: tuple[type, ...]) -> bool:
+    """Recursively check whether an AST subtree contains any target-type node."""
+    if isinstance(node, targets):
+        return True
+    if isinstance(node, Node):
+        for val in node.__dict__.values():
+            if _dfn_references(val, targets):
+                return True
+    elif isinstance(node, (list, tuple)):
+        for item in node:
+            if _dfn_references(item, targets):
+                return True
+    return False
 
 
 class MonadicDfnCall(Evaluatable):

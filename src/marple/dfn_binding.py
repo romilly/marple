@@ -1,8 +1,9 @@
-"""DfnBinding: a dfn/dop that can evaluate its own body."""
+"""DfnBinding (function) and DopBinding (operator): user-defined
+values bound to the environment in which they were defined."""
 
 
 from marple.numpy_array import APLArray, S
-from marple.apl_value import APLValue
+from marple.apl_value import APLValue, Operator
 from marple.executor import Executor
 from marple.nodes import Evaluatable, ExecutionContext, Node, UnappliedFunction
 from marple.parser import AlphaDefault, Dfn, Guard
@@ -29,30 +30,18 @@ def _is_tail_self_call(node: object) -> bool:
     return False
 
 
-class DfnBinding(UnappliedFunction, Executor):
-    """A dfn or dop bound to the environment in which it was defined."""
+class _DfnExecutor(Executor):
+    """Shared body-execution implementation for DfnBinding and DopBinding.
+
+    Captures the defining environment, builds a local env per call, runs the
+    body with tail-call optimisation, and supports the ⍺/⍺⍺/⍵⍵ slots.
+    Concrete subclasses expose different public apply/call surfaces.
+    """
 
     def __init__(self, dfn: Dfn, defining_env: Environment) -> None:
         self.dfn = dfn
         self.defining_env = defining_env
         self.env = defining_env  # current env; swapped during apply
-
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
-        operand = ctx.evaluate(operand_node)
-        return self.apply(operand)
-
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
-        right = ctx.evaluate(right_node)
-        left = ctx.evaluate(left_node)
-        return self.apply(right, alpha=left)
-
-    def apply_monadic_dop(self, ctx: ExecutionContext, argument: APLArray,
-                          operand: APLValue, alpha: APLArray | None = None) -> APLArray:
-        return self.apply(argument, alpha_alpha=operand, alpha=alpha)
-
-    def apply_dyadic_dop(self, ctx: ExecutionContext, argument: APLArray,
-                         left_operand: APLValue, right_operand: APLValue) -> APLArray:
-        return self.apply(argument, alpha_alpha=left_operand, omega_omega=right_operand)
 
     def apply(
         self,
@@ -91,6 +80,7 @@ class DfnBinding(UnappliedFunction, Executor):
             local_env["⍺⍺"] = alpha_alpha
         if omega_omega is not None:
             local_env["⍵⍵"] = omega_omega
+        assert isinstance(self, APLValue)
         local_env["∇"] = self
         return local_env
 
@@ -99,7 +89,6 @@ class DfnBinding(UnappliedFunction, Executor):
 
         Returns _TailCall to signal TCO, otherwise the result APLArray.
         """
-        from marple.nodes import DyadicDfnCall, MonadicDfnCall
         result: APLArray = S(0)
         stmts = self.dfn.body
         last_idx = len(stmts) - 1
@@ -130,3 +119,28 @@ class DfnBinding(UnappliedFunction, Executor):
             alpha = self.evaluate(node.left)
             return _TailCall(omega, alpha)
         raise RuntimeError("_make_tail_call called on non-∇ node")
+
+
+class DfnBinding(UnappliedFunction, _DfnExecutor):
+    """User-defined function value: bound dfn that takes ⍵ (and optionally ⍺)."""
+
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray:
+        operand = ctx.evaluate(operand_node)
+        return self.apply(operand)
+
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray:
+        right = ctx.evaluate(right_node)
+        left = ctx.evaluate(left_node)
+        return self.apply(right, alpha=left)
+
+
+class DopBinding(Operator, _DfnExecutor):
+    """User-defined operator value: bound dfn that references ⍺⍺ (and optionally ⍵⍵)."""
+
+    def apply_monadic_dop(self, ctx: ExecutionContext, argument: APLArray,
+                          operand: APLValue, alpha: APLArray | None = None) -> APLArray:
+        return self.apply(argument, alpha_alpha=operand, alpha=alpha)
+
+    def apply_dyadic_dop(self, ctx: ExecutionContext, argument: APLArray,
+                         left_operand: APLValue, right_operand: APLValue) -> APLArray:
+        return self.apply(argument, alpha_alpha=left_operand, omega_omega=right_operand)

@@ -214,10 +214,12 @@ class Executor:
         return APLArray([len(line)], str_to_char_array(line))
 
     def create_binding(self, dfn_node: Dfn) -> APLValue:
-        from marple.dfn_binding import DfnBinding
+        from marple.dfn_binding import DfnBinding, DopBinding
         # Store a reference to env, not a copy — names added later
         # (e.g. forward references) are visible at call time when
-        # DfnBinding._make_env copies the env.
+        # _DfnExecutor._make_env copies the env.
+        if dfn_node.is_operator():
+            return DopBinding(dfn_node, self.env)
         return DfnBinding(dfn_node, self.env)
 
     def eval_sysvar(self, name: str) -> APLArray:
@@ -481,10 +483,11 @@ class Executor:
         except APLError:
             raise DomainError("⎕FX: invalid function definition")
         val = self.env.get(fn_name)
-        if not isinstance(val, DfnBinding):
+        from marple.dfn_binding import DopBinding
+        if not isinstance(val, (DfnBinding, DopBinding)):
             raise DomainError("⎕FX did not produce a function")
         self.env.set_source(fn_name, text.strip())
-        if "⍺⍺" in text or "⍵⍵" in text:
+        if isinstance(val, DopBinding):
             self.env.classify(fn_name, NC_OPERATOR)
             self.env.set_operator_arity(fn_name, 2 if "⍵⍵" in text else 1)
         return APLArray([len(fn_name)], str_to_char_array(fn_name))

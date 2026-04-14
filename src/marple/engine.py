@@ -117,11 +117,12 @@ class Interpreter(Executor):
 
     def _track_dfn_source(self, name: str, source: str) -> None:
         """Record source text for dfn/dop assignments (for workspace save)."""
+        from marple.dfn_binding import DopBinding
         value = self.env.get(name)
-        if not isinstance(value, DfnBinding):
+        if not isinstance(value, (DfnBinding, DopBinding)):
             return
         self.env.set_source(name, source.strip())
-        if "⍺⍺" not in source and "⍵⍵" not in source:
+        if not isinstance(value, DopBinding):
             return
         self.env.classify(name, NC_OPERATOR)
         self.env.set_operator_arity(name, 2 if "⍵⍵" in source else 1)
