@@ -157,16 +157,9 @@ class Executor:
             return result
         raise DomainError(f"Undefined namespace: {parts[0]}")
 
-    def apply_derived(self, operator: str, function: object, operand: APLArray) -> APLArray:
-        # If function is an AST node (e.g. Dfn), execute it to get the function value
-        from marple.dfn_binding import DfnBinding
-        if isinstance(function, Evaluatable):
-            val = function.execute(self)
-            if isinstance(val, DfnBinding):
-                function = lambda a, o, _b=val: _b.apply(o, alpha=a)
-            elif isinstance(val, FunctionRef):
-                function = val
-        return DerivedFunctionBinding().apply(operator, function, operand)
+    def apply_derived(self, operator: str, function: Evaluatable, operand: APLArray) -> APLArray:
+        val = function.execute(self)
+        return DerivedFunctionBinding().apply(operator, val, operand)
 
     def assign(self, name: str, value_node: Evaluatable | UnappliedFunction) -> APLArray:
         if name in _READONLY_QUADS:

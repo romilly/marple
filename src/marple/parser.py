@@ -429,6 +429,7 @@ class Parser:
         operand = bound.left_operand
         if (bound.left_cat == CAT_VERB
                 or isinstance(operand, (AlphaAlpha, OmegaOmega))):
+            assert isinstance(operand, Evaluatable)
             return DerivedFunc(bound.operator, operand, arg_node)
         return DyadicFunc(bound.operator.symbol, self._as_evaluatable(operand), arg_node)
 
@@ -539,6 +540,7 @@ class Parser:
         operand = bound.left_operand
         if (bound.left_cat == CAT_VERB
                 or isinstance(operand, (AlphaAlpha, OmegaOmega))):
+            assert isinstance(operand, Evaluatable)
             return DerivedFunc(bound.operator, operand, right_node)
         return DyadicFunc(bound.operator.symbol, self._as_evaluatable(operand), right_node)
 
