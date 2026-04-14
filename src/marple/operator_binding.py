@@ -11,7 +11,7 @@ from marple.backend_functions import (
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.errors import DomainError
 from marple.get_numpy import np
-from marple.parser import FunctionRef
+from marple.parser import PrimitiveFunction
 
 
 # Glyphs whose meaning on character data is undefined: arithmetic and
@@ -293,6 +293,6 @@ class DerivedFunctionBinding:
 
     def _resolve_function(self, function: object) -> tuple[Any, str | None]:
         """Resolve a function node to (dyadic callable, glyph or None)."""
-        if isinstance(function, FunctionRef):
+        if isinstance(function, PrimitiveFunction):
             return DyadicFunctionBinding.resolve(function.glyph), function.glyph
         raise DomainError("Operators require primitive function operands")

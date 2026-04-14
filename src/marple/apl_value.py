@@ -60,10 +60,27 @@ class Function(APLValue):
         return NC_FUNCTION
 
     @abstractmethod
-    def apply_to_monadic(self, ctx: ExecutionContext, omega: APLArray) -> APLArray: ...
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Evaluatable) -> APLArray: ...
 
     @abstractmethod
-    def apply_to_dyadic(self, ctx: ExecutionContext, alpha: APLArray, omega: APLArray) -> APLArray: ...
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Evaluatable, right_node: Evaluatable) -> APLArray: ...
+
+    def apply_to_monadic(self, ctx: ExecutionContext, omega: APLArray) -> APLArray:
+        from marple.nodes import Literal
+        return self.apply_monadic(ctx, Literal(omega))
+
+    def apply_to_dyadic(self, ctx: ExecutionContext, alpha: APLArray, omega: APLArray) -> APLArray:
+        from marple.nodes import Literal
+        return self.apply_dyadic(ctx, Literal(alpha), Literal(omega))
+
+    def call_monadic(self, ctx: ExecutionContext, operand: Evaluatable) -> APLArray:
+        return self.apply_monadic(ctx, operand)
+
+    def call_dyadic(self, ctx: ExecutionContext, left: Evaluatable, right: Evaluatable) -> APLArray:
+        return self.apply_dyadic(ctx, left, right)
+
+    def as_power_strategy(self, ctx: ExecutionContext) -> PowerStrategy:
+        return PowerByConvergence(self, ctx)
 
 
 class Operator(APLValue):

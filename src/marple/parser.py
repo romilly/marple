@@ -26,7 +26,7 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     ForkDerived,
     Marker,
     _MARKER,
-    FunctionRef,
+    PrimitiveFunction,
     Guard,
     IBeamDerived,
     Index,
@@ -77,7 +77,7 @@ _CTX_DYAD = frozenset({CAT_END, CAT_NOUN, CAT_ADV, CAT_VERB, CAT_ASGN, CAT_LP})
 # replicate, expand, and replicate-first. When one of these appears
 # as the left operand of a conjunction with no function available
 # on its left as an operator-operand, it is promoted to its function
-# role via FunctionRef (see Case 4.5 in `_stack_parse`). `⍨` is
+# role via PrimitiveFunction (see Case 4.5 in `_stack_parse`). `⍨` is
 # excluded because commute is a pure operator with no dyadic
 # function meaning; `⍀` is excluded because dyadic `⍀` is not yet
 # registered in dyadic_functions.
@@ -240,7 +240,7 @@ class Parser:
     def _item_function(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         self._pos += 1
         assert isinstance(tok.value, str)
-        items.append((CAT_VERB, FunctionRef(tok.value)))
+        items.append((CAT_VERB, PrimitiveFunction(tok.value)))
 
     def _item_operator(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         assert isinstance(tok.value, str)
@@ -252,7 +252,7 @@ class Parser:
             self._pos += 1
             fn_tok = self._eat(TokenType.FUNCTION)
             assert isinstance(fn_tok.value, str)
-            bound = BoundOperator(Adverb("∘."), FunctionRef(fn_tok.value), CAT_VERB)
+            bound = BoundOperator(Adverb("∘."), PrimitiveFunction(fn_tok.value), CAT_VERB)
             items.append((CAT_VERB, bound))
         elif (op == "⌶" and self._pos < len(self._tokens)
                 and self._current().type == TokenType.STRING):
@@ -382,7 +382,7 @@ class Parser:
 
     def _make_monadic(self, verb_node: Node, arg_node: Evaluatable) -> Evaluatable:
         """Create AST node for monadic verb application."""
-        if isinstance(verb_node, FunctionRef):
+        if isinstance(verb_node, PrimitiveFunction):
             return MonadicFunc(verb_node.glyph, arg_node)
         if isinstance(verb_node, BoundOperator):
             return self._apply_bound_monadic(verb_node, arg_node)
@@ -398,7 +398,7 @@ class Parser:
     def _make_dyadic(self, verb_node: Node, left_node: Evaluatable,
                      right_node: Evaluatable) -> Evaluatable:
         """Create AST node for dyadic verb application."""
-        if isinstance(verb_node, FunctionRef):
+        if isinstance(verb_node, PrimitiveFunction):
             return DyadicFunc(verb_node.glyph, left_node, right_node)
         if isinstance(verb_node, BoundOperator):
             return self._apply_bound_dyadic(verb_node, left_node, right_node)
@@ -524,14 +524,14 @@ class Parser:
 
     def _bound_dyadic_inner(self, bound: BoundOperator,
                             left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
-        assert isinstance(bound.left_operand, FunctionRef)
-        assert isinstance(bound.right_operand, FunctionRef)
+        assert isinstance(bound.left_operand, PrimitiveFunction)
+        assert isinstance(bound.right_operand, PrimitiveFunction)
         return InnerProduct(bound.left_operand, bound.right_operand,
                             left_node, right_node)
 
     def _bound_dyadic_outer(self, bound: BoundOperator,
                             left_node: Evaluatable, right_node: Evaluatable) -> Evaluatable:
-        assert isinstance(bound.left_operand, FunctionRef)
+        assert isinstance(bound.left_operand, PrimitiveFunction)
         return OuterProduct(bound.left_operand, left_node, right_node)
 
     def _bound_dyadic_reduce(self, bound: BoundOperator,
@@ -622,7 +622,7 @@ class Parser:
         """Convert a Case 6 value_node into a form that `ctx.assign`
         can store directly.
 
-        Node subclasses (including FunctionRef) are returned as-is.
+        Node subclasses (including PrimitiveFunction) are returned as-is.
         BoundOperator instances from derived functions unwrap to the
         appropriate *Derived class so that applying `f` later
         dispatches correctly.
@@ -747,7 +747,7 @@ class Parser:
                     and isinstance(stack[-2][1], Adverb)
                     and stack[-2][1].symbol in _ADV_AS_FN_GLYPHS):
                 adv = stack[-2][1]
-                stack[-2] = (CAT_VERB, FunctionRef(adv.symbol))
+                stack[-2] = (CAT_VERB, PrimitiveFunction(adv.symbol))
                 matched = True
 
             # Case 5: Conjunction binding — E/N/A/V/←/LP  N/V  C  N/V
@@ -901,7 +901,7 @@ class Parser:
                 fn_token = self._eat(TokenType.FUNCTION)
                 self._eat(TokenType.RPAREN)
                 assert isinstance(fn_token.value, str)
-                return FunctionRef(fn_token.value)
+                return PrimitiveFunction(fn_token.value)
             result = self._parse_statement()
             self._eat(TokenType.RPAREN)
             return result

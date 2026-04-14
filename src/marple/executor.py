@@ -22,7 +22,7 @@ from marple.parser import (
     Evaluatable,
     FmtArgs,
     ForkDerived,
-    FunctionRef,
+    PrimitiveFunction,
     Node,
     RankDerived,
     UnappliedFunction,
@@ -164,7 +164,7 @@ class Executor:
     def assign(self, name: str, value_node: Evaluatable | UnappliedFunction) -> APLArray:
         if name in _READONLY_QUADS:
             raise DomainError(f"Cannot assign to read-only system variable {name}")
-        # Function-like values (FunctionRef, RankDerived, BesideDerived,
+        # Function-like values (PrimitiveFunction, RankDerived, BesideDerived,
         # etc.) are already in their stored form from the parser —
         # they are not Node instances and should not be evaluated.
         value: APLValue

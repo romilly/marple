@@ -374,31 +374,13 @@ class DyadicDopCall(Evaluatable):
 
 
 class UnappliedFunction(Function, Applicable):
-    """Base class for all unapplied APL function values."""
+    """Bridge class for function values that also participate as AST nodes.
 
-    def name_class(self) -> int:
-        return NC_FUNCTION
-
-    @abstractmethod
-    def apply_monadic(self, ctx: 'ExecutionContext', operand_node: 'Evaluatable') -> 'APLArray': ...
-
-    @abstractmethod
-    def apply_dyadic(self, ctx: 'ExecutionContext', left_node: 'Evaluatable', right_node: 'Evaluatable') -> 'APLArray': ...
-
-    def apply_to_monadic(self, ctx: ExecutionContext, omega: APLArray) -> APLArray:
-        return self.apply_monadic(ctx, Literal(omega))
-
-    def apply_to_dyadic(self, ctx: ExecutionContext, alpha: APLArray, omega: APLArray) -> APLArray:
-        return self.apply_dyadic(ctx, Literal(alpha), Literal(omega))
-
-    def call_monadic(self, ctx: ExecutionContext, operand: Evaluatable) -> APLArray:
-        return self.apply_monadic(ctx, operand)
-
-    def call_dyadic(self, ctx: ExecutionContext, left: Evaluatable, right: Evaluatable) -> APLArray:
-        return self.apply_dyadic(ctx, left, right)
-
-    def as_power_strategy(self, ctx: ExecutionContext) -> 'PowerStrategy':
-        return PowerByConvergence(self, ctx)
+    All apply/call behaviour is inherited from `Function`. This class
+    exists only to keep subclasses in the `Node` hierarchy (via
+    `Applicable`) during the Function/Operator migration. Subclasses
+    will inherit `Function` directly once `Applicable` is removed in B4.
+    """
 
 
 class RankDerived(UnappliedFunction):
@@ -646,7 +628,7 @@ class IBeamDerived(UnappliedFunction, Evaluatable):  # Evaluatable for execute()
 
 
 class InnerProduct(Evaluatable):
-    def __init__(self, left_fn: 'FunctionRef', right_fn: 'FunctionRef', left: Evaluatable, right: Evaluatable) -> None:
+    def __init__(self, left_fn: 'PrimitiveFunction', right_fn: 'PrimitiveFunction', left: Evaluatable, right: Evaluatable) -> None:
         self.left_fn = left_fn
         self.right_fn = right_fn
         self.left = left
@@ -658,7 +640,7 @@ class InnerProduct(Evaluatable):
 
 
 class OuterProduct(Evaluatable):
-    def __init__(self, function: 'FunctionRef', left: Evaluatable, right: Evaluatable) -> None:
+    def __init__(self, function: 'PrimitiveFunction', left: Evaluatable, right: Evaluatable) -> None:
         self.function = function
         self.left = left
         self.right = right
@@ -750,8 +732,8 @@ class Alpha(Evaluatable):
         return ctx.env["⍺"]
 
 
-class FunctionRef(UnappliedFunction, Evaluatable):  # Evaluatable for execute()
-    """A reference to a primitive function glyph, used as a dop operand."""
+class PrimitiveFunction(UnappliedFunction, Evaluatable):  # Evaluatable for execute()
+    """A reference to a primitive function glyph."""
     def __init__(self, glyph: str) -> None:
         self.glyph = glyph
     def execute(self, ctx: ExecutionContext) -> APLValue:
