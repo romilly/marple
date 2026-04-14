@@ -345,11 +345,11 @@ class Executable(Node):
     def apply_to_dyadic(self, ctx: ExecutionContext, alpha: APLArray, omega: APLArray) -> APLArray:
         return self._as_function(ctx).apply_to_dyadic(ctx, alpha, omega)
 
-    def call_monadic(self, ctx: ExecutionContext, operand: 'Executable') -> APLArray:
-        return self._as_function(ctx).call_monadic(ctx, operand)
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: 'Executable') -> APLArray:
+        return self._as_function(ctx).apply_monadic(ctx, operand_node)
 
-    def call_dyadic(self, ctx: ExecutionContext, left: 'Executable', right: 'Executable') -> APLArray:
-        return self._as_function(ctx).call_dyadic(ctx, left, right)
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: 'Executable', right_node: 'Executable') -> APLArray:
+        return self._as_function(ctx).apply_dyadic(ctx, left_node, right_node)
 
     def apply_monadic_dop(self, ctx: ExecutionContext, argument: APLArray,
                           operand: APLValue, alpha: APLArray | None = None) -> APLArray:
@@ -825,14 +825,28 @@ class OuterDerived(UnappliedFunction):
 
 
 class SysVar(Executable):
+    """A readable system variable (⎕IO, ⎕FR, ⎕RL, ⎕TS, ⎕WSID, …)."""
     def __init__(self, name: str) -> None:
         self.name = name
     def execute(self, ctx: ExecutionContext) -> APLArray:
         return ctx.eval_sysvar(self.name)
-    def call_monadic(self, ctx: ExecutionContext, operand: Executable) -> APLArray:
-        return ctx.dispatch_sys_monadic(self.name, operand)
-    def call_dyadic(self, ctx: ExecutionContext, left: Executable, right: Executable) -> APLArray:
-        return ctx.dispatch_sys_dyadic(self.name, left, right)
+
+
+class SysFunc(Function, Executable):
+    """A callable system function (⎕NC, ⎕CR, ⎕FX, ⎕UCS, …).
+
+    Inherits Function so apply_monadic/apply_dyadic dispatches the
+    standard way; inherits Executable so it can act as an expression
+    node that self-evaluates (like PrimitiveFunction).
+    """
+    def __init__(self, name: str) -> None:
+        self.name = name
+    def execute(self, ctx: ExecutionContext) -> APLValue:
+        return self
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Executable) -> APLArray:
+        return ctx.dispatch_sys_monadic(self.name, operand_node)
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Executable, right_node: Executable) -> APLArray:
+        return ctx.dispatch_sys_dyadic(self.name, left_node, right_node)
 
 
 class Index(Executable):
@@ -1020,7 +1034,7 @@ class MonadicDfnCall(Executable):
         self.dfn = dfn
         self.operand = operand
     def execute(self, ctx: ExecutionContext) -> APLArray:
-        return self.dfn.call_monadic(ctx, self.operand)
+        return self.dfn.apply_monadic(ctx, self.operand)
 
 
 class DyadicDfnCall(Executable):
@@ -1029,7 +1043,7 @@ class DyadicDfnCall(Executable):
         self.left = left
         self.right = right
     def execute(self, ctx: ExecutionContext) -> APLArray:
-        return self.dfn.call_dyadic(ctx, self.left, self.right)
+        return self.dfn.apply_dyadic(ctx, self.left, self.right)
 
 
 class Program(Executable):

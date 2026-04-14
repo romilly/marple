@@ -52,6 +52,7 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     ScanDerived,
     Str,
     SysVar,
+    SysFunc,
     UnappliedFunction,
     Var,
     Vector,
@@ -315,7 +316,7 @@ class Parser:
         assert isinstance(tok.value, str)
         name = tok.value
         self._pos += 1
-        sv_node = SysVar(name)
+        sv_node: Node = SysFunc(name) if name in _SYS_FUNCTIONS else SysVar(name)
         if self._current().type == TokenType.LBRACKET:
             node = self._parse_bracket_index(sv_node)
             items.append((CAT_NOUN, node))
@@ -396,7 +397,7 @@ class Parser:
             return True
         if isinstance(node, (Var, QualifiedVar)):
             return True
-        if isinstance(node, SysVar) and node.name in _SYS_FUNCTIONS:
+        if isinstance(node, SysFunc):
             return True
         return False
 

@@ -287,7 +287,10 @@ class Executor:
         raise DomainError(f"Unknown dyadic system function: {name}")
 
     def _sys_nc(self, operand: APLArray) -> APLArray:
-        return S(self.env.name_class(chars_to_str(operand.data)))
+        name = chars_to_str(operand.data)
+        if name.startswith("⎕"):
+            return S(-1)
+        return S(self.env.name_class(name))
 
     def _sys_ex(self, operand: APLArray) -> APLArray:
         if len(operand.shape) == 2:

@@ -45,12 +45,6 @@ class Function(APLValue):
         from marple.nodes import Literal
         return self.apply_dyadic(ctx, Literal(alpha), Literal(omega))
 
-    def call_monadic(self, ctx: ExecutionContext, operand: Executable) -> APLArray:
-        return self.apply_monadic(ctx, operand)
-
-    def call_dyadic(self, ctx: ExecutionContext, left: Executable, right: Executable) -> APLArray:
-        return self.apply_dyadic(ctx, left, right)
-
     def as_power_strategy(self, ctx: ExecutionContext) -> PowerStrategy:
         return PowerByConvergence(self, ctx)
 

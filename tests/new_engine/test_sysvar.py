@@ -113,6 +113,13 @@ class TestSystemFunctions:
         i.run("twice←{⍺⍺ ⍺⍺ ⍵}")
         assert i.run("⎕NC 'twice'") == S(4)
 
+    def test_nc_system_variable_is_invalid(self) -> None:
+        """⎕-prefix names are reserved — ⎕NC returns ¯1, matching Dyalog."""
+        assert Interpreter(io=1).run("⎕NC '⎕IO'") == S(-1)
+
+    def test_nc_system_function_is_invalid(self) -> None:
+        assert Interpreter(io=1).run("⎕NC '⎕NC'") == S(-1)
+
     def test_ex(self) -> None:
         i = Interpreter(io=1)
         i.run("x←42")
