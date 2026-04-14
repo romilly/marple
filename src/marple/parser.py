@@ -387,12 +387,7 @@ class Parser:
             return MonadicFunc(verb_node.glyph, arg_node)
         if isinstance(verb_node, BoundOperator):
             return self._apply_bound_monadic(verb_node, arg_node)
-        if isinstance(verb_node, (Var, Dfn, QualifiedVar, Nabla,
-                                  AlphaAlpha, OmegaOmega,
-                                  RankDerived, IBeamDerived,
-                                  AtopDerived, ForkDerived)):
-            return MonadicDfnCall(verb_node, arg_node)
-        if isinstance(verb_node, SysVar):
+        if isinstance(verb_node, (Evaluatable, UnappliedFunction)):
             return MonadicDfnCall(verb_node, arg_node)
         raise SyntaxError_(f"Cannot apply as monadic function: {type(verb_node)}")
 
@@ -403,12 +398,7 @@ class Parser:
             return DyadicFunc(verb_node.glyph, left_node, right_node)
         if isinstance(verb_node, BoundOperator):
             return self._apply_bound_dyadic(verb_node, left_node, right_node)
-        if isinstance(verb_node, (Var, Dfn, QualifiedVar, Nabla,
-                                  AlphaAlpha, OmegaOmega,
-                                  RankDerived, IBeamDerived,
-                                  AtopDerived, ForkDerived)):
-            return DyadicDfnCall(verb_node, left_node, right_node)
-        if isinstance(verb_node, SysVar):
+        if isinstance(verb_node, (Evaluatable, UnappliedFunction)):
             return DyadicDfnCall(verb_node, left_node, right_node)
         raise SyntaxError_(f"Cannot apply as dyadic function: {type(verb_node)}")
 
