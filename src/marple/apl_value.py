@@ -5,6 +5,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Callable
 
+from marple.errors import DomainError
+
 if TYPE_CHECKING:
     from marple.nodes import Applicable, ExecutionContext, Executable
     from marple.numpy_array import APLArray
@@ -23,33 +25,26 @@ class APLValue(ABC):
     def name_class(self) -> int: ...
 
     def apply_to_monadic(self, ctx: ExecutionContext, omega: APLArray) -> APLArray:
-        from marple.errors import DomainError
         raise DomainError(f"Cannot apply {type(self).__name__} as a function")
 
     def apply_to_dyadic(self, ctx: ExecutionContext, alpha: APLArray, omega: APLArray) -> APLArray:
-        from marple.errors import DomainError
         raise DomainError(f"Cannot apply {type(self).__name__} as a function")
 
     def call_monadic(self, ctx: ExecutionContext, operand: Executable) -> APLArray:
-        from marple.errors import DomainError
         raise DomainError(f"Cannot call {type(self).__name__} as a function")
 
     def call_dyadic(self, ctx: ExecutionContext, left: Executable, right: Executable) -> APLArray:
-        from marple.errors import DomainError
         raise DomainError(f"Cannot call {type(self).__name__} as a function")
 
     def apply_monadic_dop(self, ctx: ExecutionContext, argument: APLArray,
                           operand: APLValue, alpha: APLArray | None = None) -> APLArray:
-        from marple.errors import DomainError
         raise DomainError(f"Cannot apply {type(self).__name__} as an operator")
 
     def apply_dyadic_dop(self, ctx: ExecutionContext, argument: APLArray,
                          left_operand: APLValue, right_operand: APLValue) -> APLArray:
-        from marple.errors import DomainError
         raise DomainError(f"Cannot apply {type(self).__name__} as an operator")
 
     def as_power_strategy(self, ctx: ExecutionContext) -> PowerStrategy:
-        from marple.errors import DomainError
         raise DomainError("⍣ right operand must be integer or function")
 
 
@@ -90,11 +85,9 @@ class Operator(APLValue):
         return NC_OPERATOR
 
     def derive_monadic(self, operand: Applicable) -> Function:
-        from marple.errors import DomainError
         raise DomainError(f"{type(self).__name__} is not a monadic operator")
 
     def derive_dyadic(self, left: Applicable, right: Applicable) -> Function:
-        from marple.errors import DomainError
         raise DomainError(f"{type(self).__name__} is not a dyadic operator")
 
 
@@ -107,7 +100,6 @@ class PowerStrategy(ABC):
 class PowerByCount(PowerStrategy):
     """Repeat f exactly n times."""
     def __init__(self, n: int) -> None:
-        from marple.errors import DomainError
         if n < 0:
             raise DomainError("DOMAIN ERROR: inverse (⍣ with negative) not supported")
         self.n = n
