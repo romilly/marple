@@ -147,23 +147,20 @@ class Tokenizer:
     def _read_number(self) -> Num:
         """Consume a numeric literal, then let int()/float() parse it.
 
-        Scans digits, optional decimal point (at most one), and
-        optional scientific-notation tail (`e`/`E` followed by an
-        optional sign and digits). The sign may be APL's high minus
-        `¯`; we normalise it to `-` before conversion.
+        Callers only dispatch here when the current character is a
+        digit, so phase 1 always consumes at least one character.
+        Three linear phases: integer, optional fractional, optional
+        exponent. APL's high minus `¯` in the exponent is normalised
+        to `-` before conversion.
         """
         start = self._pos
-        has_dot = False
-        while True:
-            ch = self._current()
-            if _isdigit(ch):
+        while _isdigit(self._current()):                     # integer part
+            self._advance()
+        if self._current() == ".":                           # fractional part
+            self._advance()
+            while _isdigit(self._current()):
                 self._advance()
-            elif ch == "." and not has_dot:
-                has_dot = True
-                self._advance()
-            else:
-                break
-        if self._current() in ("e", "E"):
+        if self._current() in ("e", "E"):                    # exponent
             self._advance()
             if self._current() in ("¯", "-", "+"):
                 self._advance()
