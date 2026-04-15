@@ -317,6 +317,19 @@ class Marker(Node):
 _MARKER = Marker()
 
 
+class Reference(Node):
+    """A Node that resolves to a value by name/operand lookup.
+
+    Distinct from `Executable`: a Reference does not compute, it
+    produces an existing value (an APLArray, Function, or Operator).
+    Examples: `Var` (name lookup), `AlphaAlpha`/`OmegaOmega` (operand
+    lookup), `Nabla` (self-reference in a dfn), `Dfn` (binding
+    creation from a dfn literal).
+    """
+    @abstractmethod
+    def resolve(self, ctx: ExecutionContext) -> APLValue: ...
+
+
 class Executable(Node):
     """A Node that can be executed to produce a value.
 
