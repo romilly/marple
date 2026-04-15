@@ -837,29 +837,33 @@ class Parser:
     def _parse_atom(self) -> Executable:
         token = self._current()
         if isinstance(token, LParenToken):
-            self._eat(LParenToken)
-            # Check for bare function glyph as operand: (-)  (+)  (⍳)  etc.
-            next_tok = self._current()
-            if (
-                isinstance(next_tok, PrimitiveFunction)
-                and self._pos + 1 < len(self._tokens)
-                and isinstance(self._tokens[self._pos + 1], RParenToken)
-            ):
-                self._pos += 1
-                self._eat(RParenToken)
-                return next_tok
-            result = self._parse_statement()
-            self._eat(RParenToken)
-            return result
+            return self._parse_paren()
         if isinstance(token, LBraceToken):
             return self._parse_dfn()
         if isinstance(token, Executable):
-            # Value-producing tokens (Num, Str, Var, PrimitiveFunction,
-            # Omega, Alpha, AlphaAlpha, OmegaOmega, Nabla, Zilde,
-            # SysVar, SysFunc, QualifiedVar) are already AST nodes.
+            # Value tokens (Num, Str, Var, PrimitiveFunction, Omega,
+            # Alpha, AlphaAlpha, OmegaOmega, Nabla, Zilde, SysVar,
+            # SysFunc, QualifiedVar) are already AST nodes.
             self._pos += 1
             return token
         raise SyntaxError_(f"Unexpected token: {token}")
+
+    def _parse_paren(self) -> Executable:
+        """Parse `(expr)` or the bare-function-glyph form `(+)`/`(-)`."""
+        self._eat(LParenToken)
+        # Bare function glyph as operand: (-), (+), (⍳), etc.
+        next_tok = self._current()
+        if (
+            isinstance(next_tok, PrimitiveFunction)
+            and self._pos + 1 < len(self._tokens)
+            and isinstance(self._tokens[self._pos + 1], RParenToken)
+        ):
+            self._pos += 1
+            self._eat(RParenToken)
+            return next_tok
+        result = self._parse_statement()
+        self._eat(RParenToken)
+        return result
 
     def _parse_atom_with_index(self) -> Executable:
         """Parse an atom, then check for bracket indexing."""
