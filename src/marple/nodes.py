@@ -330,25 +330,57 @@ _MARKER = Marker()
 class Executable(Node):
     """A Node that can be executed to produce a value.
 
-    Convenience apply/call/dop/power methods execute then dispatch;
-    each narrows the executed value to the kind it needs (Function,
-    Operator, or — for power — APLArray). They live here rather
-    than on `Reference` because `Applicable` (the type used for
-    function-position fields like `RankDerived.function`) is
-    `Function | Executable`, so the type system requires these
-    helpers on the Executable side.
+    Most Executable subclasses compute an APLArray. The base return
+    type stays `APLValue` because the `Reference` family also
+    produces Functions and Operators via the same `execute` method.
+
+    `as_power_strategy` lives here because the right operand of
+    power (`f⍣N` or `f⍣g`) can be either a numeric Executable or
+    an applicable, and PowerDerived dispatches by type.
     """
     @abstractmethod
     def execute(self, ctx: ExecutionContext) -> APLValue: ...
 
-    def _as_function(self, ctx: ExecutionContext) -> Function:
+    def as_power_strategy(self, ctx: ExecutionContext) -> 'PowerStrategy':
         val = self.execute(ctx)
+        if not isinstance(val, (Function, APLArray)):
+            raise DomainError("⍣ right operand must be integer or function")
+        return val.as_power_strategy(ctx)
+
+
+class Reference(Executable):
+    """An Executable that does not compute, but resolves to a value.
+
+    A Reference produces an existing value by name/operand lookup
+    rather than by computing a new array. `resolve()` is the truthful
+    operation — it returns whatever the resolution yields (an
+    APLArray, Function, or Operator). `execute()` is a thin shim
+    that just forwards to `resolve()`, keeping Reference usable
+    where an Executable is expected. Array-narrowing happens at
+    `ctx.evaluate`, the same place it happens for any Executable.
+
+    The apply/call helpers below live here because only References
+    can resolve to a Function or Operator — a true Executable
+    subclass computes an APLArray and is never applicable as a
+    function.
+
+    Examples: `Var`, `AlphaAlpha`/`OmegaOmega`, `Nabla`, `Dfn`,
+    `PrimitiveFunction`, `SysFunc`.
+    """
+    @abstractmethod
+    def resolve(self, ctx: ExecutionContext) -> APLValue: ...
+
+    def execute(self, ctx: ExecutionContext) -> APLValue:
+        return self.resolve(ctx)
+
+    def _as_function(self, ctx: ExecutionContext) -> Function:
+        val = self.resolve(ctx)
         if not isinstance(val, Function):
             raise DomainError(f"Cannot apply {type(val).__name__} as a function")
         return val
 
     def _as_operator(self, ctx: ExecutionContext) -> Operator:
-        val = self.execute(ctx)
+        val = self.resolve(ctx)
         if not isinstance(val, Operator):
             raise DomainError(f"Cannot apply {type(val).__name__} as an operator")
         return val
@@ -372,33 +404,6 @@ class Executable(Node):
     def apply_dyadic_dop(self, ctx: ExecutionContext, argument: APLArray,
                          left_operand: APLValue, right_operand: APLValue) -> APLArray:
         return self._as_operator(ctx).apply_dyadic_dop(ctx, argument, left_operand, right_operand)
-
-    def as_power_strategy(self, ctx: ExecutionContext) -> 'PowerStrategy':
-        val = self.execute(ctx)
-        if not isinstance(val, (Function, APLArray)):
-            raise DomainError("⍣ right operand must be integer or function")
-        return val.as_power_strategy(ctx)
-
-
-class Reference(Executable):
-    """An Executable that does not compute, but resolves to a value.
-
-    A Reference produces an existing value by name/operand lookup
-    rather than by computing a new array. `resolve()` is the truthful
-    operation — it returns whatever the resolution yields (an
-    APLArray, Function, or Operator). `execute()` is a thin shim
-    that just forwards to `resolve()`, keeping Reference usable
-    where an Executable is expected. Array-narrowing happens at
-    `ctx.evaluate`, the same place it happens for any Executable.
-
-    Examples: `Var`, `AlphaAlpha`/`OmegaOmega`, `Nabla`, `Dfn`,
-    `PrimitiveFunction`, `SysFunc`.
-    """
-    @abstractmethod
-    def resolve(self, ctx: ExecutionContext) -> APLValue: ...
-
-    def execute(self, ctx: ExecutionContext) -> APLValue:
-        return self.resolve(ctx)
 
 
 # `Applicable` is the set of things that can be applied as a function:
@@ -537,7 +542,7 @@ class DerivedFunc(Executable):
 class MonadicDopCall(Executable):
     """User-defined operator applied: (operand op) argument
     or: left (operand op) right (when derived verb is used dyadically)"""
-    def __init__(self, op_name: 'Executable', operand: Executable, argument: Executable,
+    def __init__(self, op_name: 'Reference', operand: Executable, argument: Executable,
                  alpha: Executable | None = None) -> None:
         self.op_name = op_name
         self.operand = operand
@@ -552,7 +557,7 @@ class MonadicDopCall(Executable):
 
 class DyadicDopCall(Executable):
     """User-defined operator applied dyadically: left (operand op) right"""
-    def __init__(self, op_name: 'Executable', operand: Executable, left: Executable, right: Executable) -> None:
+    def __init__(self, op_name: 'Reference', operand: Executable, left: Executable, right: Executable) -> None:
         self.op_name = op_name
         self.operand = operand
         self.left = left
