@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Callable
 from marple.errors import DomainError
 
 if TYPE_CHECKING:
-    from marple.nodes import Applicable, ExecutionContext, Executable
+    from marple.nodes import Applicable, ExecutionContext, Executable, OperatorOperand
     from marple.numpy_array import APLArray
 
 # Name classes (following Dyalog ⎕NC convention)
@@ -55,10 +55,10 @@ class Operator(APLValue):
     def name_class(self) -> int:
         return NC_OPERATOR
 
-    def derive_monadic(self, operand: Applicable) -> Function:
+    def derive_monadic(self, operand: OperatorOperand) -> Function:
         raise DomainError(f"{type(self).__name__} is not a monadic operator")
 
-    def derive_dyadic(self, left: Applicable, right: Applicable) -> Function:
+    def derive_dyadic(self, left: OperatorOperand, right: OperatorOperand) -> Function:
         raise DomainError(f"{type(self).__name__} is not a dyadic operator")
 
     def apply_monadic_dop(self, ctx: ExecutionContext, argument: APLArray,

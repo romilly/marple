@@ -189,7 +189,8 @@ class Conjunction(Operator, Node):
 
 class CommuteAdverb(Adverb):
     """Monadic operator ⍨ — commute."""
-    def derive_monadic(self, operand: 'Applicable') -> Function:
+    def derive_monadic(self, operand: 'OperatorOperand') -> Function:
+        assert isinstance(operand, Applicable)
         return CommuteDerived(operand)
 
 
@@ -203,7 +204,8 @@ class ReduceAdverb(Adverb):
         self.symbol = symbol
         self.axis = axis
 
-    def derive_monadic(self, operand: 'Applicable') -> Function:
+    def derive_monadic(self, operand: 'OperatorOperand') -> Function:
+        assert isinstance(operand, Applicable)
         return ReduceDerived(self, operand)
 
 
@@ -213,33 +215,41 @@ class ScanAdverb(Adverb):
         self.symbol = symbol
         self.axis = axis
 
-    def derive_monadic(self, operand: 'Applicable') -> Function:
+    def derive_monadic(self, operand: 'OperatorOperand') -> Function:
+        assert isinstance(operand, Applicable)
         return ScanDerived(self, operand)
 
 
 class RankConjunction(Conjunction):
     """Dyadic operator ⍤ — rank."""
-    def derive_dyadic(self, left: 'Applicable', right: 'Applicable') -> Function:
+    def derive_dyadic(self, left: 'OperatorOperand', right: 'OperatorOperand') -> Function:
+        assert isinstance(left, Applicable)
         assert isinstance(right, Executable)
         return RankDerived(left, right)
 
 
 class PowerConjunction(Conjunction):
-    """Dyadic operator ⍣ — power."""
-    def derive_dyadic(self, left: 'Applicable', right: 'Applicable') -> Function:
-        assert isinstance(right, Executable)
+    """Dyadic operator ⍣ — power.
+
+    Right operand may be applicable (convergence) or numeric (count),
+    so it stays typed as `OperatorOperand`.
+    """
+    def derive_dyadic(self, left: 'OperatorOperand', right: 'OperatorOperand') -> Function:
+        assert isinstance(left, Applicable)
         return PowerDerived(left, right)
 
 
 class BesideConjunction(Conjunction):
     """Dyadic operator ∘ — composition / beside."""
-    def derive_dyadic(self, left: 'Applicable', right: 'Applicable') -> Function:
+    def derive_dyadic(self, left: 'OperatorOperand', right: 'OperatorOperand') -> Function:
+        assert isinstance(left, Applicable)
+        assert isinstance(right, Applicable)
         return BesideDerived(left, right)
 
 
 class InnerProductConjunction(Conjunction):
     """Dyadic operator `.` — inner product (e.g. +.× for dot-product / matrix-multiply)."""
-    def derive_dyadic(self, left: 'Applicable', right: 'Applicable') -> Function:
+    def derive_dyadic(self, left: 'OperatorOperand', right: 'OperatorOperand') -> Function:
         assert isinstance(left, PrimitiveFunction)
         assert isinstance(right, PrimitiveFunction)
         return InnerDerived(left, right)
@@ -251,7 +261,7 @@ class OuterProductAdverb(Adverb):
     Parser combines the `∘`, `.`, and the function token into a pre-bound
     unit at parse time; the function becomes the single operand here.
     """
-    def derive_monadic(self, operand: 'Applicable') -> Function:
+    def derive_monadic(self, operand: 'OperatorOperand') -> Function:
         assert isinstance(operand, PrimitiveFunction)
         return OuterDerived(operand)
 
@@ -262,7 +272,7 @@ class IBeamAdverb(Adverb):
     `(A⌶)` derives a function that, when applied, evaluates A, looks up
     the registered Python implementation, and invokes it.
     """
-    def derive_monadic(self, operand: 'Applicable') -> Function:
+    def derive_monadic(self, operand: 'OperatorOperand') -> Function:
         assert isinstance(operand, Executable)
         return IBeamFunction(operand)
 
@@ -392,16 +402,18 @@ class Reference(Executable):
 
 
 # `Applicable` is the set of things that can be applied as a function:
-# Function values, and Executable AST nodes that execute or resolve
-# to one (Reference is an Executable subclass). Runtime union so
-# both type annotations and isinstance checks work (Python 3.10+
-# supports `isinstance(x, A | B)`).
-#
-# Note: this alias is also used as the parameter type on conjunction
-# `derive_dyadic` methods, where the right operand can be a numeric
-# rank spec (a non-applicable Executable). That overload-of-purpose
-# is the reason this isn't tightened to `Function | Reference`.
-Applicable = Function | Executable
+# Function values, and Reference nodes that resolve to one. (A pure
+# Executable that computes an APLArray is never applicable.) Runtime
+# union so both type annotations and isinstance checks work
+# (Python 3.10+ supports `isinstance(x, A | B)`).
+Applicable = Function | Reference
+
+# `OperatorOperand` is the broader set of things an operator can
+# accept as an operand: any Applicable, plus a non-applicable
+# Executable for cases like a numeric rank spec in `f⍤2` or a
+# repeat count in `f⍣3`. Per-operator subclasses assert the
+# specific shape they require.
+OperatorOperand = Function | Executable
 
 
 class Literal(Executable):
@@ -608,8 +620,8 @@ class RankDerived(UnappliedFunction):
 
 
 class PowerDerived(UnappliedFunction):
-    """Unapplied power-derived function: f⍣g"""
-    def __init__(self, function: Applicable, right_operand: Applicable) -> None:
+    """Unapplied power-derived function: f⍣g (or f⍣N for a count)."""
+    def __init__(self, function: Applicable, right_operand: OperatorOperand) -> None:
         self.function = function
         self.right_operand = right_operand
 
@@ -715,7 +727,7 @@ class ForkDerived(UnappliedFunction):
     Dyadic:  α (f g h) ω ≡ (α f ω) g (α h ω)
     When f is an array: (A g h) ω ≡ A g (h ω)
     """
-    def __init__(self, f: Applicable, g: Applicable, h: Applicable) -> None:
+    def __init__(self, f: OperatorOperand, g: Applicable, h: Applicable) -> None:
         self.f = f
         self.g = g
         self.h = h

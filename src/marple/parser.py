@@ -29,6 +29,7 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     DyadicFunc,
     Executable,
     ExecutionContext,
+    OperatorOperand,
     Reference,
     FmtArgs,
     ForkDerived,
@@ -417,7 +418,7 @@ class Parser:
             return MonadicFunc(verb_node.glyph, arg_node)
         if isinstance(verb_node, BoundOperator):
             return self._apply_bound_monadic(verb_node, arg_node)
-        if isinstance(verb_node, (Executable, UnappliedFunction)):
+        if isinstance(verb_node, (Reference, UnappliedFunction)):
             return MonadicDfnCall(verb_node, arg_node)
         raise SyntaxError_(f"Cannot apply as monadic function: {type(verb_node)}")
 
@@ -428,7 +429,7 @@ class Parser:
             return DyadicFunc(verb_node.glyph, left_node, right_node)
         if isinstance(verb_node, BoundOperator):
             return self._apply_bound_dyadic(verb_node, left_node, right_node)
-        if isinstance(verb_node, (Executable, UnappliedFunction)):
+        if isinstance(verb_node, (Reference, UnappliedFunction)):
             return DyadicDfnCall(verb_node, left_node, right_node)
         raise SyntaxError_(f"Cannot apply as dyadic function: {type(verb_node)}")
 
@@ -492,16 +493,17 @@ class Parser:
             return DyadicDopCall(bound.operator, operand, self._as_evaluatable(bound.right_operand), right_node)
         return MonadicDopCall(bound.operator, operand, right_node, alpha=left_node)
 
-    def _resolve_right_operand(self, bound: BoundOperator) -> Applicable:
+    def _resolve_right_operand(self, bound: BoundOperator) -> 'OperatorOperand':
         """Resolve the right operand of a conjunction (must exist)."""
         assert bound.right_operand is not None
         return self._resolve_operand(bound.right_operand)
 
-    def _resolve_operand(self, operand: Node) -> Applicable:
-        """If operand is a BoundOperator, resolve it to a derived type."""
+    def _resolve_operand(self, operand: Node) -> 'OperatorOperand':
+        """Resolve an operator operand. May be applicable (most operators)
+        or a non-applicable Executable (numeric rank spec, power count)."""
         if isinstance(operand, BoundOperator):
             return self._bound_to_derived(operand)
-        assert isinstance(operand, Applicable)
+        assert isinstance(operand, OperatorOperand)
         return operand
 
     def _bound_to_derived(self, bound: BoundOperator) -> UnappliedFunction:
@@ -525,17 +527,28 @@ class Parser:
         assert isinstance(result, UnappliedFunction)
         return result
 
-    def _build_train(self, items: list[Applicable]) -> UnappliedFunction:
+    def _build_train(self, items: list[OperatorOperand]) -> UnappliedFunction:
         """Build a train node from items (source left-to-right order).
 
           2 items → AtopDerived(g, h)
           3 items → ForkDerived(f, g, h)
+
+        Items at positions other than ForkDerived.f must be Applicable
+        (functions). ForkDerived.f can be a non-applicable Executable
+        in the Agh-fork form `(A g h)`.
         """
         if len(items) == 2:
+            assert isinstance(items[0], Applicable)
+            assert isinstance(items[1], Applicable)
             return AtopDerived(items[0], items[1])
         if len(items) == 3:
+            assert isinstance(items[1], Applicable)
+            assert isinstance(items[2], Applicable)
             return ForkDerived(items[0], items[1], items[2])
         # N items: bind rightmost 3 into a fork, recurse on (N-2) items
+        assert isinstance(items[-3], Applicable)
+        assert isinstance(items[-2], Applicable)
+        assert isinstance(items[-1], Applicable)
         inner = ForkDerived(items[-3], items[-2], items[-1])
         return self._build_train(items[:-3] + [inner])
 
@@ -694,7 +707,7 @@ class Parser:
             elif (c0 in (CAT_LP, CAT_ASGN, CAT_END)
                     and c1 in (CAT_VERB, CAT_NOUN)
                     and c2 == CAT_VERB):
-                train_items: list[Applicable] = []
+                train_items: list[OperatorOperand] = []
                 leading_noun = False
                 i = 2
                 while i <= len(stack):
@@ -702,7 +715,7 @@ class Parser:
                     if cat == CAT_VERB:
                         train_items.append(self._resolve_operand(_node))
                     elif cat == CAT_NOUN and len(train_items) == 0:
-                        assert isinstance(_node, Applicable)
+                        assert isinstance(_node, OperatorOperand)
                         train_items.append(_node)
                         leading_noun = True
                     else:
