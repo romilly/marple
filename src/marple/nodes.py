@@ -853,16 +853,16 @@ class SysVar(Executable):
         return ctx.eval_sysvar(self.name)
 
 
-class SysFunc(Function, Executable):
+class SysFunc(Function, Reference):
     """A callable system function (⎕NC, ⎕CR, ⎕FX, ⎕UCS, …).
 
     Inherits Function so apply_monadic/apply_dyadic dispatches the
-    standard way; inherits Executable so it can act as an expression
-    node that self-evaluates (like PrimitiveFunction).
+    standard way; inherits Reference so it can sit in expression
+    position (resolving to itself, like a Var bound to a function).
     """
     def __init__(self, name: str) -> None:
         self.name = name
-    def execute(self, ctx: ExecutionContext) -> APLValue:
+    def resolve(self, ctx: ExecutionContext) -> APLValue:
         return self
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Executable) -> APLArray:
         return ctx.dispatch_sys_monadic(self.name, operand_node)
@@ -941,11 +941,15 @@ class Alpha(Executable):
         return ctx.env["⍺"]
 
 
-class PrimitiveFunction(UnappliedFunction, Executable):  # Executable for execute()
-    """A reference to a primitive function glyph."""
+class PrimitiveFunction(UnappliedFunction, Reference):
+    """A reference to a primitive function glyph.
+
+    Inherits Reference so it can sit in expression position
+    (resolves to itself).
+    """
     def __init__(self, glyph: str) -> None:
         self.glyph = glyph
-    def execute(self, ctx: ExecutionContext) -> APLValue:
+    def resolve(self, ctx: ExecutionContext) -> APLValue:
         return self
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Executable) -> APLArray:
         operand = ctx.evaluate(operand_node)
