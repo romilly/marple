@@ -187,11 +187,19 @@ class Conjunction(Operator, Node):
     """
 
 
+def _require_applicable(operand: 'OperatorOperand', op_glyph: str, position: str) -> 'Applicable':
+    """Raise a descriptive DomainError if an operator operand isn't
+    applicable as a function. Centralised so all operator subclasses
+    surface the same error shape rather than bare AssertionErrors."""
+    if not isinstance(operand, Applicable):
+        raise DomainError(f"{position} operand of {op_glyph} must be a function")
+    return operand
+
+
 class CommuteAdverb(Adverb):
     """Monadic operator ⍨ — commute."""
     def derive_monadic(self, operand: 'OperatorOperand') -> Function:
-        assert isinstance(operand, Applicable)
-        return CommuteDerived(operand)
+        return CommuteDerived(_require_applicable(operand, "⍨", "Operand"))
 
 
 class ReduceAdverb(Adverb):
@@ -205,8 +213,7 @@ class ReduceAdverb(Adverb):
         self.axis = axis
 
     def derive_monadic(self, operand: 'OperatorOperand') -> Function:
-        assert isinstance(operand, Applicable)
-        return ReduceDerived(self, operand)
+        return ReduceDerived(self, _require_applicable(operand, self.symbol, "Operand"))
 
 
 class ScanAdverb(Adverb):
@@ -216,16 +223,15 @@ class ScanAdverb(Adverb):
         self.axis = axis
 
     def derive_monadic(self, operand: 'OperatorOperand') -> Function:
-        assert isinstance(operand, Applicable)
-        return ScanDerived(self, operand)
+        return ScanDerived(self, _require_applicable(operand, self.symbol, "Operand"))
 
 
 class RankConjunction(Conjunction):
     """Dyadic operator ⍤ — rank."""
     def derive_dyadic(self, left: 'OperatorOperand', right: 'OperatorOperand') -> Function:
-        assert isinstance(left, Applicable)
-        assert isinstance(right, Executable)
-        return RankDerived(left, right)
+        if not isinstance(right, Executable):
+            raise DomainError("Right operand of ⍤ must be a rank specifier")
+        return RankDerived(_require_applicable(left, "⍤", "Left"), right)
 
 
 class PowerConjunction(Conjunction):
@@ -235,16 +241,21 @@ class PowerConjunction(Conjunction):
     so it stays typed as `OperatorOperand`.
     """
     def derive_dyadic(self, left: 'OperatorOperand', right: 'OperatorOperand') -> Function:
-        assert isinstance(left, Applicable)
-        return PowerDerived(left, right)
+        return PowerDerived(_require_applicable(left, "⍣", "Left"), right)
 
 
 class BesideConjunction(Conjunction):
-    """Dyadic operator ∘ — composition / beside."""
+    """Dyadic operator ∘ — composition / beside.
+
+    Both operands must be applicable; partial-application syntax
+    like `+∘1` (Dyalog semantics: bind a value to one side) is not
+    yet supported.
+    """
     def derive_dyadic(self, left: 'OperatorOperand', right: 'OperatorOperand') -> Function:
-        assert isinstance(left, Applicable)
-        assert isinstance(right, Applicable)
-        return BesideDerived(left, right)
+        return BesideDerived(
+            _require_applicable(left, "∘", "Left"),
+            _require_applicable(right, "∘", "Right"),
+        )
 
 
 class InnerProductConjunction(Conjunction):
@@ -330,19 +341,28 @@ _MARKER = Marker()
 class Executable(Node):
     """A Node that can be executed to produce a value.
 
-    Most Executable subclasses compute an APLArray. The base return
-    type stays `APLValue` because the `Reference` family also
-    produces Functions and Operators via the same `execute` method.
+    `execute()` is the array-producing operation: every Executable
+    subclass computes (or narrows to) an `APLArray`. Callers that
+    might receive a non-array value (e.g. a Function bound to a
+    name) should call `value()` instead — it returns the broad
+    `APLValue` and is dispatched per subclass.
 
     `as_power_strategy` lives here because the right operand of
     power (`f⍣N` or `f⍣g`) can be either a numeric Executable or
-    an applicable, and PowerDerived dispatches by type.
+    an applicable, and the resolved value's own `as_power_strategy`
+    picks the appropriate strategy.
     """
     @abstractmethod
-    def execute(self, ctx: ExecutionContext) -> APLValue: ...
+    def execute(self, ctx: ExecutionContext) -> APLArray: ...
+
+    def as_value(self, ctx: ExecutionContext) -> APLValue:
+        """Broad accessor: returns whatever this node produces,
+        which for Executable is always an APLArray. `Reference`
+        overrides to return any APLValue (Function/Operator/array)."""
+        return self.execute(ctx)
 
     def as_power_strategy(self, ctx: ExecutionContext) -> 'PowerStrategy':
-        val = self.execute(ctx)
+        val = self.as_value(ctx)
         if not isinstance(val, (Function, APLArray)):
             raise DomainError("⍣ right operand must be integer or function")
         return val.as_power_strategy(ctx)
@@ -354,10 +374,10 @@ class Reference(Executable):
     A Reference produces an existing value by name/operand lookup
     rather than by computing a new array. `resolve()` is the truthful
     operation — it returns whatever the resolution yields (an
-    APLArray, Function, or Operator). `execute()` is a thin shim
-    that just forwards to `resolve()`, keeping Reference usable
-    where an Executable is expected. Array-narrowing happens at
-    `ctx.evaluate`, the same place it happens for any Executable.
+    APLArray, Function, or Operator). `execute()` asserts the
+    result is an APLArray (the array-narrowing the type system
+    promises); `value()` skips the assertion and returns the broad
+    APLValue, for callers that might want a Function or Operator.
 
     The apply/call helpers below live here because only References
     can resolve to a Function or Operator — a true Executable
@@ -370,7 +390,13 @@ class Reference(Executable):
     @abstractmethod
     def resolve(self, ctx: ExecutionContext) -> APLValue: ...
 
-    def execute(self, ctx: ExecutionContext) -> APLValue:
+    def execute(self, ctx: ExecutionContext) -> APLArray:
+        val = self.resolve(ctx)
+        if not isinstance(val, APLArray):
+            raise DomainError(f"Expected an array, got {type(val).__name__}")
+        return val
+
+    def as_value(self, ctx: ExecutionContext) -> APLValue:
         return self.resolve(ctx)
 
     def _as_function(self, ctx: ExecutionContext) -> Function:
@@ -549,7 +575,7 @@ class MonadicDopCall(Executable):
         self.argument = argument
         self.alpha = alpha
     def execute(self, ctx: ExecutionContext) -> APLArray:
-        operand = self.operand.execute(ctx)
+        operand = self.operand.as_value(ctx)
         argument = ctx.evaluate(self.argument)
         alpha = ctx.evaluate(self.alpha) if self.alpha is not None else None
         return self.op_name.apply_monadic_dop(ctx, argument, operand, alpha)
@@ -563,9 +589,9 @@ class DyadicDopCall(Executable):
         self.left = left
         self.right = right
     def execute(self, ctx: ExecutionContext) -> APLArray:
-        left_operand = self.operand.execute(ctx)    # ⍺⍺
-        right_operand = self.left.execute(ctx)      # ⍵⍵
-        argument = ctx.evaluate(self.right)           # ⍵
+        left_operand = self.operand.as_value(ctx)    # ⍺⍺
+        right_operand = self.left.as_value(ctx)      # ⍵⍵
+        argument = ctx.evaluate(self.right)         # ⍵
         return self.op_name.apply_dyadic_dop(ctx, argument, left_operand, right_operand)
 
 
@@ -743,7 +769,7 @@ class ForkDerived(UnappliedFunction):
     def _resolve_f(self, ctx: ExecutionContext) -> APLValue:
         """Resolve f to an APLArray (Agh-fork) or leave as function."""
         if isinstance(self.f, Executable):
-            return self.f.execute(ctx)
+            return self.f.as_value(ctx)
         assert isinstance(self.f, APLValue)
         return self.f
 

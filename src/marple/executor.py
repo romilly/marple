@@ -103,9 +103,7 @@ class Executor:
 
     def evaluate(self, node: Executable) -> APLArray:
         """Evaluate an AST node by calling its execute method."""
-        result = node.execute(self)
-        assert isinstance(result, APLArray)
-        return result
+        return node.execute(self)
 
     # ── Callback methods for node execute() ──
 
@@ -139,7 +137,7 @@ class Executor:
         raise DomainError(f"Undefined namespace: {parts[0]}")
 
     def apply_derived(self, operator: str, function: Executable, operand: APLArray, axis: int | None = None) -> APLArray:
-        val = function.execute(self)
+        val = function.as_value(self)
         return DerivedFunctionBinding().apply(operator, val, operand, axis)
 
     def assign(self, name: str, value_node: Executable | UnappliedFunction) -> APLArray:
@@ -150,7 +148,7 @@ class Executor:
         # they are not Node instances and should not be evaluated.
         value: APLValue
         if isinstance(value_node, Executable):
-            value = value_node.execute(self)
+            value = value_node.as_value(self)
         else:
             assert isinstance(value_node, APLValue)
             value = value_node

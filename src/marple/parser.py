@@ -537,19 +537,20 @@ class Parser:
         (functions). ForkDerived.f can be a non-applicable Executable
         in the Agh-fork form `(A g h)`.
         """
+        def _require_fn(item: 'OperatorOperand', position: str) -> Applicable:
+            if not isinstance(item, Applicable):
+                raise SyntaxError_(f"{position} of train must be a function")
+            return item
         if len(items) == 2:
-            assert isinstance(items[0], Applicable)
-            assert isinstance(items[1], Applicable)
-            return AtopDerived(items[0], items[1])
+            return AtopDerived(_require_fn(items[0], "g"), _require_fn(items[1], "h"))
         if len(items) == 3:
-            assert isinstance(items[1], Applicable)
-            assert isinstance(items[2], Applicable)
-            return ForkDerived(items[0], items[1], items[2])
+            return ForkDerived(items[0], _require_fn(items[1], "g"), _require_fn(items[2], "h"))
         # N items: bind rightmost 3 into a fork, recurse on (N-2) items
-        assert isinstance(items[-3], Applicable)
-        assert isinstance(items[-2], Applicable)
-        assert isinstance(items[-1], Applicable)
-        inner = ForkDerived(items[-3], items[-2], items[-1])
+        inner = ForkDerived(
+            _require_fn(items[-3], "f"),
+            _require_fn(items[-2], "g"),
+            _require_fn(items[-1], "h"),
+        )
         return self._build_train(items[:-3] + [inner])
 
     def _resolve_assignment_value(self, value_node: Node,
