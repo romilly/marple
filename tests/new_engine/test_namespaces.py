@@ -2,37 +2,32 @@
 
 from marple.numpy_array import APLArray, S
 from marple.engine import Interpreter
-from marple.tokenizer import (
-    GuardToken,
-    IdToken,
-    QualifiedNameToken,
-    StringToken,
-    Tokenizer,
-)
+from marple.nodes import QualifiedVar, Str, Var
+from marple.tokenizer import GuardToken, Tokenizer
 
 
 class TestQualifiedNameTokenization:
     def test_simple_qualified(self) -> None:
         tokens = Tokenizer("utils::trim").tokenize()
-        assert tokens[0] == QualifiedNameToken("utils::trim")
+        assert tokens[0] == QualifiedVar(["utils", "trim"])
 
     def test_triple_qualified(self) -> None:
         tokens = Tokenizer("math::stats::mean").tokenize()
-        assert tokens[0] == QualifiedNameToken("math::stats::mean")
+        assert tokens[0] == QualifiedVar(["math", "stats", "mean"])
 
     def test_system_workspace(self) -> None:
         tokens = Tokenizer("$::io::nread").tokenize()
-        assert tokens[0] == QualifiedNameToken("$::io::nread")
+        assert tokens[0] == QualifiedVar(["$", "io", "nread"])
 
     def test_guard_not_affected(self) -> None:
         tokens = Tokenizer("x:42").tokenize()
-        assert tokens[0] == IdToken("x")
+        assert tokens[0] == Var("x")
         assert tokens[1] == GuardToken()
 
     def test_qualified_in_expression(self) -> None:
         tokens = Tokenizer("$::str::upper 'hello'").tokenize()
-        assert tokens[0] == QualifiedNameToken("$::str::upper")
-        assert tokens[1] == StringToken("hello")
+        assert tokens[0] == QualifiedVar(["$", "str", "upper"])
+        assert tokens[1] == Str("hello")
 
 
 class TestNamespaceExecution:
