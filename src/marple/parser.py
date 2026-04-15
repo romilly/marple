@@ -869,23 +869,19 @@ class Parser:
         return atom
 
     def _parse_bracket_index(self, array: Executable) -> Index:
-        """Parse [idx] or [row;col] bracket indexing."""
+        """Parse [idx] or [i1;i2;…] — each slot may be empty."""
         self._eat(LBracketToken)
         indices: list[Executable | None] = []
-        # First index (may be empty for [;col])
-        if isinstance(self._current(), SemicolonToken):
-            indices.append(None)
-        elif isinstance(self._current(), RBracketToken):
-            indices.append(None)
-        else:
-            indices.append(self._parse_statement())
-        # Additional indices separated by ;
-        while isinstance(self._current(), SemicolonToken):
-            self._eat(SemicolonToken)
+        while True:
+            # Peek: an empty slot is one where the next token is the
+            # slot terminator (; or ]) rather than the start of an expr.
             if isinstance(self._current(), (SemicolonToken, RBracketToken)):
                 indices.append(None)
             else:
                 indices.append(self._parse_statement())
+            if isinstance(self._current(), RBracketToken):
+                break
+            self._eat(SemicolonToken)
         self._eat(RBracketToken)
         return Index(array, indices)
 
