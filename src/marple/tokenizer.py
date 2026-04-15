@@ -145,31 +145,35 @@ class Tokenizer:
             self._advance()
 
     def _read_number(self) -> Num:
-        result = ""
+        """Consume a numeric literal, then let int()/float() parse it.
+
+        Scans digits, optional decimal point (at most one), and
+        optional scientific-notation tail (`e`/`E` followed by an
+        optional sign and digits). The sign may be APL's high minus
+        `¯`; we normalise it to `-` before conversion.
+        """
+        start = self._pos
         has_dot = False
-        while _isdigit(self._current()) or self._current() == ".":
-            if self._current() == ".":
-                if has_dot:
-                    break
-                has_dot = True
-            result += self._current()  # type: ignore[operator]
-            self._advance()
-        # Handle scientific notation: 1E¯14, 1E3, 1e-14, 1.5E3
-        if self._current() in ("e", "E"):
-            result += self._current()  # type: ignore[operator]
-            self._advance()
-            if self._current() == "¯":
-                result += "-"  # APL high minus → Python minus for float()
+        while True:
+            ch = self._current()
+            if _isdigit(ch):
                 self._advance()
-            elif self._current() in ("-", "+"):
-                result += self._current()  # type: ignore[operator]
+            elif ch == "." and not has_dot:
+                has_dot = True
+                self._advance()
+            else:
+                break
+        if self._current() in ("e", "E"):
+            self._advance()
+            if self._current() in ("¯", "-", "+"):
                 self._advance()
             while _isdigit(self._current()):
-                result += self._current()  # type: ignore[operator]
                 self._advance()
-            return Num(float(result))
-        value: int | float = float(result) if has_dot else int(result)
-        return Num(value)
+        text = "".join(c for c in self._source[start:self._pos] if c is not None).replace("¯", "-")
+        try:
+            return Num(int(text))
+        except ValueError:
+            return Num(float(text))
 
     def _read_string(self) -> Str:
         self._advance()  # skip opening quote
