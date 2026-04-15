@@ -317,19 +317,6 @@ class Marker(Node):
 _MARKER = Marker()
 
 
-class Reference(Node):
-    """A Node that resolves to a value by name/operand lookup.
-
-    Distinct from `Executable`: a Reference does not compute, it
-    produces an existing value (an APLArray, Function, or Operator).
-    Examples: `Var` (name lookup), `AlphaAlpha`/`OmegaOmega` (operand
-    lookup), `Nabla` (self-reference in a dfn), `Dfn` (binding
-    creation from a dfn literal).
-    """
-    @abstractmethod
-    def resolve(self, ctx: ExecutionContext) -> APLValue: ...
-
-
 class Executable(Node):
     """A Node that can be executed to produce a value.
 
@@ -379,10 +366,31 @@ class Executable(Node):
         return val.as_power_strategy(ctx)
 
 
+class Reference(Executable):
+    """An Executable that does not compute, but resolves to a value.
+
+    A Reference produces an existing value by name/operand lookup
+    rather than by computing a new array. `resolve()` is the truthful
+    operation — it returns whatever the resolution yields (an
+    APLArray, Function, or Operator). `execute()` is a thin shim
+    that just forwards to `resolve()`, keeping Reference usable
+    where an Executable is expected. Array-narrowing happens at
+    `ctx.evaluate`, the same place it happens for any Executable.
+
+    Examples: `Var`, `AlphaAlpha`/`OmegaOmega`, `Nabla`, `Dfn`.
+    """
+    @abstractmethod
+    def resolve(self, ctx: ExecutionContext) -> APLValue: ...
+
+    def execute(self, ctx: ExecutionContext) -> APLValue:
+        return self.resolve(ctx)
+
+
 # `Applicable` is the set of things that can be applied as a function:
-# Function values, and Executable AST nodes that execute to one.
-# Runtime union so both type annotations and isinstance checks work
-# (Python 3.10+ supports `isinstance(x, A | B)`).
+# Function values, and Executable AST nodes that execute or resolve
+# to one (Reference is an Executable subclass). Runtime union so
+# both type annotations and isinstance checks work (Python 3.10+
+# supports `isinstance(x, A | B)`).
 Applicable = Function | Executable
 
 
@@ -461,10 +469,10 @@ class Assignment(Executable):
         return ctx.assign(self.name, self.value)
 
 
-class Var(Executable):
+class Var(Reference):
     def __init__(self, name: str) -> None:
         self.name = name
-    def execute(self, ctx: ExecutionContext) -> APLArray:
+    def resolve(self, ctx: ExecutionContext) -> APLValue:
         if self.name not in ctx.env:
             raise ValueError_(f"Undefined variable: {self.name}")
         return ctx.env[self.name]

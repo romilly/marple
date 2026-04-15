@@ -29,6 +29,7 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     DyadicFunc,
     Executable,
     ExecutionContext,
+    Reference,
     FmtArgs,
     ForkDerived,
     Marker,
