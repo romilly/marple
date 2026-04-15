@@ -184,7 +184,7 @@ class Tokenizer:
 
     def tokenize(self) -> list[Token | Executable]:
         tokens: list[Token | Executable] = []
-        while self._current() is not None:
+        while True:
             self._skip_whitespace()
             ch = self._current()
             if ch is None:
