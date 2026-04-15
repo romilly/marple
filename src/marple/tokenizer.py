@@ -147,6 +147,11 @@ class Tokenizer:
     def _current(self) -> str | None:
         return self._source[self._pos]
 
+    def _peek(self, offset: int = 1) -> str | None:
+        """Look ahead `offset` characters. Sentinels make offsets
+        1 and 2 always safe."""
+        return self._source[self._pos + offset]
+
     def _advance(self) -> None:
         self._pos += 1
 
@@ -236,7 +241,7 @@ class Tokenizer:
         return Num(-num_node.value)
 
     def _read_alpha(self) -> Node:
-        if self._source[self._pos + 1] == "⍺":
+        if self._peek() == "⍺":
             self._advance()
             self._advance()
             return AlphaAlpha()
@@ -244,7 +249,7 @@ class Tokenizer:
         return Alpha()
 
     def _read_omega(self) -> Node:
-        if self._source[self._pos + 1] == "⍵":
+        if self._peek() == "⍵":
             self._advance()
             self._advance()
             return OmegaOmega()
@@ -252,7 +257,7 @@ class Tokenizer:
         return Omega()
 
     def _read_workspace_qualified(self) -> Node:
-        if not (self._source[self._pos + 1] == ":" and self._source[self._pos + 2] == ":"):
+        if not (self._peek() == ":" and self._peek(2) == ":"):
             from marple.errors import SyntaxError_
             raise SyntaxError_("Unknown character: '$'")
         self._advance()  # skip $
