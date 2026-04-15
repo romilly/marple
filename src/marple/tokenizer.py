@@ -187,9 +187,7 @@ class Tokenizer:
         while True:
             self._skip_whitespace()
             ch = self._current()
-            if ch is None:
-                break
-            if ch == "⍝":
+            if ch is None or ch == "⍝":
                 break
             if ch == "'":
                 tokens.append(self._read_string())
