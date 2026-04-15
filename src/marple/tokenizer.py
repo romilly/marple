@@ -36,13 +36,13 @@ from marple.nodes import (
 )
 
 
-def _isdigit(ch: 'str | None') -> bool:
+def _isdigit(ch: str | None) -> bool:
     return ch is not None and "0" <= ch <= "9"
 
-def _isalpha(ch: 'str | None') -> bool:
+def _isalpha(ch: str | None) -> bool:
     return ch is not None and (("a" <= ch <= "z") or ("A" <= ch <= "Z") or ch in "∆⍙")
 
-def _isalnum(ch: 'str | None') -> bool:
+def _isalnum(ch: str | None) -> bool:
     return _isdigit(ch) or _isalpha(ch)
 
 
@@ -104,7 +104,7 @@ _SYS_FUNCTIONS = frozenset({
 })
 
 
-SINGLE_CHAR_TOKENS: dict[str, 'Node'] = {
+SINGLE_CHAR_TOKENS: dict[str, Node] = {
     "(": LParenToken(),
     ")": RParenToken(),
     "←": AssignToken(),
@@ -197,7 +197,7 @@ class Tokenizer:
         tokens.append(EofToken())
         return tokens
 
-    def _next_token(self, ch: str) -> 'Node':
+    def _next_token(self, ch: str) -> Node:
         handler = self._HANDLERS.get(ch)
         if handler:
             return handler(self)
@@ -211,20 +211,14 @@ class Tokenizer:
             return SINGLE_CHAR_TOKENS[ch]
         if _isalpha(ch) or ch == "_":
             return self._read_id()
-        # Defensive: any character that reached this point is
-        # unrecognised. The previous behaviour (silently advancing)
-        # masked two real bugs discovered on 2026-04-09 — the
-        # missing zilde literal (⍬) and the missing commute operator
-        # (⍨), both silently swallowed and producing confusing
-        # downstream errors.
         from marple.errors import SyntaxError_
         raise SyntaxError_(f"Unknown character: {ch!r}")
 
-    def _read_quote_quad(self) -> 'Node':
+    def _read_quote_quad(self) -> Node:
         self._advance()
         return SysVar("⍞")
 
-    def _read_quad(self) -> 'Node':
+    def _read_quad(self) -> Node:
         self._advance()
         name = ""
         while _isalpha(self._current()):
@@ -233,7 +227,7 @@ class Tokenizer:
         full = "⎕" + name.upper()
         return SysFunc(full) if full in _SYS_FUNCTIONS else SysVar(full)
 
-    def _read_high_minus(self) -> 'Node':
+    def _read_high_minus(self) -> Node:
         self._advance()
         if not _isdigit(self._current()):
             from marple.errors import SyntaxError_
@@ -241,7 +235,7 @@ class Tokenizer:
         num_node = self._read_number()
         return Num(-num_node.value)
 
-    def _read_alpha(self) -> 'Node':
+    def _read_alpha(self) -> Node:
         if self._source[self._pos + 1] == "⍺":
             self._advance()
             self._advance()
@@ -249,7 +243,7 @@ class Tokenizer:
         self._advance()
         return Alpha()
 
-    def _read_omega(self) -> 'Node':
+    def _read_omega(self) -> Node:
         if self._source[self._pos + 1] == "⍵":
             self._advance()
             self._advance()
@@ -257,7 +251,7 @@ class Tokenizer:
         self._advance()
         return Omega()
 
-    def _read_workspace_qualified(self) -> 'Node':
+    def _read_workspace_qualified(self) -> Node:
         if not (self._source[self._pos + 1] == ":" and self._source[self._pos + 2] == ":"):
             from marple.errors import SyntaxError_
             raise SyntaxError_("Unknown character: '$'")
@@ -268,7 +262,7 @@ class Tokenizer:
         rest_name = rest.name if isinstance(rest, Var) else "::".join(rest.parts)
         return QualifiedVar(("$::" + rest_name).split("::"))
 
-    _HANDLERS: dict[str, Callable[['Tokenizer'], 'Node']] = {
+    _HANDLERS: dict[str, Callable[['Tokenizer'], Node]] = {
         "'": _read_string,
         "⍞": _read_quote_quad,
         "⎕": _read_quad,
