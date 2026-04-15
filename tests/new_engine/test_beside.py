@@ -98,3 +98,55 @@ class TestBesideCombinations:
         result = Interpreter(io=1).run("((+/∘⍳)⍤0) 1 2 3 4 5")
         # For each n: +/⍳n = 1+2+...+n = n(n+1)/2
         assert result == APLArray.array([5], [1, 3, 6, 10, 15])
+
+
+class TestBesideValueBind:
+    """Dyalog ∘ overloads on operand kind:
+
+      f∘B  →  (f∘B) ω ≡ ω f B   (right-bind)
+      A∘g  →  (A∘g) ω ≡ A g ω   (left-bind)
+
+    Bind consumes the dyadic valence; dyadic application of a
+    bound form raises SYNTAX ERROR (matches Dyalog).
+    Both operands as values (e.g. `2∘3`) is also a SYNTAX ERROR.
+    """
+
+    def test_right_bind_scalar(self) -> None:
+        """`(+∘1) 5 ≡ 5 + 1 = 6`."""
+        assert Interpreter(io=1).run("(+∘1) 5") == S(6)
+
+    def test_right_bind_vector_omega(self) -> None:
+        """`(+∘1) 1 2 3 ≡ 1 2 3 + 1`."""
+        assert Interpreter(io=1).run("(+∘1) 1 2 3") == APLArray.array([3], [2, 3, 4])
+
+    def test_left_bind_scalar(self) -> None:
+        """`(10∘-) 3 ≡ 10 - 3 = 7`."""
+        assert Interpreter(io=1).run("(10∘-) 3") == S(7)
+
+    def test_left_bind_with_plus(self) -> None:
+        """`(1∘+) 5 ≡ 1 + 5 = 6`."""
+        assert Interpreter(io=1).run("(1∘+) 5") == S(6)
+
+    def test_right_bind_stored(self) -> None:
+        """`f ← +∘1` then `f 5` round-trips through env."""
+        i = Interpreter(io=1)
+        i.run("f←+∘1")
+        assert i.run("f 5") == S(6)
+
+    def test_left_bind_stored(self) -> None:
+        """`g ← 10∘-` then `g 3` round-trips through env."""
+        i = Interpreter(io=1)
+        i.run("g←10∘-")
+        assert i.run("g 3") == S(7)
+
+    def test_dyadic_application_of_bound_form_is_syntax_error(self) -> None:
+        """Bind consumes the dyadic valence; `5 (+∘1) 3` is invalid."""
+        from marple.errors import SyntaxError_
+        with pytest.raises(SyntaxError_):
+            Interpreter(io=1).run("5 (+∘1) 3")
+
+    # Note: `2∘3` (both operands values) is also a syntax error in
+    # Dyalog, but marple's parser fails earlier with an AssertionError
+    # before reaching `BesideConjunction.derive_dyadic`. That's a
+    # pre-existing parser gap (independent of value-bind support);
+    # not covered here.

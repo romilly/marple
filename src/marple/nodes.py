@@ -245,17 +245,24 @@ class PowerConjunction(Conjunction):
 
 
 class BesideConjunction(Conjunction):
-    """Dyadic operator ∘ — composition / beside.
+    """Dyadic operator ∘ — overloaded:
 
-    Both operands must be applicable; partial-application syntax
-    like `+∘1` (Dyalog semantics: bind a value to one side) is not
-    yet supported.
+      f∘g  (both functions)  → compose:    (f∘g) ω ≡ f (g ω)
+      f∘B  (right is value)  → right-bind: (f∘B) ω ≡ ω f B
+      A∘g  (left is value)   → left-bind:  (A∘g) ω ≡ A g ω
+      A∘B  (both values)     → SYNTAX ERROR (matches Dyalog)
     """
     def derive_dyadic(self, left: 'OperatorOperand', right: 'OperatorOperand') -> Function:
-        return BesideDerived(
-            _require_applicable(left, "∘", "Left"),
-            _require_applicable(right, "∘", "Right"),
-        )
+        left_fn = isinstance(left, Applicable)
+        right_fn = isinstance(right, Applicable)
+        if left_fn and right_fn:
+            return BesideDerived(left, right)
+        if left_fn and isinstance(right, Executable):
+            return BesideRightBound(left, right)
+        if isinstance(left, Executable) and right_fn:
+            return BesideLeftBound(left, right)
+        from marple.errors import SyntaxError_
+        raise SyntaxError_("∘ requires at least one function operand")
 
 
 class InnerProductConjunction(Conjunction):
@@ -722,6 +729,50 @@ class BesideDerived(UnappliedFunction):
         omega = ctx.evaluate(right_node)
         g_result = self.g.apply_to_monadic(ctx, omega)
         return self.f.apply_to_dyadic(ctx, alpha, g_result)
+
+
+class BesideRightBound(UnappliedFunction):
+    """f∘B with B a value: (f∘B) ω ≡ ω f B.
+
+    Bind consumes the dyadic valence; dyadic application of the
+    derived form is a syntax error in Dyalog.
+    """
+    def __init__(self, f: Applicable, right: Executable) -> None:
+        self.f = f
+        self.right = right
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, BesideRightBound):
+            return NotImplemented
+        return self.f == other.f and self.right == other.right
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Executable) -> APLArray:
+        omega = ctx.evaluate(operand_node)
+        bound = ctx.evaluate(self.right)
+        return self.f.apply_to_dyadic(ctx, omega, bound)
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Executable, right_node: Executable) -> APLArray:
+        from marple.errors import SyntaxError_
+        raise SyntaxError_("Cannot apply a value-bound ∘ form dyadically")
+
+
+class BesideLeftBound(UnappliedFunction):
+    """A∘g with A a value: (A∘g) ω ≡ A g ω.
+
+    Bind consumes the dyadic valence; dyadic application of the
+    derived form is a syntax error in Dyalog.
+    """
+    def __init__(self, left: Executable, g: Applicable) -> None:
+        self.left = left
+        self.g = g
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, BesideLeftBound):
+            return NotImplemented
+        return self.left == other.left and self.g == other.g
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Executable) -> APLArray:
+        omega = ctx.evaluate(operand_node)
+        bound = ctx.evaluate(self.left)
+        return self.g.apply_to_dyadic(ctx, bound, omega)
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Executable, right_node: Executable) -> APLArray:
+        from marple.errors import SyntaxError_
+        raise SyntaxError_("Cannot apply a value-bound ∘ form dyadically")
 
 
 class AtopDerived(UnappliedFunction):
