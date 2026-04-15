@@ -193,7 +193,7 @@ class Tokenizer:
 
     def _next_token(self, ch: str) -> 'Token | Executable':
         handler = self._HANDLERS.get(ch)
-        if handler is not None:
+        if handler:
             return handler(self)
         if _isdigit(ch):
             return self._read_number()
