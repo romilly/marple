@@ -127,7 +127,7 @@ class Parser:
     to correctly handle operator binding precedence.
     """
 
-    def __init__(self, tokens: list[Token | Executable], name_table: dict[str, int] | None = None,
+    def __init__(self, tokens: list[Node], name_table: dict[str, int] | None = None,
                  operator_arity: dict[str, int] | None = None) -> None:
         self._tokens = tokens
         self._pos = 0
@@ -783,15 +783,15 @@ class Parser:
             )
         return self._as_evaluatable(results[0][1])
 
-    def _current(self) -> Token | Executable:
+    def _current(self) -> Node:
         return self._tokens[self._pos]
 
-    def _peek(self) -> 'Token | Executable | None':
+    def _peek(self) -> 'Node | None':
         if self._pos + 1 < len(self._tokens):
             return self._tokens[self._pos + 1]
         return None
 
-    def _eat(self, token_type: type) -> 'Token | Executable':
+    def _eat(self, token_type: type) -> 'Node':
         token = self._current()
         if not isinstance(token, token_type):
             raise SyntaxError_(f"Expected {token_type.__name__}, got {type(token).__name__}")

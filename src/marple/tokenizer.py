@@ -10,8 +10,8 @@ Marker tokens (parens, diamonds, braces, brackets, etc.) and the
 `OperatorToken` (deferred because of axis-spec parsing) remain as
 `Token` subclasses, sitting alongside AST nodes in the token list.
 
-The token list produced by `tokenize()` is a heterogeneous
-`list[Token | Executable]`.
+`Token` inherits from `Node` so the token list is `list[Node]`
+— tokens and AST nodes share the "parser-stack item" contract.
 """
 
 import re
@@ -21,8 +21,8 @@ from typing import Callable, cast
 from marple.nodes import (
     Alpha,
     AlphaAlpha,
-    Executable,
     Nabla,
+    Node,
     Num,
     Omega,
     OmegaOmega,
@@ -47,10 +47,16 @@ def _isalnum(ch: 'str | None') -> bool:
 
 
 @dataclass
-class Token:
+class Token(Node):
     """Base for marker tokens (parens, delimiters) and the operator
     token. Value-producing lexical units are emitted as AST nodes,
-    not Tokens."""
+    not Tokens.
+
+    Inherits from `Node` so the token list is `list[Node]` —
+    tokens ARE parser-stack items, same as AST nodes. Dataclass-
+    generated `__eq__` on each marker subclass overrides the
+    dict-based Node.__eq__ at its own level.
+    """
 
 
 # ── Operator token (deferred: axis-spec parsing lives in parser) ──
@@ -98,7 +104,7 @@ _SYS_FUNCTIONS = frozenset({
 })
 
 
-SINGLE_CHAR_TOKENS: dict[str, 'Token | Executable'] = {
+SINGLE_CHAR_TOKENS: dict[str, 'Node'] = {
     "(": LParenToken(),
     ")": RParenToken(),
     "←": AssignToken(),
@@ -180,8 +186,8 @@ class Tokenizer:
         text = m.group()
         return QualifiedVar(text.split("::")) if "::" in text else Var(text)
 
-    def tokenize(self) -> list[Token | Executable]:
-        tokens: list[Token | Executable] = []
+    def tokenize(self) -> list[Node]:
+        tokens: list[Node] = []
         while True:
             self._skip_whitespace()
             ch = self._current()
@@ -191,7 +197,7 @@ class Tokenizer:
         tokens.append(EofToken())
         return tokens
 
-    def _next_token(self, ch: str) -> 'Token | Executable':
+    def _next_token(self, ch: str) -> 'Node':
         handler = self._HANDLERS.get(ch)
         if handler:
             return handler(self)
@@ -214,11 +220,11 @@ class Tokenizer:
         from marple.errors import SyntaxError_
         raise SyntaxError_(f"Unknown character: {ch!r}")
 
-    def _read_quote_quad(self) -> 'Token | Executable':
+    def _read_quote_quad(self) -> 'Node':
         self._advance()
         return SysVar("⍞")
 
-    def _read_quad(self) -> 'Token | Executable':
+    def _read_quad(self) -> 'Node':
         self._advance()
         name = ""
         while _isalpha(self._current()):
@@ -227,7 +233,7 @@ class Tokenizer:
         full = "⎕" + name.upper()
         return SysFunc(full) if full in _SYS_FUNCTIONS else SysVar(full)
 
-    def _read_high_minus(self) -> 'Token | Executable':
+    def _read_high_minus(self) -> 'Node':
         self._advance()
         if not _isdigit(self._current()):
             from marple.errors import SyntaxError_
@@ -235,7 +241,7 @@ class Tokenizer:
         num_node = self._read_number()
         return Num(-num_node.value)
 
-    def _read_alpha(self) -> 'Token | Executable':
+    def _read_alpha(self) -> 'Node':
         if self._source[self._pos + 1] == "⍺":
             self._advance()
             self._advance()
@@ -243,7 +249,7 @@ class Tokenizer:
         self._advance()
         return Alpha()
 
-    def _read_omega(self) -> 'Token | Executable':
+    def _read_omega(self) -> 'Node':
         if self._source[self._pos + 1] == "⍵":
             self._advance()
             self._advance()
@@ -251,7 +257,7 @@ class Tokenizer:
         self._advance()
         return Omega()
 
-    def _read_workspace_qualified(self) -> 'Token | Executable':
+    def _read_workspace_qualified(self) -> 'Node':
         if not (self._source[self._pos + 1] == ":" and self._source[self._pos + 2] == ":"):
             from marple.errors import SyntaxError_
             raise SyntaxError_("Unknown character: '$'")
@@ -262,7 +268,7 @@ class Tokenizer:
         rest_name = rest.name if isinstance(rest, Var) else "::".join(rest.parts)
         return QualifiedVar(("$::" + rest_name).split("::"))
 
-    _HANDLERS: dict[str, Callable[['Tokenizer'], 'Token | Executable']] = {
+    _HANDLERS: dict[str, Callable[['Tokenizer'], 'Node']] = {
         "'": _read_string,
         "⍞": _read_quote_quad,
         "⎕": _read_quad,
