@@ -14,6 +14,7 @@ The token list produced by `tokenize()` is a heterogeneous
 `list[Token | Executable]`.
 """
 
+import re
 from dataclasses import dataclass
 
 from marple.nodes import (
@@ -125,12 +126,15 @@ SINGLE_CHAR_TOKENS: dict[str, 'Token | Executable'] = {
 
 
 class Tokenizer:
+    _NUM_RE = re.compile(r'\d+(?:\.\d*)?(?:[eE][¯\-+]?\d+)?')
+
     def __init__(self, source: str) -> None:
-        # Append two `None` sentinels so reads at `_pos`, `_pos+1`,
-        # and `_pos+2` are always in-range; any comparison against
-        # a real character then fails naturally past end-of-input.
-        # Two is enough because the deepest lookahead is `_pos+2`
-        # (the `::` and `$::` paths).
+        # `_text` is the raw source, used for regex matching
+        # (`_read_number`). `_source` is the same chars as a list
+        # with two `None` sentinels appended, so single-char reads
+        # at `_pos`, `_pos+1`, `_pos+2` are always in-range and
+        # return `None` past end-of-input.
+        self._text = source
         self._source: list[str | None] = list(source) + [None, None]
         self._pos = 0
 
@@ -145,28 +149,17 @@ class Tokenizer:
             self._advance()
 
     def _read_number(self) -> Num:
-        """Consume a numeric literal, then let int()/float() parse it.
+        """Consume a numeric literal via regex; let int()/float() parse.
 
         Callers only dispatch here when the current character is a
-        digit, so phase 1 always consumes at least one character.
-        Three linear phases: integer, optional fractional, optional
-        exponent. APL's high minus `¯` in the exponent is normalised
-        to `-` before conversion.
+        digit, so the match always succeeds and consumes at least
+        one character. APL's high minus `¯` in the exponent is
+        normalised to `-` before conversion.
         """
-        start = self._pos
-        while _isdigit(self._current()):                     # integer part
-            self._advance()
-        if self._current() == ".":                           # fractional part
-            self._advance()
-            while _isdigit(self._current()):
-                self._advance()
-        if self._current() in ("e", "E"):                    # exponent
-            self._advance()
-            if self._current() in ("¯", "-", "+"):
-                self._advance()
-            while _isdigit(self._current()):
-                self._advance()
-        text = "".join(c for c in self._source[start:self._pos] if c is not None).replace("¯", "-")
+        m = self._NUM_RE.match(self._text, self._pos)
+        assert m is not None
+        self._pos = m.end()
+        text = m.group().replace("¯", "-")
         try:
             return Num(int(text))
         except ValueError:
