@@ -128,6 +128,7 @@ SINGLE_CHAR_TOKENS: dict[str, 'Token | Executable'] = {
 
 class Tokenizer:
     _NUM_RE = re.compile(r'\d+(?:\.\d*)?(?:[eE][¯\-+]?\d+)?')
+    _ID_RE = re.compile(r'[a-zA-Z_∆⍙][a-zA-Z0-9_∆⍙]*(?:::[a-zA-Z_∆⍙][a-zA-Z0-9_∆⍙]*)*')
 
     def __init__(self, source: str) -> None:
         # `_text` is the raw source, used for regex matching
@@ -172,24 +173,14 @@ class Tokenizer:
         return Str(result)
 
     def _read_id(self) -> Var | QualifiedVar:
-        result = ""
-        while _isalnum(self._current()) or self._current() == "_":
-            result += self._current()  # type: ignore[operator]
-            self._advance()
-        # Check for :: (qualified name) — sentinels make the
-        # `_pos+1` / `_pos+2` reads safe without bounds checks.
-        if (
-            self._current() == ":"
-            and self._source[self._pos + 1] == ":"
-            and (_isalpha(self._source[self._pos + 2]) or self._source[self._pos + 2] == "_")
-        ):
-            result += "::"
-            self._advance()  # skip first :
-            self._advance()  # skip second :
-            rest = self._read_id()
-            rest_name = rest.name if isinstance(rest, Var) else "::".join(rest.parts)
-            return QualifiedVar((result + rest_name).split("::"))
-        return Var(result)
+        """Consume an identifier, possibly qualified (`a::b::c`).
+        Callers guarantee `_pos` is on an id-start char, so the
+        match always succeeds.
+        """
+        m = cast(re.Match[str], self._ID_RE.match(self._text, self._pos))
+        self._pos = m.end()
+        text = m.group()
+        return QualifiedVar(text.split("::")) if "::" in text else Var(text)
 
     def tokenize(self) -> list[Token | Executable]:
         tokens: list[Token | Executable] = []
