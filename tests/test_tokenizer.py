@@ -1,139 +1,148 @@
-from marple.tokenizer import Token, TokenType, Tokenizer
+from marple.tokenizer import (
+    AssignToken,
+    EofToken,
+    FunctionToken,
+    IdToken,
+    LParenToken,
+    NumberToken,
+    RParenToken,
+    Tokenizer,
+)
 
 
 class TestTokenizerNumbers:
     def test_single_integer(self) -> None:
         tokens = Tokenizer("5").tokenize()
-        assert tokens[0] == Token(TokenType.NUMBER, 5)
+        assert tokens[0] == NumberToken(5)
 
     def test_multi_digit_integer(self) -> None:
         tokens = Tokenizer("42").tokenize()
-        assert tokens[0] == Token(TokenType.NUMBER, 42)
+        assert tokens[0] == NumberToken(42)
 
     def test_float(self) -> None:
         tokens = Tokenizer("3.14").tokenize()
-        assert tokens[0] == Token(TokenType.NUMBER, 3.14)
+        assert tokens[0] == NumberToken(3.14)
 
     def test_negative_number_with_high_minus(self) -> None:
         tokens = Tokenizer("¯3").tokenize()
-        assert tokens[0] == Token(TokenType.NUMBER, -3)
+        assert tokens[0] == NumberToken(-3)
 
     def test_negative_float(self) -> None:
         tokens = Tokenizer("¯2.5").tokenize()
-        assert tokens[0] == Token(TokenType.NUMBER, -2.5)
+        assert tokens[0] == NumberToken(-2.5)
 
     def test_scientific_with_high_minus_exponent(self) -> None:
         tokens = Tokenizer("1E¯14").tokenize()
-        assert tokens[0] == Token(TokenType.NUMBER, 1e-14)
+        assert tokens[0] == NumberToken(1e-14)
 
     def test_scientific_uppercase_positive(self) -> None:
         tokens = Tokenizer("2.5E3").tokenize()
-        assert tokens[0] == Token(TokenType.NUMBER, 2500.0)
+        assert tokens[0] == NumberToken(2500.0)
 
     def test_scientific_negative_mantissa_and_exponent(self) -> None:
         tokens = Tokenizer("¯1.5E¯3").tokenize()
-        assert tokens[0] == Token(TokenType.NUMBER, -1.5e-3)
+        assert tokens[0] == NumberToken(-1.5e-3)
 
 
 class TestTokenizerFunctions:
     def test_plus(self) -> None:
         tokens = Tokenizer("+").tokenize()
-        assert tokens[0] == Token(TokenType.FUNCTION, "+")
+        assert tokens[0] == FunctionToken("+")
 
     def test_minus(self) -> None:
         tokens = Tokenizer("-").tokenize()
-        assert tokens[0] == Token(TokenType.FUNCTION, "-")
+        assert tokens[0] == FunctionToken("-")
 
     def test_times(self) -> None:
         tokens = Tokenizer("×").tokenize()
-        assert tokens[0] == Token(TokenType.FUNCTION, "×")
+        assert tokens[0] == FunctionToken("×")
 
     def test_divide(self) -> None:
         tokens = Tokenizer("÷").tokenize()
-        assert tokens[0] == Token(TokenType.FUNCTION, "÷")
+        assert tokens[0] == FunctionToken("÷")
 
     def test_ceiling(self) -> None:
         tokens = Tokenizer("⌈").tokenize()
-        assert tokens[0] == Token(TokenType.FUNCTION, "⌈")
+        assert tokens[0] == FunctionToken("⌈")
 
     def test_floor(self) -> None:
         tokens = Tokenizer("⌊").tokenize()
-        assert tokens[0] == Token(TokenType.FUNCTION, "⌊")
+        assert tokens[0] == FunctionToken("⌊")
 
 
 class TestTokenizerDelimiters:
     def test_lparen(self) -> None:
         tokens = Tokenizer("(").tokenize()
-        assert tokens[0] == Token(TokenType.LPAREN, "(")
+        assert tokens[0] == LParenToken()
 
     def test_rparen(self) -> None:
         tokens = Tokenizer(")").tokenize()
-        assert tokens[0] == Token(TokenType.RPAREN, ")")
+        assert tokens[0] == RParenToken()
 
     def test_assign(self) -> None:
         tokens = Tokenizer("←").tokenize()
-        assert tokens[0] == Token(TokenType.ASSIGN, "←")
+        assert tokens[0] == AssignToken()
 
 
 class TestTokenizerIdentifiers:
     def test_simple_id(self) -> None:
         tokens = Tokenizer("x").tokenize()
-        assert tokens[0] == Token(TokenType.ID, "x")
+        assert tokens[0] == IdToken("x")
 
     def test_multi_char_id(self) -> None:
         tokens = Tokenizer("mean").tokenize()
-        assert tokens[0] == Token(TokenType.ID, "mean")
+        assert tokens[0] == IdToken("mean")
 
 
 class TestTokenizerExpressions:
     def test_simple_addition(self) -> None:
         tokens = Tokenizer("3+4").tokenize()
         assert tokens == [
-            Token(TokenType.NUMBER, 3),
-            Token(TokenType.FUNCTION, "+"),
-            Token(TokenType.NUMBER, 4),
-            Token(TokenType.EOF, None),
+            NumberToken(3),
+            FunctionToken("+"),
+            NumberToken(4),
+            EofToken(),
         ]
 
     def test_strand_notation(self) -> None:
         tokens = Tokenizer("1 2 3").tokenize()
         assert tokens == [
-            Token(TokenType.NUMBER, 1),
-            Token(TokenType.NUMBER, 2),
-            Token(TokenType.NUMBER, 3),
-            Token(TokenType.EOF, None),
+            NumberToken(1),
+            NumberToken(2),
+            NumberToken(3),
+            EofToken(),
         ]
 
     def test_expression_with_spaces(self) -> None:
         tokens = Tokenizer("3 + 4").tokenize()
         assert tokens == [
-            Token(TokenType.NUMBER, 3),
-            Token(TokenType.FUNCTION, "+"),
-            Token(TokenType.NUMBER, 4),
-            Token(TokenType.EOF, None),
+            NumberToken(3),
+            FunctionToken("+"),
+            NumberToken(4),
+            EofToken(),
         ]
 
     def test_assignment(self) -> None:
         tokens = Tokenizer("x ← 5").tokenize()
         assert tokens == [
-            Token(TokenType.ID, "x"),
-            Token(TokenType.ASSIGN, "←"),
-            Token(TokenType.NUMBER, 5),
-            Token(TokenType.EOF, None),
+            IdToken("x"),
+            AssignToken(),
+            NumberToken(5),
+            EofToken(),
         ]
 
     def test_comment_ignored(self) -> None:
         tokens = Tokenizer("3 + 4 ⍝ add them").tokenize()
         assert tokens == [
-            Token(TokenType.NUMBER, 3),
-            Token(TokenType.FUNCTION, "+"),
-            Token(TokenType.NUMBER, 4),
-            Token(TokenType.EOF, None),
+            NumberToken(3),
+            FunctionToken("+"),
+            NumberToken(4),
+            EofToken(),
         ]
 
     def test_ends_with_eof(self) -> None:
         tokens = Tokenizer("5").tokenize()
-        assert tokens[-1] == Token(TokenType.EOF, None)
+        assert tokens[-1] == EofToken()
 
 
 class TestTokenizerUnknownChars:
@@ -156,17 +165,17 @@ class TestTokenizerUnknownChars:
         # skipped — only NON-whitespace unknown characters error.
         tokens = Tokenizer("1\t+\t2").tokenize()
         assert tokens == [
-            Token(TokenType.NUMBER, 1),
-            Token(TokenType.FUNCTION, "+"),
-            Token(TokenType.NUMBER, 2),
-            Token(TokenType.EOF, None),
+            NumberToken(1),
+            FunctionToken("+"),
+            NumberToken(2),
+            EofToken(),
         ]
 
     def test_carriage_return_is_skipped(self) -> None:
         tokens = Tokenizer("1\r+\r2").tokenize()
         assert tokens == [
-            Token(TokenType.NUMBER, 1),
-            Token(TokenType.FUNCTION, "+"),
-            Token(TokenType.NUMBER, 2),
-            Token(TokenType.EOF, None),
+            NumberToken(1),
+            FunctionToken("+"),
+            NumberToken(2),
+            EofToken(),
         ]

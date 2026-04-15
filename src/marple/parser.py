@@ -60,7 +60,34 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     Vector,
     Zilde,
 )
-from marple.tokenizer import Token, TokenType, Tokenizer
+from marple.tokenizer import (
+    Token,
+    Tokenizer,
+    AlphaAlphaToken,
+    AlphaToken,
+    AssignToken,
+    DiamondToken,
+    EofToken,
+    FunctionToken,
+    GuardToken,
+    IdToken,
+    LBraceToken,
+    LBracketToken,
+    LParenToken,
+    NablaToken,
+    NumberToken,
+    OmegaOmegaToken,
+    OmegaToken,
+    OperatorToken,
+    QualifiedNameToken,
+    RBraceToken,
+    RBracketToken,
+    RParenToken,
+    SemicolonToken,
+    StringToken,
+    SysVarToken,
+    ZildeToken,
+)
 
 
 
@@ -178,25 +205,25 @@ class Parser:
         """
         items: list[tuple[int, Node]] = []
         paren_depth = 0
-        stop_types = frozenset({
-            TokenType.DIAMOND, TokenType.GUARD, TokenType.RBRACE,
-            TokenType.RBRACKET, TokenType.SEMICOLON, TokenType.EOF,
-            TokenType.LBRACKET,
-        })
+        stop_types: tuple[type[Token], ...] = (
+            DiamondToken, GuardToken, RBraceToken,
+            RBracketToken, SemicolonToken, EofToken,
+            LBracketToken,
+        )
 
         while self._pos < len(self._tokens):
             tok = self._current()
 
-            if paren_depth == 0 and tok.type in stop_types:
+            if paren_depth == 0 and isinstance(tok, stop_types):
                 break
 
             # Parens need inline handling — they track paren_depth state
-            if tok.type == TokenType.LPAREN:
+            if isinstance(tok, LParenToken):
                 items.append((CAT_LP, _MARKER))
                 self._pos += 1
                 paren_depth += 1
                 continue
-            if tok.type == TokenType.RPAREN:
+            if isinstance(tok, RParenToken):
                 paren_depth -= 1
                 if paren_depth < 0:
                     break
@@ -205,7 +232,7 @@ class Parser:
                 # (expr)[idx] — bracket index binds to parenthesised expression
                 if (paren_depth == 0
                         and self._pos < len(self._tokens)
-                        and self._current().type == TokenType.LBRACKET):
+                        and isinstance(self._current(), LBracketToken)):
                     # Reduce the paren group we just closed, then apply [idx]
                     lp_pos = len(items) - 1
                     while lp_pos >= 0 and items[lp_pos][0] != CAT_LP:
@@ -217,7 +244,7 @@ class Parser:
                         items[lp_pos:] = [(CAT_NOUN, node)]
                 continue
 
-            handler = self._ITEM_DISPATCH.get(tok.type)
+            handler = self._ITEM_DISPATCH.get(type(tok))
             if handler is not None:
                 handler(self, tok, items)
             else:
@@ -232,40 +259,41 @@ class Parser:
 
     def _item_number(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         node: Executable = self._parse_array()
-        if self._current().type == TokenType.LBRACKET:
+        if isinstance(self._current(), LBracketToken):
             node = self._parse_bracket_index(node)
         items.append((CAT_NOUN, node))
 
     def _item_string(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         self._pos += 1
-        assert isinstance(tok.value, str)
+        assert isinstance(tok, StringToken)
         node: object = Str(tok.value)
-        if self._current().type == TokenType.LBRACKET:
+        if isinstance(self._current(), LBracketToken):
             node = self._parse_bracket_index(node)
         items.append((CAT_NOUN, node))
 
     def _item_function(self, tok: Token, items: list[tuple[int, Node]]) -> None:
         self._pos += 1
-        assert isinstance(tok.value, str)
-        items.append((CAT_VERB, PrimitiveFunction(tok.value)))
+        assert isinstance(tok, FunctionToken)
+        items.append((CAT_VERB, PrimitiveFunction(tok.glyph)))
 
     def _item_operator(self, tok: Token, items: list[tuple[int, Node]]) -> None:
-        assert isinstance(tok.value, str)
-        op = tok.value
+        assert isinstance(tok, OperatorToken)
+        op = tok.glyph
         self._pos += 1
+        next_tok = self._current()
         if (op == "∘" and self._pos < len(self._tokens)
-                and self._current().type == TokenType.OPERATOR
-                and self._current().value == "."):
+                and isinstance(next_tok, OperatorToken)
+                and next_tok.glyph == "."):
             self._pos += 1
-            fn_tok = self._eat(TokenType.FUNCTION)
-            assert isinstance(fn_tok.value, str)
-            bound = BoundOperator(make_adverb("∘."), PrimitiveFunction(fn_tok.value), CAT_VERB)
+            fn_tok = self._eat(FunctionToken)
+            assert isinstance(fn_tok, FunctionToken)
+            bound = BoundOperator(make_adverb("∘."), PrimitiveFunction(fn_tok.glyph), CAT_VERB)
             items.append((CAT_VERB, bound))
         else:
             cat = self._classify_operator(op)
             axis: Executable | None = None
             if cat == CAT_ADV and op in ("/", "\\", "⌿", "⍀") \
-                    and self._current().type == TokenType.LBRACKET:
+                    and isinstance(self._current(), LBracketToken):
                 axis = self._parse_axis_spec()
             token: Adverb | Conjunction = (
                 make_adverb(op, axis) if cat == CAT_ADV else make_conjunction(op)
@@ -274,14 +302,14 @@ class Parser:
 
     def _parse_axis_spec(self) -> Executable:
         """Parse a bracketed axis expression: `[expr]`."""
-        self._eat(TokenType.LBRACKET)
+        self._eat(LBracketToken)
         start = self._pos
         depth = 0
         while self._pos < len(self._tokens):
             tok = self._current()
-            if tok.type == TokenType.LBRACKET:
+            if isinstance(tok, LBracketToken):
                 depth += 1
-            elif tok.type == TokenType.RBRACKET:
+            elif isinstance(tok, RBracketToken):
                 if depth == 0:
                     break
                 depth -= 1
@@ -289,10 +317,10 @@ class Parser:
         if self._pos >= len(self._tokens):
             raise SyntaxError_("Unterminated axis specifier")
         axis_tokens = self._tokens[start:self._pos]
-        self._eat(TokenType.RBRACKET)
+        self._eat(RBracketToken)
         if not axis_tokens:
             raise SyntaxError_("Empty axis specifier")
-        sub_parser = Parser(axis_tokens + [Token(TokenType.EOF, "")],
+        sub_parser = Parser(axis_tokens + [EofToken()],
                              self._name_table, self._operator_arity)
         return sub_parser.parse()
 
@@ -301,31 +329,31 @@ class Parser:
         items.append((CAT_ASGN, AssignmentArrow()))
 
     def _item_id(self, tok: Token, items: list[tuple[int, Node]]) -> None:
-        assert isinstance(tok.value, str)
-        name = tok.value
+        assert isinstance(tok, IdToken)
+        name = tok.name
         self._pos += 1
         var_node = Var(name)
-        if self._current().type == TokenType.LBRACKET:
+        if isinstance(self._current(), LBracketToken):
             node = self._parse_bracket_index(var_node)
             items.append((CAT_NOUN, node))
-        elif self._current().type == TokenType.ASSIGN:
+        elif isinstance(self._current(), AssignToken):
             items.append((CAT_NOUN, var_node))
         else:
             cat = self._classify_name(name)
             items.append((cat, var_node))
 
     def _item_sysvar(self, tok: Token, items: list[tuple[int, Node]]) -> None:
-        assert isinstance(tok.value, str)
-        name = tok.value
+        assert isinstance(tok, SysVarToken)
+        name = tok.name
         self._pos += 1
         sv_node: Node = SysFunc(name) if name in _SYS_FUNCTIONS else SysVar(name)
-        if self._current().type == TokenType.LBRACKET:
+        if isinstance(self._current(), LBracketToken):
             node = self._parse_bracket_index(sv_node)
             items.append((CAT_NOUN, node))
-        elif self._current().type == TokenType.ASSIGN:
+        elif isinstance(self._current(), AssignToken):
             items.append((CAT_NOUN, sv_node))
         elif (name == "⎕FMT"
-              and self._current().type == TokenType.LPAREN):
+              and isinstance(self._current(), LParenToken)):
             items.append((CAT_VERB, sv_node))
             fmt_args = self._parse_fmt_args()
             items.append((CAT_NOUN, fmt_args))
@@ -358,37 +386,37 @@ class Parser:
         items.append((CAT_NOUN, Zilde()))
 
     def _item_qualified_name(self, tok: Token, items: list[tuple[int, Node]]) -> None:
-        assert isinstance(tok.value, str)
+        assert isinstance(tok, QualifiedNameToken)
         self._pos += 1
-        items.append((CAT_NOUN, QualifiedVar(tok.value.split("::"))))
+        items.append((CAT_NOUN, QualifiedVar(tok.name.split("::"))))
 
-    _ITEM_DISPATCH: dict[str, Callable[['Parser', Token, list[tuple[int, Node]]], None]] = {
-        TokenType.LBRACE: _item_lbrace,
-        TokenType.NUMBER: _item_number,
-        TokenType.STRING: _item_string,
-        TokenType.FUNCTION: _item_function,
-        TokenType.OPERATOR: _item_operator,
-        TokenType.ASSIGN: _item_assign,
-        TokenType.ID: _item_id,
-        TokenType.SYSVAR: _item_sysvar,
-        TokenType.OMEGA: _item_omega,
-        TokenType.ALPHA: _item_alpha,
-        TokenType.ALPHA_ALPHA: _item_alpha_alpha,
-        TokenType.OMEGA_OMEGA: _item_omega_omega,
-        TokenType.NABLA: _item_nabla,
-        TokenType.QUALIFIED_NAME: _item_qualified_name,
-        TokenType.ZILDE: _item_zilde,
+    _ITEM_DISPATCH: dict[type[Token], Callable[['Parser', Token, list[tuple[int, Node]]], None]] = {
+        LBraceToken: _item_lbrace,
+        NumberToken: _item_number,
+        StringToken: _item_string,
+        FunctionToken: _item_function,
+        OperatorToken: _item_operator,
+        AssignToken: _item_assign,
+        IdToken: _item_id,
+        SysVarToken: _item_sysvar,
+        OmegaToken: _item_omega,
+        AlphaToken: _item_alpha,
+        AlphaAlphaToken: _item_alpha_alpha,
+        OmegaOmegaToken: _item_omega_omega,
+        NablaToken: _item_nabla,
+        QualifiedNameToken: _item_qualified_name,
+        ZildeToken: _item_zilde,
     }
 
     def _parse_fmt_args(self) -> FmtArgs:
         """Parse (val1;val2;...) for ⎕FMT. Similar to bracket indexing."""
-        self._eat(TokenType.LPAREN)
+        self._eat(LParenToken)
         args: list[Executable] = []
         args.append(self._parse_statement())
-        while self._current().type == TokenType.SEMICOLON:
-            self._eat(TokenType.SEMICOLON)
+        while isinstance(self._current(), SemicolonToken):
+            self._eat(SemicolonToken)
             args.append(self._parse_statement())
-        self._eat(TokenType.RPAREN)
+        self._eat(RParenToken)
         return FmtArgs(args)
 
     def _is_callable_noun(self, node: object) -> bool:
@@ -784,25 +812,25 @@ class Parser:
             return self._tokens[self._pos + 1]
         return None
 
-    def _eat(self, token_type: str) -> Token:
+    def _eat(self, token_type: type[Token]) -> Token:
         token = self._current()
-        if token.type != token_type:
-            raise SyntaxError_(f"Expected {token_type}, got {token.type}")
+        if not isinstance(token, token_type):
+            raise SyntaxError_(f"Expected {token_type.__name__}, got {type(token).__name__}")
         self._pos += 1
         return token
 
     def _parse_dfn(self) -> Dfn:
         """Parse a dfn: { statement (⋄ statement)* }"""
-        self._eat(TokenType.LBRACE)
+        self._eat(LBraceToken)
         statements: list[Executable | Guard | AlphaDefault] = []
-        while self._current().type not in (TokenType.RBRACE, TokenType.EOF):
+        while not isinstance(self._current(), (RBraceToken, EofToken)):
             stmt = self._parse_dfn_statement()
             statements.append(stmt)
-            if self._current().type == TokenType.DIAMOND:
-                self._eat(TokenType.DIAMOND)
-        if self._current().type == TokenType.EOF:
+            if isinstance(self._current(), DiamondToken):
+                self._eat(DiamondToken)
+        if isinstance(self._current(), EofToken):
             raise SyntaxError_("Unmatched {")
-        self._eat(TokenType.RBRACE)
+        self._eat(RBraceToken)
         return Dfn(statements)
 
     def _parse_dfn_statement(self) -> Executable | Guard | AlphaDefault:
@@ -810,118 +838,116 @@ class Parser:
         # Check for ⍺← default
         peek = self._peek()
         if (
-            self._current().type == TokenType.ALPHA
+            isinstance(self._current(), AlphaToken)
             and peek is not None
-            and peek.type == TokenType.ASSIGN
+            and isinstance(peek, AssignToken)
         ):
-            self._eat(TokenType.ALPHA)
-            self._eat(TokenType.ASSIGN)
+            self._eat(AlphaToken)
+            self._eat(AssignToken)
             default = self._parse_statement()
             return AlphaDefault(default)
 
         stmt = self._parse_statement()
         # Check for guard: expr : expr
-        if self._current().type == TokenType.GUARD:
-            self._eat(TokenType.GUARD)
+        if isinstance(self._current(), GuardToken):
+            self._eat(GuardToken)
             body = self._parse_statement()
             return Guard(stmt, body)
         return stmt
 
     def _parse_atom(self) -> Executable:
         token = self._current()
-        if token.type == TokenType.LPAREN:
-            self._eat(TokenType.LPAREN)
+        if isinstance(token, LParenToken):
+            self._eat(LParenToken)
             # Check for bare function glyph as operand: (-)  (+)  (⍳)  etc.
+            next_tok = self._current()
             if (
-                self._current().type == TokenType.FUNCTION
+                isinstance(next_tok, FunctionToken)
                 and self._pos + 1 < len(self._tokens)
-                and self._tokens[self._pos + 1].type == TokenType.RPAREN
+                and isinstance(self._tokens[self._pos + 1], RParenToken)
             ):
-                fn_token = self._eat(TokenType.FUNCTION)
-                self._eat(TokenType.RPAREN)
-                assert isinstance(fn_token.value, str)
-                return PrimitiveFunction(fn_token.value)
+                fn_token = self._eat(FunctionToken)
+                self._eat(RParenToken)
+                assert isinstance(fn_token, FunctionToken)
+                return PrimitiveFunction(fn_token.glyph)
             result = self._parse_statement()
-            self._eat(TokenType.RPAREN)
+            self._eat(RParenToken)
             return result
-        if token.type == TokenType.NUMBER:
-            self._eat(TokenType.NUMBER)
-            assert isinstance(token.value, (int, float))
+        if isinstance(token, NumberToken):
+            self._eat(NumberToken)
             return Num(token.value)
-        if token.type == TokenType.STRING:
-            self._eat(TokenType.STRING)
-            assert isinstance(token.value, str)
+        if isinstance(token, StringToken):
+            self._eat(StringToken)
             return Str(token.value)
-        if token.type == TokenType.ID:
-            self._eat(TokenType.ID)
-            assert isinstance(token.value, str)
-            return Var(token.value)
-        if token.type == TokenType.QUALIFIED_NAME:
-            self._eat(TokenType.QUALIFIED_NAME)
-            assert isinstance(token.value, str)
-            return QualifiedVar(token.value.split("::"))
-        if token.type == TokenType.OMEGA:
-            self._eat(TokenType.OMEGA)
+        if isinstance(token, IdToken):
+            self._eat(IdToken)
+            return Var(token.name)
+        if isinstance(token, QualifiedNameToken):
+            self._eat(QualifiedNameToken)
+            return QualifiedVar(token.name.split("::"))
+        if isinstance(token, OmegaToken):
+            self._eat(OmegaToken)
             return Omega()
-        if token.type == TokenType.ALPHA:
-            self._eat(TokenType.ALPHA)
+        if isinstance(token, AlphaToken):
+            self._eat(AlphaToken)
             return Alpha()
-        if token.type == TokenType.ALPHA_ALPHA:
-            self._eat(TokenType.ALPHA_ALPHA)
+        if isinstance(token, AlphaAlphaToken):
+            self._eat(AlphaAlphaToken)
             return AlphaAlpha()
-        if token.type == TokenType.OMEGA_OMEGA:
-            self._eat(TokenType.OMEGA_OMEGA)
+        if isinstance(token, OmegaOmegaToken):
+            self._eat(OmegaOmegaToken)
             return OmegaOmega()
-        if token.type == TokenType.NABLA:
-            self._eat(TokenType.NABLA)
+        if isinstance(token, NablaToken):
+            self._eat(NablaToken)
             return Nabla()
-        if token.type == TokenType.ZILDE:
-            self._eat(TokenType.ZILDE)
+        if isinstance(token, ZildeToken):
+            self._eat(ZildeToken)
             return Zilde()
-        if token.type == TokenType.SYSVAR:
-            self._eat(TokenType.SYSVAR)
-            assert isinstance(token.value, str)
-            return SysVar(token.value)
-        if token.type == TokenType.LBRACE:
+        if isinstance(token, SysVarToken):
+            self._eat(SysVarToken)
+            return SysVar(token.name)
+        if isinstance(token, LBraceToken):
             return self._parse_dfn()
         raise SyntaxError_(f"Unexpected token: {token}")
 
     def _parse_atom_with_index(self) -> Executable:
         """Parse an atom, then check for bracket indexing."""
         atom = self._parse_atom()
-        if self._current().type == TokenType.LBRACKET:
+        if isinstance(self._current(), LBracketToken):
             return self._parse_bracket_index(atom)
         return atom
 
     def _parse_bracket_index(self, array: Executable) -> Index:
         """Parse [idx] or [row;col] bracket indexing."""
-        self._eat(TokenType.LBRACKET)
+        self._eat(LBracketToken)
         indices: list[Executable | None] = []
         # First index (may be empty for [;col])
-        if self._current().type == TokenType.SEMICOLON:
+        if isinstance(self._current(), SemicolonToken):
             indices.append(None)
-        elif self._current().type == TokenType.RBRACKET:
+        elif isinstance(self._current(), RBracketToken):
             indices.append(None)
         else:
             indices.append(self._parse_statement())
         # Additional indices separated by ;
-        while self._current().type == TokenType.SEMICOLON:
-            self._eat(TokenType.SEMICOLON)
-            if self._current().type in (TokenType.SEMICOLON, TokenType.RBRACKET):
+        while isinstance(self._current(), SemicolonToken):
+            self._eat(SemicolonToken)
+            if isinstance(self._current(), (SemicolonToken, RBracketToken)):
                 indices.append(None)
             else:
                 indices.append(self._parse_statement())
-        self._eat(TokenType.RBRACKET)
+        self._eat(RBracketToken)
         return Index(array, indices)
 
+    _ARRAY_START_TYPES: tuple[type[Token], ...] = (
+        NumberToken, LParenToken, IdToken,
+        OmegaToken, AlphaToken, AlphaAlphaToken,
+        OmegaOmegaToken, NablaToken,
+        LBraceToken, StringToken, QualifiedNameToken,
+        SysVarToken, ZildeToken,
+    )
+
     def _is_array_start(self) -> bool:
-        return self._current().type in (
-            TokenType.NUMBER, TokenType.LPAREN, TokenType.ID,
-            TokenType.OMEGA, TokenType.ALPHA, TokenType.ALPHA_ALPHA,
-            TokenType.OMEGA_OMEGA, TokenType.NABLA,
-            TokenType.LBRACE, TokenType.STRING, TokenType.QUALIFIED_NAME,
-            TokenType.SYSVAR, TokenType.ZILDE,
-        )
+        return isinstance(self._current(), self._ARRAY_START_TYPES)
 
     def _parse_array(self) -> Executable:
         """Parse one or more adjacent numeric atoms as a vector,
@@ -930,9 +956,9 @@ class Parser:
         if not isinstance(first, Num):
             return first
         elements: list[Num] = [first]
-        while self._current().type == TokenType.NUMBER:
-            token = self._eat(TokenType.NUMBER)
-            assert isinstance(token.value, (int, float))
+        while isinstance(self._current(), NumberToken):
+            token = self._eat(NumberToken)
+            assert isinstance(token, NumberToken)
             elements.append(Num(token.value))
         if len(elements) == 1:
             return elements[0]
@@ -941,13 +967,13 @@ class Parser:
     def _parse_function_expr(self) -> tuple[str, str | None]:
         """Parse a function glyph, possibly followed by an operator.
         Returns (function_glyph, operator_glyph_or_None)."""
-        func_token = self._eat(TokenType.FUNCTION)
-        assert isinstance(func_token.value, str)
-        if self._current().type == TokenType.OPERATOR:
-            op_token = self._eat(TokenType.OPERATOR)
-            assert isinstance(op_token.value, str)
-            return func_token.value, op_token.value
-        return func_token.value, None
+        func_token = self._eat(FunctionToken)
+        assert isinstance(func_token, FunctionToken)
+        if isinstance(self._current(), OperatorToken):
+            op_token = self._eat(OperatorToken)
+            assert isinstance(op_token, OperatorToken)
+            return func_token.glyph, op_token.glyph
+        return func_token.glyph, None
 
     def _parse_statement(self) -> Executable:
         """Parse a statement using Iverson's stack-based algorithm."""
@@ -957,19 +983,19 @@ class Parser:
         result = self._stack_parse(items)
         # Handle trailing bracket indexing: result[idx]
         if (self._pos < len(self._tokens)
-                and self._current().type == TokenType.LBRACKET):
+                and isinstance(self._current(), LBracketToken)):
             result = self._parse_bracket_index(result)
         return result
 
     def parse(self) -> Executable:
         # Empty input (e.g. comment-only line) → return Num(0) as no-op
-        if self._current().type == TokenType.EOF:
+        if isinstance(self._current(), EofToken):
             return Num(0)
         statements = [self._parse_statement()]
-        while self._current().type == TokenType.DIAMOND:
-            self._eat(TokenType.DIAMOND)
+        while isinstance(self._current(), DiamondToken):
+            self._eat(DiamondToken)
             statements.append(self._parse_statement())
-        if self._current().type != TokenType.EOF:
+        if not isinstance(self._current(), EofToken):
             raise SyntaxError_(f"Unexpected token after expression: {self._current()}")
         if len(statements) == 1:
             return statements[0]

@@ -9,7 +9,7 @@ from marple.backend_functions import chars_to_str, str_to_char_array
 from marple.numpy_array import APLArray, S
 from marple.engine import Interpreter
 from marple.errors import DomainError
-from marple.tokenizer import Token, TokenType, Tokenizer
+from marple.tokenizer import SysVarToken, Tokenizer
 from marple.script import run_script
 from marple.web.server import WebSession
 from tests.adapters.fake_console import FakeConsole
@@ -39,11 +39,11 @@ class TestTokenizer:
 
     def test_bare_quad_tokenizes_as_sysvar(self) -> None:
         tokens = Tokenizer("⎕").tokenize()
-        assert_that(tokens[0], equal_to(Token(TokenType.SYSVAR, "⎕")))
+        assert_that(tokens[0], equal_to(SysVarToken("⎕")))
 
     def test_quote_quad_tokenizes_as_sysvar(self) -> None:
         tokens = Tokenizer("⍞").tokenize()
-        assert_that(tokens[0], equal_to(Token(TokenType.SYSVAR, "⍞")))
+        assert_that(tokens[0], equal_to(SysVarToken("⍞")))
 
 
 class TestQuadOutput:
