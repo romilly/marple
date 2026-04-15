@@ -322,7 +322,11 @@ class Executable(Node):
 
     Convenience apply/call/dop/power methods execute then dispatch;
     each narrows the executed value to the kind it needs (Function,
-    Operator, or — for power — APLArray).
+    Operator, or — for power — APLArray). They live here rather
+    than on `Reference` because `Applicable` (the type used for
+    function-position fields like `RankDerived.function`) is
+    `Function | Executable`, so the type system requires these
+    helpers on the Executable side.
     """
     @abstractmethod
     def execute(self, ctx: ExecutionContext) -> APLValue: ...
@@ -377,7 +381,8 @@ class Reference(Executable):
     where an Executable is expected. Array-narrowing happens at
     `ctx.evaluate`, the same place it happens for any Executable.
 
-    Examples: `Var`, `AlphaAlpha`/`OmegaOmega`, `Nabla`, `Dfn`.
+    Examples: `Var`, `AlphaAlpha`/`OmegaOmega`, `Nabla`, `Dfn`,
+    `PrimitiveFunction`, `SysFunc`.
     """
     @abstractmethod
     def resolve(self, ctx: ExecutionContext) -> APLValue: ...
@@ -391,6 +396,11 @@ class Reference(Executable):
 # to one (Reference is an Executable subclass). Runtime union so
 # both type annotations and isinstance checks work (Python 3.10+
 # supports `isinstance(x, A | B)`).
+#
+# Note: this alias is also used as the parameter type on conjunction
+# `derive_dyadic` methods, where the right operand can be a numeric
+# rank spec (a non-applicable Executable). That overload-of-purpose
+# is the reason this isn't tightened to `Function | Reference`.
 Applicable = Function | Executable
 
 
