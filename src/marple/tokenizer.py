@@ -16,6 +16,7 @@ The token list produced by `tokenize()` is a heterogeneous
 
 import re
 from dataclasses import dataclass
+from typing import cast
 
 from marple.nodes import (
     Alpha,
@@ -150,15 +151,11 @@ class Tokenizer:
 
     def _read_number(self) -> Num:
         """Consume a numeric literal via regex; let int()/float() parse.
-
-        Both callers (the `¯` path and the `_isdigit(ch)` path in
-        `tokenize`) guarantee `self._pos` is on a digit. The regex
-        starts with `\\d+`, so the match always succeeds — pyright
-        can't see the caller invariant, hence the ignore.
+        Callers guarantee `_pos` is on a digit, so the match always succeeds.
         """
-        m = self._NUM_RE.match(self._text, self._pos)
-        self._pos = m.end()  # type: ignore[union-attr]
-        text = m.group().replace("¯", "-")  # type: ignore[union-attr]
+        m = cast(re.Match[str], self._NUM_RE.match(self._text, self._pos))
+        self._pos = m.end()
+        text = m.group().replace("¯", "-")
         try:
             return Num(int(text))
         except ValueError:
