@@ -151,15 +151,14 @@ class Tokenizer:
     def _read_number(self) -> Num:
         """Consume a numeric literal via regex; let int()/float() parse.
 
-        Callers only dispatch here when the current character is a
-        digit, so the match always succeeds and consumes at least
-        one character. APL's high minus `¯` in the exponent is
-        normalised to `-` before conversion.
+        Both callers (the `¯` path and the `_isdigit(ch)` path in
+        `tokenize`) guarantee `self._pos` is on a digit. The regex
+        starts with `\\d+`, so the match always succeeds — pyright
+        can't see the caller invariant, hence the ignore.
         """
         m = self._NUM_RE.match(self._text, self._pos)
-        assert m is not None
-        self._pos = m.end()
-        text = m.group().replace("¯", "-")
+        self._pos = m.end()  # type: ignore[union-attr]
+        text = m.group().replace("¯", "-")  # type: ignore[union-attr]
         try:
             return Num(int(text))
         except ValueError:
