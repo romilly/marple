@@ -478,10 +478,10 @@ class Var(Reference):
         return ctx.env[self.name]
 
 
-class QualifiedVar(Executable):
+class QualifiedVar(Reference):
     def __init__(self, parts: list[str]) -> None:
         self.parts = parts
-    def execute(self, ctx: ExecutionContext) -> APLValue:
+    def resolve(self, ctx: ExecutionContext) -> APLValue:
         return ctx.resolve_qualified(self.parts)
 
 
@@ -956,17 +956,17 @@ class PrimitiveFunction(UnappliedFunction, Executable):  # Executable for execut
         return ctx.dispatch_dyadic(self.glyph, left, right)
 
 
-class AlphaAlpha(Executable):
+class AlphaAlpha(Reference):
     """⍺⍺ — left operand reference in a dop."""
-    def execute(self, ctx: ExecutionContext) -> APLValue:
+    def resolve(self, ctx: ExecutionContext) -> APLValue:
         if "⍺⍺" not in ctx.env:
             raise ValueError_("⍺⍺ used outside of dop")
         return ctx.env["⍺⍺"]
 
 
-class OmegaOmega(Executable):
+class OmegaOmega(Reference):
     """⍵⍵ — right operand reference in a dop."""
-    def execute(self, ctx: ExecutionContext) -> APLValue:
+    def resolve(self, ctx: ExecutionContext) -> APLValue:
         if "⍵⍵" not in ctx.env:
             raise ValueError_("⍵⍵ used outside of dop")
         return ctx.env["⍵⍵"]
@@ -1007,8 +1007,8 @@ class FmtArgs(Executable):
         return self.args == other.args
 
 
-class Nabla(Executable):
-    def execute(self, ctx: ExecutionContext) -> APLValue:
+class Nabla(Reference):
+    def resolve(self, ctx: ExecutionContext) -> APLValue:
         if "∇" not in ctx.env:
             raise ValueError_("∇ used outside of dfn")
         return ctx.env["∇"]
@@ -1025,10 +1025,10 @@ class AlphaDefault(Node):
         self.default = default
 
 
-class Dfn(Executable):
+class Dfn(Reference):
     def __init__(self, body: list[Executable | Guard | AlphaDefault]) -> None:
         self.body = body
-    def execute(self, ctx: ExecutionContext) -> APLValue:
+    def resolve(self, ctx: ExecutionContext) -> APLValue:
         return ctx.create_binding(self)
     def is_operator(self) -> bool:
         """True if the body references ⍺⍺ or ⍵⍵ — i.e. the dfn is a dop."""
