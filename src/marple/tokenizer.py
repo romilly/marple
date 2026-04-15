@@ -189,61 +189,63 @@ class Tokenizer:
             ch = self._current()
             if ch is None or ch == "⍝":
                 break
-            if ch == "'":
-                tokens.append(self._read_string())
-            elif ch == "⍞":
-                tokens.append(SysVar("⍞"))
-                self._advance()
-            elif ch == "⎕":
-                self._advance()
-                name = ""
-                while _isalpha(self._current()):
-                    name += self._current()  # type: ignore[operator]
-                    self._advance()
-                full = "⎕" + name.upper()
-                tokens.append(SysFunc(full) if full in _SYS_FUNCTIONS else SysVar(full))
-            elif ch == "¯":
-                self._advance()
-                if not _isdigit(self._current()):
-                    from marple.errors import SyntaxError_
-                    raise SyntaxError_("High minus ¯ must be followed by a digit")
-                num_node = self._read_number()
-                tokens.append(Num(-num_node.value))
-            elif _isdigit(ch):
-                tokens.append(self._read_number())
-            elif ch in FUNCTION_GLYPHS:
-                tokens.append(PrimitiveFunction(ch))
-                self._advance()
-            elif ch == "⍺" and self._source[self._pos + 1] == "⍺":
-                tokens.append(AlphaAlpha())
-                self._advance()
-                self._advance()
-            elif ch == "⍵" and self._source[self._pos + 1] == "⍵":
-                tokens.append(OmegaOmega())
-                self._advance()
-                self._advance()
-            elif ch in SINGLE_CHAR_TOKENS:
-                tokens.append(SINGLE_CHAR_TOKENS[ch])
-                self._advance()
-            elif ch == "$" and self._source[self._pos + 1] == ":" and self._source[self._pos + 2] == ":":
-                self._advance()  # skip $
-                self._advance()  # skip first :
-                self._advance()  # skip second :
-                rest = self._read_id()
-                rest_name = rest.name if isinstance(rest, Var) else "::".join(rest.parts)
-                tokens.append(QualifiedVar(("$::" + rest_name).split("::")))
-            elif _isalpha(ch) or ch == "_":
-                tokens.append(self._read_id())
-            else:
-                # Defensive: any character that reached this point is
-                # unrecognised. The previous behaviour (`self._advance()`)
-                # silently dropped the char, which masked two real bugs
-                # discovered on 2026-04-09 — the missing zilde literal
-                # (⍬) and the missing commute operator (⍨), both of
-                # which were silently swallowed and produced confusing
-                # downstream errors. Raising here surfaces the same
-                # class of bug immediately and clearly.
-                from marple.errors import SyntaxError_
-                raise SyntaxError_(f"Unknown character: {ch!r}")
+            tokens.append(self._next_token(ch))
         tokens.append(EofToken())
         return tokens
+
+    def _next_token(self, ch: str) -> 'Token | Executable':
+        if ch == "'":
+            return self._read_string()
+        if ch == "⍞":
+            self._advance()
+            return SysVar("⍞")
+        if ch == "⎕":
+            self._advance()
+            name = ""
+            while _isalpha(self._current()):
+                name += self._current()  # type: ignore[operator]
+                self._advance()
+            full = "⎕" + name.upper()
+            return SysFunc(full) if full in _SYS_FUNCTIONS else SysVar(full)
+        if ch == "¯":
+            self._advance()
+            if not _isdigit(self._current()):
+                from marple.errors import SyntaxError_
+                raise SyntaxError_("High minus ¯ must be followed by a digit")
+            num_node = self._read_number()
+            return Num(-num_node.value)
+        if _isdigit(ch):
+            return self._read_number()
+        if ch in FUNCTION_GLYPHS:
+            self._advance()
+            return PrimitiveFunction(ch)
+        if ch == "⍺" and self._source[self._pos + 1] == "⍺":
+            self._advance()
+            self._advance()
+            return AlphaAlpha()
+        if ch == "⍵" and self._source[self._pos + 1] == "⍵":
+            self._advance()
+            self._advance()
+            return OmegaOmega()
+        if ch in SINGLE_CHAR_TOKENS:
+            self._advance()
+            return SINGLE_CHAR_TOKENS[ch]
+        if ch == "$" and self._source[self._pos + 1] == ":" and self._source[self._pos + 2] == ":":
+            self._advance()  # skip $
+            self._advance()  # skip first :
+            self._advance()  # skip second :
+            rest = self._read_id()
+            rest_name = rest.name if isinstance(rest, Var) else "::".join(rest.parts)
+            return QualifiedVar(("$::" + rest_name).split("::"))
+        if _isalpha(ch) or ch == "_":
+            return self._read_id()
+        # Defensive: any character that reached this point is
+        # unrecognised. The previous behaviour (`self._advance()`)
+        # silently dropped the char, which masked two real bugs
+        # discovered on 2026-04-09 — the missing zilde literal
+        # (⍬) and the missing commute operator (⍨), both of
+        # which were silently swallowed and produced confusing
+        # downstream errors. Raising here surfaces the same
+        # class of bug immediately and clearly.
+        from marple.errors import SyntaxError_
+        raise SyntaxError_(f"Unknown character: {ch!r}")
