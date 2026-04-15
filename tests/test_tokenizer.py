@@ -172,6 +172,17 @@ class TestTokenizerUnknownChars:
         with pytest.raises(SyntaxError_):
             Tokenizer("1 § 2").tokenize()
 
+    def test_high_minus_without_digit_raises(self) -> None:
+        """`¯` must be followed by a digit; `¯a` or bare `¯` is a
+        syntax error rather than an internal AssertionError from
+        _read_number."""
+        import pytest
+        from marple.errors import SyntaxError_
+        with pytest.raises(SyntaxError_):
+            Tokenizer("¯a").tokenize()
+        with pytest.raises(SyntaxError_):
+            Tokenizer("¯").tokenize()
+
     def test_tab_is_skipped(self) -> None:
         # Standard whitespace (tab, CR) should still be silently
         # skipped — only NON-whitespace unknown characters error.

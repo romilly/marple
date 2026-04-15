@@ -222,6 +222,9 @@ class Tokenizer:
                 tokens.append(SysFunc(full) if full in _SYS_FUNCTIONS else SysVar(full))
             elif ch == "¯":
                 self._advance()
+                if not _isdigit(self._current()):
+                    from marple.errors import SyntaxError_
+                    raise SyntaxError_("High minus ¯ must be followed by a digit")
                 num_node = self._read_number()
                 tokens.append(Num(-num_node.value))
             elif _isdigit(ch):
