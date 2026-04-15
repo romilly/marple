@@ -163,15 +163,12 @@ class Tokenizer:
 
     def _read_string(self) -> Str:
         self._advance()  # skip opening quote
-        result = ""
-        # Explicit None check needed: without it, an unterminated
-        # string would advance past the sentinel zone and raise
-        # IndexError.
-        while self._current() not in ("'", None):
-            result += self._current()  # type: ignore[operator]
-            self._advance()
-        if self._current() == "'":
-            self._advance()  # skip closing quote
+        end = self._text.find("'", self._pos)
+        if end == -1:
+            from marple.errors import SyntaxError_
+            raise SyntaxError_("Unterminated string literal")
+        result = self._text[self._pos:end]
+        self._pos = end + 1  # skip past closing quote
         return Str(result)
 
     def _read_id(self) -> Var | QualifiedVar:

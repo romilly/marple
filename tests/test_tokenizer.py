@@ -183,6 +183,16 @@ class TestTokenizerUnknownChars:
         with pytest.raises(SyntaxError_):
             Tokenizer("¯").tokenize()
 
+    def test_unterminated_string_raises(self) -> None:
+        """`'hello` with no closing quote is a syntax error rather
+        than silently yielding a Str with the partial contents."""
+        import pytest
+        from marple.errors import SyntaxError_
+        with pytest.raises(SyntaxError_):
+            Tokenizer("'hello").tokenize()
+        with pytest.raises(SyntaxError_):
+            Tokenizer("'").tokenize()
+
     def test_tab_is_skipped(self) -> None:
         # Standard whitespace (tab, CR) should still be silently
         # skipped — only NON-whitespace unknown characters error.
