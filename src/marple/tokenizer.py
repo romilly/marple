@@ -34,13 +34,13 @@ from marple.nodes import (
 )
 
 
-def _isdigit(ch: str) -> bool:
-    return "0" <= ch <= "9"
+def _isdigit(ch: 'str | None') -> bool:
+    return ch is not None and "0" <= ch <= "9"
 
-def _isalpha(ch: str) -> bool:
-    return ("a" <= ch <= "z") or ("A" <= ch <= "Z") or ch in "∆⍙"
+def _isalpha(ch: 'str | None') -> bool:
+    return ch is not None and (("a" <= ch <= "z") or ("A" <= ch <= "Z") or ch in "∆⍙")
 
-def _isalnum(ch: str) -> bool:
+def _isalnum(ch: 'str | None') -> bool:
     return _isdigit(ch) or _isalpha(ch)
 
 
@@ -126,25 +126,28 @@ SINGLE_CHAR_TOKENS: dict[str, 'Token | Executable'] = {
 
 class Tokenizer:
     def __init__(self, source: str) -> None:
-        self._source = source
+        # Append two `None` sentinels so reads at `_pos`, `_pos+1`,
+        # and `_pos+2` are always in-range; any comparison against
+        # a real character then fails naturally past end-of-input.
+        # Two is enough because the deepest lookahead is `_pos+2`
+        # (the `::` and `$::` paths).
+        self._source: list[str | None] = list(source) + [None, None]
         self._pos = 0
 
     def _current(self) -> str | None:
-        if self._pos >= len(self._source):
-            return None
         return self._source[self._pos]
 
     def _advance(self) -> None:
         self._pos += 1
 
     def _skip_whitespace(self) -> None:
-        while self._current() is not None and self._current() in (" ", "\t", "\r", "\n"):
+        while self._current() in (" ", "\t", "\r", "\n"):
             self._advance()
 
     def _read_number(self) -> Num:
         result = ""
         has_dot = False
-        while self._current() is not None and (_isdigit(self._current()) or self._current() == "."):  # type: ignore[union-attr]
+        while _isdigit(self._current()) or self._current() == ".":
             if self._current() == ".":
                 if has_dot:
                     break
@@ -152,16 +155,16 @@ class Tokenizer:
             result += self._current()  # type: ignore[operator]
             self._advance()
         # Handle scientific notation: 1E¯14, 1E3, 1e-14, 1.5E3
-        if self._current() is not None and self._current() in ("e", "E"):
+        if self._current() in ("e", "E"):
             result += self._current()  # type: ignore[operator]
             self._advance()
-            if self._current() is not None and self._current() == "¯":
+            if self._current() == "¯":
                 result += "-"  # APL high minus → Python minus for float()
                 self._advance()
-            elif self._current() is not None and self._current() in ("-", "+"):
+            elif self._current() in ("-", "+"):
                 result += self._current()  # type: ignore[operator]
                 self._advance()
-            while self._current() is not None and _isdigit(self._current()):  # type: ignore[union-attr]
+            while _isdigit(self._current()):
                 result += self._current()  # type: ignore[operator]
                 self._advance()
             return Num(float(result))
@@ -171,7 +174,10 @@ class Tokenizer:
     def _read_string(self) -> Str:
         self._advance()  # skip opening quote
         result = ""
-        while self._current() is not None and self._current() != "'":
+        # Explicit None check needed: without it, an unterminated
+        # string would advance past the sentinel zone and raise
+        # IndexError.
+        while self._current() not in ("'", None):
             result += self._current()  # type: ignore[operator]
             self._advance()
         if self._current() == "'":
@@ -180,15 +186,14 @@ class Tokenizer:
 
     def _read_id(self) -> Var | QualifiedVar:
         result = ""
-        while self._current() is not None and (_isalnum(self._current()) or self._current() == "_"):  # type: ignore[union-attr]
+        while _isalnum(self._current()) or self._current() == "_":
             result += self._current()  # type: ignore[operator]
             self._advance()
-        # Check for :: (qualified name)
+        # Check for :: (qualified name) — sentinels make the
+        # `_pos+1` / `_pos+2` reads safe without bounds checks.
         if (
             self._current() == ":"
-            and self._pos + 1 < len(self._source)
             and self._source[self._pos + 1] == ":"
-            and self._pos + 2 < len(self._source)
             and (_isalpha(self._source[self._pos + 2]) or self._source[self._pos + 2] == "_")
         ):
             result += "::"
@@ -216,7 +221,7 @@ class Tokenizer:
             elif ch == "⎕":
                 self._advance()
                 name = ""
-                while self._current() is not None and _isalpha(self._current()):  # type: ignore[union-attr]
+                while _isalpha(self._current()):
                     name += self._current()  # type: ignore[operator]
                     self._advance()
                 full = "⎕" + name.upper()
@@ -230,18 +235,18 @@ class Tokenizer:
             elif ch in FUNCTION_GLYPHS:
                 tokens.append(PrimitiveFunction(ch))
                 self._advance()
-            elif ch == "⍺" and self._pos + 1 < len(self._source) and self._source[self._pos + 1] == "⍺":
+            elif ch == "⍺" and self._source[self._pos + 1] == "⍺":
                 tokens.append(AlphaAlpha())
                 self._advance()
                 self._advance()
-            elif ch == "⍵" and self._pos + 1 < len(self._source) and self._source[self._pos + 1] == "⍵":
+            elif ch == "⍵" and self._source[self._pos + 1] == "⍵":
                 tokens.append(OmegaOmega())
                 self._advance()
                 self._advance()
             elif ch in SINGLE_CHAR_TOKENS:
                 tokens.append(SINGLE_CHAR_TOKENS[ch])
                 self._advance()
-            elif ch == "$" and self._pos + 2 < len(self._source) and self._source[self._pos + 1] == ":" and self._source[self._pos + 2] == ":":
+            elif ch == "$" and self._source[self._pos + 1] == ":" and self._source[self._pos + 2] == ":":
                 self._advance()  # skip $
                 self._advance()  # skip first :
                 self._advance()  # skip second :
