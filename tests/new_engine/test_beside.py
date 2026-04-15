@@ -145,8 +145,8 @@ class TestBesideValueBind:
         with pytest.raises(SyntaxError_):
             Interpreter(io=1).run("5 (+∘1) 3")
 
-    # Note: `2∘3` (both operands values) is also a syntax error in
-    # Dyalog, but marple's parser fails earlier with an AssertionError
-    # before reaching `BesideConjunction.derive_dyadic`. That's a
-    # pre-existing parser gap (independent of value-bind support);
-    # not covered here.
+    def test_both_operands_values_is_syntax_error(self) -> None:
+        """`2∘3` has no function operand — SYNTAX ERROR."""
+        from marple.errors import SyntaxError_
+        with pytest.raises(SyntaxError_):
+            Interpreter(io=1).run("2∘3")

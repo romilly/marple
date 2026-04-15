@@ -408,8 +408,11 @@ class Parser:
     @staticmethod
     def _as_evaluatable(item: Node) -> Executable:
         """Narrow a stack item to Executable. Items classified as
-        CAT_NOUN or used as operands are always Executable."""
-        assert isinstance(item, Executable)
+        CAT_NOUN or used as operands are always Executable; anything
+        else (typically a BoundOperator left on the stack because
+        no derivation path matched) is a syntax error."""
+        if not isinstance(item, Executable):
+            raise SyntaxError_(f"Cannot evaluate {type(item).__name__} as an expression")
         return item
 
     def _make_monadic(self, verb_node: Node, arg_node: Executable) -> Executable:
