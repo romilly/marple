@@ -4,6 +4,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from decimal import Decimal
 from itertools import product
+from marple.numpy_array import _gcd_float
 from typing import Any, Callable, cast
 
 from marple.numpy_array import APLArray, S
@@ -33,8 +34,8 @@ _INNER_SCALAR_OPS: dict[str, Callable[[Any, Any], Any]] = {
     "⌊": lambda a, b: min(a, b),
     "*": lambda a, b: a ** b,
     "|": lambda a, b: b % a,
-    "∧": lambda a, b: int(bool(a) and bool(b)),
-    "∨": lambda a, b: int(bool(a) or bool(b)),
+    "∧": lambda a, b: abs(a * b) / _gcd_float(a, b) if a and b else 0,
+    "∨": lambda a, b: _gcd_float(a, b),
     "=": lambda a, b: int(a == b),
     "≠": lambda a, b: int(a != b),
     "<": lambda a, b: int(a < b),

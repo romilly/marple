@@ -104,3 +104,18 @@ class TestBoolean:
 
     def test_not_zero(self) -> None:
         assert Interpreter(io=1).run("~0") == S(1)
+
+    def test_gcd(self) -> None:
+        assert Interpreter(io=1).run("6∨4") == S(2)
+
+    def test_gcd_12_8(self) -> None:
+        assert Interpreter(io=1).run("12∨8") == S(4)
+
+    def test_lcm(self) -> None:
+        assert Interpreter(io=1).run("3∧4") == S(12)
+
+    def test_gcd_float(self) -> None:
+        assert Interpreter(io=1).run("0.5∨0.75") == S(0.25)
+
+    def test_lcm_float(self) -> None:
+        assert Interpreter(io=1).run("1.5∧2.5") == S(7.5)

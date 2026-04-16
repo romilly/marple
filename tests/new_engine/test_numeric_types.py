@@ -77,13 +77,13 @@ class TestBooleanDtype:
         result = Interpreter(io=1).run("~1 0 1")
         assert str(result.data.dtype) == "uint8"
 
-    def test_and_produces_uint8(self) -> None:
+    def test_lcm_integer_values(self) -> None:
         result = Interpreter(io=1).run("1 0 1∧1 1 0")
-        assert str(result.data.dtype) == "uint8"
+        assert result == APLArray.array([3], [1, 0, 0])
 
-    def test_or_produces_uint8(self) -> None:
+    def test_gcd_integer_values(self) -> None:
         result = Interpreter(io=1).run("1 0 1∨0 1 0")
-        assert str(result.data.dtype) == "uint8"
+        assert result == APLArray.array([3], [1, 1, 1])
 
     def test_boolean_values_correct(self) -> None:
         result = Interpreter(io=1).run("1 2 3=1 3 3")

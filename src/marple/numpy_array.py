@@ -7,12 +7,22 @@ if TYPE_CHECKING:
     from marple.executor import Executor
 
 from marple.backend_functions import (
-    is_char_array, is_numeric_array, maybe_upcast,
+    is_char_array, is_int_dtype, is_numeric_array, maybe_upcast,
     str_to_char_array, to_array, to_bool_array, to_list,
 )
 from marple.errors import DomainError, LengthError, RankError
 from marple.get_numpy import np
 from marple.apl_value import NC_ARRAY, APLValue
+
+_CT = 1e-10  # comparison tolerance for GCD
+
+
+def _gcd_float(a: float, b: float) -> float:
+    """GCD via Euclidean algorithm, tolerant of floating-point values."""
+    a, b = abs(a), abs(b)
+    while b > _CT:
+        a, b = b, a % b
+    return a
 
 
 class APLArray(APLValue):
@@ -263,17 +273,23 @@ class APLArray(APLValue):
         return self._compare(other, lambda a, b, eq: 1 - eq, ct)
 
     def logical_and(self, other: APLArray) -> APLArray:
-        if is_numeric_array(self.data) and is_numeric_array(other.data):
+        """∧ — LCM (least common multiple). Matches AND for boolean inputs."""
+        self._reject_chars(other, "∧")
+        if is_int_dtype(self.data) and is_int_dtype(other.data):
+            g = np.gcd(self.data.astype(np.int64), other.data.astype(np.int64))
+            result = np.where(g == 0, 0, np.abs(self.data * other.data) // g)
             shape = list(other.shape) if not other.is_scalar() else list(self.shape)
-            return APLArray.array(shape, to_bool_array(self.data * other.data))
-        return self._dyadic(other, lambda a, b: int(bool(a) and bool(b)), bool_result=True)
+            return APLArray.array(shape, result)
+        return self._dyadic(other, lambda a, b: abs(a * b) / _gcd_float(a, b) if a and b else 0)
 
     def logical_or(self, other: APLArray) -> APLArray:
-        if is_numeric_array(self.data) and is_numeric_array(other.data):
+        """∨ — GCD (greatest common divisor). Matches OR for boolean inputs."""
+        self._reject_chars(other, "∨")
+        if is_int_dtype(self.data) and is_int_dtype(other.data):
+            result = np.gcd(self.data.astype(np.int64), other.data.astype(np.int64))
             shape = list(other.shape) if not other.is_scalar() else list(self.shape)
-            result = self.data + other.data
-            return APLArray.array(shape, to_bool_array(np.minimum(result, 1)))
-        return self._dyadic(other, lambda a, b: int(bool(a) or bool(b)), bool_result=True)
+            return APLArray.array(shape, result)
+        return self._dyadic(other, lambda a, b: _gcd_float(a, b))
 
     def match(self, other: APLArray) -> APLArray:
         return APLArray.scalar(1 if self == other else 0)
