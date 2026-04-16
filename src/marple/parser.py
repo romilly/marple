@@ -2,7 +2,7 @@ from typing import Callable
 
 from marple.apl_value import Function, Operator
 from marple.errors import SyntaxError_
-from marple.nodes import (  # noqa: F401 — re-exported for backward compatibility
+from marple.executor import (  # noqa: F401 — re-exported for backward compatibility
     Adverb,
     make_adverb,
     make_conjunction,
@@ -28,7 +28,7 @@ from marple.nodes import (  # noqa: F401 — re-exported for backward compatibil
     DyadicDopCall,
     DyadicFunc,
     Executable,
-    ExecutionContext,
+    Executor,
     OperatorOperand,
     Reference,
     FmtArgs,

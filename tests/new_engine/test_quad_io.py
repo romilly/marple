@@ -9,7 +9,7 @@ from marple.backend_functions import chars_to_str, str_to_char_array
 from marple.numpy_array import APLArray, S
 from marple.engine import Interpreter
 from marple.errors import DomainError
-from marple.nodes import SysVar
+from marple.executor import SysVar
 from marple.tokenizer import Tokenizer
 from marple.script import run_script
 from marple.web.server import WebSession

@@ -4,7 +4,7 @@ from typing import Any, Callable, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from marple.apl_value import PowerStrategy
-    from marple.nodes import ExecutionContext
+    from marple.executor import Executor
 
 from marple.backend_functions import (
     is_char_array, is_numeric_array, maybe_upcast,
@@ -522,7 +522,7 @@ class APLArray(APLValue):
         flat = self.data.flatten()
         return APLArray([len(flat)], flat)
 
-    def as_power_strategy(self, ctx: 'ExecutionContext') -> 'PowerStrategy':
+    def as_power_strategy(self, ctx: 'Executor') -> 'PowerStrategy':
         from marple.apl_value import PowerByCount
         if not self.is_scalar():
             from marple.errors import DomainError

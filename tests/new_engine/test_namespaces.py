@@ -2,7 +2,7 @@
 
 from marple.numpy_array import APLArray, S
 from marple.engine import Interpreter
-from marple.nodes import QualifiedVar, Str, Var
+from marple.executor import QualifiedVar, Str, Var
 from marple.tokenizer import GuardToken, Tokenizer
 
 

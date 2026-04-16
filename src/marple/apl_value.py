@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Callable
 from marple.errors import DomainError
 
 if TYPE_CHECKING:
-    from marple.nodes import Applicable, ExecutionContext, Executable, OperatorOperand
+    from marple.executor import Applicable, Executor, Executable, OperatorOperand
     from marple.numpy_array import APLArray
 
 # Name classes (following Dyalog ⎕NC convention)
@@ -32,20 +32,20 @@ class Function(APLValue):
         return NC_FUNCTION
 
     @abstractmethod
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: Executable) -> APLArray: ...
+    def apply_monadic(self, ctx: Executor, operand_node: Executable) -> APLArray: ...
 
     @abstractmethod
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: Executable, right_node: Executable) -> APLArray: ...
+    def apply_dyadic(self, ctx: Executor, left_node: Executable, right_node: Executable) -> APLArray: ...
 
-    def apply_to_monadic(self, ctx: ExecutionContext, omega: APLArray) -> APLArray:
-        from marple.nodes import Literal
+    def apply_to_monadic(self, ctx: Executor, omega: APLArray) -> APLArray:
+        from marple.executor import Literal
         return self.apply_monadic(ctx, Literal(omega))
 
-    def apply_to_dyadic(self, ctx: ExecutionContext, alpha: APLArray, omega: APLArray) -> APLArray:
-        from marple.nodes import Literal
+    def apply_to_dyadic(self, ctx: Executor, alpha: APLArray, omega: APLArray) -> APLArray:
+        from marple.executor import Literal
         return self.apply_dyadic(ctx, Literal(alpha), Literal(omega))
 
-    def as_power_strategy(self, ctx: ExecutionContext) -> PowerStrategy:
+    def as_power_strategy(self, ctx: Executor) -> PowerStrategy:
         return PowerByConvergence(self, ctx)
 
 
@@ -61,11 +61,11 @@ class Operator(APLValue):
     def derive_dyadic(self, left: OperatorOperand, right: OperatorOperand) -> Function:
         raise DomainError(f"{type(self).__name__} is not a dyadic operator")
 
-    def apply_monadic_dop(self, ctx: ExecutionContext, argument: APLArray,
+    def apply_monadic_dop(self, ctx: Executor, argument: APLArray,
                           operand: APLValue, alpha: APLArray | None = None) -> APLArray:
         raise DomainError(f"Cannot apply {type(self).__name__} as an operator")
 
-    def apply_dyadic_dop(self, ctx: ExecutionContext, argument: APLArray,
+    def apply_dyadic_dop(self, ctx: Executor, argument: APLArray,
                          left_operand: APLValue, right_operand: APLValue) -> APLArray:
         raise DomainError(f"Cannot apply {type(self).__name__} as an operator")
 
@@ -91,7 +91,7 @@ class PowerByCount(PowerStrategy):
 
 class PowerByConvergence(PowerStrategy):
     """Repeat f until test_fn says consecutive results match."""
-    def __init__(self, test_fn: 'Function', ctx: ExecutionContext) -> None:
+    def __init__(self, test_fn: 'Function', ctx: Executor) -> None:
         self.test_fn = test_fn
         self.ctx = ctx
     def iterate(self, step: Callable[[APLArray], APLArray], omega: APLArray) -> APLArray:

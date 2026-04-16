@@ -7,7 +7,7 @@ Marker tokens (parens, delimiters, EOF) and the OperatorToken
 remain as `Token` subclasses in tokenizer.py.
 """
 
-from marple.nodes import (
+from marple.executor import (
     Num,
     PrimitiveFunction,
     Str,

@@ -18,7 +18,7 @@ import re
 from dataclasses import dataclass
 from typing import Callable, cast
 
-from marple.nodes import (
+from marple.executor import (
     Alpha,
     AlphaAlpha,
     Nabla,
