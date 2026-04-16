@@ -1014,33 +1014,21 @@ class Index(Executable):
         strides = [1] * len(array.shape)
         for i in range(len(array.shape) - 2, -1, -1):
             strides[i] = strides[i + 1] * array.shape[i + 1]
-        if is_numeric_array(array.data):
-            n_results = 1
-            for ai in axis_indices:
-                n_results *= len(ai)
-            result_data = np.zeros(int(max(1, n_results)))
-            idx = 0
-            for combo in product(*axis_indices):
-                offset = int(sum(i * s for i, s in zip(combo, strides)))
-                result_data[idx] = flat[offset]
-                idx += 1
-            result_shape: list[int] = []
-            for s in idx_shapes:
-                result_shape.extend(s)
-            if not result_shape:
-                return S(result_data[0])
-            return APLArray(result_shape, result_data[:idx].reshape(result_shape))
-        # Character data
-        result_list: list[object] = []
+        n_results = 1
+        for ai in axis_indices:
+            n_results *= len(ai)
+        result_data = np.empty(int(max(1, n_results)), dtype=array.data.dtype)
+        idx = 0
         for combo in product(*axis_indices):
             offset = int(sum(i * s for i, s in zip(combo, strides)))
-            result_list.append(flat[offset])
-        result_shape = []
+            result_data[idx] = flat[offset]
+            idx += 1
+        result_shape: list[int] = []
         for s in idx_shapes:
             result_shape.extend(s)
         if not result_shape:
-            return S(result_list[0])
-        return APLArray.array(result_shape, result_list)
+            return S(result_data[0])
+        return APLArray(result_shape, result_data[:idx].reshape(result_shape))
 
 
 class Omega(Executable):
