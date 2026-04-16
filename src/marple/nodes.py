@@ -319,8 +319,8 @@ _CONJUNCTION_FACTORIES: dict[str, Callable[[], Conjunction]] = {
 def make_adverb(symbol: str, axis: Executable | None = None) -> Adverb:
     """Construct the Adverb subclass for a glyph. Raises on unknown glyph.
 
-    `axis` is an Executable for bracketed forms like /[k]; only reduce
-    and scan variants consult it, others ignore.
+    `axis` is an Executable for bracketed forms like /[k]. The parser
+    only passes a non-None axis for reduce and scan variants (/\\⌿⍀).
     """
     factory = _ADVERB_FACTORIES.get(symbol)
     if factory is None:
