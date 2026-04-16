@@ -4,7 +4,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from decimal import Decimal
 from itertools import product
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 from marple.numpy_array import APLArray, S
 from marple.backend_functions import (
@@ -1011,14 +1011,14 @@ class Omega(Executable):
     def execute(self, ctx: Executor) -> APLArray:
         if "⍵" not in ctx.env:
             raise ValueError_("⍵ used outside of dfn")
-        return ctx.env["⍵"]
+        return cast(APLArray, ctx.env["⍵"])
 
 
 class Alpha(Executable):
     def execute(self, ctx: Executor) -> APLArray:
         if "⍺" not in ctx.env:
             raise ValueError_("⍺ used outside of dfn")
-        return ctx.env["⍺"]
+        return cast(APLArray, ctx.env["⍺"])
 
 
 class PrimitiveFunction(UnappliedFunction, Reference):
