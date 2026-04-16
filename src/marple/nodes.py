@@ -1,5 +1,5 @@
 """AST node classes for MARPLE."""
-
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from itertools import product
@@ -152,15 +152,15 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
 class ExecutionContext(Protocol):
     """Interface that AST nodes use to evaluate sub-expressions."""
     env: Any
-    def evaluate(self, node: 'Executable') -> APLArray: ...
+    def evaluate(self, node: Executable) -> APLArray: ...
     def dispatch_monadic(self, glyph: str, operand: APLArray) -> APLArray: ...
     def dispatch_dyadic(self, glyph: str, left: APLArray, right: APLArray) -> APLArray: ...
-    def apply_derived(self, operator: str, function: 'Executable', operand: APLArray, axis: int | None = None) -> APLArray: ...
-    def assign(self, name: str, value_node: 'Executable | UnappliedFunction') -> APLArray: ...
+    def apply_derived(self, operator: str, function: Executable, operand: APLArray, axis: int | None = None) -> APLArray: ...
+    def assign(self, name: str, value_node: Executable | UnappliedFunction) -> APLArray: ...
     def eval_sysvar(self, name: str) -> APLArray: ...
-    def create_binding(self, dfn_node: 'Dfn') -> APLValue: ...
-    def dispatch_sys_monadic(self, name: str, operand_node: 'Executable') -> APLArray: ...
-    def dispatch_sys_dyadic(self, name: str, left_node: 'Executable', right_node: 'Executable') -> APLArray: ...
+    def create_binding(self, dfn_node: Dfn) -> APLValue: ...
+    def dispatch_sys_monadic(self, name: str, operand_node: Executable) -> APLArray: ...
+    def dispatch_sys_dyadic(self, name: str, left_node: Executable, right_node: Executable) -> APLArray: ...
     def resolve_qualified(self, parts: list[str]) -> APLValue: ...
 
 
@@ -190,7 +190,7 @@ class Conjunction(Operator, Node):
     """
 
 
-def _require_applicable(operand: 'OperatorOperand', op_glyph: str, position: str) -> 'Applicable':
+def _require_applicable(operand: OperatorOperand, op_glyph: str, position: str) -> Applicable:
     """Raise a descriptive DomainError if an operator operand isn't
     applicable as a function. Centralised so all operator subclasses
     surface the same error shape rather than bare AssertionErrors."""
@@ -201,7 +201,7 @@ def _require_applicable(operand: 'OperatorOperand', op_glyph: str, position: str
 
 class CommuteAdverb(Adverb):
     """Monadic operator ⍨ — commute."""
-    def derive_monadic(self, operand: 'OperatorOperand') -> Function:
+    def derive_monadic(self, operand: OperatorOperand) -> Function:
         return CommuteDerived(_require_applicable(operand, "⍨", "Operand"))
 
 
@@ -211,27 +211,27 @@ class ReduceAdverb(Adverb):
     Carries the symbol (/ vs ⌿ — default axis distinction) and an
     optional explicit axis from a bracketed specifier `/[k]`.
     """
-    def __init__(self, symbol: str, axis: 'Executable | None' = None) -> None:
+    def __init__(self, symbol: str, axis: Executable | None = None) -> None:
         self.symbol = symbol
         self.axis = axis
 
-    def derive_monadic(self, operand: 'OperatorOperand') -> Function:
+    def derive_monadic(self, operand: OperatorOperand) -> Function:
         return ReduceDerived(self, _require_applicable(operand, self.symbol, "Operand"))
 
 
 class ScanAdverb(Adverb):
     """Monadic operator \\ or ⍀ — scan along last or first axis."""
-    def __init__(self, symbol: str, axis: 'Executable | None' = None) -> None:
+    def __init__(self, symbol: str, axis: Executable | None = None) -> None:
         self.symbol = symbol
         self.axis = axis
 
-    def derive_monadic(self, operand: 'OperatorOperand') -> Function:
+    def derive_monadic(self, operand: OperatorOperand) -> Function:
         return ScanDerived(self, _require_applicable(operand, self.symbol, "Operand"))
 
 
 class RankConjunction(Conjunction):
     """Dyadic operator ⍤ — rank."""
-    def derive_dyadic(self, left: 'OperatorOperand', right: 'OperatorOperand') -> Function:
+    def derive_dyadic(self, left: OperatorOperand, right: OperatorOperand) -> Function:
         if not isinstance(right, Executable):
             raise DomainError("Right operand of ⍤ must be a rank specifier")
         return RankDerived(_require_applicable(left, "⍤", "Left"), right)
@@ -243,7 +243,7 @@ class PowerConjunction(Conjunction):
     Right operand may be applicable (convergence) or numeric (count),
     so it stays typed as `OperatorOperand`.
     """
-    def derive_dyadic(self, left: 'OperatorOperand', right: 'OperatorOperand') -> Function:
+    def derive_dyadic(self, left: OperatorOperand, right: OperatorOperand) -> Function:
         return PowerDerived(_require_applicable(left, "⍣", "Left"), right)
 
 
@@ -255,7 +255,7 @@ class BesideConjunction(Conjunction):
       A∘g  (left is value)   → left-bind:  (A∘g) ω ≡ A g ω
       A∘B  (both values)     → SYNTAX ERROR (matches Dyalog)
     """
-    def derive_dyadic(self, left: 'OperatorOperand', right: 'OperatorOperand') -> Function:
+    def derive_dyadic(self, left: OperatorOperand, right: OperatorOperand) -> Function:
         left_fn = isinstance(left, Applicable)
         right_fn = isinstance(right, Applicable)
         if left_fn and right_fn:
@@ -269,7 +269,7 @@ class BesideConjunction(Conjunction):
 
 class InnerProductConjunction(Conjunction):
     """Dyadic operator `.` — inner product (e.g. +.× for dot-product / matrix-multiply)."""
-    def derive_dyadic(self, left: 'OperatorOperand', right: 'OperatorOperand') -> Function:
+    def derive_dyadic(self, left: OperatorOperand, right: OperatorOperand) -> Function:
         assert isinstance(left, PrimitiveFunction)
         assert isinstance(right, PrimitiveFunction)
         return InnerDerived(left, right)
@@ -281,7 +281,7 @@ class OuterProductAdverb(Adverb):
     Parser combines the `∘`, `.`, and the function token into a pre-bound
     unit at parse time; the function becomes the single operand here.
     """
-    def derive_monadic(self, operand: 'OperatorOperand') -> Function:
+    def derive_monadic(self, operand: OperatorOperand) -> Function:
         assert isinstance(operand, PrimitiveFunction)
         return OuterDerived(operand)
 
@@ -292,12 +292,12 @@ class IBeamAdverb(Adverb):
     `(A⌶)` derives a function that, when applied, evaluates A, looks up
     the registered Python implementation, and invokes it.
     """
-    def derive_monadic(self, operand: 'OperatorOperand') -> Function:
+    def derive_monadic(self, operand: OperatorOperand) -> Function:
         assert isinstance(operand, Executable)
         return IBeamFunction(operand)
 
 
-_ADVERB_FACTORIES: dict[str, Callable[[str, 'Executable | None'], Adverb]] = {
+_ADVERB_FACTORIES: dict[str, Callable[[str, Executable | None], Adverb]] = {
     "⍨": lambda _s, _a: CommuteAdverb(),
     "/": lambda s, a: ReduceAdverb(s, a),
     "⌿": lambda s, a: ReduceAdverb(s, a),
@@ -316,7 +316,7 @@ _CONJUNCTION_FACTORIES: dict[str, Callable[[], Conjunction]] = {
 }
 
 
-def make_adverb(symbol: str, axis: 'Executable | None' = None) -> Adverb:
+def make_adverb(symbol: str, axis: Executable | None = None) -> Adverb:
     """Construct the Adverb subclass for a glyph. Raises on unknown glyph.
 
     `axis` is an Executable for bracketed forms like /[k]; only reduce
@@ -370,7 +370,7 @@ class Executable(Node):
         overrides to return any APLValue (Function/Operator/array)."""
         return self.execute(ctx)
 
-    def as_power_strategy(self, ctx: ExecutionContext) -> 'PowerStrategy':
+    def as_power_strategy(self, ctx: ExecutionContext) -> PowerStrategy:
         val = self.as_value(ctx)
         if not isinstance(val, (Function, APLArray)):
             raise DomainError("⍣ right operand must be integer or function")
@@ -426,10 +426,10 @@ class Reference(Executable):
     def apply_to_dyadic(self, ctx: ExecutionContext, alpha: APLArray, omega: APLArray) -> APLArray:
         return self._as_function(ctx).apply_to_dyadic(ctx, alpha, omega)
 
-    def apply_monadic(self, ctx: ExecutionContext, operand_node: 'Executable') -> APLArray:
+    def apply_monadic(self, ctx: ExecutionContext, operand_node: Executable) -> APLArray:
         return self._as_function(ctx).apply_monadic(ctx, operand_node)
 
-    def apply_dyadic(self, ctx: ExecutionContext, left_node: 'Executable', right_node: 'Executable') -> APLArray:
+    def apply_dyadic(self, ctx: ExecutionContext, left_node: Executable, right_node: Executable) -> APLArray:
         return self._as_function(ctx).apply_dyadic(ctx, left_node, right_node)
 
     def apply_monadic_dop(self, ctx: ExecutionContext, argument: APLArray,
@@ -522,7 +522,7 @@ class DyadicFunc(Executable):
 
 
 class Assignment(Executable):
-    def __init__(self, name: str, value: 'Executable | UnappliedFunction') -> None:
+    def __init__(self, name: str, value: Executable | UnappliedFunction) -> None:
         self.name = name
         self.value = value
     def execute(self, ctx: ExecutionContext) -> APLArray:
@@ -545,7 +545,7 @@ class QualifiedVar(Reference):
         return ctx.resolve_qualified(self.parts)
 
 
-def _resolve_axis(op: 'ReduceAdverb | ScanAdverb', ctx: 'ExecutionContext') -> int | None:
+def _resolve_axis(op: ReduceAdverb | ScanAdverb, ctx: ExecutionContext) -> int | None:
     """Evaluate the bracketed axis expression on a reduce/scan operator.
 
     Returns a 0-based axis index (with ⎕IO adjustment applied), or None
@@ -562,7 +562,7 @@ def _resolve_axis(op: 'ReduceAdverb | ScanAdverb', ctx: 'ExecutionContext') -> i
 
 
 class DerivedFunc(Executable):
-    def __init__(self, operator: 'ReduceAdverb | ScanAdverb', function: Executable, operand: Executable) -> None:
+    def __init__(self, operator: ReduceAdverb | ScanAdverb, function: Executable, operand: Executable) -> None:
         self.operator = operator
         self.function = function
         self.operand = operand
@@ -575,7 +575,7 @@ class DerivedFunc(Executable):
 class MonadicDopCall(Executable):
     """User-defined operator applied: (operand op) argument
     or: left (operand op) right (when derived verb is used dyadically)"""
-    def __init__(self, op_name: 'Reference', operand: Executable, argument: Executable,
+    def __init__(self, op_name: Reference, operand: Executable, argument: Executable,
                  alpha: Executable | None = None) -> None:
         self.op_name = op_name
         self.operand = operand
@@ -590,7 +590,7 @@ class MonadicDopCall(Executable):
 
 class DyadicDopCall(Executable):
     """User-defined operator applied dyadically: left (operand op) right"""
-    def __init__(self, op_name: 'Reference', operand: Executable, left: Executable, right: Executable) -> None:
+    def __init__(self, op_name: Reference, operand: Executable, left: Executable, right: Executable) -> None:
         self.op_name = op_name
         self.operand = operand
         self.left = left
@@ -871,7 +871,7 @@ class DerivedFunctionBinding:
 
 class ReduceDerived(UnappliedFunction):
     """Unapplied reduce-derived function: f/ or f⌿"""
-    def __init__(self, operator: 'ReduceAdverb', function: Applicable) -> None:
+    def __init__(self, operator: ReduceAdverb, function: Applicable) -> None:
         self.operator = operator
         self.function = function
     def __eq__(self, other: object) -> bool:
@@ -888,7 +888,7 @@ class ReduceDerived(UnappliedFunction):
 
 class ScanDerived(UnappliedFunction):
     """Unapplied scan-derived function: f\\ or f⍀"""
-    def __init__(self, operator: 'ScanAdverb', function: Applicable) -> None:
+    def __init__(self, operator: ScanAdverb, function: Applicable) -> None:
         self.operator = operator
         self.function = function
     def __eq__(self, other: object) -> bool:
@@ -932,7 +932,7 @@ class IBeamFunction(UnappliedFunction):
 
 class InnerDerived(UnappliedFunction):
     """Stored function form of `.` — inner product f.g."""
-    def __init__(self, left_fn: 'PrimitiveFunction', right_fn: 'PrimitiveFunction') -> None:
+    def __init__(self, left_fn: PrimitiveFunction, right_fn: PrimitiveFunction) -> None:
         self.left_fn = left_fn
         self.right_fn = right_fn
     def __eq__(self, other: object) -> bool:
@@ -949,7 +949,7 @@ class InnerDerived(UnappliedFunction):
 
 class OuterDerived(UnappliedFunction):
     """Stored function form of `∘.` — outer product ∘.g."""
-    def __init__(self, function: 'PrimitiveFunction') -> None:
+    def __init__(self, function: PrimitiveFunction) -> None:
         self.function = function
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, OuterDerived):
@@ -1098,7 +1098,7 @@ CAT_EMPTY = 8
 
 class BoundOperator(Node):
     """Operator bound to operand(s), not yet applied to argument."""
-    def __init__(self, operator: 'Adverb | Conjunction | Var',
+    def __init__(self, operator: Adverb | Conjunction | Var,
                  left_operand: Node, left_cat: int,
                  right_operand: Node | None = None,
                  right_cat: int = CAT_EMPTY) -> None:
