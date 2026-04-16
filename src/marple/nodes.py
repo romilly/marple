@@ -995,40 +995,27 @@ class Index(Executable):
     def execute(self, ctx: ExecutionContext) -> APLArray:
         array = ctx.evaluate(self.array)
         io = ctx.env.io
-        flat = array.data.flatten()
-        axis_indices: list[list[int]] = []
+        axis_indices: list[np.ndarray[Any, Any]] = []
         idx_shapes: list[list[int]] = []
         for axis, idx_node in enumerate(self.indices):
             if idx_node is None:
-                axis_indices.append(list(range(array.shape[axis])))
+                axis_indices.append(np.arange(array.shape[axis]))
                 idx_shapes.append([array.shape[axis]])
             else:
                 idx = ctx.evaluate(idx_node)
-                idx_flat = idx.data.flatten()
-                vals = list(idx_flat) if not idx.is_scalar() else [idx.data.flatten()[0]]
-                axis_indices.append([int(v) - io for v in vals])
+                vals = np.atleast_1d(idx.data).astype(np.intp) - io
+                axis_indices.append(vals.ravel())
                 idx_shapes.append(idx.shape if not idx.is_scalar() else [])
         for axis in range(len(self.indices), len(array.shape)):
-            axis_indices.append(list(range(array.shape[axis])))
+            axis_indices.append(np.arange(array.shape[axis]))
             idx_shapes.append([array.shape[axis]])
-        strides = [1] * len(array.shape)
-        for i in range(len(array.shape) - 2, -1, -1):
-            strides[i] = strides[i + 1] * array.shape[i + 1]
-        n_results = 1
-        for ai in axis_indices:
-            n_results *= len(ai)
-        result_data = np.empty(int(max(1, n_results)), dtype=array.data.dtype)
-        idx = 0
-        for combo in product(*axis_indices):
-            offset = int(sum(i * s for i, s in zip(combo, strides)))
-            result_data[idx] = flat[offset]
-            idx += 1
+        result_data = array.data[np.ix_(*axis_indices)]
         result_shape: list[int] = []
         for s in idx_shapes:
             result_shape.extend(s)
         if not result_shape:
-            return S(result_data[0])
-        return APLArray(result_shape, result_data[:idx].reshape(result_shape))
+            return S(result_data.flat[0])
+        return APLArray(result_shape, result_data.reshape(result_shape))
 
 
 class Omega(Executable):
