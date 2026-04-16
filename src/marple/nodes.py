@@ -1010,9 +1010,7 @@ class Index(Executable):
             axis_indices.append(np.arange(array.shape[axis]))
             idx_shapes.append([array.shape[axis]])
         result_data = array.data[np.ix_(*axis_indices)]
-        result_shape: list[int] = []
-        for s in idx_shapes:
-            result_shape.extend(s)
+        result_shape = [d for s in idx_shapes for d in s]
         if not result_shape:
             return S(result_data.flat[0])
         return APLArray(result_shape, result_data.reshape(result_shape))
