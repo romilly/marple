@@ -57,6 +57,22 @@ class TestFormat:
         result = Interpreter(io=1).run("6 2⍕1.5 2.75")
         assert chars_to_str(result.data) == "  1.50  2.75"
 
+    def test_dyadic_format_matrix(self) -> None:
+        from marple.backend_functions import chars_to_str
+        result = Interpreter(io=1).run("5 2⍕2 3⍴1 2 3 4 5 6")
+        assert result.shape == [2, 15]
+        assert chars_to_str(result.data[0]) == " 1.00 2.00 3.00"
+        assert chars_to_str(result.data[1]) == " 4.00 5.00 6.00"
+
+    def test_dyadic_format_rank3(self) -> None:
+        from marple.backend_functions import chars_to_str
+        result = Interpreter(io=0).run("5 2⍕2 3 4⍴⍳24")
+        assert result.shape == [2, 3, 20]
+        # First plane, first row: 0 1 2 3
+        assert chars_to_str(result.data[0][0]) == " 0.00 1.00 2.00 3.00"
+        # Second plane, last row: 20 21 22 23
+        assert chars_to_str(result.data[1][2]) == "20.0021.0022.0023.00"
+
 
 class TestReplicate:
     def test_compress(self) -> None:

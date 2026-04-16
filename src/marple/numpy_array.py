@@ -370,15 +370,25 @@ class APLArray(APLValue):
         spec_flat = np.atleast_1d(self.data)
         width = int(spec_flat[0])
         precision = int(spec_flat[1]) if len(spec_flat) > 1 else None
-        # Vectorised formatting via numpy's char ops — avoids the
-        # element-by-element Python loop and the 0-d-iteration landmine
-        # that the old `[other.data[0]]` workaround created.
-        values = np.atleast_1d(other.data)
         fmt = f"%.{precision}f" if precision is not None else "%s"
-        strs = np.char.mod(fmt, values)
+        # Format every element, then reshape.
+        # Result shape: leading dims unchanged, last dim becomes last_dim * width.
+        values = np.atleast_1d(other.data)
+        strs = np.char.mod(fmt, values.ravel())
         strs = np.char.rjust(strs, width)
-        text = "".join(strs.tolist())
-        return APLArray([len(text)], str_to_char_array(text))
+        # Join groups of last-axis elements into row strings
+        last_dim = other.shape[-1] if other.shape else 1
+        flat_texts = ["".join(strs[i:i + last_dim].tolist())
+                       for i in range(0, len(strs), last_dim)]
+        all_chars = np.concatenate(
+            [str_to_char_array(t) for t in flat_texts]
+        )
+        if other.shape:
+            result_shape = list(other.shape)
+            result_shape[-1] = last_dim * width
+        else:
+            result_shape = [width]
+        return APLArray(result_shape, all_chars)
 
     def roll(self, io: int = 1) -> 'APLArray':
         """Monadic ?: roll. ?N -> random int io..N, ?0 -> random float [0,1)."""
