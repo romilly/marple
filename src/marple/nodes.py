@@ -5,9 +5,16 @@ from abc import ABC, abstractmethod
 from itertools import product
 from typing import Any, Callable, Protocol
 
+from decimal import Decimal
+
 from marple.numpy_array import APLArray, S
-from marple.backend_functions import is_numeric_array, maybe_upcast
-from marple.errors import DomainError, SyntaxError_, ValueError_
+from marple.backend_functions import is_numeric_array, maybe_upcast, str_to_char_array, to_list
+from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
+from marple.errors import DomainError, LengthError, SyntaxError_, ValueError_
+from marple.get_numpy import np
+from marple.dyadic_functions import DyadicFunctionBinding
+from marple.ibeam_registry import lookup as ibeam_lookup
+from marple.operator_binding import _default_axis, _reduce, _scan
 from marple.apl_value import NC_FUNCTION, APLValue, Function, Operator, PowerByConvergence, PowerByCount, PowerStrategy
 
 
@@ -39,8 +46,6 @@ def _inner_product(
     Result shape is (¯1↓⍴alpha),(1↓⍴omega).
     Last axis of alpha must match first axis of omega.
     """
-    from marple.errors import DomainError, LengthError
-    from marple.get_numpy import np
     reduce_op = _INNER_SCALAR_OPS.get(reduce_glyph)
     apply_op = _INNER_SCALAR_OPS.get(apply_glyph)
     if reduce_op is None:
@@ -104,8 +109,6 @@ _OUTER_UFUNCS: dict[str, str] = {
 
 def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
     """Compute outer product: alpha ∘.func omega."""
-    from marple.errors import DomainError
-    from marple.get_numpy import np
     # Fast path: use numpy ufunc.outer for numeric operands.
     if is_numeric_array(alpha.data) and is_numeric_array(omega.data):
         ufunc_name = _OUTER_UFUNCS.get(glyph)
@@ -261,7 +264,6 @@ class BesideConjunction(Conjunction):
             return BesideRightBound(left, right)
         if isinstance(left, Executable) and right_fn:
             return BesideLeftBound(left, right)
-        from marple.errors import SyntaxError_
         raise SyntaxError_("∘ requires at least one function operand")
 
 
@@ -468,8 +470,7 @@ class Num(Executable):
     def execute(self, ctx: ExecutionContext) -> APLArray:
         value = self.value
         if isinstance(value, float) and ctx.env.fr == 1287:
-            from decimal import Decimal
-            value = Decimal(str(self.value))
+            return S(np.asarray(Decimal(str(self.value))))
         return S(value)
 
 
@@ -481,7 +482,6 @@ class Str(Executable):
         # Single-char literals are scalars (shape []) backed by 0-d
         # uint32 data, constructed via S() so the storage convention
         # matches numeric scalars.
-        from marple.backend_functions import str_to_char_array
         if len(self.value) == 1:
             return S(self.value)
         return APLArray([len(self.value)], str_to_char_array(self.value))
@@ -621,7 +621,6 @@ class RankDerived(UnappliedFunction):
             return NotImplemented
         return self.function == other.function and self.rank_spec == other.rank_spec
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Executable) -> APLArray:
-        from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
         omega = ctx.evaluate(operand_node)
         rank_spec_val = ctx.evaluate(self.rank_spec)
         a, _, _ = resolve_rank_spec(rank_spec_val)
@@ -631,8 +630,6 @@ class RankDerived(UnappliedFunction):
         return reassemble(frame_shape, results)
 
     def apply_dyadic(self, ctx: ExecutionContext, left_node: Executable, right_node: Executable) -> APLArray:
-        from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
-        from marple.errors import LengthError
         alpha = ctx.evaluate(left_node)
         omega = ctx.evaluate(right_node)
         rank_spec_val = ctx.evaluate(self.rank_spec)
@@ -749,7 +746,6 @@ class BesideRightBound(UnappliedFunction):
         bound = ctx.evaluate(self.right)
         return self.f.apply_to_dyadic(ctx, omega, bound)
     def apply_dyadic(self, ctx: ExecutionContext, left_node: Executable, right_node: Executable) -> APLArray:
-        from marple.errors import SyntaxError_
         raise SyntaxError_("Cannot apply a value-bound ∘ form dyadically")
 
 
@@ -771,7 +767,6 @@ class BesideLeftBound(UnappliedFunction):
         bound = ctx.evaluate(self.left)
         return self.g.apply_to_dyadic(ctx, bound, omega)
     def apply_dyadic(self, ctx: ExecutionContext, left_node: Executable, right_node: Executable) -> APLArray:
-        from marple.errors import SyntaxError_
         raise SyntaxError_("Cannot apply a value-bound ∘ form dyadically")
 
 
@@ -852,6 +847,28 @@ class ForkDerived(UnappliedFunction):
         return self.g.apply_to_dyadic(ctx, left, right)
 
 
+class DerivedFunctionBinding:
+    """A derived function: an operator applied to a function operand."""
+
+    def apply(self, operator: str, function: object, operand: APLArray,
+              axis: int | None = None) -> APLArray:
+        """Apply the derived function (operator + function) to an operand."""
+        func, glyph = self._resolve_function(function)
+        if axis is None:
+            axis = _default_axis(operator, len(operand.shape))
+        if operator in ("/", "⌿"):
+            return _reduce(func, operand, glyph, axis)
+        if operator in ("\\", "⍀"):
+            return _scan(func, operand, glyph, axis)
+        raise DomainError(f"Unknown operator: {operator}")
+
+    def _resolve_function(self, function: object) -> tuple[Any, str | None]:
+        """Resolve a function node to (dyadic callable, glyph or None)."""
+        if isinstance(function, PrimitiveFunction):
+            return DyadicFunctionBinding.resolve(function.glyph), function.glyph
+        raise DomainError("Operators require primitive function operands")
+
+
 class ReduceDerived(UnappliedFunction):
     """Unapplied reduce-derived function: f/ or f⌿"""
     def __init__(self, operator: 'ReduceAdverb', function: Applicable) -> None:
@@ -862,7 +879,6 @@ class ReduceDerived(UnappliedFunction):
             return NotImplemented
         return self.operator == other.operator and self.function == other.function
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Executable) -> APLArray:
-        from marple.operator_binding import DerivedFunctionBinding
         operand = ctx.evaluate(operand_node)
         axis = _resolve_axis(self.operator, ctx)
         return DerivedFunctionBinding().apply(self.operator.symbol, self.function, operand, axis)
@@ -880,7 +896,6 @@ class ScanDerived(UnappliedFunction):
             return NotImplemented
         return self.operator == other.operator and self.function == other.function
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Executable) -> APLArray:
-        from marple.operator_binding import DerivedFunctionBinding
         operand = ctx.evaluate(operand_node)
         axis = _resolve_axis(self.operator, ctx)
         return DerivedFunctionBinding().apply(self.operator.symbol, self.function, operand, axis)
@@ -901,10 +916,9 @@ class IBeamFunction(UnappliedFunction):
             return NotImplemented
         return self.code_node == other.code_node
     def _resolve(self, ctx: ExecutionContext) -> Callable[[APLArray, APLArray | None], APLArray]:
-        from marple.ibeam_registry import lookup
         code_val = ctx.evaluate(self.code_node)
         code = int(code_val.data.item())
-        return lookup(code)
+        return ibeam_lookup(code)
     def apply_monadic(self, ctx: ExecutionContext, operand_node: Executable) -> APLArray:
         impl = self._resolve(ctx)
         omega = ctx.evaluate(operand_node)
@@ -979,7 +993,6 @@ class Index(Executable):
         self.array = array
         self.indices = indices
     def execute(self, ctx: ExecutionContext) -> APLArray:
-        from marple.backend_functions import to_list
         array = ctx.evaluate(self.array)
         io = ctx.env.io
         flat = array.data.flatten()
@@ -1001,7 +1014,6 @@ class Index(Executable):
         strides = [1] * len(array.shape)
         for i in range(len(array.shape) - 2, -1, -1):
             strides[i] = strides[i + 1] * array.shape[i + 1]
-        from marple.get_numpy import np
         if is_numeric_array(array.data):
             n_results = 1
             for ai in axis_indices:

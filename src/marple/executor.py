@@ -15,7 +15,7 @@ from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
 from marple.errors import DomainError, SyntaxError_, ValueError_
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.monadic_functions import MonadicFunctionBinding
-from marple.operator_binding import DerivedFunctionBinding
+from marple.nodes import DerivedFunctionBinding
 from marple.parser import (
     AtopDerived,
     Dfn,

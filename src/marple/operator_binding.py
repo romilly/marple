@@ -11,7 +11,6 @@ from marple.backend_functions import (
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.errors import DomainError
 from marple.get_numpy import np
-from marple.parser import PrimitiveFunction
 
 
 # Glyphs whose meaning on character data is undefined: arithmetic and
@@ -239,25 +238,3 @@ def _default_axis(operator: str, rank: int) -> int:
     if operator in _DEFAULT_FIRST_AXIS:
         return 0
     raise DomainError(f"Unknown operator: {operator}")
-
-
-class DerivedFunctionBinding:
-    """A derived function: an operator applied to a function operand."""
-
-    def apply(self, operator: str, function: object, operand: APLArray,
-              axis: int | None = None) -> APLArray:
-        """Apply the derived function (operator + function) to an operand."""
-        func, glyph = self._resolve_function(function)
-        if axis is None:
-            axis = _default_axis(operator, len(operand.shape))
-        if operator in ("/", "⌿"):
-            return _reduce(func, operand, glyph, axis)
-        if operator in ("\\", "⍀"):
-            return _scan(func, operand, glyph, axis)
-        raise DomainError(f"Unknown operator: {operator}")
-
-    def _resolve_function(self, function: object) -> tuple[Any, str | None]:
-        """Resolve a function node to (dyadic callable, glyph or None)."""
-        if isinstance(function, PrimitiveFunction):
-            return DyadicFunctionBinding.resolve(function.glyph), function.glyph
-        raise DomainError("Operators require primitive function operands")

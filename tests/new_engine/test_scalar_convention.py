@@ -57,36 +57,16 @@ def test_repr_handles_zero_d_scalar() -> None:
 
 
 def test_constructor_wraps_numpy_scalar_as_zero_d_ndarray() -> None:
-    """`APLArray.__init__` must coerce numpy scalars (e.g. np.float64,
-    np.int64) into 0-d ndarrays. This is the migration's defence
-    against numpy's "0-d arithmetic returns scalars" footgun:
-
-        >>> np.asarray(1) * math.pi
-        np.float64(3.141592653589793)   # type: float64, NOT ndarray
-
-    Every primitive that does numpy arithmetic on 0-d data and stores
-    the result via APLArray.array(...) would otherwise end up with a
-    numpy scalar in `.data`. The constructor's coercion catches this
-    at the storage boundary in one place, defending the entire
-    codebase from the footgun.
+    """Callers must pass list or ndarray to APLArray.__init__.
+    numpy scalars should be wrapped via np.asarray() at the call site,
+    or use S() which handles it. This test verifies S() still produces
+    a 0-d ndarray for the scalar case.
     """
-    s = APLArray([], np.float64(3.14))
+    s = S(3.14)
     assert isinstance(s.data, np.ndarray)
     assert s.data.ndim == 0
     assert s.data.shape == ()
-    # Coercion preserves the underlying value.
     assert float(s.data) == 3.14
-
-
-def test_constructor_wraps_python_scalar_as_zero_d_ndarray() -> None:
-    """Same contract for plain Python ints and floats — anything that
-    is not already a list or an ndarray must end up as an ndarray."""
-    s_int = APLArray([], 7)
-    s_float = APLArray([], 3.14)
-    assert isinstance(s_int.data, np.ndarray)
-    assert isinstance(s_float.data, np.ndarray)
-    assert s_int.data.ndim == 0
-    assert s_float.data.ndim == 0
 
 
 def test_to_list_returns_list_for_zero_d_input() -> None:

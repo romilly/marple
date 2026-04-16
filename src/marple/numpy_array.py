@@ -18,29 +18,21 @@ from marple.apl_value import NC_ARRAY, APLValue
 class APLArray(APLValue):
     """APL array backed by numpy arrays."""
 
-    def __init__(self, shape: list[int], data: Any) -> None:
+    def __init__(self, shape: list[int], data: list[Any] | np.ndarray[Any, Any]) -> None:
         self.shape = shape
-        # Storage normalisation: data is always an ndarray AND its
-        # numpy shape always matches the APL shape after init.
+        # Storage normalisation: data is always an ndarray whose
+        # numpy shape matches the APL shape after init.
         #
-        # - lists go through to_array
-        # - bare numpy scalars (np.float64 etc.) and Python ints/floats
-        #   are wrapped via np.asarray, which produces a 0-d ndarray.
-        #   This is the defence against numpy's "0-d arithmetic returns
-        #   scalars" footgun.
-        # - existing ndarrays are stored as-is.
-        # - finally, if data.shape disagrees with the APL shape, the
-        #   data is reshaped. This catches every site that constructs
-        #   a scalar APLArray via `APLArray.array([], [value])` or
-        #   `APLArray.array(some_shape, list_comprehension)`: the list
-        #   becomes a 1-d ndarray via to_array, and the reshape pulls
-        #   it into the right shape (including 0-d for scalars).
+        # - lists go through to_array to become 1-d ndarrays
+        # - existing ndarrays are stored as-is
+        # - if data.shape disagrees with the APL shape, the data is
+        #   reshaped (e.g. a list becomes 1-d via to_array, then
+        #   reshape pulls it into the right shape including 0-d for
+        #   scalars)
         if isinstance(data, list):
             self.data = to_array(data)
-        elif isinstance(data, np.ndarray):
-            self.data = data
         else:
-            self.data = np.asarray(data)
+            self.data = data
         expected = tuple(shape)
         if self.data.shape != expected:
             self.data = self.data.reshape(expected)
@@ -63,12 +55,12 @@ class APLArray(APLValue):
         return bool(np.array_equal(self.data, other.data))
 
     @classmethod
-    def array(cls, shape: list[int], data: Any) -> 'APLArray':
+    def array(cls, shape: list[int], data: Any) -> APLArray:
         """Factory method for creating arrays."""
         return APLArray(shape, data)
 
     @classmethod
-    def scalar(cls, value: Any) -> 'APLArray':
+    def scalar(cls, value: Any) -> APLArray:
         """Factory method for creating scalars.
 
         Stores data as a 0-dimensional ndarray, matching the APL
@@ -85,8 +77,8 @@ class APLArray(APLValue):
             return f"S({self.data.item()})"
         return f"APLArray({self.shape}, {to_list(self.data)})"
 
-    def _dyadic(self, other: 'APLArray',
-                f: Callable[[Any, Any], Any], bool_result: bool = False) -> 'APLArray':
+    def _dyadic(self, other: APLArray,
+                f: Callable[[Any, Any], Any], bool_result: bool = False) -> APLArray:
         """Pervade a dyadic function element-wise with scalar extension."""
         a_data = to_list(self.data)
         b_data = to_list(other.data)
@@ -112,7 +104,7 @@ class APLArray(APLValue):
             data = to_bool_array(data)
         return APLArray.array(list(self.shape), data)
 
-    def _numeric_dyadic_op(self, other: 'APLArray', op: Callable[[Any, Any], Any], upcast: bool = False) -> 'APLArray':
+    def _numeric_dyadic_op(self, other: APLArray, op: Callable[[Any, Any], Any], upcast: bool = False) -> APLArray:
         """Apply a numeric operator (+, -, *, etc.) on numpy data.
 
         `maybe_upcast` promotes integer arrays to float64 before the
@@ -130,10 +122,12 @@ class APLArray(APLValue):
             raise DomainError("arithmetic overflow")
         except ValueError:
             raise LengthError(f"Shape mismatch: {self.shape} vs {other.shape}")
+        if not isinstance(result, np.ndarray):
+            result = np.asarray(result)
         shape = list(other.shape) if not other.is_scalar() else list(self.shape)
         return APLArray.array(shape, result)
 
-    def _reject_chars(self, other: 'APLArray', op_name: str) -> None:
+    def _reject_chars(self, other: APLArray, op_name: str) -> None:
         """Raise DomainError if either operand is a character array.
 
         Must be called before any is_numeric_array fast path so that the
@@ -147,25 +141,25 @@ class APLArray(APLValue):
         if is_char_array(self.data):
             raise DomainError(f"{op_name} is not defined on character data")
 
-    def add(self, other: 'APLArray') -> 'APLArray':
+    def add(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "+")
         if is_numeric_array(self.data) and is_numeric_array(other.data):
             return self._numeric_dyadic_op(other, lambda a, b: a + b, upcast=True)
         return self._dyadic(other, lambda a, b: a + b)
 
-    def subtract(self, other: 'APLArray') -> 'APLArray':
+    def subtract(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "-")
         if is_numeric_array(self.data) and is_numeric_array(other.data):
             return self._numeric_dyadic_op(other, lambda a, b: a - b, upcast=True)
         return self._dyadic(other, lambda a, b: a - b)
 
-    def multiply(self, other: 'APLArray') -> 'APLArray':
+    def multiply(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "×")
         if is_numeric_array(self.data) and is_numeric_array(other.data):
             return self._numeric_dyadic_op(other, lambda a, b: a * b, upcast=True)
         return self._dyadic(other, lambda a, b: a * b)
 
-    def divide(self, other: 'APLArray') -> 'APLArray':
+    def divide(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "÷")
         if is_numeric_array(other.data):
             if np.any(other.data == 0):
@@ -176,38 +170,38 @@ class APLArray(APLValue):
             raise DomainError("Division by zero")
         return self._dyadic(other, lambda a, b: a / b)
 
-    def maximum(self, other: 'APLArray') -> 'APLArray':
+    def maximum(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "⌈")
         if is_numeric_array(self.data) and is_numeric_array(other.data):
             return self._numeric_dyadic_op(other, lambda a, b: np.maximum(a, b))
         return self._dyadic(other, lambda a, b: max(a, b))
 
-    def minimum(self, other: 'APLArray') -> 'APLArray':
+    def minimum(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "⌊")
         if is_numeric_array(self.data) and is_numeric_array(other.data):
             return self._numeric_dyadic_op(other, lambda a, b: np.minimum(a, b))
         return self._dyadic(other, lambda a, b: min(a, b))
 
-    def power(self, other: 'APLArray') -> 'APLArray':
+    def power(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "*")
         if is_numeric_array(self.data) and is_numeric_array(other.data):
             return self._numeric_dyadic_op(other, lambda a, b: a ** b, upcast=True)
         return self._dyadic(other, lambda a, b: a ** b)
 
-    def logarithm(self, other: 'APLArray') -> 'APLArray':
+    def logarithm(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "⍟")
         if is_numeric_array(self.data) and is_numeric_array(other.data):
             return self._numeric_dyadic_op(other, lambda a, b: np.log(b) / np.log(a))
         import math
         return self._dyadic(other, lambda a, b: math.log(b) / math.log(a))
 
-    def residue(self, other: 'APLArray') -> 'APLArray':
+    def residue(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "|")
         if is_numeric_array(self.data) and is_numeric_array(other.data):
             return self._numeric_dyadic_op(other, lambda a, b: b % a)
         return self._dyadic(other, lambda a, b: b % a)
 
-    def circular(self, other: 'APLArray') -> 'APLArray':
+    def circular(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "○")
         import math
         _CIRCULAR: dict[int, Callable[[float], float]] = {
@@ -226,7 +220,7 @@ class APLArray(APLValue):
             return fn(float(b))
         return self._dyadic(other, _apply)
 
-    def binomial(self, other: 'APLArray') -> 'APLArray':
+    def binomial(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "!")
         import math
         def _binom(k: Any, n: Any) -> Any:
@@ -240,7 +234,7 @@ class APLArray(APLValue):
             return a == b
         return abs(a - b) <= ct * np.maximum(abs(a), abs(b))
 
-    def _compare(self, other: 'APLArray', op: Callable[[Any, Any, Any], Any], ct: float = 0) -> 'APLArray':
+    def _compare(self, other: APLArray, op: Callable[[Any, Any, Any], Any], ct: float = 0) -> APLArray:
         """Comparison with numpy fast path and tolerant equality."""
         if not is_numeric_array(self.data) or not is_numeric_array(other.data):
             ct = 0
@@ -250,44 +244,44 @@ class APLArray(APLValue):
             return APLArray.array(shape, to_bool_array(result))
         return self._dyadic(other, lambda a, b: int(op(a, b, self._tolerant_eq(a, b, ct))), bool_result=True)
 
-    def less_than(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
+    def less_than(self, other: APLArray, ct: float = 0) -> APLArray:
         return self._compare(other, lambda a, b, eq: (a < b) & (1 - eq), ct)
 
-    def less_equal(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
+    def less_equal(self, other: APLArray, ct: float = 0) -> APLArray:
         return self._compare(other, lambda a, b, eq: (a <= b) | eq, ct)
 
-    def equal(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
+    def equal(self, other: APLArray, ct: float = 0) -> APLArray:
         return self._compare(other, lambda a, b, eq: eq, ct)
 
-    def greater_equal(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
+    def greater_equal(self, other: APLArray, ct: float = 0) -> APLArray:
         return self._compare(other, lambda a, b, eq: (a >= b) | eq, ct)
 
-    def greater_than(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
+    def greater_than(self, other: APLArray, ct: float = 0) -> APLArray:
         return self._compare(other, lambda a, b, eq: (a > b) & (1 - eq), ct)
 
-    def not_equal(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
+    def not_equal(self, other: APLArray, ct: float = 0) -> APLArray:
         return self._compare(other, lambda a, b, eq: 1 - eq, ct)
 
-    def logical_and(self, other: 'APLArray') -> 'APLArray':
+    def logical_and(self, other: APLArray) -> APLArray:
         if is_numeric_array(self.data) and is_numeric_array(other.data):
             shape = list(other.shape) if not other.is_scalar() else list(self.shape)
             return APLArray.array(shape, to_bool_array(self.data * other.data))
         return self._dyadic(other, lambda a, b: int(bool(a) and bool(b)), bool_result=True)
 
-    def logical_or(self, other: 'APLArray') -> 'APLArray':
+    def logical_or(self, other: APLArray) -> APLArray:
         if is_numeric_array(self.data) and is_numeric_array(other.data):
             shape = list(other.shape) if not other.is_scalar() else list(self.shape)
             result = self.data + other.data
             return APLArray.array(shape, to_bool_array(np.minimum(result, 1)))
         return self._dyadic(other, lambda a, b: int(bool(a) or bool(b)), bool_result=True)
 
-    def match(self, other: 'APLArray') -> 'APLArray':
+    def match(self, other: APLArray) -> APLArray:
         return APLArray.scalar(1 if self == other else 0)
 
-    def not_match(self, other: 'APLArray') -> 'APLArray':
+    def not_match(self, other: APLArray) -> APLArray:
         return APLArray.scalar(0 if self == other else 1)
 
-    def deal(self, other: 'APLArray', io: int = 1) -> 'APLArray':
+    def deal(self, other: APLArray, io: int = 1) -> APLArray:
         """Dyadic ?: deal. N?M -> N random integers from io..M without replacement."""
         import random as _random
         n = int(self.data.item())
@@ -299,71 +293,71 @@ class APLArray(APLValue):
 
     # -- Dyadic structural (delegate to structural.py) --
 
-    def reshape(self, other: 'APLArray') -> 'APLArray':
+    def reshape(self, other: APLArray) -> APLArray:
         from marple.structural import reshape
         return reshape(self, other)
 
-    def catenate(self, other: 'APLArray') -> 'APLArray':
+    def catenate(self, other: APLArray) -> APLArray:
         from marple.structural import catenate
         return catenate(self, other)
 
-    def take(self, other: 'APLArray') -> 'APLArray':
+    def take(self, other: APLArray) -> APLArray:
         from marple.structural import take
         return take(self, other)
 
-    def drop(self, other: 'APLArray') -> 'APLArray':
+    def drop(self, other: APLArray) -> APLArray:
         from marple.structural import drop
         return drop(self, other)
 
-    def rotate(self, other: 'APLArray') -> 'APLArray':
+    def rotate(self, other: APLArray) -> APLArray:
         from marple.structural import rotate
         return rotate(self, other)
 
-    def rotate_first(self, other: 'APLArray') -> 'APLArray':
+    def rotate_first(self, other: APLArray) -> APLArray:
         from marple.structural import rotate_first
         return rotate_first(self, other)
 
-    def encode(self, other: 'APLArray') -> 'APLArray':
+    def encode(self, other: APLArray) -> APLArray:
         from marple.structural import encode
         return encode(self, other)
 
-    def decode(self, other: 'APLArray') -> 'APLArray':
+    def decode(self, other: APLArray) -> APLArray:
         from marple.structural import decode
         return decode(self, other)
 
-    def replicate(self, other: 'APLArray') -> 'APLArray':
+    def replicate(self, other: APLArray) -> APLArray:
         from marple.structural import replicate
         return replicate(self, other)
 
-    def replicate_first(self, other: 'APLArray') -> 'APLArray':
+    def replicate_first(self, other: APLArray) -> APLArray:
         from marple.structural import replicate_first
         return replicate_first(self, other)
 
-    def expand(self, other: 'APLArray') -> 'APLArray':
+    def expand(self, other: APLArray) -> APLArray:
         from marple.structural import expand
         return expand(self, other)
 
-    def matrix_divide(self, other: 'APLArray') -> 'APLArray':
+    def matrix_divide(self, other: APLArray) -> APLArray:
         from marple.structural import matrix_divide
         return matrix_divide(self, other)
 
-    def index_of(self, other: 'APLArray', io: int = 1, ct: float = 0) -> 'APLArray':
+    def index_of(self, other: APLArray, io: int = 1, ct: float = 0) -> APLArray:
         from marple.structural import index_of
         return index_of(self, other, io, ct)
 
-    def membership(self, other: 'APLArray', ct: float = 0) -> 'APLArray':
+    def membership(self, other: APLArray, ct: float = 0) -> APLArray:
         from marple.structural import membership
         return membership(self, other, ct)
 
-    def from_array(self, other: 'APLArray', io: int = 1) -> 'APLArray':
+    def from_array(self, other: APLArray, io: int = 1) -> APLArray:
         from marple.structural import from_array
         return from_array(self, other, io)
 
-    def transpose_dyadic(self, other: 'APLArray', io: int = 1) -> 'APLArray':
+    def transpose_dyadic(self, other: APLArray, io: int = 1) -> APLArray:
         from marple.structural import transpose_dyadic
         return transpose_dyadic(self, other, io)
 
-    def dyadic_format(self, other: 'APLArray') -> 'APLArray':
+    def dyadic_format(self, other: APLArray) -> APLArray:
         # Spec is a scalar (width only) or a 2-element vector
         # (width, precision). Use .item() / flat for the extraction so
         # this works with both 0-d and 1-d (1,) scalar storage.
@@ -390,7 +384,7 @@ class APLArray(APLValue):
             result_shape = [width]
         return APLArray(result_shape, all_chars)
 
-    def roll(self, io: int = 1) -> 'APLArray':
+    def roll(self, io: int = 1) -> APLArray:
         """Monadic ?: roll. ?N -> random int io..N, ?0 -> random float [0,1)."""
         import random as _random
         def roll_one(v: object) -> object:
@@ -401,7 +395,7 @@ class APLArray(APLValue):
         data = np.array([roll_one(v) for v in self.data.flat])
         return APLArray(list(self.shape), data.reshape(self.shape) if self.shape else data)
 
-    def format(self) -> 'APLArray':
+    def format(self) -> APLArray:
         from marple.formatting import format_num
         if self.is_scalar():
             s = format_num(self.data.item())
@@ -410,48 +404,48 @@ class APLArray(APLValue):
             s = " ".join(parts)
         return APLArray([len(s)], str_to_char_array(s))
 
-    def grade_up(self, io: int = 1) -> 'APLArray':
+    def grade_up(self, io: int = 1) -> APLArray:
         if len(self.shape) != 1:
             raise RankError("⍋ requires a vector argument")
         indexed = list(enumerate(self.data))
         indexed.sort(key=lambda pair: pair[1])  # type: ignore[arg-type]
         return APLArray.array([len(self.data)], [i + io for i, _ in indexed])
 
-    def grade_down(self, io: int = 1) -> 'APLArray':
+    def grade_down(self, io: int = 1) -> APLArray:
         if len(self.shape) != 1:
             raise RankError("⍒ requires a vector argument")
         indexed = list(enumerate(self.data))
         indexed.sort(key=lambda pair: pair[1], reverse=True)  # type: ignore[arg-type]
         return APLArray.array([len(self.data)], [i + io for i, _ in indexed])
 
-    def iota(self, io: int = 1) -> 'APLArray':
+    def iota(self, io: int = 1) -> APLArray:
         n = int(self.data.item())
         return APLArray.array([n], list(range(io, n + io)))
 
-    def tally(self) -> 'APLArray':
+    def tally(self) -> APLArray:
         # Monadic ≢: number of major cells of Y. Per ISO/Dyalog,
         # this is the length of the leading axis, or 1 for a scalar.
         # NB: NOT the total element count (×/⍴Y) — the previous TODO
         # comment here was misleading and is now removed.
         return APLArray.scalar(1) if self.is_scalar() else APLArray.scalar(self.shape[0])
 
-    def conjugate(self) -> 'APLArray':
+    def conjugate(self) -> APLArray:
         """Monadic +: identity for real, conjugate for complex."""
         self._reject_chars_monadic("monadic +")
         return APLArray.array(list(self.shape), np.conjugate(self.data))
 
-    def signum(self) -> 'APLArray':
+    def signum(self) -> APLArray:
         self._reject_chars_monadic("monadic ×")
         return APLArray.array(list(self.shape),
             [(-1 if x < 0 else 1 if x > 0 else 0) for x in to_list(self.data)])
 
-    def negate(self) -> 'APLArray':
+    def negate(self) -> APLArray:
         self._reject_chars_monadic("monadic -")
         if is_numeric_array(self.data):
             return APLArray.array(list(self.shape), -self.data)
         return APLArray.array(list(self.shape), [-x for x in to_list(self.data)])
 
-    def reciprocal(self) -> 'APLArray':
+    def reciprocal(self) -> APLArray:
         self._reject_chars_monadic("monadic ÷")
         if is_numeric_array(self.data):
             if np.any(self.data == 0):
@@ -462,45 +456,45 @@ class APLArray(APLValue):
             raise DomainError("Division by zero")
         return APLArray.array(list(self.shape), [1 / x for x in data])
 
-    def ceiling(self) -> 'APLArray':
+    def ceiling(self) -> APLArray:
         self._reject_chars_monadic("monadic ⌈")
         return APLArray.array(list(self.shape), np.ceil(self.data))
 
-    def floor(self) -> 'APLArray':
+    def floor(self) -> APLArray:
         self._reject_chars_monadic("monadic ⌊")
         return APLArray.array(list(self.shape), np.floor(self.data))
 
-    def exponential(self) -> 'APLArray':
+    def exponential(self) -> APLArray:
         self._reject_chars_monadic("monadic *")
         return APLArray.array(list(self.shape), np.exp(self.data))
 
-    def natural_log(self) -> 'APLArray':
+    def natural_log(self) -> APLArray:
         self._reject_chars_monadic("monadic ⍟")
         return APLArray.array(list(self.shape), np.log(self.data))
 
-    def absolute_value(self) -> 'APLArray':
+    def absolute_value(self) -> APLArray:
         self._reject_chars_monadic("monadic |")
         return APLArray.array(list(self.shape), abs(self.data))
 
-    def logical_not(self) -> 'APLArray':
+    def logical_not(self) -> APLArray:
         if is_numeric_array(self.data):
             return APLArray.array(list(self.shape), to_bool_array(1 - self.data))
         return APLArray.array(list(self.shape), to_bool_array([int(not x) for x in to_list(self.data)]))
 
-    def pi_times(self) -> 'APLArray':
+    def pi_times(self) -> APLArray:
         self._reject_chars_monadic("monadic ○")
         import math
         return APLArray.array(list(self.shape), self.data * math.pi)
 
-    def factorial(self) -> 'APLArray':
+    def factorial(self) -> APLArray:
         self._reject_chars_monadic("monadic !")
         import math
         return APLArray.array(list(self.shape), [math.gamma(x + 1) for x in to_list(self.data)])
 
-    def shape_of(self) -> 'APLArray':
+    def shape_of(self) -> APLArray:
         return APLArray.array([len(self.shape)], list(self.shape))
 
-    def transpose(self) -> 'APLArray':
+    def transpose(self) -> APLArray:
         # Monadic ⍉: reverse the order of axes. Per the spec,
         # ⍴⍉Y = ⌽⍴Y. For rank ≤ 1 this is identity; otherwise
         # np.transpose handles arbitrary rank.
@@ -509,22 +503,22 @@ class APLArray(APLValue):
         return APLArray(list(reversed(self.shape)),
                         np.transpose(self.data).copy())
 
-    def matrix_inverse(self) -> 'APLArray':
+    def matrix_inverse(self) -> APLArray:
         from marple.structural import matrix_inverse
         return matrix_inverse(self)
 
-    def reverse(self) -> 'APLArray':
+    def reverse(self) -> APLArray:
         # Scalar reverse is identity; np.flip needs at least one axis.
         if self.shape == []:
             return APLArray([], self.data.copy())
         return APLArray(list(self.shape), np.flip(self.data, axis=-1).copy())
 
-    def reverse_first(self) -> 'APLArray':
+    def reverse_first(self) -> APLArray:
         if self.shape == []:
             return APLArray([], self.data.copy())
         return APLArray(list(self.shape), np.flip(self.data, axis=0).copy())
 
-    def ravel(self) -> 'APLArray':
+    def ravel(self) -> APLArray:
         flat = self.data.flatten()
         return APLArray([len(flat)], flat)
 
