@@ -458,9 +458,10 @@ class APLArray(APLValue):
 
     def negate(self) -> APLArray:
         self._reject_chars_monadic("monadic -")
+        cls = type(self)
         if is_numeric_array(self.data):
-            return APLArray.array(list(self.shape), -self.data)
-        return APLArray.array(list(self.shape), [-x for x in to_list(self.data)])
+            return cls.array(list(self.shape), -self.data)
+        return cls.array(list(self.shape), [-x for x in to_list(self.data)])
 
     def reciprocal(self) -> APLArray:
         self._reject_chars_monadic("monadic ÷")
