@@ -202,6 +202,7 @@ class Parser:
                 self._pos += 1
                 paren_depth += 1
                 continue
+            # TODO: that break looks suspicious: would it hide a syntax error?
             if isinstance(tok, RParenToken):
                 paren_depth -= 1
                 if paren_depth < 0:
