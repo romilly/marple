@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from marple.backend_functions import chars_to_str, is_char_array
 from marple.numpy_array import APLArray
+from marple.numpy_aplarray import NumpyAPLArray
 
 if TYPE_CHECKING:
     from marple.environment import Environment
@@ -89,7 +90,7 @@ def format_result(result: APLArray, env: 'Environment | None' = None) -> str:
             start = s * slice_size
             slice_data = flat[start:start + slice_size]
             slice_shape = [result.shape[-2], result.shape[-1]]
-            slice_arr = APLArray(slice_shape, slice_data.reshape(slice_shape))
+            slice_arr = NumpyAPLArray(slice_shape, slice_data.reshape(slice_shape))
             slices.append(_format_matrix(slice_arr, pp))
         return "\n\n".join(slices)
     return repr(result)
