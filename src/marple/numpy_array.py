@@ -118,6 +118,12 @@ class APLArray(APLValue):
     def _numeric_dyadic_op(self, other: APLArray, op: Callable[[Any, Any], Any], upcast: bool = False) -> APLArray:
         """Apply a numeric operator (+, -, *, etc.) on numpy data.
 
+        Backend override hook. All dyadic numeric arithmetic in APLArray
+        funnels through this method. A subclass (e.g. UlabAPLArray) may
+        override it to swap the numpy-specific machinery: `np.errstate`
+        overflow trapping, `maybe_upcast` int→float promotion, and the
+        `FloatingPointError`-to-`DomainError` translation.
+
         `maybe_upcast` promotes integer arrays to float64 before the
         op, which prevents integer-overflow silent-wrap at the cost of
         precision for very large ints. If the float operation then
