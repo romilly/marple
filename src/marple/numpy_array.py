@@ -252,7 +252,7 @@ class APLArray(APLValue):
         if is_numeric_array(self.data) and is_numeric_array(other.data):
             shape = list(other.shape) if not other.is_scalar() else list(self.shape)
             result = op(self.data, other.data, self._tolerant_eq(self.data, other.data, ct))
-            return APLArray.array(shape, to_bool_array(result))
+            return type(self).array(shape, to_bool_array(result))
         return self._dyadic(other, lambda a, b: int(op(a, b, self._tolerant_eq(a, b, ct))), bool_result=True)
 
     def less_than(self, other: APLArray, ct: float = 0) -> APLArray:
@@ -280,7 +280,7 @@ class APLArray(APLValue):
             g = np.gcd(self.data.astype(np.int64), other.data.astype(np.int64))
             result = np.where(g == 0, 0, np.abs(self.data * other.data) // g)
             shape = list(other.shape) if not other.is_scalar() else list(self.shape)
-            return APLArray.array(shape, result)
+            return type(self).array(shape, result)
         return self._dyadic(other, lambda a, b: abs(a * b) / _gcd_float(a, b) if a and b else 0)
 
     def logical_or(self, other: APLArray) -> APLArray:
@@ -289,14 +289,14 @@ class APLArray(APLValue):
         if is_int_dtype(self.data) and is_int_dtype(other.data):
             result = np.gcd(self.data.astype(np.int64), other.data.astype(np.int64))
             shape = list(other.shape) if not other.is_scalar() else list(self.shape)
-            return APLArray.array(shape, result)
+            return type(self).array(shape, result)
         return self._dyadic(other, lambda a, b: _gcd_float(a, b))
 
     def match(self, other: APLArray) -> APLArray:
-        return APLArray.scalar(1 if self == other else 0)
+        return type(self).scalar(1 if self == other else 0)
 
     def not_match(self, other: APLArray) -> APLArray:
-        return APLArray.scalar(0 if self == other else 1)
+        return type(self).scalar(0 if self == other else 1)
 
     def deal(self, other: APLArray, io: int = 1) -> APLArray:
         """Dyadic ?: deal. N?M -> N random integers from io..M without replacement."""
@@ -306,7 +306,7 @@ class APLArray(APLValue):
         if n > m:
             raise LengthError(f"Deal: cannot choose {n} from {m}")
         result = _random.sample(range(io, m + io), n)
-        return APLArray.array([n], result)
+        return type(self).array([n], result)
 
     # -- Dyadic structural (delegate to structural.py) --
 
@@ -399,7 +399,7 @@ class APLArray(APLValue):
             result_shape[-1] = last_dim * width
         else:
             result_shape = [width]
-        return APLArray(result_shape, all_chars)
+        return type(self)(result_shape, all_chars)
 
     def roll(self, io: int = 1) -> APLArray:
         """Monadic ?: roll. ?N -> random int io..N, ?0 -> random float [0,1)."""
@@ -408,9 +408,9 @@ class APLArray(APLValue):
             n = int(v)  # type: ignore[arg-type]
             return _random.random() if n == 0 else _random.randint(io, n - 1 + io)
         if self.is_scalar():
-            return APLArray.scalar(roll_one(self.data.item()))
+            return type(self).scalar(roll_one(self.data.item()))
         data = np.array([roll_one(v) for v in self.data.flat])
-        return APLArray(list(self.shape), data.reshape(self.shape) if self.shape else data)
+        return type(self)(list(self.shape), data.reshape(self.shape) if self.shape else data)
 
     def format(self) -> APLArray:
         from marple.formatting import format_num
@@ -419,41 +419,41 @@ class APLArray(APLValue):
         else:
             parts = [format_num(val) for val in self.data]
             s = " ".join(parts)
-        return APLArray([len(s)], str_to_char_array(s))
+        return type(self)([len(s)], str_to_char_array(s))
 
     def grade_up(self, io: int = 1) -> APLArray:
         if len(self.shape) != 1:
             raise RankError("⍋ requires a vector argument")
         indexed = list(enumerate(self.data))
         indexed.sort(key=lambda pair: pair[1])  # type: ignore[arg-type]
-        return APLArray.array([len(self.data)], [i + io for i, _ in indexed])
+        return type(self).array([len(self.data)], [i + io for i, _ in indexed])
 
     def grade_down(self, io: int = 1) -> APLArray:
         if len(self.shape) != 1:
             raise RankError("⍒ requires a vector argument")
         indexed = list(enumerate(self.data))
         indexed.sort(key=lambda pair: pair[1], reverse=True)  # type: ignore[arg-type]
-        return APLArray.array([len(self.data)], [i + io for i, _ in indexed])
+        return type(self).array([len(self.data)], [i + io for i, _ in indexed])
 
     def iota(self, io: int = 1) -> APLArray:
         n = int(self.data.item())
-        return APLArray.array([n], list(range(io, n + io)))
+        return type(self).array([n], list(range(io, n + io)))
 
     def tally(self) -> APLArray:
         # Monadic ≢: number of major cells of Y. Per ISO/Dyalog,
         # this is the length of the leading axis, or 1 for a scalar.
         # NB: NOT the total element count (×/⍴Y) — the previous TODO
         # comment here was misleading and is now removed.
-        return APLArray.scalar(1) if self.is_scalar() else APLArray.scalar(self.shape[0])
+        return type(self).scalar(1) if self.is_scalar() else type(self).scalar(self.shape[0])
 
     def conjugate(self) -> APLArray:
         """Monadic +: identity for real, conjugate for complex."""
         self._reject_chars_monadic("monadic +")
-        return APLArray.array(list(self.shape), np.conjugate(self.data))
+        return type(self).array(list(self.shape), np.conjugate(self.data))
 
     def signum(self) -> APLArray:
         self._reject_chars_monadic("monadic ×")
-        return APLArray.array(list(self.shape),
+        return type(self).array(list(self.shape),
             [(-1 if x < 0 else 1 if x > 0 else 0) for x in to_list(self.data)])
 
     def negate(self) -> APLArray:
@@ -477,49 +477,49 @@ class APLArray(APLValue):
 
     def ceiling(self) -> APLArray:
         self._reject_chars_monadic("monadic ⌈")
-        return APLArray.array(list(self.shape), np.ceil(self.data))
+        return type(self).array(list(self.shape), np.ceil(self.data))
 
     def floor(self) -> APLArray:
         self._reject_chars_monadic("monadic ⌊")
-        return APLArray.array(list(self.shape), np.floor(self.data))
+        return type(self).array(list(self.shape), np.floor(self.data))
 
     def exponential(self) -> APLArray:
         self._reject_chars_monadic("monadic *")
-        return APLArray.array(list(self.shape), np.exp(self.data))
+        return type(self).array(list(self.shape), np.exp(self.data))
 
     def natural_log(self) -> APLArray:
         self._reject_chars_monadic("monadic ⍟")
-        return APLArray.array(list(self.shape), np.log(self.data))
+        return type(self).array(list(self.shape), np.log(self.data))
 
     def absolute_value(self) -> APLArray:
         self._reject_chars_monadic("monadic |")
-        return APLArray.array(list(self.shape), abs(self.data))
+        return type(self).array(list(self.shape), abs(self.data))
 
     def logical_not(self) -> APLArray:
         if is_numeric_array(self.data):
-            return APLArray.array(list(self.shape), to_bool_array(1 - self.data))
-        return APLArray.array(list(self.shape), to_bool_array([int(not x) for x in to_list(self.data)]))
+            return type(self).array(list(self.shape), to_bool_array(1 - self.data))
+        return type(self).array(list(self.shape), to_bool_array([int(not x) for x in to_list(self.data)]))
 
     def pi_times(self) -> APLArray:
         self._reject_chars_monadic("monadic ○")
         import math
-        return APLArray.array(list(self.shape), self.data * math.pi)
+        return type(self).array(list(self.shape), self.data * math.pi)
 
     def factorial(self) -> APLArray:
         self._reject_chars_monadic("monadic !")
         import math
-        return APLArray.array(list(self.shape), [math.gamma(x + 1) for x in to_list(self.data)])
+        return type(self).array(list(self.shape), [math.gamma(x + 1) for x in to_list(self.data)])
 
     def shape_of(self) -> APLArray:
-        return APLArray.array([len(self.shape)], list(self.shape))
+        return type(self).array([len(self.shape)], list(self.shape))
 
     def transpose(self) -> APLArray:
         # Monadic ⍉: reverse the order of axes. Per the spec,
         # ⍴⍉Y = ⌽⍴Y. For rank ≤ 1 this is identity; otherwise
         # np.transpose handles arbitrary rank.
         if len(self.shape) <= 1:
-            return APLArray(list(self.shape), self.data.copy())
-        return APLArray(list(reversed(self.shape)),
+            return type(self)(list(self.shape), self.data.copy())
+        return type(self)(list(reversed(self.shape)),
                         np.transpose(self.data).copy())
 
     def matrix_inverse(self) -> APLArray:
@@ -529,17 +529,17 @@ class APLArray(APLValue):
     def reverse(self) -> APLArray:
         # Scalar reverse is identity; np.flip needs at least one axis.
         if self.shape == []:
-            return APLArray([], self.data.copy())
-        return APLArray(list(self.shape), np.flip(self.data, axis=-1).copy())
+            return type(self)([], self.data.copy())
+        return type(self)(list(self.shape), np.flip(self.data, axis=-1).copy())
 
     def reverse_first(self) -> APLArray:
         if self.shape == []:
-            return APLArray([], self.data.copy())
-        return APLArray(list(self.shape), np.flip(self.data, axis=0).copy())
+            return type(self)([], self.data.copy())
+        return type(self)(list(self.shape), np.flip(self.data, axis=0).copy())
 
     def ravel(self) -> APLArray:
         flat = self.data.flatten()
-        return APLArray([len(flat)], flat)
+        return type(self)([len(flat)], flat)
 
     def as_power_strategy(self, ctx: 'Executor') -> 'PowerStrategy':
         from marple.apl_value import PowerByCount
