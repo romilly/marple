@@ -34,7 +34,7 @@ Sub-packages inside each tier group tests by topic (e.g. `unit/primitives/`, `un
 | `pytest -m slow` | PRIDE, WebSocket, deep TCO, ⎕DL | ~1-8s |
 | `pytest tests/e2e/web/test_pride_e2e.py -m slow` | Playwright E2E for PRIDE | ~8s |
 
-The `--ignore=tests/e2e/web` in `pyproject.toml` `addopts` prevents slow imports (Playwright, aiohttp, PrideConsole threading) from affecting fast test times.
+The `--ignore=tests/e2e/web` and `--ignore=tests/integration/web` in `pyproject.toml` `addopts` prevent slow imports (Playwright, aiohttp, PrideConsole threading) from affecting fast test times.
 
 ### E2E test quality
 
