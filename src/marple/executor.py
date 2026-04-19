@@ -8,6 +8,7 @@ from marple.numpy_array import _gcd_float
 from typing import Any, Callable, cast
 
 from marple.numpy_array import APLArray, S
+from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import (
     _DOWNCAST_CT, chars_to_str, is_char_array, is_numeric_array,
     maybe_downcast, maybe_upcast, str_to_char_array, to_list,
@@ -75,7 +76,7 @@ def _inner_product(
             raise DomainError("arithmetic overflow in inner product")
         if not hasattr(result, 'shape') or result.shape == ():
             return S(int(result) if float(result) == int(result) else float(result))
-        return APLArray(list(result.shape), result)
+        return NumpyAPLArray(list(result.shape), result)
     result_shape = a_shape[:-1] + b_shape[1:]
     if not result_shape:
         paired = [apply_op(alpha.data[(p,)], omega.data[(p,)]) for p in range(k)]
@@ -94,7 +95,7 @@ def _inner_product(
             for i in range(len(paired) - 2, -1, -1):
                 acc = reduce_op(paired[i], acc)
             result[a_idx + b_idx] = acc
-    return APLArray(result_shape, result)
+    return NumpyAPLArray(result_shape, result)
 
 
 _OUTER_UFUNCS: dict[str, str] = {
@@ -131,7 +132,7 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
                 except FloatingPointError:
                     raise DomainError("arithmetic overflow in outer product")
                 result_shape = alpha.shape + omega.shape
-                return APLArray(result_shape, result.reshape(result_shape))
+                return NumpyAPLArray(result_shape, result.reshape(result_shape))
     # General path
     op = _INNER_SCALAR_OPS.get(glyph)
     if op is None:
@@ -153,7 +154,7 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
                     result[a_idx + b_idx] = op(alpha.data[a_idx], omega.data[b_idx])
     except FloatingPointError:
         raise DomainError("arithmetic overflow in outer product")
-    return APLArray(result_shape, result)
+    return NumpyAPLArray(result_shape, result)
 
 
 
@@ -478,7 +479,7 @@ class Str(Executable):
         # matches numeric scalars.
         if len(self.value) == 1:
             return S(self.value)
-        return APLArray([len(self.value)], str_to_char_array(self.value))
+        return NumpyAPLArray([len(self.value)], str_to_char_array(self.value))
 
 
 class Vector(Executable):
@@ -486,13 +487,13 @@ class Vector(Executable):
         self.elements = elements
     def execute(self, ctx: Executor) -> APLArray:
         values = [el.value for el in self.elements]
-        return APLArray.array([len(values)], list(values))
+        return NumpyAPLArray.array([len(values)], list(values))
 
 
 class Zilde(Executable):
     """⍬ — the empty numeric vector literal (equivalent to ⍳0)."""
     def execute(self, ctx: Executor) -> APLArray:
-        return APLArray.array([0], [])
+        return NumpyAPLArray.array([0], [])
 
 
 class MonadicFunc(Executable):
@@ -1005,7 +1006,7 @@ class Index(Executable):
             idx_shapes.append([array.shape[axis]])
         result_data = array.data[np.ix_(*axis_indices)]
         result_shape = [d for s in idx_shapes for d in s]
-        return APLArray(result_shape, result_data.reshape(result_shape or ()))
+        return NumpyAPLArray(result_shape, result_data.reshape(result_shape or ()))
 
 
 class Omega(Executable):
@@ -1285,7 +1286,7 @@ class Executor:
                 raise DomainError(f"Cannot assign a function to {name}")
             return self._io_assign(name, value)
         if isinstance(value, APLArray) and is_numeric_array(value.data):
-            value = APLArray.array(list(value.shape), maybe_downcast(value.data, _DOWNCAST_CT))
+            value = NumpyAPLArray.array(list(value.shape), maybe_downcast(value.data, _DOWNCAST_CT))
         if name.startswith("⎕"):
             if name == "⎕FR" and isinstance(value, APLArray):
                 fr_val = int(value.data.item())
@@ -1316,7 +1317,7 @@ class Executor:
         if line is None:
             raise DomainError("⍞ input not available — use the terminal REPL for interactive input")
         self.env.console.writeln(text + line)
-        return APLArray([len(line)], str_to_char_array(line))
+        return NumpyAPLArray([len(line)], str_to_char_array(line))
 
     def create_binding(self, dfn_node: Dfn) -> APLValue:
         from marple.dfn_binding import DfnBinding, DopBinding
@@ -1340,21 +1341,21 @@ class Executor:
 
     def _sysvar_ts(self) -> APLArray:
         ts = self.env.timer.timestamp()
-        return APLArray.array([7], ts)
+        return NumpyAPLArray.array([7], ts)
 
     def _sysvar_ai(self) -> APLArray:
         timer = self.env.timer
-        return APLArray.array([4], [timer.user_id(), timer.cpu_ms(), timer.elapsed_ms(), 0])
+        return NumpyAPLArray.array([4], [timer.user_id(), timer.cpu_ms(), timer.elapsed_ms(), 0])
 
     def _sysvar_ver(self) -> APLArray:
         from marple import __version__
         import sys
         s = "MARPLE v" + __version__ + " on " + sys.platform
-        return APLArray([len(s)], str_to_char_array(s))
+        return NumpyAPLArray([len(s)], str_to_char_array(s))
 
     def _sysvar_wa(self) -> APLArray:
         """⎕WA — workspace available (free memory in bytes)."""
-        return APLArray.array([], [2**31 - 1])
+        return NumpyAPLArray.array([], [2**31 - 1])
 
     def _sysvar_quad(self) -> APLArray:
         """⎕ — prompt, read, parse, and evaluate input as APL."""
@@ -1376,7 +1377,7 @@ class Executor:
         if line is None:
             raise DomainError("⍞ input not available — use the terminal REPL for interactive input")
         self.env.console.writeln(line)
-        return APLArray([len(line)], str_to_char_array(line))
+        return NumpyAPLArray([len(line)], str_to_char_array(line))
 
     # ── System functions ──
 
@@ -1432,18 +1433,18 @@ class Executor:
         nc = int(operand.data.item())
         names = self.env.names_of_class(nc)
         if not names:
-            return APLArray([0, 0], np.array([], dtype=np.uint32).reshape(0, 0))
+            return NumpyAPLArray([0, 0], np.array([], dtype=np.uint32).reshape(0, 0))
         max_len = max(len(n) for n in names)
         text = "".join(_ljust(n, max_len) for n in names)
         data = str_to_char_array(text).reshape(len(names), max_len)
-        return APLArray([len(names), max_len], data)
+        return NumpyAPLArray([len(names), max_len], data)
 
     def _sys_ucs(self, operand: APLArray) -> APLArray:
         if is_char_array(operand.data):
-            return APLArray(list(operand.shape), operand.data.astype(np.int64))
+            return NumpyAPLArray(list(operand.shape), operand.data.astype(np.int64))
         data = to_list(operand.data)
         text = ''.join(chr(int(x)) for x in data)
-        return APLArray(list(operand.shape), str_to_char_array(text))
+        return NumpyAPLArray(list(operand.shape), str_to_char_array(text))
 
     def _sys_dr(self, operand: APLArray) -> APLArray:
         from marple.backend_functions import data_type_code
@@ -1472,7 +1473,7 @@ class Executor:
         except APLError as e:
             self.env["⎕EN"] = S(e.code)
             msg = str(e)
-            self.env["⎕DM"] = APLArray([len(msg)], str_to_char_array(msg))
+            self.env["⎕DM"] = NumpyAPLArray([len(msg)], str_to_char_array(msg))
             left_str = chars_to_str(left.data)
             tree = parse(left_str, self.env.class_dict())
             return self.evaluate(tree)
@@ -1484,19 +1485,19 @@ class Executor:
         vals = to_list(right.data)
         if target == 645:
             new_data = [float(v) for v in vals]
-            return APLArray.array(list(right.shape), new_data)
+            return NumpyAPLArray.array(list(right.shape), new_data)
         if target in (643, 323, 163, 83):
             new_data = [int(round(v)) for v in vals]
-            return APLArray.array(list(right.shape), new_data)
+            return NumpyAPLArray.array(list(right.shape), new_data)
         if target == 81:
             new_data = to_bool_array([int(bool(v)) for v in vals])
-            return APLArray.array(list(right.shape), new_data)
+            return NumpyAPLArray.array(list(right.shape), new_data)
         if target == 320:
             text = "".join(chr(int(v)) for v in vals)
             data = str_to_char_array(text)
             if len(right.shape) > 1:
                 data = data.reshape(right.shape)
-            return APLArray(list(right.shape), data)
+            return NumpyAPLArray(list(right.shape), data)
         raise DomainError("Invalid ⎕DR type code: " + str(target))
 
     def _sys_fmt_monadic(self, operand_node: Executable | FmtArgs) -> APLArray:
@@ -1505,7 +1506,7 @@ class Executor:
             values = [self.evaluate(arg) for arg in operand_node.args]
             parts = [self._fmt_value(v) for v in values]
             joined = " ".join(chars_to_str(p.data) for p in parts)
-            return APLArray([len(joined)], str_to_char_array(joined))
+            return NumpyAPLArray([len(joined)], str_to_char_array(joined))
         operand = self.evaluate(operand_node)
         return self._fmt_value(operand)
 
@@ -1520,7 +1521,7 @@ class Executor:
                 text = " ".join(format_num(x) for x in operand.data)
         else:
             text = str(operand)
-        return APLArray([len(text)], str_to_char_array(text))
+        return NumpyAPLArray([len(text)], str_to_char_array(text))
 
     def _sys_fmt_dyadic(self, left_node: Executable, right_node: Executable | FmtArgs) -> APLArray:
         """Dyadic ⎕FMT — format with specification string."""
@@ -1547,11 +1548,11 @@ class Executor:
             lines = [source]
         max_len = max(len(l) for l in lines) if lines else 0
         if not lines or max_len == 0:
-            return APLArray([len(lines), max_len],
+            return NumpyAPLArray([len(lines), max_len],
                             np.array([], dtype=np.uint32).reshape(len(lines), max_len))
         text = "".join(_ljust(line, max_len) for line in lines)
         data = str_to_char_array(text).reshape(len(lines), max_len)
-        return APLArray([len(lines), max_len], data)
+        return NumpyAPLArray([len(lines), max_len], data)
 
     def _sys_fx(self, operand: APLArray) -> APLArray:
         from marple.errors import APLError
@@ -1579,7 +1580,7 @@ class Executor:
         if isinstance(val, Operator):
             self.env.classify(fn_name, NC_OPERATOR)
             self.env.set_operator_arity(fn_name, 2 if "⍵⍵" in text else 1)
-        return APLArray([len(fn_name)], str_to_char_array(fn_name))
+        return NumpyAPLArray([len(fn_name)], str_to_char_array(fn_name))
 
     def _sys_dl(self, operand: APLArray) -> APLArray:
         secs = float(operand.data.item())
@@ -1613,7 +1614,7 @@ class Executor:
                         nums.append(float(v))
                     else:
                         nums.append(int(v))
-                self.env.bind_name(col_name, APLArray.array([len(nums)], nums), NC_ARRAY)
+                self.env.bind_name(col_name, NumpyAPLArray.array([len(nums)], nums), NC_ARRAY)
             except (ValueError, TypeError):
                 max_len = max((len(v) for v in col_data), default=0)
                 if max_len == 0:
@@ -1623,7 +1624,7 @@ class Executor:
                     data = str_to_char_array(text).reshape(len(col_data), max_len)
                 self.env.bind_name(
                     col_name,
-                    APLArray([len(col_data), max_len], data),
+                    NumpyAPLArray([len(col_data), max_len], data),
                     NC_ARRAY,
                 )
         return S(row_count)
@@ -1631,7 +1632,7 @@ class Executor:
     def _sys_nread(self, operand: APLArray) -> APLArray:
         path = chars_to_str(operand.data)
         text = self.fs.read_text(path)
-        return APLArray([len(text)], str_to_char_array(text))
+        return NumpyAPLArray([len(text)], str_to_char_array(text))
 
     def _sys_nexists(self, operand: APLArray) -> APLArray:
         path = chars_to_str(operand.data)
@@ -1649,4 +1650,4 @@ class Executor:
         path = chars_to_str(right.data)
         text = chars_to_str(left.data)
         self.fs.write_text(path, text)
-        return APLArray.array([0], [])
+        return NumpyAPLArray.array([0], [])
