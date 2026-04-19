@@ -479,6 +479,15 @@ class APLArray(APLValue):
 
     def reciprocal(self) -> APLArray:
         self._reject_chars_monadic("monadic ÷")
+        return self._primitive_reciprocal()
+
+    def _primitive_reciprocal(self) -> APLArray:
+        """Backend override hook for monadic ÷.
+
+        Must raise `DomainError("Division by zero")` if any element is zero.
+        A subclass may override to use a different numeric backend for the
+        numeric fast path. The list fallback is backend-agnostic.
+        """
         cls = type(self)
         if is_numeric_array(self.data):
             if np.any(self.data == 0):
