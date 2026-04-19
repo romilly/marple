@@ -52,3 +52,51 @@ class TestAPLArrayRepr:
         r = repr(APLArray.array([3], [1, 2, 3]))
         assert "[3]" in r
         assert "1, 2, 3" in r
+
+
+class TestSubclassPropagation:
+    """Arithmetic and factory calls on a subclass produce subclass instances.
+
+    Locks in the invariant that drives the inheritance refactor: when APLArray
+    becomes abstract with backend-specific subclasses, the subclass must
+    propagate through arithmetic and factory methods without the caller
+    having to know the class.
+    """
+
+    def test_factory_returns_subclass(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        a = NumpyAPLArray.array([3], [1, 2, 3])
+        assert type(a) is NumpyAPLArray
+
+    def test_scalar_factory_returns_subclass(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        a = NumpyAPLArray.scalar(5)
+        assert type(a) is NumpyAPLArray
+
+    def test_add_preserves_subclass(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        a = NumpyAPLArray.scalar(1)
+        b = NumpyAPLArray.scalar(2)
+        assert type(a.add(b)) is NumpyAPLArray
+
+    def test_negate_preserves_subclass(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        a = NumpyAPLArray.scalar(5)
+        assert type(a.negate()) is NumpyAPLArray
+
+    def test_reciprocal_preserves_subclass(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        a = NumpyAPLArray.scalar(2)
+        assert type(a.reciprocal()) is NumpyAPLArray
+
+    def test_multiply_preserves_subclass(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        a = NumpyAPLArray.scalar(3)
+        b = NumpyAPLArray.scalar(4)
+        assert type(a.multiply(b)) is NumpyAPLArray
+
+    def test_subtract_preserves_subclass(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        a = NumpyAPLArray.scalar(7)
+        b = NumpyAPLArray.scalar(2)
+        assert type(a.subtract(b)) is NumpyAPLArray
