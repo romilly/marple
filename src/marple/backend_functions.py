@@ -78,6 +78,8 @@ def maybe_upcast(data: NDArray) -> NDArray:
 _DOWNCAST_CT: float = 1e-14
 
 
+# TODO: narrow further like Dyalog — int64 → int32 → int8/uint8 by value range,
+# producing bool/uint8 when all values are 0 or 1. See git history for context.
 def maybe_downcast(data: NDArray, ct: float) -> NDArray:
     """Convert float arrays to int if all elements are close to whole numbers.
 
