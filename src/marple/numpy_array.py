@@ -67,7 +67,7 @@ class APLArray(APLValue):
     @classmethod
     def array(cls, shape: list[int], data: Any) -> APLArray:
         """Factory method for creating arrays."""
-        return APLArray(shape, data)
+        return cls(shape, data)
 
     @classmethod
     def scalar(cls, value: Any) -> APLArray:
@@ -79,8 +79,8 @@ class APLArray(APLValue):
         are stored as 0-d uint32 char data).
         """
         if isinstance(value, str):
-            return APLArray([], str_to_char_array(value).reshape(()))
-        return APLArray([], np.asarray(value))
+            return cls([], str_to_char_array(value).reshape(()))
+        return cls([], np.asarray(value))
 
     def __repr__(self) -> str:
         if self.is_scalar():
