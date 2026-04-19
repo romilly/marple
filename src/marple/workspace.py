@@ -1,6 +1,7 @@
 from typing import Any, Callable
 
 from marple.numpy_array import APLArray, S
+from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import chars_to_str, is_char_array, str_to_char_array, to_list
 from marple.ports.filesystem import FileSystem
 
@@ -144,7 +145,7 @@ def load_workspace(env: Any, ws_dir: str,
     if fs.is_file(ws_file):
         text = fs.read_text(ws_file)
         wsid = text.split("\n")[0].strip()
-        env["⎕WSID"] = APLArray([len(wsid)], str_to_char_array(wsid))
+        env["⎕WSID"] = NumpyAPLArray([len(wsid)], str_to_char_array(wsid))
 
     # Collect .apl files, system vars first
     files = sorted(fs.listdir(ws_dir))
