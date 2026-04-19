@@ -80,7 +80,7 @@ class TestFirstEval:
         _submit(page, "3×4")
         # Wait for a second output to appear
         page.locator("#session pre.output").nth(1).wait_for(timeout=5000)
-        assert "12" in page.locator("#session pre.output").nth(1).text_content()
+        assert "12" in (page.locator("#session pre.output").nth(1).text_content() or "")
 
     def test_quad_assign_output(self, page: Page, pride_server: str) -> None:
         page.goto(pride_server)

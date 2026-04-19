@@ -1,5 +1,7 @@
 """Kernel unit tests with mocked ZeroMQ socket."""
 
+from typing import cast
+
 import pytest
 from unittest.mock import MagicMock
 
@@ -101,8 +103,9 @@ class TestCompletion:
         await kernel.do_execute('alpha←1', silent=False)
         await kernel.do_execute('alphabet←2', silent=False)
         result = await kernel.do_complete('alph', 4)
-        assert 'alpha' in result['matches']
-        assert 'alphabet' in result['matches']
+        matches = cast(list[str], result['matches'])
+        assert 'alpha' in matches
+        assert 'alphabet' in matches
 
 
 class TestQuadIO:
