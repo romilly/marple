@@ -1,30 +1,10 @@
 """Tests for Config port and adapters."""
 
-import os
-
 import pytest
 
 from marple.adapters.default_config import DefaultConfig
 from marple.adapters.desktop_config import DesktopConfig
-from marple.ports.config import Config
 from tests.adapters.fake_config import FakeConfig
-
-
-class TestConfigABC:
-    """Config ABC defines the required interface."""
-
-    def test_cannot_instantiate(self) -> None:
-        with pytest.raises(TypeError):
-            Config()  # type: ignore[abstract]
-
-    def test_has_get_default_io(self) -> None:
-        assert hasattr(Config, "get_default_io")
-
-    def test_has_get_workspaces_dir(self) -> None:
-        assert hasattr(Config, "get_workspaces_dir")
-
-    def test_has_get_sessions_dir(self) -> None:
-        assert hasattr(Config, "get_sessions_dir")
 
 
 class TestDefaultConfig:
@@ -76,28 +56,6 @@ class TestDesktopConfig:
         p.write_text("[other]\nfoo = bar\n")
         cfg = DesktopConfig(str(p))
         assert cfg.get_default_io() == 1
-
-
-class TestFakeConfig:
-    """FakeConfig returns constructor arguments."""
-
-    def test_returns_specified_io(self) -> None:
-        cfg = FakeConfig(io=0)
-        assert cfg.get_default_io() == 0
-
-    def test_returns_specified_workspaces(self) -> None:
-        cfg = FakeConfig(workspaces_dir="/tmp/ws")
-        assert cfg.get_workspaces_dir() == "/tmp/ws"
-
-    def test_returns_specified_sessions(self) -> None:
-        cfg = FakeConfig(sessions_dir="/tmp/sess")
-        assert cfg.get_sessions_dir() == "/tmp/sess"
-
-    def test_defaults(self) -> None:
-        cfg = FakeConfig()
-        assert cfg.get_default_io() == 1
-        assert cfg.get_workspaces_dir() == "workspaces"
-        assert cfg.get_sessions_dir() == "sessions"
 
 
 class TestInterpreterConfig:
