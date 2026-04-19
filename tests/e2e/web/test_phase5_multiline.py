@@ -1,5 +1,5 @@
 """Phase 5: Multi-line input with Shift+Enter."""
-from tests.web.test_phase1_repl import submit_expr, get_session_text
+from tests.e2e.web.test_phase1_repl import submit_expr, get_session_text
 
 
 def test_shift_enter_adds_newline(page):

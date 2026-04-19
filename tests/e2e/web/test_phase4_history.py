@@ -1,5 +1,5 @@
 """Phase 4: Session history with up/down arrow keys."""
-from tests.web.test_phase1_repl import submit_expr
+from tests.e2e.web.test_phase1_repl import submit_expr
 
 
 def test_up_arrow_recalls_last(page):

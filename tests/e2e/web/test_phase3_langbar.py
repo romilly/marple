@@ -1,5 +1,5 @@
 """Phase 3: Language bar in the web REPL."""
-from tests.web.test_phase1_repl import submit_expr, get_session_text
+from tests.e2e.web.test_phase1_repl import submit_expr, get_session_text
 
 
 def test_language_bar_visible(page):

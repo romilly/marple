@@ -1,5 +1,5 @@
 """Phase 7: Workspace panel showing variables and functions."""
-from tests.web.test_phase1_repl import submit_expr, get_session_text
+from tests.e2e.web.test_phase1_repl import submit_expr, get_session_text
 
 
 def test_workspace_panel_visible(page):

@@ -22,9 +22,9 @@ These must stay in sync. The user needs distinct version numbers to verify which
 |---------|-------------|-------------|
 | `pytest` | Fast tests (default) | ~1.2s |
 | `pytest -m slow` | PRIDE, WebSocket, deep TCO, ⎕DL | ~1-8s |
-| `pytest tests/web/test_pride_e2e.py -m slow` | Playwright E2E for PRIDE | ~8s |
+| `pytest tests/e2e/web/test_pride_e2e.py -m slow` | Playwright E2E for PRIDE | ~8s |
 
-The `--ignore=tests/web` in `pyproject.toml` `addopts` prevents slow imports (Playwright, aiohttp, PrideConsole threading) from affecting fast test times.
+The `--ignore=tests/e2e/web` in `pyproject.toml` `addopts` prevents slow imports (Playwright, aiohttp, PrideConsole threading) from affecting fast test times.
 
 ### E2E test quality
 

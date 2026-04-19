@@ -53,7 +53,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short -m 'not slow' --ignore=tests/web"
+addopts = "-v --tb=short -m 'not slow' --ignore=tests/e2e/web"
 markers = [
     "slow: slow tests (PRIDE, deep TCO, delays) — run with pytest -m slow",
 ]
