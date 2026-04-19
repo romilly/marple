@@ -92,27 +92,28 @@ class APLArray(APLValue):
         """Pervade a dyadic function element-wise with scalar extension."""
         a_data = to_list(self.data)
         b_data = to_list(other.data)
+        cls = type(self)
         if self.is_scalar() and other.is_scalar():
             result = [f(a_data[0], b_data[0])]
             if bool_result:
                 result = to_bool_array(result)
-            return APLArray.array([], result)
+            return cls.array([], result)
         if self.is_scalar():
             data = [f(a_data[0], x) for x in b_data]
             if bool_result:
                 data = to_bool_array(data)
-            return APLArray.array(list(other.shape), data)
+            return cls.array(list(other.shape), data)
         if other.is_scalar():
             data = [f(x, b_data[0]) for x in a_data]
             if bool_result:
                 data = to_bool_array(data)
-            return APLArray.array(list(self.shape), data)
+            return cls.array(list(self.shape), data)
         if self.shape != other.shape:
             raise LengthError(f"Shape mismatch: {self.shape} vs {other.shape}")
         data = [f(a, b) for a, b in zip(a_data, b_data)]
         if bool_result:
             data = to_bool_array(data)
-        return APLArray.array(list(self.shape), data)
+        return cls.array(list(self.shape), data)
 
     def _numeric_dyadic_op(self, other: APLArray, op: Callable[[Any, Any], Any], upcast: bool = False) -> APLArray:
         """Apply a numeric operator (+, -, *, etc.) on numpy data.
