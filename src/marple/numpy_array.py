@@ -464,6 +464,14 @@ class APLArray(APLValue):
 
     def negate(self) -> APLArray:
         self._reject_chars_monadic("monadic -")
+        return self._primitive_negate()
+
+    def _primitive_negate(self) -> APLArray:
+        """Backend override hook for monadic −.
+
+        A subclass (e.g. UlabAPLArray) may override to use a different numeric
+        backend for the numeric fast path. The list fallback is backend-agnostic.
+        """
         cls = type(self)
         if is_numeric_array(self.data):
             return cls.array(list(self.shape), -self.data)
