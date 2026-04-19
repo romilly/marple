@@ -5,6 +5,7 @@ from typing import Any, Callable
 from marple.backend_functions import NDArray
 
 from marple.numpy_array import APLArray, S
+from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import (
     _DOWNCAST_CT, is_char_array, is_int_dtype, is_numeric_array, maybe_downcast,
 )
@@ -100,7 +101,7 @@ def _reduce(
             raise DomainError("Cannot reduce empty array")
         if not result_shape:
             return S(identity)
-        return APLArray(result_shape, np.full(result_shape, identity, dtype=np.float64))
+        return NumpyAPLArray(result_shape, np.full(result_shape, identity, dtype=np.float64))
 
     # Move target axis to last position; reduce along rows of length n.
     moved = np.moveaxis(omega.data, axis, rank - 1)
@@ -119,7 +120,7 @@ def _reduce(
     for r, row in enumerate(rows):
         result[r] = _reduce_row(op, row, 0, n)
     result = maybe_downcast(result.reshape(result_shape), _DOWNCAST_CT)
-    return APLArray(result_shape, result)
+    return NumpyAPLArray(result_shape, result)
 
 
 _ACCUMULATE_UFUNCS: dict[str, np.ufunc] = {}
@@ -195,7 +196,7 @@ def _scan(
 
     n = shape[axis]
     if n == 0:
-        return APLArray(shape, omega.data)
+        return NumpyAPLArray(shape, omega.data)
 
     moved = np.moveaxis(omega.data, axis, rank - 1)
     moved_shape = list(moved.shape)
@@ -223,7 +224,7 @@ def _scan(
 
     scanned_arr = scanned.reshape(moved_shape)
     final = np.moveaxis(scanned_arr, rank - 1, axis)
-    return APLArray(shape, final.reshape(shape))
+    return NumpyAPLArray(shape, final.reshape(shape))
 
 
 # Default axis (0-based, relative to the argument's rank) per operator glyph.
