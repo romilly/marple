@@ -1,5 +1,6 @@
 
 from marple.numpy_array import APLArray, S
+from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import is_char_array, is_numeric_array, to_list
 from marple.errors import LengthError
 
@@ -57,7 +58,7 @@ def decompose(array: APLArray, cell_rank: int) -> tuple[list[int], list[APLArray
         cell_data = flat[i * cell_size : (i + 1) * cell_size]
         if cell_shape:
             cell_data = cell_data.reshape(cell_shape)
-        cells.append(APLArray(list(cell_shape), cell_data))
+        cells.append(NumpyAPLArray(list(cell_shape), cell_data))
     return (list(frame_shape), cells)
 
 
@@ -69,7 +70,7 @@ def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
     """
     from marple.get_numpy import np
     if len(cells) == 0:
-        return APLArray(frame_shape + [0], np.array([]))
+        return NumpyAPLArray(frame_shape + [0], np.array([]))
     if len(cells) == 1 and frame_shape == []:
         return cells[0]
     # Determine max cell shape
@@ -86,12 +87,12 @@ def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
     if all_uniform and all_numeric:
         flat_cells = [c.data.flatten() for c in cells]
         result = np.concatenate(tuple(flat_cells))
-        return APLArray(result_shape, result.reshape(result_shape))
+        return NumpyAPLArray(result_shape, result.reshape(result_shape))
     if all_uniform:
         all_data: list[object] = []
         for c in cells:
             all_data.extend(to_list(c.data))
-        return APLArray.array(result_shape, all_data)
+        return NumpyAPLArray.array(result_shape, all_data)
     # Padding needed
     max_size = 1
     for s in max_shape:
@@ -103,7 +104,7 @@ def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
         for i, c in enumerate(cells):
             flat = c.data.flatten() if is_numeric_array(c.data) else c.data
             result[i * max_size : i * max_size + len(flat)] = flat
-        return APLArray(result_shape, result.reshape(result_shape))
+        return NumpyAPLArray(result_shape, result.reshape(result_shape))
     all_data = []
     for c in cells:
         cell_data = to_list(c.data)
@@ -114,4 +115,4 @@ def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
             for j, val in enumerate(cell_data):
                 padded_cell[j] = val
             all_data.extend(padded_cell)
-    return APLArray.array(result_shape, all_data)
+    return NumpyAPLArray.array(result_shape, all_data)
