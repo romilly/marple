@@ -148,3 +148,6 @@ sessions/
 workspaces/
 
 .fake.pride_videos/
+
+# Claude Code local tooling state (per-project session cache, permissions)
+.claude/
