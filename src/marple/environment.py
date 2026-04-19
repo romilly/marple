@@ -4,6 +4,7 @@ from collections.abc import ItemsView
 
 from marple.backend_functions import str_to_char_array
 from marple.numpy_array import APLArray, S
+from marple.numpy_aplarray import NumpyAPLArray
 from marple.ports.console import Console
 from marple.ports.filesystem import FileSystem
 from marple.ports.timer import Timer
@@ -16,13 +17,13 @@ _QUAD_DEFAULTS: dict[str, APLArray] = {
     "⎕CT": S(1e-14),
     "⎕PP": S(10),
     "⎕EN": S(0),
-    "⎕DM": APLArray([0], str_to_char_array("")),
-    "⎕A": APLArray([26], str_to_char_array("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
-    "⎕D": APLArray([10], str_to_char_array("0123456789")),
-    "⎕WSID": APLArray([8], str_to_char_array("CLEAR WS")),
+    "⎕DM": NumpyAPLArray([0], str_to_char_array("")),
+    "⎕A": NumpyAPLArray([26], str_to_char_array("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
+    "⎕D": NumpyAPLArray([10], str_to_char_array("0123456789")),
+    "⎕WSID": NumpyAPLArray([8], str_to_char_array("CLEAR WS")),
     "⎕RL": S(1),
     "⎕FR": S(645),
-    "⎕LX": APLArray([0], str_to_char_array("")),
+    "⎕LX": NumpyAPLArray([0], str_to_char_array("")),
 }
 
 
