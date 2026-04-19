@@ -550,4 +550,8 @@ class APLArray(APLValue):
 
 
 def S(value: Any) -> APLArray:
-    return APLArray.scalar(value)
+    # Phase C of the inheritance refactor: construct the concrete NumpyAPLArray
+    # directly so scalar literals never produce a plain (and soon-to-be-abstract)
+    # APLArray. Lazy import to avoid a cycle with numpy_aplarray.py.
+    from marple.numpy_aplarray import NumpyAPLArray
+    return NumpyAPLArray.scalar(value)
