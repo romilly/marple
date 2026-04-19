@@ -79,7 +79,7 @@ class Interpreter(Executor):
         if isinstance(result, (Function, Operator)):
             return S(0)
         if isinstance(result, APLArray) and is_numeric_array(result.data):
-            result = APLArray.array(list(result.shape), maybe_downcast(result.data, _DOWNCAST_CT))
+            result = self.array_cls.array(list(result.shape), maybe_downcast(result.data, _DOWNCAST_CT))
         return result
 
     def execute(self, source: str) -> EvalResult:
