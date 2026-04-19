@@ -465,14 +465,15 @@ class APLArray(APLValue):
 
     def reciprocal(self) -> APLArray:
         self._reject_chars_monadic("monadic ÷")
+        cls = type(self)
         if is_numeric_array(self.data):
             if np.any(self.data == 0):
                 raise DomainError("Division by zero")
-            return APLArray.array(list(self.shape), 1.0 / self.data)
+            return cls.array(list(self.shape), 1.0 / self.data)
         data = to_list(self.data)
         if any(x == 0 for x in data):
             raise DomainError("Division by zero")
-        return APLArray.array(list(self.shape), [1 / x for x in data])
+        return cls.array(list(self.shape), [1 / x for x in data])
 
     def ceiling(self) -> APLArray:
         self._reject_chars_monadic("monadic ⌈")
