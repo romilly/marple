@@ -100,3 +100,61 @@ class TestSubclassPropagation:
         a = NumpyAPLArray.scalar(7)
         b = NumpyAPLArray.scalar(2)
         assert type(a.subtract(b)) is NumpyAPLArray
+
+
+class TestBackendOverridability:
+    """Executable documentation for the backend-override seams.
+
+    APLArray exposes three override hooks that let a subclass swap the numeric
+    machinery without touching APL semantics (scalar extension, char guards,
+    domain errors): `_numeric_dyadic_op`, `_primitive_negate`, `_primitive_reciprocal`.
+    """
+
+    def test_subclass_override_of_primitive_negate_is_called(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple.numpy_array import APLArray
+
+        calls: list[str] = []
+
+        class TracingArray(NumpyAPLArray):
+            def _primitive_negate(self) -> APLArray:
+                calls.append("negate")
+                return super()._primitive_negate()
+
+        TracingArray.scalar(5).negate()
+        assert calls == ["negate"]
+
+    def test_subclass_override_of_primitive_reciprocal_is_called(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple.numpy_array import APLArray
+
+        calls: list[str] = []
+
+        class TracingArray(NumpyAPLArray):
+            def _primitive_reciprocal(self) -> APLArray:
+                calls.append("reciprocal")
+                return super()._primitive_reciprocal()
+
+        TracingArray.scalar(2).reciprocal()
+        assert calls == ["reciprocal"]
+
+    def test_subclass_override_of_numeric_dyadic_op_is_called(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple.numpy_array import APLArray
+        from typing import Any, Callable
+
+        calls: list[str] = []
+
+        class TracingArray(NumpyAPLArray):
+            def _numeric_dyadic_op(self, other: APLArray,
+                                   op: Callable[[Any, Any], Any],
+                                   upcast: bool = False) -> APLArray:
+                calls.append("dyadic")
+                return super()._numeric_dyadic_op(other, op, upcast)
+
+        a = TracingArray.scalar(1)
+        b = TracingArray.scalar(2)
+        a.add(b)
+        a.subtract(b)
+        a.multiply(b)
+        assert calls == ["dyadic", "dyadic", "dyadic"]
