@@ -135,7 +135,7 @@ class APLArray(APLValue):
         if not isinstance(result, np.ndarray):
             result = np.asarray(result)
         shape = list(other.shape) if not other.is_scalar() else list(self.shape)
-        return APLArray.array(shape, result)
+        return type(self).array(shape, result)
 
     def _reject_chars(self, other: APLArray, op_name: str) -> None:
         """Raise DomainError if either operand is a character array.
