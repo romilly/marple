@@ -3,6 +3,7 @@
 import html as _html
 
 from marple.numpy_array import APLArray
+from marple.numpy_aplarray import NumpyAPLArray
 from marple.formatting import format_num
 from marple.backend_functions import NDArray, chars_to_str, is_char_array
 
@@ -86,7 +87,7 @@ def _high_rank_html(arr: APLArray, is_char: bool) -> str:
     slices = []
     for i in range(outer):
         sub_data = arr.data[i]
-        sub = APLArray(list(inner_shape), sub_data)
+        sub = NumpyAPLArray(list(inner_shape), sub_data)
         inner_html = aplarray_to_html(sub)
         slices.append(
             f'<div class="apl-slice">'
