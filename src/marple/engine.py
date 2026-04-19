@@ -1,5 +1,8 @@
 """Class-based APL interpreter for MARPLE."""
 
+from typing import Any
+
+from marple.get_numpy import np
 from marple.numpy_array import APLArray, S
 from marple.backend_functions import (
     _DOWNCAST_CT, is_numeric_array, maybe_downcast,
@@ -37,16 +40,30 @@ class Interpreter(Executor):
                  fs: FileSystem | None = None,
                  console: 'Console | None' = None,
                  config: 'Config | None' = None,
-                 timer: 'Timer | None' = None) -> None:
+                 timer: 'Timer | None' = None,
+                 array_cls: type[APLArray] | None = None) -> None:
         if config is None:
             from marple.adapters.default_config import DefaultConfig
             config = DefaultConfig()
         if timer is None:
             from marple.adapters.desktop_timer import DesktopTimer
             timer = DesktopTimer()
+        if array_cls is None:
+            from marple.numpy_aplarray import NumpyAPLArray
+            array_cls = NumpyAPLArray
+        self.array_cls: type[APLArray] = array_cls
         self.config = config
         effective_io = io if io is not None else config.get_default_io()
         self.env = Environment(io=effective_io, fs=fs, console=console, timer=timer)
+
+    def make_array(self, shape: list[int], data: list[Any] | np.ndarray[Any, Any]) -> APLArray:
+        """Construct an APLArray of the configured subclass.
+
+        Entry point for sites that create APLArrays from external data (literals,
+        parsed values). Returns an instance of `self.array_cls` — `NumpyAPLArray`
+        by default.
+        """
+        return self.array_cls(shape, data)
 
     def run(self, source: str) -> APLArray:
         """Parse and evaluate APL source code."""
