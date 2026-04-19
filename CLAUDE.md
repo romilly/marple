@@ -16,7 +16,17 @@ These must stay in sync. The user needs distinct version numbers to verify which
 
 ## Testing
 
-### Test tiers
+### Test classification (GOOS)
+
+We use the three-tier classification from *Growing Object-Oriented Software, Guided by Tests* (Freeman & Pryce):
+
+- **Unit tests** (`tests/unit/`) — exercise our own code and only our own code. Collaborators may be real (sociable) or doubled (mocks, fakes). A test that calls `interp.run("…")` is a unit test of the Interpreter, even though Tokenizer, Parser, Executor, Environment all run. A test that drives one of our classes through a `Fake*` adapter from `tests/adapters/` is still a unit test — the fake is a test double, not a real external system.
+- **Integration tests** (`tests/integration/`) — exercise the boundary between our code and code we can't change (third-party libraries, operating system, network). Typically: one of our real adapters driven against the real thing it wraps (the real filesystem, a real aiohttp server, real ZMQ). "Integration" means "integrates with code we don't own," not "integrates multiple internal components."
+- **End-to-end tests** (`tests/e2e/`) — whole-system acceptance tests exercising a user-observable scenario through the system's external interfaces. Real server, real browser, real subprocess.
+
+Sub-packages inside each tier group tests by topic (e.g. `unit/primitives/`, `unit/operators/`, `integration/web/`).
+
+### Test tiers (runtime)
 
 | Command | What it runs | Target time |
 |---------|-------------|-------------|
