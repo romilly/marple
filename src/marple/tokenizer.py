@@ -15,7 +15,7 @@ Marker tokens (parens, diamonds, braces, brackets, etc.) and the
 """
 
 import re
-from typing import Callable, cast
+from typing import Any, Callable, cast
 
 from marple.executor import (
     Alpha,
@@ -150,9 +150,13 @@ class Tokenizer:
         """Consume a numeric literal via regex; let int()/float() parse.
         Callers guarantee `_pos` is on a digit, so the match always succeeds.
         """
-        m = cast(re.Match[str], self._NUM_RE.match(self._text, self._pos))
+        # cast(Any, …) rather than cast(re.Match[str], …): MicroPython's
+        # re module doesn't expose the Match class, and cast's first arg
+        # is evaluated at call time. group(0) explicit because
+        # MicroPython requires the group number.
+        m = cast(Any, self._NUM_RE.match(self._text, self._pos))
         self._pos = m.end()
-        text = m.group().replace("¯", "-")
+        text = m.group(0).replace("¯", "-")
         try:
             return Num(int(text))
         except ValueError:
@@ -173,9 +177,9 @@ class Tokenizer:
         Callers guarantee `_pos` is on an id-start char, so the
         match always succeeds.
         """
-        m = cast(re.Match[str], self._ID_RE.match(self._text, self._pos))
+        m = cast(Any, self._ID_RE.match(self._text, self._pos))
         self._pos = m.end()
-        text = m.group()
+        text = m.group(0)
         return QualifiedVar(text.split("::")) if "::" in text else Var(text)
 
     def tokenize(self) -> list[Node]:
