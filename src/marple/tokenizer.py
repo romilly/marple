@@ -150,12 +150,14 @@ class Tokenizer:
         """Consume a numeric literal via regex; let int()/float() parse.
         Callers guarantee `_pos` is on a digit, so the match always succeeds.
         """
-        # cast(Any, …) rather than cast(re.Match[str], …): MicroPython's
-        # re module doesn't expose the Match class, and cast's first arg
-        # is evaluated at call time. group(0) explicit because
-        # MicroPython requires the group number.
-        m = cast(Any, self._NUM_RE.match(self._text, self._pos))
-        self._pos = m.end()
+        # Slice rather than pass pos: MicroPython's re.match interprets
+        # `pos` as a byte offset (internal UTF-8 storage), while CPython
+        # uses char offset; a non-ASCII char earlier in the source would
+        # otherwise put the scan mid-codepoint on Pico. cast(Any, …)
+        # avoids re.Match (not exposed by MicroPython); group(0) explicit
+        # because MicroPython requires the group number.
+        m = cast(Any, self._NUM_RE.match(self._text[self._pos:]))
+        self._pos += m.end()
         text = m.group(0).replace("¯", "-")
         try:
             return Num(int(text))
@@ -177,8 +179,8 @@ class Tokenizer:
         Callers guarantee `_pos` is on an id-start char, so the
         match always succeeds.
         """
-        m = cast(Any, self._ID_RE.match(self._text, self._pos))
-        self._pos = m.end()
+        m = cast(Any, self._ID_RE.match(self._text[self._pos:]))
+        self._pos += m.end()
         text = m.group(0)
         return QualifiedVar(text.split("::")) if "::" in text else Var(text)
 
