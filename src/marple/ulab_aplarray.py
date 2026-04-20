@@ -291,6 +291,36 @@ class UlabAPLArray(APLArray):
             result_data.extend(row)
         return type(other)._build_like(result_data, new_shape, other)
 
+    def from_array(self, other: APLArray, io: int = 1) -> APLArray:
+        from marple.errors import IndexError_, RankError
+        if other.is_scalar():
+            raise RankError("requires non-scalar right argument")
+        flat = other.data.flatten()
+        cell_shape = other.shape[1:]
+        cell_size = 1
+        for s in cell_shape:
+            cell_size *= s
+        if cell_size == 0:
+            cell_size = 1
+        n_major = other.shape[0]
+        idx_flat = self.data.flatten()
+        indices = list(idx_flat) if not self.is_scalar() else [self.data.flatten()[0]]
+        result_cells: list[Any] = []
+        for idx in indices:
+            i = int(idx) - io
+            if i < 0 or i >= n_major:
+                raise IndexError_(f"{idx} out of range")
+            result_cells.append(flat[i * cell_size : (i + 1) * cell_size])
+        if len(result_cells) == 0:
+            return type(other).array(cell_shape, [])
+        result = np.concatenate(tuple(result_cells))
+        if self.is_scalar():
+            return type(other)(
+                cell_shape,
+                self.reshape_ndarray(result, cell_shape) if cell_shape else result)
+        result_shape = list(self.shape) + cell_shape
+        return type(other)(result_shape, self.reshape_ndarray(result, result_shape))
+
     def replicate(self, other: APLArray) -> APLArray:
         from marple.errors import LengthError
         counts = [int(x) for x in self.to_list()]

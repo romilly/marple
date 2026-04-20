@@ -647,8 +647,8 @@ class APLArray(APLValue):
         return type(self).array(list(self.shape), results)
 
     def from_array(self, other: APLArray, io: int = 1) -> APLArray:
-        from marple.structural import from_array
-        return from_array(self, other, io)
+        """Dyadic ⌷: select major cells of `other` at indices in `self`."""
+        raise NotImplementedError("adapter must implement from_array")
 
     def transpose_dyadic(self, other: APLArray, io: int = 1) -> APLArray:
         """Dyadic ⍉: transpose `other` by axis permutation `self`. Supports

@@ -139,30 +139,3 @@ def decode(alpha: APLArray, omega: APLArray) -> APLArray:
     return NumpyAPLArray(result_shape, result)
 
 
-def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
-    """Dyadic ⌷: select major cells of omega at indices in alpha."""
-    if omega.is_scalar():
-        raise RankError("requires non-scalar right argument")
-    flat = omega.data.flatten()
-    cell_shape = omega.shape[1:]
-    cell_size = 1
-    for s in cell_shape:
-        cell_size *= s
-    if cell_size == 0:
-        cell_size = 1
-    n_major = omega.shape[0]
-    idx_flat = alpha.data.flatten()
-    indices = list(idx_flat) if not alpha.is_scalar() else [alpha.data.flatten()[0]]
-    result_cells: list[Any] = []
-    for idx in indices:
-        i = int(idx) - io
-        if i < 0 or i >= n_major:
-            raise IndexError_(f"{idx} out of range")
-        result_cells.append(flat[i * cell_size : (i + 1) * cell_size])
-    if len(result_cells) == 0:
-        return NumpyAPLArray.array(cell_shape, [])
-    result = np.concatenate(tuple(result_cells))
-    if alpha.is_scalar():
-        return NumpyAPLArray(cell_shape, result.reshape(cell_shape) if cell_shape else result)
-    result_shape = list(alpha.shape) + cell_shape
-    return NumpyAPLArray(result_shape, result.reshape(result_shape))
