@@ -10,7 +10,22 @@ except ImportError:
     # ⎕FR=1287 numeric-literal path, which falls back to float below.
     Decimal = None  # type: ignore[assignment,misc]
     _HAS_DECIMAL = False
-from itertools import product
+import typing as _typing
+if _typing.TYPE_CHECKING:
+    from itertools import product
+else:
+    try:
+        from itertools import product
+    except ImportError:
+        # MicroPython has no itertools. Pre-drop (commit 49b72b2~) used
+        # this hand-rolled cartesian product.
+        def product(*lists):
+            if not lists:
+                yield ()
+                return
+            for item in lists[0]:
+                for rest in product(*lists[1:]):
+                    yield (item,) + rest
 from marple.numpy_array import _gcd_float
 from typing import Any, Callable, cast
 
