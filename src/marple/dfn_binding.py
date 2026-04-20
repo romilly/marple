@@ -2,7 +2,7 @@
 values bound to the environment in which they were defined."""
 
 
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 from marple.apl_value import APLValue, Operator
 from marple.executor import Executable, Executor, Node, UnappliedFunction
 from marple.parser import AlphaDefault, Dfn, Guard

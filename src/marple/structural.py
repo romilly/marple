@@ -1,6 +1,6 @@
 from typing import Any
 
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import (
     char_fill, get_char_dtype, np_repeat, np_reshape,

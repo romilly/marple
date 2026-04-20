@@ -3,7 +3,7 @@
 
 from typing import Any
 
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 
 #if TYPE_CHECKING:
 from marple.environment import Environment

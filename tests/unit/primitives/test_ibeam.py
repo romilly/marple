@@ -7,7 +7,7 @@ built-in service: (A⌶)Y applies service A to Y.
 import pytest
 
 from marple.backend_functions import chars_to_str
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 from marple.engine import Interpreter
 from marple.errors import DomainError
 

@@ -1,4 +1,4 @@
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 
 
 class TestAPLArrayScalar:
@@ -187,7 +187,7 @@ class TestBackendOverridability:
 
     def test_subclass_override_of_primitive_negate_is_called(self) -> None:
         from marple.numpy_aplarray import NumpyAPLArray
-        from marple.numpy_array import APLArray
+        from marple.ports.array import APLArray
 
         calls: list[str] = []
 
@@ -201,7 +201,7 @@ class TestBackendOverridability:
 
     def test_subclass_override_of_primitive_reciprocal_is_called(self) -> None:
         from marple.numpy_aplarray import NumpyAPLArray
-        from marple.numpy_array import APLArray
+        from marple.ports.array import APLArray
 
         calls: list[str] = []
 
@@ -215,7 +215,7 @@ class TestBackendOverridability:
 
     def test_subclass_override_of_numeric_dyadic_op_is_called(self) -> None:
         from marple.numpy_aplarray import NumpyAPLArray
-        from marple.numpy_array import APLArray
+        from marple.ports.array import APLArray
         from typing import Any, Callable
 
         calls: list[str] = []
@@ -551,7 +551,7 @@ class TestAsStr:
 
     def test_port_as_str_raises_without_adapter(self) -> None:
         import pytest
-        from marple.numpy_array import APLArray
+        from marple.ports.array import APLArray
         with pytest.raises(NotImplementedError):
             APLArray.as_str(APLArray.array([1], [0]))
 

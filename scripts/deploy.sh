@@ -47,7 +47,6 @@ mpremote \
     cp $SRC/monadic_functions.py :marple/monadic_functions.py + \
     cp $SRC/namespace.py :marple/namespace.py + \
     cp $SRC/numpy_aplarray.py :marple/numpy_aplarray.py + \
-    cp $SRC/numpy_array.py :marple/numpy_array.py + \
     cp $SRC/operator_binding.py :marple/operator_binding.py + \
     cp $SRC/parser.py :marple/parser.py + \
     cp $SRC/repl.py :marple/repl.py + \
@@ -59,6 +58,7 @@ mpremote \
     cp $SRC/ulab_aplarray.py :marple/ulab_aplarray.py + \
     cp $SRC/workspace.py :marple/workspace.py + \
     cp $SRC/ports/__init__.py :marple/ports/__init__.py + \
+    cp $SRC/ports/array.py :marple/ports/array.py + \
     cp $SRC/ports/char_source.py :marple/ports/char_source.py + \
     cp $SRC/ports/config.py :marple/ports/config.py + \
     cp $SRC/ports/console.py :marple/ports/console.py + \

@@ -1,6 +1,6 @@
 """Expand (\\) tests."""
 
-from marple.numpy_array import APLArray
+from marple.ports.array import APLArray
 from marple.engine import Interpreter
 
 

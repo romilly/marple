@@ -2,7 +2,7 @@
 
 import html as _html
 
-from marple.numpy_array import APLArray
+from marple.ports.array import APLArray
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.formatting import format_num
 

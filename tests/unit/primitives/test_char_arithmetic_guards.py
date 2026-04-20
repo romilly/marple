@@ -246,13 +246,13 @@ class TestComparisonStillWorks:
     """Sanity: Step 1 must NOT touch comparison operators."""
 
     def test_equal_char_char(self) -> None:
-        from marple.numpy_array import S
+        from marple.ports.array import S
         assert Interpreter(io=1).run("'a'='a'") == S(1)
 
     def test_less_than_char_char(self) -> None:
-        from marple.numpy_array import S
+        from marple.ports.array import S
         assert Interpreter(io=1).run("'a'<'b'") == S(1)
 
     def test_match_char_char(self) -> None:
-        from marple.numpy_array import S
+        from marple.ports.array import S
         assert Interpreter(io=1).run("'abc'≡'abc'") == S(1)

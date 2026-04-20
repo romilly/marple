@@ -12,7 +12,7 @@ not `Node` subclasses, so `f←+` and friends raised
 import pytest
 
 from marple.engine import Interpreter
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 
 
 class TestAssignBeside:

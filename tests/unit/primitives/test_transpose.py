@@ -19,7 +19,7 @@ import pytest
 
 from marple.engine import Interpreter
 from marple.errors import LengthError, RankError
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 
 
 class TestTransposeMonadic:

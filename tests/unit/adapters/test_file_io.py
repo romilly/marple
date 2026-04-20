@@ -2,7 +2,7 @@
 
 import pytest
 
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 from marple.backend_functions import str_to_char_array
 from marple.engine import Interpreter
 from marple.errors import DomainError

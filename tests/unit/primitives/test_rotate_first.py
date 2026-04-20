@@ -1,6 +1,6 @@
 """First-axis rotate/reverse (⊖) and matrix rotate/reverse (⌽) tests."""
 
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 from marple.engine import Interpreter
 
 

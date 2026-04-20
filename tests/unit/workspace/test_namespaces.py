@@ -1,6 +1,6 @@
 """Namespace and import tests — new engine."""
 
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 from marple.engine import Interpreter
 from marple.executor import QualifiedVar, Str, Var
 from marple.tokenizer import GuardToken, Tokenizer

@@ -130,7 +130,7 @@ class MARPLEKernel(Kernel):
         return code[i + 1:cursor_pos]
 
     def _describe(self, name: str, val: object) -> str:
-        from marple.numpy_array import APLArray
+        from marple.ports.array import APLArray
         lines = [f"Name: {name}"]
         if isinstance(val, APLArray):
             shape_str = ' '.join(str(s) for s in val.shape) if val.shape else 'scalar'

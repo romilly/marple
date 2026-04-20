@@ -1,6 +1,6 @@
 """Conway's Game of Life tests — flat array with outer product shifts."""
 
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 from marple.engine import Interpreter
 
 

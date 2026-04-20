@@ -6,7 +6,7 @@ from hamcrest import assert_that, contains_string, equal_to, has_item, is_
 
 from marple.adapters.buffered_console import BufferedConsole
 from marple.backend_functions import chars_to_str, str_to_char_array
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 from marple.engine import Interpreter
 from marple.errors import DomainError
 from marple.executor import SysVar

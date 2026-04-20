@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from collections.abc import ItemsView  # noqa: F401 — used in string annotation
 
 from marple.backend_functions import str_to_char_array
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.ports.console import Console
 from marple.ports.filesystem import FileSystem

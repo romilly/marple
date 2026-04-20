@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from marple.apl_value import APLValue, NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN
 
 if TYPE_CHECKING:
-    from marple.numpy_array import APLArray
+    from marple.ports.array import APLArray
 
 
 class SymbolTable:

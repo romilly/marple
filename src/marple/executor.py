@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from marple.numpy_array import _gcd_float
+from marple.ports.array import _gcd_float
 from typing import Any, Callable, TYPE_CHECKING, cast
 
 
@@ -20,7 +20,7 @@ def product(*lists: Any) -> Any:
         for rest in product(*lists[1:]):
             yield (item,) + rest
 
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import (
     _DOWNCAST_CT, chars_to_str, get_char_dtype,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from marple.backend_functions import chars_to_str, scalar_item
-from marple.numpy_array import APLArray
+from marple.ports.array import APLArray
 from marple.numpy_aplarray import NumpyAPLArray
 
 if TYPE_CHECKING:

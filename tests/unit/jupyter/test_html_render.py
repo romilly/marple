@@ -1,6 +1,6 @@
 """HTML rendering tests for Jupyter output."""
 
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 from marple.jupyter.html_render import aplarray_to_html
 
 

@@ -11,7 +11,7 @@ import pytest
 
 from marple.engine import Interpreter
 from marple.errors import SyntaxError_
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 
 
 class TestAtopMonadic:

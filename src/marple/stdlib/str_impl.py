@@ -1,5 +1,5 @@
 
-from marple.numpy_array import APLArray
+from marple.ports.array import APLArray
 from marple.backend_functions import str_to_char_array
 
 

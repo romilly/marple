@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 
 from marple.engine import Interpreter
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 
 
 def test_numeric_scalar_data_is_zero_dimensional() -> None:

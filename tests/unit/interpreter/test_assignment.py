@@ -1,6 +1,6 @@
 """Assignment tests — new engine."""
 
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 from marple.engine import Interpreter
 from marple.parser import Assignment, parse
 

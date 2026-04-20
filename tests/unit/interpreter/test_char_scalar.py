@@ -6,7 +6,7 @@ which broke scalar/rank semantics for character data.
 """
 
 from marple.engine import Interpreter
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 
 
 class TestSingleCharIsScalar:

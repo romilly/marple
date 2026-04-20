@@ -9,7 +9,7 @@ from marple.errors import DomainError
 
 if TYPE_CHECKING:
     from marple.executor import Applicable, Executor, Executable, OperatorOperand
-    from marple.numpy_array import APLArray
+    from marple.ports.array import APLArray
 
 # Name classes (following Dyalog ⎕NC convention)
 NC_UNKNOWN = 0

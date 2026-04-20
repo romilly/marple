@@ -1,5 +1,5 @@
 
-from marple.numpy_array import APLArray, S
+from marple.ports.array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.errors import LengthError
 

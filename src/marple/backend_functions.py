@@ -17,7 +17,7 @@ else:
 
 if TYPE_CHECKING:
     import numpy.typing as npt
-    from marple.numpy_array import APLArray
+    from marple.ports.array import APLArray
     NDArray = npt.NDArray[Any]
 else:
     # MicroPython / ulab has no numpy.typing. Annotations collapse to Any at

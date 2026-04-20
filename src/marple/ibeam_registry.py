@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Callable
 
 from marple.errors import DomainError
-from marple.numpy_array import APLArray
+from marple.ports.array import APLArray
 
 
 if TYPE_CHECKING:
