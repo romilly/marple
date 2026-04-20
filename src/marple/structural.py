@@ -19,30 +19,6 @@ def _first_axis_chunk_size(shape: list[int]) -> int:
 
 # Dyadic structural functions
 
-def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
-    if alpha.is_scalar():
-        new_shape = [int(alpha.scalar_value())]
-    else:
-        new_shape = [int(x) for x in alpha.to_list()]
-    total = 1
-    for s in new_shape:
-        total *= s
-    flat = omega.data.flatten()
-    if len(flat) == 0:
-        # Preserve dtype: fill is char_fill for char data, 0 otherwise.
-        if omega.data.dtype == get_char_dtype():
-            flat = np.array([char_fill()], dtype=get_char_dtype())
-        else:
-            flat = np.array([0])
-    n = len(flat)
-    if total <= n:
-        cycled = flat[:total]
-    else:
-        reps = total // n + 1
-        cycled = np.concatenate(tuple([flat] * reps))[:total]
-    return NumpyAPLArray(new_shape, np_reshape(cycled, new_shape))
-
-
 def _fill_element(omega: APLArray) -> object:
     """Return the fill element: char_fill (uint32 32) for char arrays,
     0 for numeric."""

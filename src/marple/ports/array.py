@@ -519,8 +519,12 @@ class APLArray(APLValue):
     # -- Dyadic structural (delegate to structural.py) --
 
     def reshape(self, other: APLArray) -> APLArray:
-        from marple.structural import reshape
-        return reshape(self, other)
+        """Dyadic ⍴: reshape `other` into the shape given by `self`.
+        Values are cycled if the new shape is larger than `other`'s size;
+        truncated if smaller. Empty `other` is filled with 0 (numeric)
+        or the space codepoint (char).
+        """
+        raise NotImplementedError("adapter must implement reshape")
 
     def catenate(self, other: APLArray) -> APLArray:
         """Dyadic ,: catenate `self` with `other` along the last axis.

@@ -173,6 +173,29 @@ class UlabAPLArray(APLArray):
         from marple.backend_functions import data_type_code
         return data_type_code(self.data)
 
+    def reshape(self, other: APLArray) -> APLArray:
+        from marple.backend_functions import char_fill, get_char_dtype
+        if self.is_scalar():
+            new_shape = [int(self.scalar_value())]
+        else:
+            new_shape = [int(x) for x in self.to_list()]
+        total = 1
+        for s in new_shape:
+            total *= s
+        flat = other.data.flatten()
+        if len(flat) == 0:
+            if other.data.dtype == get_char_dtype():
+                flat = np.array([char_fill()], dtype=get_char_dtype())
+            else:
+                flat = np.array([0])
+        n = len(flat)
+        if total <= n:
+            cycled = flat[:total]
+        else:
+            reps = total // n + 1
+            cycled = np.concatenate(tuple([flat] * reps))[:total]
+        return type(other)(new_shape, self.reshape_ndarray(cycled, new_shape))
+
     def transpose_dyadic(self, other: APLArray, io: int = 1) -> APLArray:
         # Needs np.indices + fancy indexing, neither available on ulab.
         raise NotImplementedError("transpose_dyadic not available on ulab")
