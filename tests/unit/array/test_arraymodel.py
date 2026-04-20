@@ -379,3 +379,46 @@ class TestNumericErrstateHook:
             assert calls == ["ignoring"]
         finally:
             backend_functions.set_backend_class(original_cls)
+
+
+class TestUlabAPLArraySketch:
+    """Desk-sketch validation of UlabAPLArray on CPython.
+
+    UlabAPLArray is only *exercised* on hardware, but it must parse and
+    instantiate on CPython so pyright / desktop tests can see it. The
+    hooks all have the right types; scalar arithmetic works because
+    numpy supports the ulab-subset ops we use.
+    """
+
+    def test_ulab_char_dtype_is_uint16(self) -> None:
+        from marple.get_numpy import np
+        from marple.ulab_aplarray import UlabAPLArray
+        assert UlabAPLArray.char_dtype() == np.dtype(np.uint16)
+
+    def test_ulab_strict_errstate_is_noop(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        with UlabAPLArray.strict_numeric_errstate():
+            pass
+
+    def test_ulab_ignoring_errstate_is_noop(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        with UlabAPLArray.ignoring_numeric_errstate():
+            pass
+
+    def test_ulab_scalar_add(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        a = UlabAPLArray.scalar(1)
+        b = UlabAPLArray.scalar(2)
+        assert type(a.add(b)) is UlabAPLArray
+        assert a.add(b) == UlabAPLArray.scalar(3)
+
+    def test_ulab_vector_subtract(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        a = UlabAPLArray.array([3], [10, 20, 30])
+        b = UlabAPLArray.array([3], [1, 2, 3])
+        assert a.subtract(b) == UlabAPLArray.array([3], [9, 18, 27])
+
+    def test_ulab_negate(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        a = UlabAPLArray.array([3], [1, -2, 3])
+        assert a.negate() == UlabAPLArray.array([3], [-1, 2, -3])
