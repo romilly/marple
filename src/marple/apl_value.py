@@ -98,6 +98,6 @@ class PowerByConvergence(PowerStrategy):
         prev = omega
         while True:
             curr = step(prev)
-            if self.test_fn.apply_to_dyadic(self.ctx, curr, prev).data.item():
+            if self.test_fn.apply_to_dyadic(self.ctx, curr, prev).scalar_value():
                 return curr
             prev = curr

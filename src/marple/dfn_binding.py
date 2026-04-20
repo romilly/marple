@@ -97,7 +97,7 @@ class _DfnExecutor(Executor):
                     self.env["⍺"] = self.evaluate(stmt.default)
             elif isinstance(stmt, Guard):
                 cond = self.evaluate(stmt.condition)
-                if cond.data.item():
+                if cond.scalar_value():
                     if _is_tail_self_call(stmt.body):
                         return self._make_tail_call(stmt.body)
                     return self.evaluate(stmt.body)

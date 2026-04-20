@@ -18,7 +18,7 @@ def shape(omega: APLArray) -> APLArray:
 def iota(omega: APLArray) -> APLArray:
     if not omega.is_scalar():
         raise RankError("Monadic ⍳ requires a scalar argument")
-    n = int(omega.data.item())
+    n = int(omega.scalar_value())
     return NumpyAPLArray.array([n], list(range(1, n + 1)))
 
 
@@ -68,7 +68,7 @@ def reverse_first(omega: APLArray) -> APLArray:
 
 def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
     if alpha.is_scalar():
-        new_shape = [int(alpha.data.item())]
+        new_shape = [int(alpha.scalar_value())]
     else:
         new_shape = [int(x) for x in alpha.data]
     total = 1
@@ -102,7 +102,7 @@ def _tolerant_match(a: object, b: object, ct: float) -> bool:
 def index_of(alpha: APLArray, omega: APLArray, io: int = 1, ct: float = 0) -> APLArray:
     data = to_list(alpha.data)
     if omega.is_scalar():
-        target = omega.data.item()
+        target = omega.scalar_value()
         for i, val in enumerate(data):
             if _tolerant_match(val, target, ct):
                 return S(i + io)
@@ -125,7 +125,7 @@ def membership(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
     """Dyadic ∈: for each element of alpha, 1 if found in omega, else 0."""
     right_data = to_list(omega.data)
     if alpha.is_scalar():
-        val = alpha.data.item()
+        val = alpha.scalar_value()
         for r in right_data:
             if _tolerant_match(val, r, ct):
                 return S(1)

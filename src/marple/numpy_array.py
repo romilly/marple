@@ -10,7 +10,8 @@ if TYPE_CHECKING:
 from marple.backend_functions import (
     SCALAR_STORAGE_SHAPE,
     is_char_array, is_int_dtype, is_numeric_array, maybe_upcast,
-    str_to_char_array, strict_numeric_errstate, to_array, to_bool_array, to_list,
+    scalar_item, str_to_char_array, strict_numeric_errstate,
+    to_array, to_bool_array, to_list,
 )
 from marple.errors import DomainError, LengthError, RankError
 from marple.get_numpy import np
@@ -70,6 +71,61 @@ class APLArray(APLValue):
         with np.errstate(over="ignore", invalid="ignore"):
             yield
 
+    @classmethod
+    def is_int_dtype(cls, arr: Any) -> bool:
+        """Backend override hook. Numpy uses `np.issubdtype(…, np.integer)`;
+        ulab has no issubdtype, so its subclass checks against a known set.
+        """
+        return bool(np.issubdtype(arr.dtype, np.integer))
+
+    @classmethod
+    def is_float_dtype(cls, arr: Any) -> bool:
+        """Backend override hook. See `is_int_dtype`."""
+        return bool(np.issubdtype(arr.dtype, np.floating))
+
+    @classmethod
+    def maybe_upcast(cls, data: Any) -> Any:
+        """Upcast integer arrays to float64 to prevent overflow wrap.
+
+        Backend override hook. A ulab subclass returns data unchanged —
+        ulab has no float64, and accepting silent integer overflow is the
+        documented trade-off on that platform.
+        """
+        from marple.backend_functions import is_numeric_array
+        if not is_numeric_array(data) or not cls.is_int_dtype(data):
+            return data
+        return data.astype(np.float64)
+
+    @classmethod
+    def maybe_downcast(cls, data: Any, ct: float) -> Any:
+        """Convert float arrays to int if all elements are close to whole numbers.
+
+        Uses APL tolerance: |value - round(value)| <= ct * max(|value|, |round(value)|).
+        Backend override hook. ulab subclass returns data unchanged — ulab's
+        int widths are already narrow and the np.iinfo/int64/int32 machinery
+        isn't available anyway.
+        """
+        if not cls.is_float_dtype(data):
+            return data
+        if data.size == 0:
+            return data
+        rounded = np.round(data)
+        diff = np.abs(data - rounded)
+        if ct == 0:
+            if not np.all(diff == 0):
+                return data
+        else:
+            mag = np.maximum(np.abs(data), np.abs(rounded))
+            if not np.all(diff <= ct * mag):
+                return data
+        max_val = np.max(np.abs(rounded))
+        if max_val > np.float64(np.iinfo(np.int64).max):
+            return data
+        int_arr = rounded.astype(np.int64)
+        if np.all(np.abs(int_arr) <= np.iinfo(np.int32).max):
+            return int_arr.astype(np.int32)
+        return int_arr
+
     def __init__(self, shape: list[int], data: list[Any] | np.ndarray[Any, Any]) -> None:
         self.shape = shape
         # Storage normalisation: data is always an ndarray whose numpy
@@ -105,6 +161,17 @@ class APLArray(APLValue):
     def is_scalar(self) -> bool:
         return self.shape == []
 
+    def scalar_value(self) -> Any:
+        """Return the native Python value for scalar storage.
+
+        Platform-agnostic replacement for bare `self.data.item()` calls —
+        desktop numpy 0-d arrays have `.item()`; ulab 1-d length-1 arrays
+        don't and have to be unwrapped via `data[0]`. `scalar_item` in
+        backend_functions handles both; this method is just sugar so call
+        sites don't need to see the shim.
+        """
+        return scalar_item(self.data)
+
     def name_class(self) -> int:
         return NC_ARRAY
 
@@ -137,7 +204,7 @@ class APLArray(APLValue):
 
     def __repr__(self) -> str:
         if self.is_scalar():
-            return f"S({self.data.item()})"
+            return f"S({self.scalar_value()})"
         return f"APLArray({self.shape}, {to_list(self.data)})"
 
     def _dyadic(self, other: APLArray,
@@ -360,8 +427,8 @@ class APLArray(APLValue):
     def deal(self, other: APLArray, io: int = 1) -> APLArray:
         """Dyadic ?: deal. N?M -> N random integers from io..M without replacement."""
         import random as _random
-        n = int(self.data.item())
-        m = int(other.data.item())
+        n = int(self.scalar_value())
+        m = int(other.scalar_value())
         if n > m:
             raise LengthError(f"Deal: cannot choose {n} from {m}")
         result = _random.sample(range(io, m + io), n)
@@ -467,14 +534,14 @@ class APLArray(APLValue):
             n = int(v)  # type: ignore[arg-type]
             return _random.random() if n == 0 else _random.randint(io, n - 1 + io)
         if self.is_scalar():
-            return type(self).scalar(roll_one(self.data.item()))
+            return type(self).scalar(roll_one(self.scalar_value()))
         data = np.array([roll_one(v) for v in self.data.flat])
         return type(self)(list(self.shape), data.reshape(self.shape) if self.shape else data)
 
     def format(self) -> APLArray:
         from marple.formatting import format_num
         if self.is_scalar():
-            s = format_num(self.data.item())
+            s = format_num(self.scalar_value())
         else:
             parts = [format_num(val) for val in self.data]
             s = " ".join(parts)
@@ -495,7 +562,7 @@ class APLArray(APLValue):
         return type(self).array([len(self.data)], [i + io for i, _ in indexed])
 
     def iota(self, io: int = 1) -> APLArray:
-        n = int(self.data.item())
+        n = int(self.scalar_value())
         return type(self).array([n], list(range(io, n + io)))
 
     def tally(self) -> APLArray:
@@ -622,7 +689,7 @@ class APLArray(APLValue):
         if not self.is_scalar():
             from marple.errors import DomainError
             raise DomainError("⍣ right operand must be scalar integer or function")
-        return PowerByCount(int(self.data.item()))
+        return PowerByCount(int(self.scalar_value()))
 
 
 def S(value: Any) -> APLArray:

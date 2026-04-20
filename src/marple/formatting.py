@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from marple.backend_functions import chars_to_str, is_char_array
+from marple.backend_functions import chars_to_str, is_char_array, scalar_item
 from marple.numpy_array import APLArray
 from marple.numpy_aplarray import NumpyAPLArray
 
@@ -14,8 +14,7 @@ if TYPE_CHECKING:
 
 def format_num(x: Any, pp: int = 10) -> str:
     """Format a number for display, using pp significant digits for floats."""
-    if hasattr(x, "item"):
-        x = x.item()  # type: ignore[union-attr]
+    x = scalar_item(x)
     if isinstance(x, bool):
         return str(int(x))
     if isinstance(x, float):
@@ -69,7 +68,7 @@ def format_result(result: APLArray, env: 'Environment | None' = None) -> str:
     if env is not None:
         pp_val = env.get("⎕PP")
         if isinstance(pp_val, APLArray):
-            pp = int(pp_val.data.item())
+            pp = int(scalar_item(pp_val.data))
     if result.is_scalar():
         return format_num(result.data.flatten()[0], pp)
     if _is_char_array(result):

@@ -59,19 +59,19 @@ class Environment:
 
     @property
     def io(self) -> int:
-        return int(self._quad_vars["⎕IO"].data.item())
+        return int(self._quad_vars["⎕IO"].scalar_value())
 
     @property
     def ct(self) -> float:
-        return float(self._quad_vars["⎕CT"].data.item())
+        return float(self._quad_vars["⎕CT"].scalar_value())
 
     @property
     def pp(self) -> int:
-        return int(self._quad_vars["⎕PP"].data.item())
+        return int(self._quad_vars["⎕PP"].scalar_value())
 
     @property
     def fr(self) -> int:
-        return int(self._quad_vars["⎕FR"].data.item())
+        return int(self._quad_vars["⎕FR"].scalar_value())
 
     # ── Symbol table delegation ──
 

@@ -137,7 +137,7 @@ def to_list(data: NDArray) -> list[Any]:
     scalar, so `for x in to_list(...)` always works.
     """
     if data.ndim == 0:
-        return [data.item()]
+        return [scalar_item(data)]
     return data.tolist()
 
 
@@ -152,56 +152,61 @@ def is_numeric_array(data: NDArray) -> bool:
     return data.dtype != get_char_dtype()
 
 
+def scalar_item(x: Any) -> Any:
+    """Extract a native Python value from a scalar-like input.
+
+    Handles every flavour of "single value" MARPLE passes around:
+      - Python int / float / str — returned unchanged
+      - desktop numpy ndarray (0-d or 1-d length-1) — via `.item()`
+      - numpy scalar object (np.float64 etc.) — via `.item()`
+      - ulab ndarray (1-d length-1) — via `data[0]`, because ulab's
+        ndarray has no `.item()` method (verified on-device)
+
+    Platform-agnostic replacement for bare `.item()` on APL scalar
+    storage. Pattern taken from pre-drop commit 4e441e0.
+    """
+    if hasattr(x, "item"):
+        return x.item()
+    if hasattr(x, "shape"):
+        return x[0]
+    return x
+
+
 def is_int_dtype(arr: NDArray) -> bool:
-    """Check if an ndarray has an integer dtype."""
-    return np.issubdtype(arr.dtype, np.integer)
+    """Check if an ndarray has an integer dtype.
+
+    Delegates to the active backend class — ulab subclass uses a dtype-
+    constant set check since ulab has no `np.issubdtype`.
+    """
+    return get_backend_class().is_int_dtype(arr)
 
 
 def is_float_dtype(arr: NDArray) -> bool:
-    """Check if an ndarray has a float dtype."""
-    return np.issubdtype(arr.dtype, np.floating)
+    """Check if an ndarray has a float dtype. Delegates per is_int_dtype."""
+    return get_backend_class().is_float_dtype(arr)
 
 
 def maybe_upcast(data: NDArray) -> NDArray:
-    """Convert integer arrays to float to prevent overflow."""
-    if not is_numeric_array(data) or not is_int_dtype(data):
-        return data
-    return data.astype(np.float64)
+    """Convert integer arrays to float to prevent overflow.
+
+    Delegates to the active backend class so UlabAPLArray can skip the
+    float64 upcast (ulab has no float64; silent int overflow is accepted).
+    """
+    return get_backend_class().maybe_upcast(data)
 
 
 # Module-level comparison tolerance for downcast
 _DOWNCAST_CT: float = 1e-14
 
 
-# TODO: narrow further like Dyalog — int64 → int32 → int8/uint8 by value range,
-# producing bool/uint8 when all values are 0 or 1. See git history for context.
 def maybe_downcast(data: NDArray, ct: float) -> NDArray:
     """Convert float arrays to int if all elements are close to whole numbers.
 
-    Uses APL tolerance: |value - round(value)| <= ct * max(|value|, |round(value)|)
+    Delegates to the active backend class so UlabAPLArray can return data
+    unchanged — ulab lacks np.iinfo / np.int64 / np.int32 entirely and its
+    int widths are already narrow.
     """
-    if not is_float_dtype(data):
-        return data
-    if data.size == 0:
-        return data
-    # Vectorised check: are all values close to whole numbers?
-    rounded = np.round(data)
-    diff = np.abs(data - rounded)
-    if ct == 0:
-        if not np.all(diff == 0):
-            return data
-    else:
-        mag = np.maximum(np.abs(data), np.abs(rounded))
-        if not np.all(diff <= ct * mag):
-            return data
-    # All close to integers — downcast only if values fit in int range
-    max_val = np.max(np.abs(rounded))
-    if max_val > np.float64(np.iinfo(np.int64).max):
-        return data
-    int_arr = rounded.astype(np.int64)
-    if np.all(np.abs(int_arr) <= np.iinfo(np.int32).max):
-        return int_arr.astype(np.int32)
-    return int_arr
+    return get_backend_class().maybe_downcast(data, ct)
 
 
 _DR_CODES_CACHE: "dict[Any, int] | None" = None

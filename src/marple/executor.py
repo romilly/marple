@@ -580,7 +580,7 @@ def _resolve_axis(op: ReduceAdverb | ScanAdverb, ctx: Executor) -> int | None:
     value = ctx.evaluate(op.axis)
     if list(value.shape) != []:
         raise DomainError("Axis specifier must be a scalar")
-    axis_io = int(value.data.item())
+    axis_io = int(value.scalar_value())
     return axis_io - ctx.env.io
 
 
@@ -940,7 +940,7 @@ class IBeamFunction(UnappliedFunction):
         return self.code_node == other.code_node
     def _resolve(self, ctx: Executor) -> Callable[[APLArray, APLArray | None], APLArray]:
         code_val = ctx.evaluate(self.code_node)
-        code = int(code_val.data.item())
+        code = int(code_val.scalar_value())
         return ibeam_lookup(code)
     def apply_monadic(self, ctx: Executor, operand_node: Executable) -> APLArray:
         impl = self._resolve(ctx)
@@ -1317,12 +1317,12 @@ class Executor:
             value = NumpyAPLArray.array(list(value.shape), maybe_downcast(value.data, _DOWNCAST_CT))
         if name.startswith("⎕"):
             if name == "⎕FR" and isinstance(value, APLArray):
-                fr_val = int(value.data.item())
+                fr_val = int(value.scalar_value())
                 if fr_val not in (645, 1287):
                     raise DomainError(f"⎕FR must be 645 or 1287, got {fr_val}")
             if name == "⎕RL" and isinstance(value, APLArray):
                 import random as _random
-                _random.seed(int(value.data.item()))
+                _random.seed(int(value.scalar_value()))
             self.env[name] = value
         else:
             new_class = _name_class(value)
@@ -1450,7 +1450,7 @@ class Executor:
         for r in range(operand.shape[0]):
             name = chars_to_str(operand.data[r]).rstrip()
             result = self._expunge_name(name)
-            count += int(result.data.item())
+            count += int(result.scalar_value())
         return S(count)
 
     def _expunge_name(self, name: str) -> APLArray:
@@ -1458,7 +1458,7 @@ class Executor:
         return S(1) if self.env.delete_name(name) else S(0)
 
     def _sys_nl(self, operand: APLArray) -> APLArray:
-        nc = int(operand.data.item())
+        nc = int(operand.scalar_value())
         names = self.env.names_of_class(nc)
         if not names:
             return NumpyAPLArray([0, 0], np.array([], dtype=get_char_dtype()).reshape(0, 0))
@@ -1482,7 +1482,7 @@ class Executor:
         from marple.errors import (
             RankError, IndexError_, LimitError, SecurityError,
         )
-        code = int(operand.data.item())
+        code = int(operand.scalar_value())
         error_map: dict[int, type] = {
             1: SyntaxError_, 2: ValueError_, 3: DomainError, 4: LengthError,
             5: RankError, 6: IndexError_, 7: LimitError, 9: SecurityError,
@@ -1509,7 +1509,7 @@ class Executor:
     def _sys_dr_dyadic(self, left: APLArray, right: APLArray) -> APLArray:
         """Dyadic ⎕DR: convert data representation."""
         from marple.backend_functions import to_bool_array
-        target = int(left.data.item())
+        target = int(left.scalar_value())
         vals = to_list(right.data)
         if target == 645:
             new_data = [float(v) for v in vals]
@@ -1541,7 +1541,7 @@ class Executor:
     def _fmt_value(self, operand: APLArray) -> APLArray:
         """Format a single value as a character vector."""
         if operand.shape == []:
-            text = format_num(operand.data.item())
+            text = format_num(operand.scalar_value())
         elif len(operand.shape) == 1:
             if is_char_array(operand.data):
                 text = chars_to_str(operand.data)
@@ -1611,7 +1611,7 @@ class Executor:
         return NumpyAPLArray([len(fn_name)], str_to_char_array(fn_name))
 
     def _sys_dl(self, operand: APLArray) -> APLArray:
-        secs = float(operand.data.item())
+        secs = float(operand.scalar_value())
         elapsed = self.env.timer.sleep(secs)
         return S(elapsed)
 

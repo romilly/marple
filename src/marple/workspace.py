@@ -25,7 +25,7 @@ def _format_value(value: object) -> str | None:
         # nature is only visible at the dtype level.
         if is_char_array(value.data):
             return f"'{chars_to_str(value.data)}'"
-        v = value.data.item()
+        v = value.scalar_value()
         if isinstance(v, (int, float)) and v < 0:
             return f"¯{abs(v)}"
         return str(v)
