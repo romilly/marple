@@ -279,24 +279,33 @@ class TestInterpreterWiresCharDtype:
             def char_dtype(cls) -> np.dtype[Any]:
                 return np.dtype(np.uint16)
 
-        original = backend_functions.get_char_dtype()
+        original_dtype = backend_functions.get_char_dtype()
+        original_cls = backend_functions.get_backend_class()
         try:
             Interpreter(array_cls=SmallCharArray)
             assert backend_functions.get_char_dtype() == np.dtype(np.uint16)
         finally:
-            backend_functions.set_char_dtype(original)
+            backend_functions.set_char_dtype(original_dtype)
+            backend_functions.set_backend_class(original_cls)
 
     def test_interpreter_default_leaves_char_dtype_uint32(self) -> None:
         from marple.get_numpy import np
         from marple.engine import Interpreter
+        from marple.numpy_aplarray import NumpyAPLArray
         from marple import backend_functions
 
-        original = backend_functions.get_char_dtype()
+        original_dtype = backend_functions.get_char_dtype()
+        original_cls = backend_functions.get_backend_class()
         try:
+            # Interpreter() inherits the active backend; reset to
+            # NumpyAPLArray so the "default uint32" expectation holds
+            # regardless of what a prior test registered.
+            backend_functions.set_backend_class(NumpyAPLArray)
             Interpreter()
             assert backend_functions.get_char_dtype() == np.dtype(np.uint32)
         finally:
-            backend_functions.set_char_dtype(original)
+            backend_functions.set_char_dtype(original_dtype)
+            backend_functions.set_backend_class(original_cls)
 
     def test_interpreter_sets_backend_class_from_array_cls(self) -> None:
         from marple.engine import Interpreter

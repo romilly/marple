@@ -47,11 +47,22 @@ class Interpreter(Executor):
             from marple.adapters.default_config import DefaultConfig
             config = DefaultConfig()
         if timer is None:
-            from marple.adapters.desktop_timer import DesktopTimer
-            timer = DesktopTimer()
+            import sys as _sys
+            if _sys.implementation.name == "micropython":
+                # desktop_timer.py isn't deployed to the Pico; use PicoTimer.
+                from marple.adapters.pico_timer import PicoTimer
+                timer = PicoTimer()
+            else:
+                from marple.adapters.desktop_timer import DesktopTimer
+                timer = DesktopTimer()
         if array_cls is None:
-            from marple.numpy_aplarray import NumpyAPLArray
-            array_cls = NumpyAPLArray
+            # Inherit whichever backend is already registered. On CPython
+            # the lazy default in backend_functions.get_backend_class()
+            # resolves to NumpyAPLArray; on the Pico, pico_eval.py has
+            # already called set_backend_class(UlabAPLArray) before engine
+            # was imported, and we must NOT overwrite that here.
+            from marple.backend_functions import get_backend_class
+            array_cls = get_backend_class()
         self.array_cls: type[APLArray] = array_cls
         set_char_dtype(array_cls.char_dtype())
         set_backend_class(array_cls)
