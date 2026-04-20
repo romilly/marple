@@ -200,6 +200,62 @@ class NumpyAPLArray(APLArray):
             result_data.extend(row)
         return type(other)._build_like(result_data, new_shape, other)
 
+    def encode(self, other: APLArray) -> APLArray:
+        from marple.errors import DomainError
+        if self.is_char() or other.is_char():
+            raise DomainError("⊤ is not defined on character data")
+        a = self.data
+        o = other.data
+        a_atleast = np.atleast_1d(a)
+        n = a_atleast.shape[0]
+        other_a_dims = a_atleast.shape[1:]
+        result_shape = list(a.shape) + list(o.shape)
+        out_dtype = np.result_type(a_atleast.dtype, o.dtype)
+        if n == 0:
+            return type(other)(
+                result_shape,
+                np.zeros(tuple(result_shape), dtype=out_dtype))
+        carry_shape = other_a_dims + o.shape
+        carry = np.broadcast_to(o, carry_shape).astype(out_dtype)
+        out = np.empty((n,) + carry_shape, dtype=out_dtype)
+        view_shape = other_a_dims + (1,) * len(o.shape)
+        for i in range(n - 1, -1, -1):
+            radix_i = a_atleast[i].reshape(view_shape)
+            zero_mask = (radix_i == 0)
+            safe_radix = np.where(zero_mask, 1, radix_i)
+            digit = np.where(zero_mask, carry, carry % safe_radix)
+            carry = np.where(zero_mask, np.zeros_like(carry), carry // safe_radix)
+            out[i] = digit
+        return type(other)(result_shape, out)
+
+    def decode(self, other: APLArray) -> APLArray:
+        from marple.errors import DomainError, LengthError
+        if self.is_char() or other.is_char():
+            raise DomainError("⊥ is not defined on character data")
+        a = self.data
+        o = other.data
+        a_atleast = np.atleast_1d(a)
+        o_atleast = np.atleast_1d(o)
+        a_n = a_atleast.shape[-1]
+        o_n = o_atleast.shape[0]
+        a_outer = list(a.shape[:-1]) if len(a.shape) >= 1 else []
+        o_outer = list(o.shape[1:]) if len(o.shape) >= 1 else []
+        result_shape = a_outer + o_outer
+        if a_n == 0 or o_n == 0:
+            return type(other)(
+                result_shape,
+                np.zeros(tuple(result_shape) or (), dtype=a.dtype))
+        if a_n != o_n and a_n != 1 and o_n != 1:
+            raise LengthError(f"⊥ length mismatch: {a_n} vs {o_n}")
+        n = max(a_n, o_n)
+        a_view = np.broadcast_to(a_atleast, a_atleast.shape[:-1] + (n,))
+        o_view = np.broadcast_to(o_atleast, (n,) + o_atleast.shape[1:])
+        ones_tail = np.ones(a_view.shape[:-1] + (1,), dtype=a_view.dtype)
+        shifted = np.concatenate([a_view[..., 1:], ones_tail], axis=-1)
+        weights = np.flip(np.cumprod(np.flip(shifted, axis=-1), axis=-1), axis=-1)
+        result = weights @ o_view
+        return type(other)(result_shape, result)
+
     def from_array(self, other: APLArray, io: int = 1) -> APLArray:
         from marple.errors import IndexError_, RankError
         if other.is_scalar():

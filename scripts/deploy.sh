@@ -51,7 +51,6 @@ mpremote \
     cp $SRC/parser.py :marple/parser.py + \
     cp $SRC/repl.py :marple/repl.py + \
     cp $SRC/script.py :marple/script.py + \
-    cp $SRC/structural.py :marple/structural.py + \
     cp $SRC/symbol_table.py :marple/symbol_table.py + \
     cp $SRC/system_commands.py :marple/system_commands.py + \
     cp $SRC/tokenizer.py :marple/tokenizer.py + \

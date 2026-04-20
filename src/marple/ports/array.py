@@ -565,12 +565,12 @@ class APLArray(APLValue):
         raise NotImplementedError("adapter must implement rotate_first")
 
     def encode(self, other: APLArray) -> APLArray:
-        from marple.structural import encode
-        return encode(self, other)
+        """Dyadic ⊤: represent `other` in the number system given by `self`."""
+        raise NotImplementedError("adapter must implement encode")
 
     def decode(self, other: APLArray) -> APLArray:
-        from marple.structural import decode
-        return decode(self, other)
+        """Dyadic ⊥: evaluate `other` as a polynomial with bases from `self`."""
+        raise NotImplementedError("adapter must implement decode")
 
     def replicate(self, other: APLArray) -> APLArray:
         """Dyadic /: replicate/compress `other` along its last axis, using

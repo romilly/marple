@@ -291,6 +291,16 @@ class UlabAPLArray(APLArray):
             result_data.extend(row)
         return type(other)._build_like(result_data, new_shape, other)
 
+    def encode(self, other: APLArray) -> APLArray:
+        # Needs np.atleast_1d / np.broadcast_to / np.result_type /
+        # np.zeros_like — none available on ulab.
+        raise NotImplementedError("encode not available on ulab")
+
+    def decode(self, other: APLArray) -> APLArray:
+        # Needs np.atleast_1d / np.broadcast_to / np.cumprod / np.flip
+        # / matmul — not all available on ulab.
+        raise NotImplementedError("decode not available on ulab")
+
     def from_array(self, other: APLArray, io: int = 1) -> APLArray:
         from marple.errors import IndexError_, RankError
         if other.is_scalar():
