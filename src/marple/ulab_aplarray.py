@@ -423,8 +423,38 @@ class UlabAPLArray(APLArray):
         return type(other)(new_shape, self.reshape_ndarray(cycled, new_shape))
 
     def transpose_dyadic(self, other: APLArray, io: int = 1) -> APLArray:
-        # Needs np.indices + fancy indexing, neither available on ulab.
-        raise NotImplementedError("transpose_dyadic not available on ulab")
+        """Dyadic ⍉ on ulab: validate X, then case-split by rank ≤ 2.
+
+        For rank ≤ 2 the only legal permutations are [], [0], [0,1], [1,0],
+        and [0,0] (the "no gaps" rule filters everything else). Three of
+        those are identity; [1,0] is matrix transpose; [0,0] is diagonal
+        extraction.
+        """
+        from marple.errors import LengthError, RankError
+        if len(self.shape) > 1:
+            raise RankError("⍉ X must be a scalar or vector")
+        x_values = [int(v) for v in self.to_list()]
+        rank_y = len(other.shape)
+        if len(x_values) != rank_y:
+            raise LengthError(
+                f"⍉ length of X ({len(x_values)}) must equal rank of Y ({rank_y})")
+        x_zero = [v - io for v in x_values]
+        if x_zero and (min(x_zero) < 0 or max(x_zero) >= rank_y):
+            raise RankError("⍉ axis index out of range")
+        if x_zero and not set(range(max(x_zero) + 1)).issubset(set(x_zero)):
+            raise RankError("⍉ X is missing axis indices in its range")
+        if rank_y > 2:
+            raise NotImplementedError(
+                "transpose_dyadic rank > 2 not supported on ulab")
+        if rank_y <= 1 or x_zero == [0, 1]:
+            return other
+        if x_zero == [1, 0]:
+            rows, cols = other.shape
+            return type(other)([cols, rows], other.data.T)
+        # x_zero == [0, 0] — diagonal extraction
+        diag_len = min(other.shape[0], other.shape[1])
+        diag = [other.data[i, i] for i in range(diag_len)]
+        return type(other)([diag_len], np.array(diag, dtype=other.data.dtype))
 
     def matrix_inverse(self) -> APLArray:
         # ulab has no np.linalg; matrix inverse requires it.

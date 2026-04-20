@@ -495,6 +495,41 @@ class TestUlabAPLArraySketch:
         a = UlabAPLArray.array([3], [1, -2, 3])
         assert a.negate() == UlabAPLArray.array([3], [-1, 2, -3])
 
+    def test_ulab_transpose_dyadic_identity_on_matrix(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        m = UlabAPLArray.array([2, 3], [1, 2, 3, 4, 5, 6])
+        perm = UlabAPLArray.array([2], [1, 2])  # ⎕IO=1, [1,2] = identity
+        assert perm.transpose_dyadic(m, io=1) == m
+
+    def test_ulab_transpose_dyadic_matrix_transpose(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        m = UlabAPLArray.array([2, 3], [1, 2, 3, 4, 5, 6])
+        perm = UlabAPLArray.array([2], [2, 1])  # swap axes
+        result = perm.transpose_dyadic(m, io=1)
+        assert result == UlabAPLArray.array([3, 2], [1, 4, 2, 5, 3, 6])
+
+    def test_ulab_transpose_dyadic_diagonal_square(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        m = UlabAPLArray.array([3, 3], [1, 2, 3, 4, 5, 6, 7, 8, 9])
+        perm = UlabAPLArray.array([2], [1, 1])  # diagonal
+        result = perm.transpose_dyadic(m, io=1)
+        assert result == UlabAPLArray.array([3], [1, 5, 9])
+
+    def test_ulab_transpose_dyadic_diagonal_rectangular(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        # 2x3: diagonal length min(2,3)=2
+        m = UlabAPLArray.array([2, 3], [1, 2, 3, 4, 5, 6])
+        perm = UlabAPLArray.array([2], [1, 1])
+        result = perm.transpose_dyadic(m, io=1)
+        assert result == UlabAPLArray.array([2], [1, 5])
+
+    def test_ulab_transpose_dyadic_scalar_is_identity(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        s = UlabAPLArray.scalar(42)
+        perm = UlabAPLArray.array([0], [])  # empty permutation
+        result = perm.transpose_dyadic(s, io=1)
+        assert result == UlabAPLArray.scalar(42)
+
 
 class TestAsStr:
     """`arr.as_str()` is the port method for char → Python str conversion.

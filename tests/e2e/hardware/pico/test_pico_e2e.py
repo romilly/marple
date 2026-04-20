@@ -112,3 +112,26 @@ class TestPicoErrorHandling:
 
     def test_length_error(self, pico: PicoConnection) -> None:
         assert "LENGTH ERROR" in pico.eval("1 2+1 2 3")
+
+
+class TestPicoTransposeDyadic:
+    """Dyadic ⍉ (axis permutation) — rank ≤ 2 on ulab. Pure-Python fallback
+    handles identity, matrix transpose, and diagonal extraction.
+    """
+
+    def test_identity_permutation_matrix(self, pico: PicoConnection) -> None:
+        pico.eval_silent("M\u21902 3\u2374\u23736")
+        assert pico.eval("1 2 \u2349 M") == "1 2 3\n4 5 6"
+
+    def test_matrix_transpose_via_permutation(self, pico: PicoConnection) -> None:
+        pico.eval_silent("M\u21902 3\u2374\u23736")
+        assert pico.eval("2 1 \u2349 M") == "1 4\n2 5\n3 6"
+
+    def test_diagonal_extraction(self, pico: PicoConnection) -> None:
+        pico.eval_silent("M\u21903 3\u2374\u23739")
+        assert pico.eval("1 1 \u2349 M") == "1 5 9"
+
+    def test_diagonal_rectangular_matrix(self, pico: PicoConnection) -> None:
+        # 2x3 matrix: diagonal is min(2,3)=2 elements.
+        pico.eval_silent("M\u21902 3\u2374\u23736")
+        assert pico.eval("1 1 \u2349 M") == "1 5"
