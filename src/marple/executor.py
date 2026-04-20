@@ -10,7 +10,7 @@ from typing import Any, Callable, cast
 from marple.numpy_array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import (
-    _DOWNCAST_CT, chars_to_str, is_char_array, is_numeric_array,
+    _DOWNCAST_CT, chars_to_str, get_char_dtype, is_char_array, is_numeric_array,
     maybe_downcast, maybe_upcast, str_to_char_array, to_list,
 )
 from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
@@ -1433,7 +1433,7 @@ class Executor:
         nc = int(operand.data.item())
         names = self.env.names_of_class(nc)
         if not names:
-            return NumpyAPLArray([0, 0], np.array([], dtype=np.uint32).reshape(0, 0))
+            return NumpyAPLArray([0, 0], np.array([], dtype=get_char_dtype()).reshape(0, 0))
         max_len = max(len(n) for n in names)
         text = "".join(_ljust(n, max_len) for n in names)
         data = str_to_char_array(text).reshape(len(names), max_len)
@@ -1549,7 +1549,7 @@ class Executor:
         max_len = max(len(l) for l in lines) if lines else 0
         if not lines or max_len == 0:
             return NumpyAPLArray([len(lines), max_len],
-                            np.array([], dtype=np.uint32).reshape(len(lines), max_len))
+                            np.array([], dtype=get_char_dtype()).reshape(len(lines), max_len))
         text = "".join(_ljust(line, max_len) for line in lines)
         data = str_to_char_array(text).reshape(len(lines), max_len)
         return NumpyAPLArray([len(lines), max_len], data)
@@ -1618,7 +1618,7 @@ class Executor:
             except (ValueError, TypeError):
                 max_len = max((len(v) for v in col_data), default=0)
                 if max_len == 0:
-                    data = np.array([], dtype=np.uint32).reshape(len(col_data), 0)
+                    data = np.array([], dtype=get_char_dtype()).reshape(len(col_data), 0)
                 else:
                     text = "".join(v.ljust(max_len) for v in col_data)
                     data = str_to_char_array(text).reshape(len(col_data), max_len)

@@ -3,7 +3,7 @@ from typing import Any
 from marple.numpy_array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import (
-    char_fill, is_char_array, to_list,
+    char_fill, get_char_dtype, is_char_array, to_list,
 )
 from marple.errors import DomainError, IndexError_, LengthError, RankError
 from marple.get_numpy import np
@@ -76,9 +76,9 @@ def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
         total *= s
     flat = omega.data.flatten()
     if len(flat) == 0:
-        # Preserve dtype: fill is char_fill for uint32, 0 otherwise.
-        if str(omega.data.dtype) == 'uint32':
-            flat = np.array([char_fill()], dtype=np.uint32)
+        # Preserve dtype: fill is char_fill for char data, 0 otherwise.
+        if omega.data.dtype == get_char_dtype():
+            flat = np.array([char_fill()], dtype=get_char_dtype())
         else:
             flat = np.array([0])
     n = len(flat)
