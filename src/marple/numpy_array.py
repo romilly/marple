@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Callable, TYPE_CHECKING
+from contextlib import contextmanager
+from typing import Any, Callable, Iterator, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from marple.apl_value import PowerStrategy
@@ -37,6 +38,31 @@ class APLArray(APLValue):
         uint16). BMP-only codepoints fit in uint16; APL glyphs are in the BMP.
         """
         return np.dtype(np.uint32)
+
+    @classmethod
+    @contextmanager
+    def strict_numeric_errstate(cls) -> Iterator[None]:
+        """Context manager wrapping numeric ops that must trap overflow.
+
+        Backend override hook. NumpyAPLArray uses `np.errstate(over="raise",
+        invalid="raise")` so callers can catch `FloatingPointError` and
+        convert to `DomainError`. A ulab-backed subclass yields a no-op —
+        ulab has no errstate equivalent, so silent overflow is accepted.
+        """
+        with np.errstate(over="raise", invalid="raise"):
+            yield
+
+    @classmethod
+    @contextmanager
+    def ignoring_numeric_errstate(cls) -> Iterator[None]:
+        """Context manager wrapping numeric ops that suppress overflow warnings.
+
+        Backend override hook. NumpyAPLArray uses `np.errstate(over="ignore",
+        invalid="ignore")` so callers can inspect inf/nan without printing
+        numpy RuntimeWarnings. A ulab-backed subclass yields a no-op.
+        """
+        with np.errstate(over="ignore", invalid="ignore"):
+            yield
 
     def __init__(self, shape: list[int], data: list[Any] | np.ndarray[Any, Any]) -> None:
         self.shape = shape

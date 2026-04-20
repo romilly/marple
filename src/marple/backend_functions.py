@@ -1,13 +1,23 @@
-from typing import Any, TypeAlias
+from contextlib import AbstractContextManager
+from typing import Any, TYPE_CHECKING, TypeAlias
 
 import numpy.typing as npt
 
 from marple.get_numpy import np
 
+if TYPE_CHECKING:
+    from marple.numpy_array import APLArray
+
 NDArray: TypeAlias = npt.NDArray[Any]
 
 
 _CHAR_DTYPE: np.dtype[Any] = np.dtype(np.uint32)
+
+# Active APLArray subclass — consulted by the module-level errstate helpers
+# so that a UlabAPLArray on the Pico can override overflow trapping without
+# the callers needing an instance reference. Interpreter sets this on
+# construction via `set_backend_class`.
+_ACTIVE_BACKEND_CLASS: "type[APLArray] | None" = None
 
 
 def set_char_dtype(dtype: np.dtype[Any]) -> None:
@@ -25,6 +35,42 @@ def set_char_dtype(dtype: np.dtype[Any]) -> None:
 def get_char_dtype() -> np.dtype[Any]:
     """Return the currently active char dtype."""
     return _CHAR_DTYPE
+
+
+def set_backend_class(cls: "type[APLArray]") -> None:
+    """Select the active APLArray subclass for module-level errstate helpers.
+
+    Interpreter calls this at construction so that `strict_numeric_errstate`
+    and `ignoring_numeric_errstate` below dispatch to the subclass's hooks
+    (e.g. UlabAPLArray's no-op context managers).
+    """
+    global _ACTIVE_BACKEND_CLASS
+    _ACTIVE_BACKEND_CLASS = cls
+
+
+def get_backend_class() -> "type[APLArray]":
+    """Return the currently active APLArray subclass (defaults to NumpyAPLArray)."""
+    global _ACTIVE_BACKEND_CLASS
+    if _ACTIVE_BACKEND_CLASS is None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        _ACTIVE_BACKEND_CLASS = NumpyAPLArray
+    return _ACTIVE_BACKEND_CLASS
+
+
+def strict_numeric_errstate() -> AbstractContextManager[None]:
+    """Context manager for numeric ops that must trap overflow.
+
+    Dispatches to the active backend class's `strict_numeric_errstate` hook.
+    """
+    return get_backend_class().strict_numeric_errstate()
+
+
+def ignoring_numeric_errstate() -> AbstractContextManager[None]:
+    """Context manager for numeric ops that suppress overflow warnings.
+
+    Dispatches to the active backend class's `ignoring_numeric_errstate` hook.
+    """
+    return get_backend_class().ignoring_numeric_errstate()
 
 
 def is_char_array(data: NDArray) -> bool:

@@ -296,3 +296,71 @@ class TestInterpreterWiresCharDtype:
             assert backend_functions.get_char_dtype() == np.dtype(np.uint32)
         finally:
             backend_functions.set_char_dtype(original)
+
+
+class TestNumericErrstateHook:
+    """Backend provides the numeric-errstate context managers.
+
+    On numpy, reduce/scan/inner/outer wrap arithmetic in `np.errstate(...)`
+    so overflow either raises (converted to DomainError) or is silenced.
+    On ulab there is no equivalent, so UlabAPLArray returns no-op context
+    managers and accepts silent overflow.
+    """
+
+    def test_aplarray_strict_errstate_is_a_context_manager(self) -> None:
+        from marple.numpy_array import APLArray
+        cm = APLArray.strict_numeric_errstate()
+        assert hasattr(cm, "__enter__") and hasattr(cm, "__exit__")
+
+    def test_aplarray_ignoring_errstate_is_a_context_manager(self) -> None:
+        from marple.numpy_array import APLArray
+        cm = APLArray.ignoring_numeric_errstate()
+        assert hasattr(cm, "__enter__") and hasattr(cm, "__exit__")
+
+    def test_subclass_override_of_strict_errstate_is_called(self) -> None:
+        from contextlib import contextmanager
+        from typing import Any, Iterator
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple import backend_functions
+
+        calls: list[str] = []
+
+        class TracingArray(NumpyAPLArray):
+            @classmethod
+            @contextmanager
+            def strict_numeric_errstate(cls) -> Iterator[None]:
+                calls.append("strict")
+                yield
+
+        original_cls = backend_functions.get_backend_class()
+        try:
+            backend_functions.set_backend_class(TracingArray)
+            with backend_functions.strict_numeric_errstate():
+                pass
+            assert calls == ["strict"]
+        finally:
+            backend_functions.set_backend_class(original_cls)
+
+    def test_subclass_override_of_ignoring_errstate_is_called(self) -> None:
+        from contextlib import contextmanager
+        from typing import Any, Iterator
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple import backend_functions
+
+        calls: list[str] = []
+
+        class TracingArray(NumpyAPLArray):
+            @classmethod
+            @contextmanager
+            def ignoring_numeric_errstate(cls) -> Iterator[None]:
+                calls.append("ignoring")
+                yield
+
+        original_cls = backend_functions.get_backend_class()
+        try:
+            backend_functions.set_backend_class(TracingArray)
+            with backend_functions.ignoring_numeric_errstate():
+                pass
+            assert calls == ["ignoring"]
+        finally:
+            backend_functions.set_backend_class(original_cls)
