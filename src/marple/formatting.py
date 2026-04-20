@@ -70,7 +70,10 @@ def format_result(result: APLArray, env: 'Environment | None' = None) -> str:
         if isinstance(pp_val, APLArray):
             pp = int(scalar_item(pp_val.data))
     if result.is_scalar():
-        return format_num(result.data.flatten()[0], pp)
+        raw = result.scalar_value()
+        if _is_char_array(result):
+            return chr(int(raw))
+        return format_num(raw, pp)
     if _is_char_array(result):
         if len(result.shape) == 1:
             return chars_to_str(result.data)

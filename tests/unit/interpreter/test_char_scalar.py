@@ -54,3 +54,25 @@ class TestSingleCharIsScalar:
         assert is_char_array(result.data)
         # Codepoints check
         assert list(result.data) == [97, 98, 99]
+
+
+class TestCharScalarDisplay:
+    """Char scalars must format as the character, not the codepoint.
+
+    The uint32 char storage migration (v0.7.15) swapped data[0] from a
+    Python str to an int codepoint, but format_result's scalar branch
+    never learned to consult is_char_array — so `'a'` has been showing as
+    "97" on desktop since that migration. No prior test exercised
+    display_text on char scalars, so it slipped through.
+    """
+
+    def test_single_char_literal_displays_as_char(self) -> None:
+        assert Interpreter(io=1).execute("'a'").display_text == "a"
+
+    def test_indexed_char_scalar_displays_as_char(self) -> None:
+        # 'ABCDEF'[3] with ⎕IO=1 is the 3rd char, 'C'.
+        assert Interpreter(io=1).execute("'ABCDEF'[3]").display_text == "C"
+
+    def test_char_vector_still_displays_as_string(self) -> None:
+        # Rank-1 char arrays weren't affected; this just pins the contract.
+        assert Interpreter(io=1).execute("'abc'").display_text == "abc"
