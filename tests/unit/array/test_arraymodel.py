@@ -102,6 +102,81 @@ class TestSubclassPropagation:
         assert type(a.subtract(b)) is NumpyAPLArray
 
 
+class TestPortFactoryDispatch:
+    """Instantiating the APLArray port — directly or via its factory
+    classmethods — dispatches to the active backend class. A concrete
+    subclass constructed by name (NumpyAPLArray, UlabAPLArray) bypasses
+    the dispatch.
+    """
+
+    def test_direct_ctor_on_port_returns_active_backend(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple import backend_functions
+
+        original = backend_functions.get_backend_class()
+        try:
+            backend_functions.set_backend_class(NumpyAPLArray)
+            instance = APLArray([3], [1, 2, 3])
+            assert type(instance) is NumpyAPLArray
+        finally:
+            backend_functions.set_backend_class(original)
+
+    def test_array_factory_on_port_returns_active_backend(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple import backend_functions
+
+        original = backend_functions.get_backend_class()
+        try:
+            backend_functions.set_backend_class(NumpyAPLArray)
+            instance = APLArray.array([3], [1, 2, 3])
+            assert type(instance) is NumpyAPLArray
+        finally:
+            backend_functions.set_backend_class(original)
+
+    def test_scalar_factory_on_port_returns_active_backend(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple import backend_functions
+
+        original = backend_functions.get_backend_class()
+        try:
+            backend_functions.set_backend_class(NumpyAPLArray)
+            instance = APLArray.scalar(7)
+            assert type(instance) is NumpyAPLArray
+        finally:
+            backend_functions.set_backend_class(original)
+
+    def test_concrete_subclass_ctor_bypasses_dispatch(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple.ulab_aplarray import UlabAPLArray
+        from marple import backend_functions
+
+        # Even when UlabAPLArray is active, `NumpyAPLArray(...)` directly
+        # creates a NumpyAPLArray.
+        original = backend_functions.get_backend_class()
+        try:
+            backend_functions.set_backend_class(UlabAPLArray)
+            instance = NumpyAPLArray([3], [1, 2, 3])
+            assert type(instance) is NumpyAPLArray
+        finally:
+            backend_functions.set_backend_class(original)
+
+    def test_port_dispatch_follows_active_backend(self) -> None:
+        """When UlabAPLArray is the active backend, `APLArray(...)` creates
+        a UlabAPLArray instance — even though we're on CPython.
+        """
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple.ulab_aplarray import UlabAPLArray
+        from marple import backend_functions
+
+        original = backend_functions.get_backend_class()
+        try:
+            backend_functions.set_backend_class(UlabAPLArray)
+            instance = APLArray.array([3], [1, 2, 3])
+            assert type(instance) is UlabAPLArray
+        finally:
+            backend_functions.set_backend_class(original)
+
+
 class TestBackendOverridability:
     """Executable documentation for the backend-override seams.
 

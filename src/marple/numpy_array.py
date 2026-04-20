@@ -29,7 +29,25 @@ def _gcd_float(a: float, b: float) -> float:
 
 
 class APLArray(APLValue):
-    """APL array backed by numpy arrays."""
+    """APL array — the port. Concrete adapters live in numpy_aplarray.py
+    (desktop) and ulab_aplarray.py (Pico)."""
+
+    def __new__(cls, *args: Any, **kwargs: Any) -> "APLArray":
+        """Instantiating the port directly dispatches to the active adapter.
+
+        Callers that write `APLArray(shape, data)` (common in tests that
+        want to stay backend-neutral) get a `NumpyAPLArray` on CPython or
+        a `UlabAPLArray` on MicroPython, whichever `backend_functions.
+        get_backend_class()` returns at the time of the call.
+
+        Calling a concrete subclass directly — `NumpyAPLArray(shape, data)`,
+        `UlabAPLArray(shape, data)` — bypasses this dispatch and creates
+        the named subclass as normal.
+        """
+        if cls is APLArray:
+            from marple.backend_functions import get_backend_class
+            return object.__new__(get_backend_class())
+        return object.__new__(cls)
 
     @classmethod
     def char_dtype(cls) -> Any:
@@ -104,6 +122,36 @@ class APLArray(APLValue):
         returns np.float (float32) because float64 doesn't exist there.
         """
         return np.float64
+
+    # ---- ndarray-level structural hooks --------------------------------
+    # These take raw ndarray data rather than APLArray instances because
+    # call sites often have intermediate ndarrays (results of flatten,
+    # concatenate, arithmetic ops). Each hook has a numpy-native default;
+    # subclasses override to accommodate a backend whose primitives differ.
+
+    @classmethod
+    def reshape_ndarray(cls, arr: Any, shape: Any) -> Any:
+        """Reshape `arr` to `shape` (tuple / list / int). Default passes
+        through; a subclass may normalise if its reshape is stricter.
+        """
+        return arr.reshape(shape)
+
+    @classmethod
+    def repeat_ndarray(cls, arr: Any, counts: Any, axis: int) -> Any:
+        """Repeat elements of `arr` along `axis` according to `counts`.
+        `counts` is either an int (uniform) or a sequence of ints (one per
+        element along the axis). Matches numpy.repeat's calling convention.
+        """
+        return np.repeat(arr, counts, axis=axis)
+
+    @classmethod
+    def gather_ndarray(cls, data: Any, axis_indices: "list[list[int]]") -> Any:
+        """Multi-axis Cartesian-product gather. Returns a flat ndarray of
+        `data[i0, i1, …]` over every combination in the axis_indices.
+        Caller reshape to the desired rank.
+        """
+        idx_arrays = [np.asarray(ax) for ax in axis_indices]
+        return data[np.ix_(*idx_arrays)].flatten()
 
     @classmethod
     def maybe_downcast(cls, data: Any, ct: float) -> Any:
@@ -202,7 +250,14 @@ class APLArray(APLValue):
 
     @classmethod
     def array(cls, shape: list[int], data: Any) -> APLArray:
-        """Factory method for creating arrays."""
+        """Factory method for creating arrays.
+
+        On the port itself (`APLArray.array(...)`) dispatches to the
+        active adapter. On a concrete subclass constructs that subclass.
+        """
+        if cls is APLArray:
+            from marple.backend_functions import get_backend_class
+            return get_backend_class()(shape, data)
         return cls(shape, data)
 
     @classmethod
@@ -211,7 +266,12 @@ class APLArray(APLValue):
 
         APL shape is `[]`. Underlying storage is 0-d on desktop numpy
         and 1-d length-1 on ulab — see __init__ for the invariant.
+        On the port itself (`APLArray.scalar(...)`) dispatches to the
+        active adapter.
         """
+        if cls is APLArray:
+            from marple.backend_functions import get_backend_class
+            return get_backend_class().scalar(value)
         if isinstance(value, str):
             return cls([], str_to_char_array(value))
         return cls([], value)
