@@ -1,6 +1,9 @@
 """APL environment (workspace state) for MARPLE."""
 
-from collections.abc import ItemsView
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import ItemsView  # noqa: F401 — used in string annotation
 
 from marple.backend_functions import str_to_char_array
 from marple.numpy_array import APLArray, S
@@ -27,6 +30,7 @@ _QUAD_DEFAULTS: dict[str, APLArray] = {
 }
 
 
+# TODO: this looks wrong: when doing a dictionary look-up, surely the callers know what sort of thing they are loking for?
 class Environment:
     """APL workspace environment — variables, system settings, and name table."""
 
