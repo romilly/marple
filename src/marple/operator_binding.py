@@ -190,7 +190,7 @@ _SCALAR_OPS: dict[str, Callable[[Any, Any], Any]] = {
 
 def _scan_row_accumulate(ufunc: np.ufunc, data: NDArray, row_len: int) -> NDArray:
     """Apply ufunc.accumulate to each row of length row_len in flat data."""
-    rows = data.reshape(-1, row_len)
+    rows = np_reshape(data, -1, row_len)
     with ignoring_numeric_errstate():
         result = ufunc.accumulate(rows, axis=1)
     return result.flatten()
@@ -198,8 +198,9 @@ def _scan_row_accumulate(ufunc: np.ufunc, data: NDArray, row_len: int) -> NDArra
 
 def _scan_row_general(op: Callable[[Any, Any], Any], data: NDArray, row_len: int) -> NDArray:
     """O(n²) right-to-left reduce per prefix, row by row."""
-    rows = data.reshape(-1, row_len)
-    result = np.zeros_like(rows)
+    rows = np_reshape(data, -1, row_len)
+    # np.zeros_like is missing on ulab; spell out shape+dtype via zeros.
+    result = np.zeros(rows.shape, dtype=numeric_upcast_dtype())
     with ignoring_numeric_errstate():
         for r, row in enumerate(rows):
             result[r, 0] = row[0]

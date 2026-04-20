@@ -667,12 +667,14 @@ class APLArray(APLValue):
 
     def transpose(self) -> APLArray:
         # Monadic ⍉: reverse the order of axes. Per the spec,
-        # ⍴⍉Y = ⌽⍴Y. For rank ≤ 1 this is identity; otherwise
-        # np.transpose handles arbitrary rank.
+        # ⍴⍉Y = ⌽⍴Y. For rank ≤ 1 this is identity; otherwise use
+        # np.transpose when available (numpy) or `.T` as a fallback
+        # (ulab — its ndarray.T does the full-reverse transpose that
+        # monadic ⍉ specifies).
         if len(self.shape) <= 1:
             return type(self)(list(self.shape), self.data.copy())
-        return type(self)(list(reversed(self.shape)),
-                        np.transpose(self.data).copy())
+        transposed = np.transpose(self.data) if hasattr(np, "transpose") else self.data.T
+        return type(self)(list(reversed(self.shape)), transposed.copy())
 
     def matrix_inverse(self) -> APLArray:
         from marple.structural import matrix_inverse
