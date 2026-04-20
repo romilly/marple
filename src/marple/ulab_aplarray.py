@@ -173,6 +173,14 @@ class UlabAPLArray(APLArray):
         from marple.backend_functions import data_type_code
         return data_type_code(self.data)
 
+    def matrix_inverse(self) -> APLArray:
+        # ulab has no np.linalg; matrix inverse requires it.
+        raise NotImplementedError("matrix_inverse not available on ulab")
+
+    def matrix_divide(self, other: APLArray) -> APLArray:
+        # ulab has no np.linalg; linear solve requires it.
+        raise NotImplementedError("matrix_divide not available on ulab")
+
     def catenate(self, other: APLArray) -> APLArray:
         if self.is_scalar() and other.is_scalar():
             return type(self)([2], np.concatenate(

@@ -569,8 +569,10 @@ class APLArray(APLValue):
         return expand(self, other)
 
     def matrix_divide(self, other: APLArray) -> APLArray:
-        from marple.structural import matrix_divide
-        return matrix_divide(self, other)
+        """Dyadic ⌹: solve `other x = self` for x. ulab adapters raise
+        NotImplementedError (no np.linalg).
+        """
+        raise NotImplementedError("adapter must implement matrix_divide")
 
     @staticmethod
     def _tolerant_match(a: object, b: object, ct: float) -> bool:
@@ -801,8 +803,10 @@ class APLArray(APLValue):
         return type(self)(list(reversed(self.shape)), transposed.copy())
 
     def matrix_inverse(self) -> APLArray:
-        from marple.structural import matrix_inverse
-        return matrix_inverse(self)
+        """Monadic ⌹: matrix inverse. Requires a square matrix. ulab
+        adapters raise NotImplementedError (no np.linalg).
+        """
+        raise NotImplementedError("adapter must implement matrix_inverse")
 
     def reverse(self) -> APLArray:
         # Scalar reverse is identity; np.flip needs at least one axis.

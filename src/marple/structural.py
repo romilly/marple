@@ -441,27 +441,6 @@ def expand(alpha: APLArray, omega: APLArray) -> APLArray:
     return NumpyAPLArray(out_shape, result)
 
 
-def matrix_inverse(omega: APLArray) -> APLArray:
-    """Monadic ⌹: matrix inverse."""
-    if len(omega.shape) != 2 or omega.shape[0] != omega.shape[1]:
-        raise RankError("Matrix inverse requires a square matrix")
-    try:
-        result = np.linalg.inv(omega.data.astype(float))
-    except np.linalg.LinAlgError:
-        raise DomainError("Singular matrix")
-    return NumpyAPLArray(list(omega.shape), result)
-
-
-def matrix_divide(alpha: APLArray, omega: APLArray) -> APLArray:
-    """Dyadic ⌹: solve linear system b⌹A (find x where Ax=b)."""
-    from marple.errors import DomainError
-    try:
-        result = np.linalg.solve(omega.data.astype(float), alpha.data.astype(float))
-    except np.linalg.LinAlgError:
-        raise DomainError("Singular matrix")
-    return NumpyAPLArray(list(result.shape), result)
-
-
 def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
     """Dyadic ⌷: select major cells of omega at indices in alpha."""
     if omega.is_scalar():

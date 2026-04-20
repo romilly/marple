@@ -82,6 +82,24 @@ class NumpyAPLArray(APLArray):
         from marple.backend_functions import data_type_code
         return data_type_code(self.data)
 
+    def matrix_inverse(self) -> APLArray:
+        from marple.errors import DomainError, RankError
+        if len(self.shape) != 2 or self.shape[0] != self.shape[1]:
+            raise RankError("Matrix inverse requires a square matrix")
+        try:
+            result = np.linalg.inv(self.data.astype(float))
+        except np.linalg.LinAlgError:
+            raise DomainError("Singular matrix")
+        return type(self)(list(self.shape), result)
+
+    def matrix_divide(self, other: APLArray) -> APLArray:
+        from marple.errors import DomainError
+        try:
+            result = np.linalg.solve(other.data.astype(float), self.data.astype(float))
+        except np.linalg.LinAlgError:
+            raise DomainError("Singular matrix")
+        return type(self)(list(result.shape), result)
+
     def catenate(self, other: APLArray) -> APLArray:
         if self.is_scalar() and other.is_scalar():
             return type(self)([2], np.concatenate(
