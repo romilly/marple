@@ -12,3 +12,8 @@ Iterator = object
 Protocol = type('Protocol', (), {})
 TYPE_CHECKING = False
 TypeAlias = object
+
+
+def cast(_type, val):
+    """typing.cast — pure type-system shim; returns val unchanged."""
+    return val
