@@ -1,7 +1,6 @@
 
 from marple.numpy_array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
-from marple.backend_functions import is_char_array, is_numeric_array, to_list
 from marple.errors import LengthError
 
 
@@ -12,7 +11,7 @@ def resolve_rank_spec(spec: APLArray) -> tuple[int, int, int]:
     2-vector b c → (c, b, c)
     3-vector a b c → (a, b, c)
     """
-    data = to_list(spec.data)
+    data = spec.to_list()
     if spec.is_scalar():
         c = int(data[0])
         return (c, c, c)
@@ -31,7 +30,7 @@ def clamp_rank(k: int, r: int) -> int:
         k = r + k
     return max(0, min(k, r))
 
-
+#TODO: can't we use numpy code here
 def decompose(array: APLArray, cell_rank: int) -> tuple[list[int], list[APLArray]]:
     """Decompose array into cells of the given rank.
 
@@ -61,7 +60,7 @@ def decompose(array: APLArray, cell_rank: int) -> tuple[list[int], list[APLArray
         cells.append(NumpyAPLArray(list(cell_shape), cell_data))
     return (list(frame_shape), cells)
 
-
+#TODO: can't we use numpy code here
 def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
     """Reassemble cells into a single array.
 
@@ -82,7 +81,7 @@ def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
             max_shape[j] = max(max_shape[j], padded[j])
     result_shape = frame_shape + max_shape
     # Check if all cells are numeric
-    all_numeric = all(is_numeric_array(c.data) for c in cells)
+    all_numeric = all(c.is_numeric() for c in cells)
     all_uniform = all(c.shape == max_shape for c in cells)
     if all_uniform and all_numeric:
         flat_cells = [c.data.flatten() for c in cells]
@@ -91,23 +90,23 @@ def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
     if all_uniform:
         all_data: list[object] = []
         for c in cells:
-            all_data.extend(to_list(c.data))
+            all_data.extend(c.to_list())
         return NumpyAPLArray.array(result_shape, all_data)
     # Padding needed
     max_size = 1
     for s in max_shape:
         max_size *= s
-    is_char = any(is_char_array(c.data) for c in cells)
+    is_char = any(c.is_char() for c in cells)
     fill = " " if is_char else 0
     if not is_char:
         result = np.zeros(len(cells) * max_size, dtype=np.float64)
         for i, c in enumerate(cells):
-            flat = c.data.flatten() if is_numeric_array(c.data) else c.data
+            flat = c.data.flatten() if c.is_numeric() else c.data
             result[i * max_size : i * max_size + len(flat)] = flat
         return NumpyAPLArray(result_shape, result.reshape(result_shape))
     all_data = []
     for c in cells:
-        cell_data = to_list(c.data)
+        cell_data = c.to_list()
         if c.shape == max_shape:
             all_data.extend(cell_data)
         else:
