@@ -3,7 +3,7 @@ from typing import Any
 from marple.numpy_array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import (
-    char_fill, get_char_dtype, is_char_array, to_list,
+    char_fill, get_char_dtype, is_char_array, np_reshape, to_list,
 )
 from marple.errors import DomainError, IndexError_, LengthError, RankError
 from marple.get_numpy import np
@@ -87,7 +87,7 @@ def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
     else:
         reps = total // n + 1
         cycled = np.concatenate(tuple([flat] * reps))[:total]
-    return NumpyAPLArray(new_shape, cycled.reshape(new_shape))
+    return NumpyAPLArray(new_shape, np_reshape(cycled, new_shape))
 
 
 def _tolerant_match(a: object, b: object, ct: float) -> bool:

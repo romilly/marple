@@ -5,28 +5,34 @@ Walking-skeleton desk sketch. The class parses and loads on CPython
 only *exercised* on hardware, where get_numpy.py is wired to return
 `ulab.numpy`.
 
-Overrides three families of hook so the Pico path works without numpy:
+Overrides backend hooks so the Pico path works on ulab:
 
-1. `char_dtype()` → uint16. ulab caps integer types at 16 bits, so the
-   BMP codepoints are stored as uint16 rather than uint32.
+1. `char_dtype()` → uint16. ulab caps unsigned integer types at 16 bits,
+   so BMP codepoints are stored as uint16 rather than uint32.
 
 2. `strict_numeric_errstate` / `ignoring_numeric_errstate` → no-ops.
-   ulab has no equivalent of `np.errstate`; integer arithmetic wraps
-   silently and there is no FloatingPointError. The Pico accepts this
-   limitation — the alternative (wrap every op with bounds checks) is
-   too expensive for a 133 MHz device.
+   ulab has no `np.errstate` equivalent; integer arithmetic wraps
+   silently and there is no FloatingPointError to catch.
 
-3. `_numeric_dyadic_op` → a trimmed version without `maybe_upcast` or
-   try/except FloatingPointError. ulab has no float64, so promotion
-   would fail; and without errstate the exception can never fire.
+3. `is_int_dtype` / `is_float_dtype` → dtype-constant set membership
+   (ulab has no np.issubdtype; its dtype tokens are small ints).
+
+4. `maybe_upcast` → rebuilds int data as float32 via np.array(list, …)
+   (ulab has no .astype and no float64).
+
+5. `maybe_downcast` → vectorised floor-based round + tolerance check +
+   one-shot Python-list convert to int16 at the end (ulab has no
+   np.round, .astype, np.iinfo).
+
+`_numeric_dyadic_op` is NOT overridden: the cast hooks above make the
+inherited APLArray implementation ulab-safe.
 """
 
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Callable, Iterator
+from typing import Any, Iterator
 
-from marple.errors import LengthError
 from marple.get_numpy import np
 from marple.numpy_array import APLArray
 
@@ -111,56 +117,35 @@ class UlabAPLArray(APLArray):
     def maybe_downcast(cls, data: Any, ct: float) -> Any:
         """Recover integer result from float array when values are whole.
 
-        ulab has no `np.round`, no `.astype`, and no `np.iinfo`; each step
-        is rebuilt with Python-list primitives. ulab's widest signed int
-        on the Pimoroni rp2 build is int16 (±32767), so we keep the float
-        result when values overflow that range — wider than staying float
-        on desktop would allow, but this is the honest ulab bound.
+        Vectorised via ulab primitives (isfinite, floor, abs, maximum, all,
+        max plus operator overloads). ulab has no `np.round`, so we use
+        `floor(x + 0.5)` — round-half-up, which is fine for the integer-
+        recovery tolerance check (exact halves fail the
+        `|x - rounded| <= ct * mag` bound and never pass).
+
+        Final float→int conversion goes through a one-shot Python list
+        because ulab has no `.astype`; `np.array(list, dtype=np.int16)`
+        does the typed rebuild. ulab's widest signed int on this build is
+        int16 (±32767); values outside that range keep their float form.
         """
         if not cls.is_float_dtype(data):
             return data
         if data.size == 0:
             return data
-        values = list(data)
-        if not all(_isfinite(x) for x in values):
+        if not np.all(np.isfinite(data)):
             return data
-        rounded = [_round_half_even(x) for x in values]
+        rounded = np.floor(data + 0.5)
+        diff = abs(data - rounded)
         if ct == 0:
-            for x, r in zip(values, rounded):
-                if x != r:
-                    return data
+            if not np.all(diff == 0):
+                return data
         else:
-            for x, r in zip(values, rounded):
-                mag = max(abs(x), abs(r))
-                if abs(x - r) > ct * mag:
-                    return data
-        INT16_MAX = 32767
-        if any(abs(r) > INT16_MAX for r in rounded):
+            mag = np.maximum(abs(data), abs(rounded))
+            if not np.all(diff <= ct * mag):
+                return data
+        if float(np.max(abs(rounded))) > 32767:
             return data
-        return np.array(rounded, dtype=np.int16)
-
-
-def _isfinite(x: float) -> bool:
-    """ulab has np.isfinite but for a scalar we avoid constructing an array."""
-    # NaN never equals itself; inf compares False against a finite bound.
-    return x == x and x != float("inf") and x != float("-inf")
-
-
-def _round_half_even(x: float) -> int:
-    """Banker's rounding — matches Python's built-in `round()` for floats."""
-    return int(round(x))
-
-    def _numeric_dyadic_op(
-        self,
-        other: APLArray,
-        op: Callable[[Any, Any], Any],
-        upcast: bool = False,
-    ) -> APLArray:
-        try:
-            result = op(self.data, other.data)
-        except ValueError:
-            raise LengthError(f"Shape mismatch: {self.shape} vs {other.shape}")
-        if not isinstance(result, np.ndarray):
-            result = np.asarray(result)
-        shape = list(other.shape) if not other.is_scalar() else list(self.shape)
-        return type(self).array(shape, result)
+        from marple.backend_functions import np_reshape
+        flat = rounded.flatten() if rounded.ndim > 1 else rounded
+        int_flat = np.array([int(x) for x in flat], dtype=np.int16)
+        return np_reshape(int_flat, data.shape) if data.ndim > 1 else int_flat
