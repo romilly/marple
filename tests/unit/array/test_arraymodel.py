@@ -530,6 +530,47 @@ class TestUlabAPLArraySketch:
         result = perm.transpose_dyadic(s, io=1)
         assert result == UlabAPLArray.scalar(42)
 
+    def test_ulab_encode_scalar_scalar(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        assert UlabAPLArray.scalar(10).encode(UlabAPLArray.scalar(37)) == UlabAPLArray.scalar(7)
+
+    def test_ulab_encode_vector_scalar(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        a = UlabAPLArray.array([3], [24, 60, 60])
+        assert a.encode(UlabAPLArray.scalar(3725)) == UlabAPLArray.array([3], [1, 2, 5])
+
+    def test_ulab_encode_scalar_vector(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        a = UlabAPLArray.scalar(10)
+        result = a.encode(UlabAPLArray.array([3], [37, 42, 99]))
+        assert result == UlabAPLArray.array([3], [7, 2, 9])
+
+    def test_ulab_encode_vector_vector(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        a = UlabAPLArray.array([3], [24, 60, 60])
+        result = a.encode(UlabAPLArray.array([2], [3725, 7325]))
+        assert result == UlabAPLArray.array([3, 2], [1, 2, 2, 2, 5, 5])
+
+    def test_ulab_encode_binary(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        a = UlabAPLArray.array([3], [2, 2, 2])
+        assert a.encode(UlabAPLArray.scalar(5)) == UlabAPLArray.array([3], [1, 0, 1])
+
+    def test_ulab_encode_radix_zero_is_carry_through(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        # 0 10 ⊤ 37: last digit is 37%10=7, remaining carry is 3, radix 0 absorbs it
+        a = UlabAPLArray.array([2], [0, 10])
+        assert a.encode(UlabAPLArray.scalar(37)) == UlabAPLArray.array([2], [3, 7])
+
+    def test_ulab_encode_rejects_rank_budget_over_two(self) -> None:
+        import pytest
+        from marple.ulab_aplarray import UlabAPLArray
+        a = UlabAPLArray.array([2, 2], [2, 2, 2, 2])
+        b = UlabAPLArray.array([2], [5, 6])
+        # 2+1 = 3 > ulab rank limit
+        with pytest.raises(NotImplementedError):
+            a.encode(b)
+
 
 class TestAsStr:
     """`arr.as_str()` is the port method for char → Python str conversion.

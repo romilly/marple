@@ -292,9 +292,38 @@ class UlabAPLArray(APLArray):
         return type(other)._build_like(result_data, new_shape, other)
 
     def encode(self, other: APLArray) -> APLArray:
-        # Needs np.atleast_1d / np.broadcast_to / np.result_type /
-        # np.zeros_like — none available on ulab.
-        raise NotImplementedError("encode not available on ulab")
+        """Dyadic ⊤ on ulab: modular arithmetic loop, radix last→first per
+        scalar ω value. Result shape `(⍴α),⍴ω` — must be rank ≤ 2 for ulab.
+        """
+        from marple.errors import DomainError
+        if self.is_char() or other.is_char():
+            raise DomainError("⊤ is not defined on character data")
+        if len(self.shape) + len(other.shape) > 2:
+            raise NotImplementedError(
+                "encode result rank > 2 not supported on ulab")
+        radix = ([int(self.scalar_value())] if self.is_scalar()
+                 else [int(x) for x in self.to_list()])
+        values = ([other.scalar_value()] if other.is_scalar()
+                  else list(other.to_list()))
+
+        def digits_of(v: Any) -> list[Any]:
+            out = [0] * len(radix)
+            for i in range(len(radix) - 1, -1, -1):
+                r = radix[i]
+                if r == 0:
+                    out[i], v = v, 0
+                else:
+                    out[i], v = v % r, v // r
+            return out
+
+        rows = [digits_of(v) for v in values]
+        flat = [rows[o][r] for r in range(len(radix)) for o in range(len(values))]
+        shape = list(self.shape) + list(other.shape)
+        if not shape:
+            return type(self).scalar(flat[0])
+        data = np.array(flat)
+        return type(other)(
+            shape, self.reshape_ndarray(data, shape) if len(shape) > 1 else data)
 
     def decode(self, other: APLArray) -> APLArray:
         # Needs np.atleast_1d / np.broadcast_to / np.cumprod / np.flip
