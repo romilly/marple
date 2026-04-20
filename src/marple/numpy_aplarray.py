@@ -64,6 +64,9 @@ class NumpyAPLArray(APLArray):
         idx_arrays = [np.asarray(ax) for ax in axis_indices]
         return data[np.ix_(*idx_arrays)].flatten()
 
+    def as_str(self) -> str:
+        return ''.join(chr(int(x)) for x in self.data.flat)
+
     @classmethod
     def maybe_downcast(cls, data: Any, ct: float) -> Any:
         if not cls.is_float_dtype(data):

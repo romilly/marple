@@ -155,6 +155,9 @@ class UlabAPLArray(APLArray):
         int_flat = np.array([int(x) for x in flat], dtype=np.int16)
         return cls.reshape_ndarray(int_flat, data.shape) if data_rank > 1 else int_flat
 
+    def as_str(self) -> str:
+        return ''.join(chr(int(x)) for x in self.data.flat)
+
     # --- ndarray-level structural hooks -------------------------------------
     # ulab's reshape rejects list shapes and multi-arg form; it has no
     # np.repeat and no np.ix_ / fancy indexing. Each method rebuilds via

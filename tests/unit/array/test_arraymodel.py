@@ -508,3 +508,49 @@ class TestUlabAPLArraySketch:
         from marple.ulab_aplarray import UlabAPLArray
         a = UlabAPLArray.array([3], [1, -2, 3])
         assert a.negate() == UlabAPLArray.array([3], [-1, 2, -3])
+
+
+class TestAsStr:
+    """`arr.as_str()` is the port method for char → Python str conversion.
+
+    It replaces every `chars_to_str(arr.data)` call site. The method is
+    meaningful only on char arrays; callers are expected to have checked
+    via `arr.is_char()` first (same contract as `chars_to_str` today).
+    """
+
+    def test_char_vector_as_str(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple.backend_functions import str_to_char_array
+        a = NumpyAPLArray([5], str_to_char_array("hello"))
+        assert a.as_str() == "hello"
+
+    def test_char_scalar_as_str(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple.backend_functions import str_to_char_array
+        a = NumpyAPLArray([], str_to_char_array("A"))
+        assert a.as_str() == "A"
+
+    def test_char_matrix_as_str_flattens(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple.backend_functions import str_to_char_array
+        a = NumpyAPLArray([2, 3], str_to_char_array("abcdef"))
+        assert a.as_str() == "abcdef"
+
+    def test_empty_char_vector_as_str(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple.backend_functions import str_to_char_array
+        a = NumpyAPLArray([0], str_to_char_array(""))
+        assert a.as_str() == ""
+
+    def test_ulab_as_str(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        from marple.get_numpy import np
+        data = np.array([ord(c) for c in "hello"], dtype=np.uint16)
+        a = UlabAPLArray([5], data)
+        assert a.as_str() == "hello"
+
+    def test_port_as_str_raises_without_adapter(self) -> None:
+        import pytest
+        from marple.numpy_array import APLArray
+        with pytest.raises(NotImplementedError):
+            APLArray.as_str(APLArray.array([1], [0]))

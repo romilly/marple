@@ -146,6 +146,17 @@ class APLArray(APLValue):
         """
         raise NotImplementedError("adapter must implement maybe_downcast")
 
+    # ---- array-level port methods (declared here; adapters implement) ----
+
+    def as_str(self) -> str:
+        """Return this char array as a Python string, row-major.
+
+        The array must be character-typed — callers check via `is_char()`
+        first. Works on any rank (scalar, vector, matrix): elements are
+        joined flat, without separators.
+        """
+        raise NotImplementedError("adapter must implement as_str")
+
     def __init__(self, shape: list[int], data: list[Any] | np.ndarray[Any, Any]) -> None:
         self.shape = shape
         # Storage normalisation: data is always an ndarray whose numpy
