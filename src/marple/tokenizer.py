@@ -15,7 +15,6 @@ Marker tokens (parens, diamonds, braces, brackets, etc.) and the
 """
 
 import re
-from dataclasses import dataclass
 from typing import Callable, cast
 
 from marple.executor import (
@@ -46,49 +45,37 @@ def _isalnum(ch: str | None) -> bool:
     return _isdigit(ch) or _isalpha(ch)
 
 
-@dataclass
 class Token(Node):
     """Base for marker tokens (parens, delimiters) and the operator
     token. Value-producing lexical units are emitted as AST nodes,
     not Tokens.
 
     Inherits from `Node` so the token list is `list[Node]` —
-    tokens ARE parser-stack items, same as AST nodes. Dataclass-
-    generated `__eq__` on each marker subclass overrides the
-    dict-based Node.__eq__ at its own level.
+    tokens ARE parser-stack items, same as AST nodes. Node's
+    `__dict__`-based `__eq__` means two marker-token instances with
+    no fields compare equal; OperatorToken's glyph field differentiates.
     """
 
 
 # ── Operator token (deferred: axis-spec parsing lives in parser) ──
 
-@dataclass
 class OperatorToken(Token):
-    glyph: str
+    def __init__(self, glyph: str) -> None:
+        self.glyph = glyph
 
 
 # ── Marker tokens ──
 
-@dataclass
 class LParenToken(Token): pass
-@dataclass
 class RParenToken(Token): pass
-@dataclass
 class AssignToken(Token): pass
-@dataclass
 class DiamondToken(Token): pass
-@dataclass
 class LBraceToken(Token): pass
-@dataclass
 class RBraceToken(Token): pass
-@dataclass
 class GuardToken(Token): pass
-@dataclass
 class LBracketToken(Token): pass
-@dataclass
 class RBracketToken(Token): pass
-@dataclass
 class SemicolonToken(Token): pass
-@dataclass
 class EofToken(Token): pass
 
 
