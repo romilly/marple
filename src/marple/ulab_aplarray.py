@@ -146,6 +146,7 @@ class UlabAPLArray(APLArray):
         if float(np.max(abs(rounded))) > 32767:
             return data
         from marple.backend_functions import np_reshape
-        flat = rounded.flatten() if rounded.ndim > 1 else rounded
+        data_rank = len(data.shape)
+        flat = rounded.flatten() if data_rank > 1 else rounded
         int_flat = np.array([int(x) for x in flat], dtype=np.int16)
-        return np_reshape(int_flat, data.shape) if data.ndim > 1 else int_flat
+        return np_reshape(int_flat, data.shape) if data_rank > 1 else int_flat

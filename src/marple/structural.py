@@ -162,10 +162,12 @@ def catenate(alpha: APLArray, omega: APLArray) -> APLArray:
     # Higher rank: catenate along last axis.
     a = alpha.data
     b = omega.data
-    if a.ndim < b.ndim:
-        a = a.reshape([1] * (b.ndim - a.ndim) + list(a.shape))
-    elif b.ndim < a.ndim:
-        b = b.reshape([1] * (a.ndim - b.ndim) + list(b.shape))
+    a_rank = len(a.shape)
+    b_rank = len(b.shape)
+    if a_rank < b_rank:
+        a = np_reshape(a, [1] * (b_rank - a_rank) + list(a.shape))
+    elif b_rank < a_rank:
+        b = np_reshape(b, [1] * (a_rank - b_rank) + list(b.shape))
     result = np.concatenate((a, b), axis=-1)
     return NumpyAPLArray(list(result.shape), result)
 
@@ -456,7 +458,7 @@ def encode(alpha: APLArray, omega: APLArray) -> APLArray:
     # At each position, peel off one digit and update the carry.
     # `view_shape` reshapes a single radix slice so it broadcasts
     # naturally against the carry across the ω axes.
-    view_shape = other_a_dims + (1,) * o.ndim
+    view_shape = other_a_dims + (1,) * len(o.shape)
     for i in range(n - 1, -1, -1):
         radix_i = a_atleast[i].reshape(view_shape)
         zero_mask = (radix_i == 0)
@@ -497,8 +499,8 @@ def decode(alpha: APLArray, omega: APLArray) -> APLArray:
     o_n = o_atleast.shape[0]    # length of ω's first axis (digit axis)
 
     # Result shape (the digit axis is consumed on each side).
-    a_outer = list(a.shape[:-1]) if a.ndim >= 1 else []
-    o_outer = list(o.shape[1:]) if o.ndim >= 1 else []
+    a_outer = list(a.shape[:-1]) if len(a.shape) >= 1 else []
+    o_outer = list(o.shape[1:]) if len(o.shape) >= 1 else []
     result_shape = a_outer + o_outer
 
     # Empty digit axis on either side → empty polynomial → 0.

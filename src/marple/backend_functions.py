@@ -136,7 +136,7 @@ def to_list(data: NDArray) -> list[Any]:
     For 0-d numpy input, returns a 1-element list rather than a bare
     scalar, so `for x in to_list(...)` always works.
     """
-    if data.ndim == 0:
+    if len(data.shape) == 0:  # ulab has no .ndim; 0-d only exists on numpy
         return [scalar_item(data)]
     return data.tolist()
 
