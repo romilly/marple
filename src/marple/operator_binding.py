@@ -38,8 +38,14 @@ _IDENTITY_ELEMENTS: dict[str, int | float] = {
     "-": 0,
     "×": 1,
     "÷": 1,
-    "⌈": -np.finfo(np.float64).max,
-    "⌊": np.finfo(np.float64).max,
+    # Dyalog's identity for empty ⌈/⌊ is ±float64.max (not ±inf).
+    # Literal avoids a module-load call to np.finfo(np.float64), which
+    # fails on ulab (no np.finfo, no float64). On CPython this is
+    # exactly `np.finfo(np.float64).max`; on narrower-float MicroPython
+    # builds the literal may coerce to ±inf, which is an acceptable
+    # Pico-side fallback until a backend hook replaces it in Phase 6b.
+    "⌈": -1.7976931348623157e308,
+    "⌊": 1.7976931348623157e308,
     "∧": 1,
     "∨": 0,
     "=": 1,
