@@ -173,6 +173,25 @@ class UlabAPLArray(APLArray):
         from marple.backend_functions import data_type_code
         return data_type_code(self.data)
 
+    def catenate(self, other: APLArray) -> APLArray:
+        if self.is_scalar() and other.is_scalar():
+            return type(self)([2], np.concatenate(
+                (self.data.flatten(), other.data.flatten())))
+        if len(self.shape) <= 1 and len(other.shape) <= 1:
+            a = self.data.flatten()
+            b = other.data.flatten()
+            return type(self)([len(a) + len(b)], np.concatenate((a, b)))
+        a = self.data
+        b = other.data
+        a_rank = len(a.shape)
+        b_rank = len(b.shape)
+        if a_rank < b_rank:
+            a = self.reshape_ndarray(a, [1] * (b_rank - a_rank) + list(a.shape))
+        elif b_rank < a_rank:
+            b = self.reshape_ndarray(b, [1] * (a_rank - b_rank) + list(b.shape))
+        result = np.concatenate((a, b), axis=-1)
+        return type(self)(list(result.shape), result)
+
     def rotate(self, other: APLArray) -> APLArray:
         n = int(self.scalar_value()) if self.is_scalar() else int(self.to_list()[0])
         return type(other)(list(other.shape), np.roll(other.data, -n, axis=-1))

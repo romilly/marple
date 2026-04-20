@@ -523,8 +523,13 @@ class APLArray(APLValue):
         return reshape(self, other)
 
     def catenate(self, other: APLArray) -> APLArray:
-        from marple.structural import catenate
-        return catenate(self, other)
+        """Dyadic ,: catenate `self` with `other` along the last axis.
+
+        Scalar + scalar → rank-1 2-element vector. Rank ≤ 1 cases
+        produce a 1-D concatenation. Higher ranks: lower-rank operand
+        is promoted with leading length-1 axes, then concatenated.
+        """
+        raise NotImplementedError("adapter must implement catenate")
 
     def take(self, other: APLArray) -> APLArray:
         from marple.structural import take

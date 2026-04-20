@@ -43,36 +43,6 @@ def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
     return NumpyAPLArray(new_shape, np_reshape(cycled, new_shape))
 
 
-def catenate(alpha: APLArray, omega: APLArray) -> APLArray:
-    """Dyadic ,: catenate along last axis.
-
-    Mixed char/numeric catenation coerces via np.concatenate's dtype
-    promotion rules (an existing accidental behaviour: chars become
-    integer codepoints, or numeric fails to char). This is not strict
-    APL — proper behaviour would produce a nested array — but it is
-    what marple has always done and no test currently depends on the
-    strict semantics.
-    """
-    if alpha.is_scalar() and omega.is_scalar():
-        return NumpyAPLArray([2], np.concatenate(
-            (alpha.data.flatten(), omega.data.flatten())))
-    if len(alpha.shape) <= 1 and len(omega.shape) <= 1:
-        a = alpha.data.flatten()
-        b = omega.data.flatten()
-        return NumpyAPLArray([len(a) + len(b)], np.concatenate((a, b)))
-    # Higher rank: catenate along last axis.
-    a = alpha.data
-    b = omega.data
-    a_rank = len(a.shape)
-    b_rank = len(b.shape)
-    if a_rank < b_rank:
-        a = np_reshape(a, [1] * (b_rank - a_rank) + list(a.shape))
-    elif b_rank < a_rank:
-        b = np_reshape(b, [1] * (a_rank - b_rank) + list(b.shape))
-    result = np.concatenate((a, b), axis=-1)
-    return NumpyAPLArray(list(result.shape), result)
-
-
 def _fill_element(omega: APLArray) -> object:
     """Return the fill element: char_fill (uint32 32) for char arrays,
     0 for numeric."""
