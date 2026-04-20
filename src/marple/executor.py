@@ -2,24 +2,23 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-import typing as _typing
-if _typing.TYPE_CHECKING:
-    from itertools import product
-else:
-    try:
-        from itertools import product
-    except ImportError:
-        # MicroPython has no itertools. Pre-drop (commit 49b72b2~) used
-        # this hand-rolled cartesian product.
-        def product(*lists):
-            if not lists:
-                yield ()
-                return
-            for item in lists[0]:
-                for rest in product(*lists[1:]):
-                    yield (item,) + rest
 from marple.numpy_array import _gcd_float
 from typing import Any, Callable, TYPE_CHECKING, cast
+
+
+def product(*lists: Any) -> Any:
+    """Cartesian product generator over one or more sequences.
+
+    Local implementation rather than itertools.product — avoids the
+    stdlib dependency entirely so the executor has identical behaviour
+    across backends.
+    """
+    if not lists:
+        yield ()
+        return
+    for item in lists[0]:
+        for rest in product(*lists[1:]):
+            yield (item,) + rest
 
 from marple.numpy_array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
