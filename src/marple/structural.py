@@ -3,7 +3,7 @@ from typing import Any
 from marple.numpy_array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import (
-    char_fill, get_char_dtype, is_char_array, np_repeat, np_reshape, to_list,
+    char_fill, get_char_dtype, np_repeat, np_reshape,
 )
 from marple.errors import DomainError, IndexError_, LengthError, RankError
 from marple.get_numpy import np
@@ -23,7 +23,7 @@ def reshape(alpha: APLArray, omega: APLArray) -> APLArray:
     if alpha.is_scalar():
         new_shape = [int(alpha.scalar_value())]
     else:
-        new_shape = [int(x) for x in alpha.data]
+        new_shape = [int(x) for x in alpha.to_list()]
     total = 1
     for s in new_shape:
         total *= s
@@ -53,14 +53,14 @@ def _tolerant_match(a: object, b: object, ct: float) -> bool:
 
 
 def index_of(alpha: APLArray, omega: APLArray, io: int = 1, ct: float = 0) -> APLArray:
-    data = to_list(alpha.data)
+    data = alpha.to_list()
     if omega.is_scalar():
         target = omega.scalar_value()
         for i, val in enumerate(data):
             if _tolerant_match(val, target, ct):
                 return S(i + io)
         return S(len(data) + io)
-    targets = to_list(omega.data)
+    targets = omega.to_list()
     results = []
     for target in targets:
         found = False
@@ -76,14 +76,14 @@ def index_of(alpha: APLArray, omega: APLArray, io: int = 1, ct: float = 0) -> AP
 
 def membership(alpha: APLArray, omega: APLArray, ct: float = 0) -> APLArray:
     """Dyadic ∈: for each element of alpha, 1 if found in omega, else 0."""
-    right_data = to_list(omega.data)
+    right_data = omega.to_list()
     if alpha.is_scalar():
         val = alpha.scalar_value()
         for r in right_data:
             if _tolerant_match(val, r, ct):
                 return S(1)
         return S(0)
-    left_data = to_list(alpha.data)
+    left_data = alpha.to_list()
     results: list[object] = []
     for val in left_data:
         found = 0
@@ -128,7 +128,7 @@ def catenate(alpha: APLArray, omega: APLArray) -> APLArray:
 def _fill_element(omega: APLArray) -> object:
     """Return the fill element: char_fill (uint32 32) for char arrays,
     0 for numeric."""
-    if is_char_array(omega.data):
+    if omega.is_char():
         return char_fill()
     return 0
 
@@ -374,7 +374,7 @@ def encode(alpha: APLArray, omega: APLArray) -> APLArray:
     (×/X)|Y per the spec. This falls out naturally from the modular
     arithmetic.
     """
-    if is_char_array(alpha.data) or is_char_array(omega.data):
+    if alpha.is_char() or omega.is_char():
         raise DomainError("⊤ is not defined on character data")
 
     a = alpha.data
@@ -438,7 +438,7 @@ def decode(alpha: APLArray, omega: APLArray) -> APLArray:
     the spec falls out naturally because the weights vector is built
     from `α[1:]` followed by 1, never using `α[0]`.
     """
-    if is_char_array(alpha.data) or is_char_array(omega.data):
+    if alpha.is_char() or omega.is_char():
         raise DomainError("⊥ is not defined on character data")
 
     a = alpha.data
