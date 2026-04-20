@@ -1,45 +1,39 @@
-"""is_numeric_array and is_char_array must be disjoint.
+"""`arr.is_char()` and `arr.is_numeric()` must be disjoint.
 
-Step 3 of the character uint32 migration plan
-(plan/plan-char-uint32-migration.md). Once character data is stored
-as uint32 ndarrays, the two predicates need to partition the data
-cleanly: any uint32 array is character data, never numeric. Otherwise
-consumers using `if is_numeric_array(...)` as a fast path will silently
-apply arithmetic to character codepoints.
+Any APLArray is either character or numeric, never both. A consumer
+using `if arr.is_numeric()` as a fast path would silently apply
+arithmetic to character codepoints if these predicates overlapped.
 """
 
-from marple.backend_functions import is_char_array, is_numeric_array
-from marple.get_numpy import np
+from marple.numpy_aplarray import NumpyAPLArray
+from marple.backend_functions import str_to_char_array
 
 
 class TestPredicatesDisjoint:
-    def test_uint32_is_char_not_numeric(self) -> None:
-        data = np.array([97, 98, 99], dtype=np.uint32)
-        assert is_char_array(data)
-        assert not is_numeric_array(data)
+    def test_char_vector_is_char_not_numeric(self) -> None:
+        a = NumpyAPLArray([3], str_to_char_array("abc"))
+        assert a.is_char()
+        assert not a.is_numeric()
 
-    def test_empty_uint32_is_char_not_numeric(self) -> None:
-        data = np.array([], dtype=np.uint32)
-        assert is_char_array(data)
-        assert not is_numeric_array(data)
+    def test_empty_char_vector_is_char_not_numeric(self) -> None:
+        a = NumpyAPLArray([0], str_to_char_array(""))
+        assert a.is_char()
+        assert not a.is_numeric()
 
-    def test_int64_is_numeric_not_char(self) -> None:
-        data = np.array([1, 2, 3], dtype=np.int64)
-        assert is_numeric_array(data)
-        assert not is_char_array(data)
+    def test_int_vector_is_numeric_not_char(self) -> None:
+        a = NumpyAPLArray.array([3], [1, 2, 3])
+        assert a.is_numeric()
+        assert not a.is_char()
 
-    def test_float64_is_numeric_not_char(self) -> None:
-        data = np.array([1.0, 2.0], dtype=np.float64)
-        assert is_numeric_array(data)
-        assert not is_char_array(data)
+    def test_float_vector_is_numeric_not_char(self) -> None:
+        a = NumpyAPLArray.array([2], [1.0, 2.0])
+        assert a.is_numeric()
+        assert not a.is_char()
 
-    def test_int32_is_numeric_not_char(self) -> None:
-        data = np.array([1, 2], dtype=np.int32)
-        assert is_numeric_array(data)
-        assert not is_char_array(data)
-
-    def test_uint8_bool_is_numeric_not_char(self) -> None:
-        # Boolean results use uint8 — must remain numeric.
-        data = np.array([0, 1, 1], dtype=np.uint8)
-        assert is_numeric_array(data)
-        assert not is_char_array(data)
+    def test_boolean_result_is_numeric_not_char(self) -> None:
+        # Results of comparisons are boolean/numeric, never char.
+        a = NumpyAPLArray.array([3], [1, 2, 3])
+        b = NumpyAPLArray.array([3], [2, 2, 2])
+        result = a.less_than(b)
+        assert result.is_numeric()
+        assert not result.is_char()

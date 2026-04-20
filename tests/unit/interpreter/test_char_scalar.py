@@ -42,18 +42,14 @@ class TestSingleCharIsScalar:
     def test_empty_string_is_char_array(self) -> None:
         # '' is character data, not numeric. Empty string used to silently
         # produce a float64 empty array — this pins Step 2 of the migration.
-        from marple.backend_functions import is_char_array
         result = Interpreter(io=1).run("''")
-        assert is_char_array(result.data)
+        assert result.is_char()
 
-    def test_multi_char_literal_is_uint32(self) -> None:
-        # Step 4: non-empty string literals must be uint32 ndarrays.
-        from marple.backend_functions import is_char_array
+    def test_multi_char_literal_is_char(self) -> None:
+        # Non-empty string literals must be character data.
         result = Interpreter(io=1).run("'abc'")
-        assert str(result.data.dtype) == 'uint32'
-        assert is_char_array(result.data)
-        # Codepoints check
-        assert list(result.data) == [97, 98, 99]
+        assert result.is_char()
+        assert result.as_str() == "abc"
 
 
 class TestCharScalarSemantics:

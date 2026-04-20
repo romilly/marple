@@ -2,8 +2,8 @@ import pytest
 
 from marple.get_numpy import np
 from marple.backend_functions import (
-    is_numeric_array, to_array, to_list,
-    is_char_array, chars_to_str, str_to_char_array, char_fill,
+    is_numeric_array, to_array,
+    chars_to_str, str_to_char_array, char_fill,
 )
 
 
@@ -43,33 +43,6 @@ class TestToArray:
     def test_int_within_range_stays_int(self) -> None:
         result = to_array([100])
         assert isinstance(result.tolist()[0], int)
-
-class TestToList:
-
-    def test_ndarray_to_list(self) -> None:
-        arr = to_array([1, 2, 3])
-        result = to_list(arr)
-        assert isinstance(result, list)
-        assert result == [1, 2, 3]
-
-
-
-
-class TestIsCharArray:
-
-    def test_uint32_array_is_char(self) -> None:
-        data = np.array([65, 66, 67], dtype=np.uint32)
-        assert is_char_array(data)
-
-    def test_int_array_is_not_char(self) -> None:
-        assert not is_char_array(np.array([1, 2, 3]))
-
-    def test_float_array_is_not_char(self) -> None:
-        assert not is_char_array(np.array([1.0, 2.0]))
-
-    def test_empty_array_is_not_char(self) -> None:
-        assert not is_char_array(np.array([]))
-
 
 class TestCharsToStr:
 

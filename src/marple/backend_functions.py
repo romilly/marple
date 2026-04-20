@@ -100,11 +100,6 @@ def ignoring_numeric_errstate() -> AbstractContextManager[None]:
     return get_backend_class().ignoring_numeric_errstate()
 
 
-def is_char_array(data: NDArray) -> bool:
-    """Check if data represents character data (ndarray of codepoints)."""
-    return data.dtype == get_char_dtype()
-
-
 def chars_to_str(data: NDArray) -> str:
     """Convert character array data to a Python string."""
     return ''.join(chr(int(x)) for x in data.flat)
@@ -130,17 +125,6 @@ def char_fill() -> Any:
 def to_array(data: list[Any]) -> NDArray:
     """Convert a Python list to a numpy ndarray."""
     return np.array(data)
-
-
-def to_list(data: NDArray) -> list[Any]:
-    """Convert an ndarray to a Python list with native types.
-
-    For 0-d numpy input, returns a 1-element list rather than a bare
-    scalar, so `for x in to_list(...)` always works.
-    """
-    if len(data.shape) == 0:  # ulab has no .ndim; 0-d only exists on numpy
-        return [scalar_item(data)]
-    return data.tolist()
 
 
 def is_numeric_array(data: NDArray) -> bool:

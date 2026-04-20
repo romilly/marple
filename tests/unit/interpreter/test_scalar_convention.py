@@ -69,20 +69,6 @@ def test_constructor_wraps_numpy_scalar_as_zero_d_ndarray() -> None:
     assert float(s.data) == 3.14
 
 
-def test_to_list_returns_list_for_zero_d_input() -> None:
-    """`to_list` is used as a "give me an iterable" helper across the
-    codebase. On a 0-d numpy array, the underlying `.tolist()` returns
-    the bare scalar (e.g. `7`), NOT a list `[7]` — so any consumer
-    doing `for x in to_list(...)` would silently break with a
-    TypeError after the storage flip. Lock in the contract: to_list
-    always returns a Python list.
-    """
-    from marple.backend_functions import to_list
-    result = to_list(np.asarray(7))
-    assert isinstance(result, list)
-    assert result == [7]
-
-
 def test_dyadic_handles_zero_d_scalars_both_sides() -> None:
     """The `_dyadic` helper must handle 0-d scalar operands on both
     sides. Uses `circular` (○) which has no numpy fast path and
