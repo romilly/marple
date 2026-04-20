@@ -5,7 +5,7 @@ from typing import Any
 from marple.numpy_array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.formatting import format_num
-from marple.backend_functions import chars_to_str, get_char_dtype, is_char_array, str_to_char_array
+from marple.backend_functions import chars_to_str, get_char_dtype, str_to_char_array
 from marple.get_numpy import np
 from marple.errors import DomainError
 
@@ -126,7 +126,7 @@ def apply_group(group: FmtGroup, value: APLArray | None,
         return group.text
     if value is None:
         return " " * (group.width * group.repeat)
-    is_char = is_char_array(value.data)
+    is_char = value.is_char()
     if group.code == "A" and not is_char:
         raise DomainError("A format requires character data")
     if group.code != "A" and is_char:
@@ -138,7 +138,7 @@ def apply_group(group: FmtGroup, value: APLArray | None,
                 return " " * total_chars
             row_chars = list(chars_to_str(value.data[row]))
         elif is_char:
-            row_chars = list(chars_to_str(value.data)) if row == 0 else []
+            row_chars = list(value.as_str()) if row == 0 else []
         else:
             row_chars = []
         while len(row_chars) < total_chars:
@@ -170,7 +170,7 @@ def column_row_count(value: APLArray, is_alpha: bool) -> int:
         return 1
     if len(value.shape) >= 2:
         return value.shape[0]
-    if is_alpha and is_char_array(value.data):
+    if is_alpha and value.is_char():
         return 1
     return value.shape[0]
 
