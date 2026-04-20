@@ -6,7 +6,6 @@ built-in service: (A⌶)Y applies service A to Y.
 
 import pytest
 
-from marple.backend_functions import chars_to_str
 from marple.ports.array import APLArray, S
 from marple.engine import Interpreter
 from marple.errors import DomainError
@@ -15,21 +14,21 @@ from marple.errors import DomainError
 class TestIBeamBasic:
     def test_upper_via_ibeam(self) -> None:
         result = Interpreter(io=1).run("(100⌶) 'hello'")
-        assert chars_to_str(result.data) == "HELLO"
+        assert result.as_str() == "HELLO"
 
     def test_lower_via_ibeam(self) -> None:
         result = Interpreter(io=1).run("(101⌶) 'HELLO'")
-        assert chars_to_str(result.data) == "hello"
+        assert result.as_str() == "hello"
 
     def test_trim_via_ibeam(self) -> None:
         result = Interpreter(io=1).run("(102⌶) '  hi  '")
-        assert chars_to_str(result.data) == "hi"
+        assert result.as_str() == "hi"
 
     def test_ibeam_assigned(self) -> None:
         i = Interpreter(io=1)
         i.run("up←100⌶")
         result = i.run("up 'world'")
-        assert chars_to_str(result.data) == "WORLD"
+        assert result.as_str() == "WORLD"
 
 
 class TestIBeamErrors:

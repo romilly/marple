@@ -5,7 +5,7 @@ from typing import Any
 from marple.ports.array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.formatting import format_num
-from marple.backend_functions import chars_to_str, get_char_dtype, str_to_char_array
+from marple.backend_functions import get_char_dtype, str_to_char_array
 from marple.get_numpy import np
 from marple.errors import DomainError
 
@@ -136,7 +136,7 @@ def apply_group(group: FmtGroup, value: APLArray | None,
         if len(value.shape) >= 2:
             if row >= value.shape[0]:
                 return " " * total_chars
-            row_chars = list(chars_to_str(value.data[row]))
+            row_chars = list(value.slice_axis(0, row).as_str())
         elif is_char:
             row_chars = list(value.as_str()) if row == 0 else []
         else:

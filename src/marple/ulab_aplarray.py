@@ -173,6 +173,25 @@ class UlabAPLArray(APLArray):
         from marple.backend_functions import data_type_code
         return data_type_code(self.data)
 
+    def slice_axis(self, axis: int, index: int) -> APLArray:
+        """ulab has no fancy indexing beyond `data[i]` for first-axis;
+        column slices on rank 2 go through a Python loop.
+        """
+        rank = len(self.shape)
+        if axis < 0 or axis >= rank:
+            raise ValueError(
+                "axis {} out of range for rank-{} array".format(axis, rank))
+        if axis == 0:
+            sliced = self.data[index]
+        elif rank == 2 and axis == 1:
+            sliced = np.array(
+                [row[index] for row in self.data], dtype=self.data.dtype)
+        else:
+            raise NotImplementedError(
+                "slice_axis rank > 2 with axis > 0 not supported on ulab")
+        new_shape = [s for i, s in enumerate(self.shape) if i != axis]
+        return type(self)(new_shape, sliced)
+
     # --- ndarray-level structural hooks -------------------------------------
     # ulab's reshape rejects list shapes and multi-arg form; it has no
     # np.repeat and no np.ix_ / fancy indexing. Each method rebuilds via

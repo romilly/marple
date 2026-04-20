@@ -18,12 +18,11 @@ class TestSimpleAssignment:
         assert i.run("x") == APLArray.array([3], [1, 2, 3])
 
     def test_char_assignment_stores_value(self) -> None:
-        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         i.run("x←'hello'")
         result = i.run("x")
         assert result.shape == [5]
-        assert chars_to_str(result.data) == "hello"
+        assert result.as_str() == "hello"
 
 
 class TestChainedAssignment:

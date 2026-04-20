@@ -7,11 +7,10 @@ from tests.adapters.fake_filesystem import FakeFileSystem
 
 class TestLXAssignment:
     def test_assign_and_read(self) -> None:
-        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         i.run("⎕LX←'2+3'")
         result = i.run("⎕LX")
-        assert chars_to_str(result.data) == "2+3"
+        assert result.as_str() == "2+3"
 
     def test_default_empty(self) -> None:
         i = Interpreter(io=1)

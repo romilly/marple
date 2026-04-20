@@ -63,9 +63,8 @@ class TestVectorComparisonReturnsBoolean:
 
 class TestDyadicDRViaInterpreter:
     def test_dr_to_char(self) -> None:
-        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("320 ⎕DR 65 66 67")
-        assert chars_to_str(result.data) == "ABC"
+        assert result.as_str() == "ABC"
 
     def test_dr_to_float(self) -> None:
         result = Interpreter(io=1).run("645 ⎕DR 42")

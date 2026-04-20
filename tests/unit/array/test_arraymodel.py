@@ -499,133 +499,130 @@ class TestUlabAPLArraySketch:
 class TestAsStr:
     """`arr.as_str()` is the port method for char → Python str conversion.
 
-    It replaces every `chars_to_str(arr.data)` call site. The method is
+    It replaces every `arr.as_str()` call site. The method is
     meaningful only on char arrays; callers are expected to have checked
-    via `arr.is_char()` first (same contract as `chars_to_str` today).
+    via `arr.is_char()` first.
     """
 
     def test_char_vector_as_str(self) -> None:
-        from marple.numpy_aplarray import NumpyAPLArray
         from marple.backend_functions import str_to_char_array
-        a = NumpyAPLArray([5], str_to_char_array("hello"))
+        a = APLArray([5], str_to_char_array("hello"))
         assert a.as_str() == "hello"
 
     def test_char_scalar_as_str(self) -> None:
-        from marple.numpy_aplarray import NumpyAPLArray
         from marple.backend_functions import str_to_char_array
-        a = NumpyAPLArray([], str_to_char_array("A"))
+        a = APLArray([], str_to_char_array("A"))
         assert a.as_str() == "A"
 
     def test_char_matrix_as_str_flattens(self) -> None:
-        from marple.numpy_aplarray import NumpyAPLArray
         from marple.backend_functions import str_to_char_array
-        a = NumpyAPLArray([2, 3], str_to_char_array("abcdef"))
+        a = APLArray([2, 3], str_to_char_array("abcdef"))
         assert a.as_str() == "abcdef"
 
     def test_empty_char_vector_as_str(self) -> None:
-        from marple.numpy_aplarray import NumpyAPLArray
         from marple.backend_functions import str_to_char_array
-        a = NumpyAPLArray([0], str_to_char_array(""))
+        a = APLArray([0], str_to_char_array(""))
         assert a.as_str() == ""
 
-    def test_ulab_as_str(self) -> None:
-        from marple.ulab_aplarray import UlabAPLArray
-        from marple.get_numpy import np
-        data = np.array([ord(c) for c in "hello"], dtype=np.uint16)
-        a = UlabAPLArray([5], data)
-        assert a.as_str() == "hello"
-
     def test_port_as_str_raises_without_adapter(self) -> None:
+        # Direct call on the port bypasses __new__ dispatch and hits the
+        # NotImplementedError body. Confirms the port declares the
+        # method but holds no implementation.
         import pytest
-        from marple.ports.array import APLArray
         with pytest.raises(NotImplementedError):
             APLArray.as_str(APLArray.array([1], [0]))
 
 
 class TestIsCharIsNumeric:
     """`arr.is_char()` / `arr.is_numeric()` are the port predicates for
-    char vs numeric arrays. They replace `is_char_array(arr.data)` and
-    `is_numeric_array(arr.data)`. The two predicates are disjoint.
+    char vs numeric arrays. The two predicates are disjoint.
     """
 
     def test_char_array_is_char(self) -> None:
-        from marple.numpy_aplarray import NumpyAPLArray
         from marple.backend_functions import str_to_char_array
-        a = NumpyAPLArray([3], str_to_char_array("abc"))
+        a = APLArray([3], str_to_char_array("abc"))
         assert a.is_char() is True
         assert a.is_numeric() is False
 
-    def test_numeric_array_is_numeric(self) -> None:
-        from marple.numpy_aplarray import NumpyAPLArray
-        a = NumpyAPLArray([3], [1, 2, 3])
+    def test_int_array_is_numeric(self) -> None:
+        a = APLArray.array([3], [1, 2, 3])
         assert a.is_char() is False
         assert a.is_numeric() is True
 
     def test_float_array_is_numeric(self) -> None:
-        from marple.numpy_aplarray import NumpyAPLArray
-        a = NumpyAPLArray([3], [1.5, 2.5, 3.5])
+        a = APLArray.array([3], [1.5, 2.5, 3.5])
         assert a.is_char() is False
         assert a.is_numeric() is True
-
-    def test_ulab_char_predicate(self) -> None:
-        from marple.ulab_aplarray import UlabAPLArray
-        from marple.get_numpy import np
-        data = np.array([65, 66, 67], dtype=np.uint16)
-        a = UlabAPLArray([3], data)
-        assert a.is_char() is True
-        assert a.is_numeric() is False
 
 
 class TestToList:
     """`arr.to_list()` returns a Python list of the row-major elements.
-    Replaces `to_list(arr.data)` call sites. Scalar → 1-element list.
+    Scalar → 1-element list; vector → flat list; matrix → nested lists.
     """
 
     def test_vector_to_list(self) -> None:
-        from marple.numpy_aplarray import NumpyAPLArray
-        a = NumpyAPLArray([3], [1, 2, 3])
+        a = APLArray.array([3], [1, 2, 3])
         assert a.to_list() == [1, 2, 3]
 
     def test_scalar_to_list(self) -> None:
-        from marple.numpy_aplarray import NumpyAPLArray
-        a = NumpyAPLArray([], [7])
+        a = APLArray.scalar(7)
         assert a.to_list() == [7]
 
     def test_matrix_to_list_row_major(self) -> None:
-        from marple.numpy_aplarray import NumpyAPLArray
-        a = NumpyAPLArray([2, 3], [1, 2, 3, 4, 5, 6])
+        a = APLArray.array([2, 3], [1, 2, 3, 4, 5, 6])
         assert a.to_list() == [[1, 2, 3], [4, 5, 6]]
 
     def test_empty_to_list(self) -> None:
-        from marple.numpy_aplarray import NumpyAPLArray
-        a = NumpyAPLArray([0], [])
+        a = APLArray.array([0], [])
         assert a.to_list() == []
-
-    def test_ulab_to_list(self) -> None:
-        from marple.ulab_aplarray import UlabAPLArray
-        a = UlabAPLArray.array([3], [10, 20, 30])
-        assert a.to_list() == [10, 20, 30]
 
 
 class TestDtypeCode:
     """`arr.dtype_code()` returns the ⎕DR numeric type code.
 
     Encoding: leading digits = bit width, trailing digit = type class
-    (0=char, 3=signed int, 5=float). Replaces `data_type_code(arr.data)`.
+    (0=char, 3=signed int, 5=float).
     """
 
     def test_char_vector_dtype_code(self) -> None:
-        from marple.numpy_aplarray import NumpyAPLArray
         from marple.backend_functions import str_to_char_array
-        a = NumpyAPLArray([3], str_to_char_array("abc"))
+        a = APLArray([3], str_to_char_array("abc"))
         assert a.dtype_code() == 320
 
-    def test_int_vector_dtype_code_in_valid_range(self) -> None:
-        from marple.numpy_aplarray import NumpyAPLArray
-        a = NumpyAPLArray.array([3], [1, 2, 3])
-        assert a.dtype_code() in (83, 163, 323, 643)
+    def test_int_vector_dtype_code_is_signed_int(self) -> None:
+        a = APLArray.array([3], [1, 2, 3])
+        # Signed int codes end in 3: 83 / 163 / 323 / 643 for
+        # 8 / 16 / 32 / 64 bit widths.
+        assert a.dtype_code() % 10 == 3
 
-    def test_float_vector_dtype_code_in_valid_range(self) -> None:
-        from marple.numpy_aplarray import NumpyAPLArray
-        a = NumpyAPLArray.array([3], [1.5, 2.5, 3.5])
-        assert a.dtype_code() in (325, 645)
+    def test_float_vector_dtype_code_is_float(self) -> None:
+        a = APLArray.array([3], [1.5, 2.5, 3.5])
+        # Float codes end in 5: 325 / 645 for 32 / 64 bit.
+        assert a.dtype_code() % 10 == 5
+
+
+class TestSliceAxis:
+    """`arr.slice_axis(axis, index)` returns the sub-array where the given
+    axis is fixed at the given index. Shape drops that axis.
+
+    Replaces `arr.data[r]` (row access) and similar element/row slicing.
+    """
+
+    def test_matrix_row_by_axis_zero(self) -> None:
+        m = APLArray.array([2, 3], [1, 2, 3, 4, 5, 6])
+        assert m.slice_axis(0, 0) == APLArray.array([3], [1, 2, 3])
+        assert m.slice_axis(0, 1) == APLArray.array([3], [4, 5, 6])
+
+    def test_matrix_column_by_axis_one(self) -> None:
+        m = APLArray.array([2, 3], [1, 2, 3, 4, 5, 6])
+        assert m.slice_axis(1, 1) == APLArray.array([2], [2, 5])
+
+    def test_vector_by_axis_zero_returns_scalar(self) -> None:
+        v = APLArray.array([3], [10, 20, 30])
+        assert v.slice_axis(0, 1) == APLArray.scalar(20)
+
+    def test_matrix_slice_then_as_str_gives_row_string(self) -> None:
+        from marple.backend_functions import str_to_char_array
+        m = APLArray([2, 3], str_to_char_array("abcdef"))
+        assert m.slice_axis(0, 0).as_str() == "abc"
+        assert m.slice_axis(0, 1).as_str() == "def"

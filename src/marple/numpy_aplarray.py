@@ -82,6 +82,16 @@ class NumpyAPLArray(APLArray):
         from marple.backend_functions import data_type_code
         return data_type_code(self.data)
 
+    def slice_axis(self, axis: int, index: int) -> APLArray:
+        rank = len(self.shape)
+        if axis < 0 or axis >= rank:
+            raise ValueError(
+                "axis {} out of range for rank-{} array".format(axis, rank))
+        idx = tuple(index if i == axis else slice(None) for i in range(rank))
+        sliced = self.data[idx]
+        new_shape = [s for i, s in enumerate(self.shape) if i != axis]
+        return type(self)(new_shape, sliced)
+
     @classmethod
     def maybe_downcast(cls, data: Any, ct: float) -> Any:
         if not cls.is_float_dtype(data):

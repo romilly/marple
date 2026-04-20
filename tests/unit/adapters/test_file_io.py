@@ -11,12 +11,11 @@ from tests.adapters.fake_filesystem import FakeFileSystem
 
 class TestNReadNWrite:
     def test_write_then_read(self) -> None:
-        from marple.backend_functions import chars_to_str
         fs = FakeFileSystem()
         i = Interpreter(io=1, fs=fs)
         i.run("'hello world' ⎕NWRITE '/tmp/test.txt'")
         result = i.run("⎕NREAD '/tmp/test.txt'")
-        assert chars_to_str(result.data) == "hello world"
+        assert result.as_str() == "hello world"
 
     def test_read_missing_file(self) -> None:
         fs = FakeFileSystem()
@@ -61,13 +60,12 @@ class TestCSV:
         assert i.run("y") == APLArray.array([3], [10, 20, 30])
 
     def test_csv_text(self) -> None:
-        from marple.backend_functions import chars_to_str
         fs = FakeFileSystem({"/data.csv": "name,val\nAlice,10\nBob,20\n"})
         i = Interpreter(io=1, fs=fs)
         i.run("⎕CSV '/data.csv'")
         name_result = i.run("name")
         assert name_result.shape[0] == 2
-        row0 = chars_to_str(name_result.data[0]).rstrip()
+        row0 = name_result.slice_axis(0, 0).as_str().rstrip()
         assert row0 == "Alice"
 
 

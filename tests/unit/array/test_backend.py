@@ -3,7 +3,7 @@ import pytest
 from marple.get_numpy import np
 from marple.backend_functions import (
     is_numeric_array, to_array,
-    chars_to_str, str_to_char_array, char_fill,
+    str_to_char_array, char_fill,
 )
 
 
@@ -43,16 +43,6 @@ class TestToArray:
     def test_int_within_range_stays_int(self) -> None:
         result = to_array([100])
         assert isinstance(result.tolist()[0], int)
-
-class TestCharsToStr:
-
-    def test_from_uint32(self) -> None:
-        data = np.array([72, 101, 108, 108, 111], dtype=np.uint32)
-        assert chars_to_str(data) == "Hello"
-
-    def test_empty(self) -> None:
-        assert chars_to_str(np.array([], dtype=np.uint32)) == ""
-
 
 class TestStrToCharArray:
 

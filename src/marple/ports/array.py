@@ -182,6 +182,15 @@ class APLArray(APLValue):
         """
         raise NotImplementedError("adapter must implement dtype_code")
 
+    def slice_axis(self, axis: int, index: int) -> "APLArray":
+        """Return the sub-array where `axis` is fixed at `index`.
+
+        Result shape drops the given axis. On a vector (axis 0) the
+        result is a scalar; on a matrix sliced along axis 0 the result
+        is a row vector; sliced along axis 1 it is a column vector.
+        """
+        raise NotImplementedError("adapter must implement slice_axis")
+
     def __init__(self, shape: list[int], data: list[Any] | np.ndarray[Any, Any]) -> None:
         self.shape = shape
         # Storage normalisation: data is always an ndarray whose numpy

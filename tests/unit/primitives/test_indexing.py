@@ -57,10 +57,9 @@ class TestIndexingPreservesShape:
         assert result.shape == [3, 3]
 
     def test_string_index_with_matrix(self) -> None:
-        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("'abcde'[2 3⍴1 2 3 4 5 1]")
         assert result.shape == [2, 3]
-        assert chars_to_str(result.data) == "abcdea"
+        assert result.as_str() == "abcdea"
 
 
 class TestStringBracketIndexWithFunction:

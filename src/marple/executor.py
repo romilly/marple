@@ -23,7 +23,7 @@ def product(*lists: Any) -> Any:
 from marple.ports.array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import (
-    _DOWNCAST_CT, chars_to_str, get_char_dtype,
+    _DOWNCAST_CT, get_char_dtype,
     maybe_downcast, maybe_upcast, np_gather, str_to_char_array,
     strict_numeric_errstate,
 )
@@ -1444,7 +1444,7 @@ class Executor:
     def _sys_ex_matrix(self, operand: APLArray) -> APLArray:
         count = 0
         for r in range(operand.shape[0]):
-            name = chars_to_str(operand.data[r]).rstrip()
+            name = operand.slice_axis(0, r).as_str().rstrip()
             result = self._expunge_name(name)
             count += int(result.scalar_value())
         return S(count)
@@ -1581,7 +1581,7 @@ class Executor:
         from marple.errors import APLError
         from marple.parser import parse
         if len(operand.shape) == 2:
-            lines = [chars_to_str(operand.data[r]).rstrip()
+            lines = [operand.slice_axis(0, r).as_str().rstrip()
                      for r in range(operand.shape[0])]
             text = "\n".join(lines)
         else:

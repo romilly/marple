@@ -32,33 +32,28 @@ class TestQualifiedNameTokenization:
 
 class TestNamespaceExecution:
     def test_system_str_upper(self) -> None:
-        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("$::str::upper 'hello'")
-        assert chars_to_str(result.data) == "HELLO"
+        assert result.as_str() == "HELLO"
 
     def test_system_str_lower(self) -> None:
-        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("$::str::lower 'HELLO'")
-        assert chars_to_str(result.data) == "hello"
+        assert result.as_str() == "hello"
 
     def test_system_str_trim(self) -> None:
-        from marple.backend_functions import chars_to_str
         result = Interpreter(io=1).run("$::str::trim '  hi  '")
         assert result.shape == [2]
-        assert chars_to_str(result.data) == "hi"
+        assert result.as_str() == "hi"
 
 
 class TestImport:
     def test_import_function(self) -> None:
-        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         i.run("#import $::str::upper")
         result = i.run("upper 'hello'")
-        assert chars_to_str(result.data) == "HELLO"
+        assert result.as_str() == "HELLO"
 
     def test_import_with_alias(self) -> None:
-        from marple.backend_functions import chars_to_str
         i = Interpreter(io=1)
         i.run("#import $::str::upper as up")
         result = i.run("up 'hello'")
-        assert chars_to_str(result.data) == "HELLO"
+        assert result.as_str() == "HELLO"

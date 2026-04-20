@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from marple.backend_functions import chars_to_str, scalar_item
+from marple.backend_functions import scalar_item
 from marple.ports.array import APLArray
 from marple.numpy_aplarray import NumpyAPLArray
 
@@ -49,7 +49,7 @@ def _format_matrix(result: APLArray, pp: int) -> str:
     """Format a rank-2 array as right-justified columns."""
     rows, cols = result.shape
     if result.is_char():
-        return "\n".join(chars_to_str(result.data[r]) for r in range(rows))
+        return "\n".join(result.slice_axis(0, r).as_str() for r in range(rows))
     strs = [[format_num(result.data[r, c], pp) for c in range(cols)]
             for r in range(rows)]
     col_widths = [max(len(strs[r][c]) for r in range(rows)) for c in range(cols)]

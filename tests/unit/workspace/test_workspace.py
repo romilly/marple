@@ -85,7 +85,6 @@ class TestLoadWorkspace:
             assert i2.run("double 5") == S(10)
 
     def test_load_restores_wsid(self) -> None:
-        from marple.backend_functions import chars_to_str
         with tempfile.TemporaryDirectory() as root:
             ws_dir = os.path.join(root, "test_ws")
             i = Interpreter(io=1)
@@ -95,7 +94,7 @@ class TestLoadWorkspace:
             i2 = Interpreter(io=1)
             load_workspace(i2.env, ws_dir, evaluate=i2.run)
             wsid = i2.run("⎕WSID")
-            assert chars_to_str(wsid.data) == "test_ws"
+            assert wsid.as_str() == "test_ws"
 
     def test_load_system_vars_first(self) -> None:
         with tempfile.TemporaryDirectory() as root:
@@ -127,7 +126,6 @@ class TestLoadWorkspaceChars:
             assert i2.run("c") == i.run("'a'")
 
     def test_save_and_load_char_vector(self) -> None:
-        from marple.backend_functions import chars_to_str
         with tempfile.TemporaryDirectory() as root:
             ws_dir = os.path.join(root, "test_ws")
             i = Interpreter(io=1)
@@ -138,10 +136,9 @@ class TestLoadWorkspaceChars:
             load_workspace(i2.env, ws_dir, evaluate=i2.run)
             result = i2.run("x")
             assert result.shape == [5]
-            assert chars_to_str(result.data) == "HELLO"
+            assert result.as_str() == "HELLO"
 
     def test_save_and_load_char_matrix(self) -> None:
-        from marple.backend_functions import chars_to_str
         with tempfile.TemporaryDirectory() as root:
             ws_dir = os.path.join(root, "test_ws")
             i = Interpreter(io=1)
@@ -152,7 +149,7 @@ class TestLoadWorkspaceChars:
             load_workspace(i2.env, ws_dir, evaluate=i2.run)
             result = i2.run("x")
             assert result.shape == [2, 3]
-            assert chars_to_str(result.data) == "CATDOG"
+            assert result.as_str() == "CATDOG"
 
 
 class TestListWorkspaces:

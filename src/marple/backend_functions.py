@@ -100,11 +100,6 @@ def ignoring_numeric_errstate() -> AbstractContextManager[None]:
     return get_backend_class().ignoring_numeric_errstate()
 
 
-def chars_to_str(data: NDArray) -> str:
-    """Convert character array data to a Python string."""
-    return ''.join(chr(int(x)) for x in data.flat)
-
-
 def str_to_char_array(s: str) -> NDArray:
     """Convert a Python string to a numpy array of codepoints."""
     return np.array([ord(c) for c in s], dtype=get_char_dtype())
