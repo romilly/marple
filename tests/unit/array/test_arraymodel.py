@@ -239,16 +239,17 @@ class TestActiveCharDtype:
         finally:
             backend_functions.set_char_dtype(original)
 
-    def test_char_fill_uses_active_dtype(self) -> None:
+    def test_char_fill_roundtrips_to_active_dtype(self) -> None:
         from marple.get_numpy import np
         from marple import backend_functions
 
         original = backend_functions.get_char_dtype()
         try:
-            backend_functions.set_char_dtype(np.dtype(np.uint16))
-            fill = backend_functions.char_fill()
-            assert fill.dtype == np.dtype(np.uint16)
-            assert int(fill) == 32
+            backend_functions.set_char_dtype(np.uint16)
+            arr = np.array([backend_functions.char_fill()],
+                           dtype=backend_functions.get_char_dtype())
+            assert arr.dtype == np.uint16
+            assert int(arr[0]) == 32
         finally:
             backend_functions.set_char_dtype(original)
 

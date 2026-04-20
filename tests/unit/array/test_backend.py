@@ -103,5 +103,8 @@ class TestCharFill:
     def test_is_space_codepoint(self) -> None:
         assert int(char_fill()) == 32
 
-    def test_is_uint32(self) -> None:
-        assert str(np.array([char_fill()]).dtype) == "uint32"
+    def test_roundtrips_to_active_char_dtype(self) -> None:
+        from marple.backend_functions import get_char_dtype
+        arr = np.array([char_fill()], dtype=get_char_dtype())
+        assert arr.dtype == get_char_dtype()
+        assert int(arr[0]) == 32

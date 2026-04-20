@@ -1,7 +1,19 @@
+import sys
 from contextlib import AbstractContextManager
 from typing import Any, TYPE_CHECKING
 
 from marple.get_numpy import np
+
+# ulab has no 0-dimensional arrays: np.asarray(7) returns the bare int,
+# and reshape(()) silently produces an empty 1-d array rather than a
+# rank-0 scalar (verified on-device via mpremote). On MicroPython we
+# therefore store APL scalars as 1-d length-1 ndarrays while keeping
+# the APL shape []. Non-scalar shapes are identical on both platforms.
+# Pattern taken from pre-drop commit 03e7c89.
+if sys.implementation.name == "micropython":
+    SCALAR_STORAGE_SHAPE: tuple[int, ...] = (1,)
+else:
+    SCALAR_STORAGE_SHAPE = ()
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -102,8 +114,15 @@ def str_to_char_array(s: str) -> NDArray:
 
 
 def char_fill() -> Any:
-    """Return the fill element for character arrays: space codepoint."""
-    return get_char_dtype().type(32)
+    """Return the fill element for character arrays: the space codepoint.
+
+    Returns a plain int; callers pass it to `np.array([char_fill()],
+    dtype=get_char_dtype())` which produces a typed scalar. ulab's
+    `np.uint16` is not callable (it's an int constant), so the old
+    `CHAR_DTYPE(32)` path that worked on CPython fails there — this
+    neutral form works on both.
+    """
+    return 32
 
 
 def to_array(data: list[Any]) -> NDArray:
@@ -200,15 +219,26 @@ _DR_CODE_SPECS: "list[tuple[str, int]]" = [
 
 def _build_dr_codes() -> "dict[Any, int]":
     codes: "dict[Any, int]" = {}
+    has_dtype_factory = hasattr(np, "dtype")
+
+    def _key(dtype: Any) -> Any:
+        # Normalise keys so `codes.get(arr.dtype)` hits: numpy compares
+        # np.dtype('uint32') to np.dtype('uint32'), not to the bare
+        # np.uint32 type. ulab has no np.dtype factory — bare dtype
+        # values there already match `arr.dtype` which is an int.
+        if has_dtype_factory:
+            try:
+                return np.dtype(dtype)
+            except (TypeError, ValueError):
+                return dtype
+        return dtype
+
     for name, code in _DR_CODE_SPECS:
         dtype = getattr(np, name, None)
         if dtype is None:
             continue
-        try:
-            codes[np.dtype(dtype)] = code
-        except (TypeError, ValueError):
-            pass
-    codes[get_char_dtype()] = 320  # character
+        codes[_key(dtype)] = code
+    codes[_key(get_char_dtype())] = 320  # character
     return codes
 
 

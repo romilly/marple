@@ -35,8 +35,8 @@ class UlabAPLArray(APLArray):
     """APLArray backed by ulab on MicroPython."""
 
     @classmethod
-    def char_dtype(cls) -> np.dtype[Any]:
-        return np.dtype(np.uint16)
+    def char_dtype(cls) -> Any:
+        return np.uint16
 
     @classmethod
     @contextmanager

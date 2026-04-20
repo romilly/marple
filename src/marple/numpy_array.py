@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from marple.executor import Executor
 
 from marple.backend_functions import (
+    SCALAR_STORAGE_SHAPE,
     is_char_array, is_int_dtype, is_numeric_array, maybe_upcast,
     str_to_char_array, strict_numeric_errstate, to_array, to_bool_array, to_list,
 )
@@ -30,14 +31,19 @@ class APLArray(APLValue):
     """APL array backed by numpy arrays."""
 
     @classmethod
-    def char_dtype(cls) -> np.dtype[Any]:
-        """Numpy dtype used for character data (Unicode codepoints).
+    def char_dtype(cls) -> Any:
+        """Dtype used for character data (Unicode codepoints).
+
+        Returned as a bare dtype token — `np.uint32` on numpy, an int-like
+        constant on ulab (which has no `np.dtype` factory). Compare with
+        `arr.dtype == char_dtype()`; use as the `dtype=` kwarg to
+        `np.array(...)` — both forms work on numpy and ulab.
 
         Backend override hook: a subclass returns a narrower dtype when the
         underlying array library cannot support uint32 (e.g. ulab caps at
         uint16). BMP-only codepoints fit in uint16; APL glyphs are in the BMP.
         """
-        return np.dtype(np.uint32)
+        return np.uint32
 
     @classmethod
     @contextmanager
@@ -66,20 +72,28 @@ class APLArray(APLValue):
 
     def __init__(self, shape: list[int], data: list[Any] | np.ndarray[Any, Any]) -> None:
         self.shape = shape
-        # Storage normalisation: data is always an ndarray whose
-        # numpy shape matches the APL shape after init.
+        # Storage normalisation: data is always an ndarray whose numpy
+        # shape matches the platform's scalar-storage convention after init.
         #
-        # - lists go through to_array to become 1-d ndarrays
-        # - existing ndarrays are stored as-is
-        # - if data.shape disagrees with the APL shape, the data is
-        #   reshaped (e.g. a list becomes 1-d via to_array, then
-        #   reshape pulls it into the right shape including 0-d for
-        #   scalars)
+        # Desktop numpy: APL scalars stored as rank-0 ndarrays; data.shape
+        # mirrors APL shape exactly (v0.7.40 invariant).
+        #
+        # ulab: no 0-d arrays, so APL scalars are stored as 1-d length-1
+        # while APL shape stays []. SCALAR_STORAGE_SHAPE is set at import
+        # based on sys.implementation.name (pattern from pre-drop 03e7c89).
         if isinstance(data, list):
             self.data = to_array(data)
-        else:
+        elif shape == [] and SCALAR_STORAGE_SHAPE == (1,):
+            # ulab scalar: wrap a bare Python/numpy scalar as length-1.
+            self.data = np.array([data])
+        elif isinstance(data, np.ndarray):
             self.data = data
-        expected = tuple(shape)
+        else:
+            self.data = np.asarray(data)
+        if shape == []:
+            expected = SCALAR_STORAGE_SHAPE
+        else:
+            expected = tuple(shape)
         if self.data.shape != expected:
             self.data = self.data.reshape(expected)
 
@@ -109,14 +123,12 @@ class APLArray(APLValue):
     def scalar(cls, value: Any) -> APLArray:
         """Factory method for creating scalars.
 
-        Stores data as a 0-dimensional ndarray, matching the APL
-        rank-0 shape `[]`. Accepts both numeric values (any type
-        np.asarray can handle) and single-character strings (which
-        are stored as 0-d uint32 char data).
+        APL shape is `[]`. Underlying storage is 0-d on desktop numpy
+        and 1-d length-1 on ulab — see __init__ for the invariant.
         """
         if isinstance(value, str):
-            return cls([], str_to_char_array(value).reshape(()))
-        return cls([], np.asarray(value))
+            return cls([], str_to_char_array(value))
+        return cls([], value)
 
     def __repr__(self) -> str:
         if self.is_scalar():
