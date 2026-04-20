@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "marple-lang"
-version = "0.8.91"
+version = "0.8.92"
 description = "Mini APL in Python Language Experiment. Uses numpy arrays."
 authors = [{name = "Romilly Cocking", email = "romilly.cocking@gmail.com"}]
 license = {text = "MIT"}
@@ -29,6 +29,7 @@ marple-jupyter-install = "marple.jupyter.install:install_kernel"
 
 [project.optional-dependencies]
 jupyter = ["ipykernel==7.2.0", "jupyter_client==8.8.0"]
+pico = ["pyserial==3.5"]
 test = [
     "pytest==9.0.2",
     "pytest-cov==7.0.0",
@@ -53,8 +54,9 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short -m 'not slow' --ignore=tests/e2e/web --ignore=tests/integration/web"
+addopts = "-v --tb=short -m 'not slow and not hardware' --ignore=tests/e2e/web --ignore=tests/integration/web --ignore=tests/e2e/hardware"
 markers = [
     "slow: slow tests (PRIDE, deep TCO, delays) — run with pytest -m slow",
+    "hardware: tests requiring connected hardware (Pico) — run with pytest -m hardware",
 ]
 asyncio_mode = "auto"
