@@ -256,3 +256,43 @@ class TestActiveCharDtype:
         from marple.get_numpy import np
         from marple import backend_functions
         assert backend_functions.get_char_dtype() == np.dtype(np.uint32)
+
+
+class TestInterpreterWiresCharDtype:
+    """Constructing an Interpreter selects the char dtype from array_cls.
+
+    Platforms pass `array_cls=UlabAPLArray` (or similar) when bootstrapping
+    on non-numpy backends; the Interpreter threads that class's char_dtype
+    into backend_functions so the helpers pick up the right encoding.
+    """
+
+    def test_interpreter_sets_char_dtype_from_array_cls(self) -> None:
+        from typing import Any
+        from marple.get_numpy import np
+        from marple.engine import Interpreter
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple import backend_functions
+
+        class SmallCharArray(NumpyAPLArray):
+            @classmethod
+            def char_dtype(cls) -> np.dtype[Any]:
+                return np.dtype(np.uint16)
+
+        original = backend_functions.get_char_dtype()
+        try:
+            Interpreter(array_cls=SmallCharArray)
+            assert backend_functions.get_char_dtype() == np.dtype(np.uint16)
+        finally:
+            backend_functions.set_char_dtype(original)
+
+    def test_interpreter_default_leaves_char_dtype_uint32(self) -> None:
+        from marple.get_numpy import np
+        from marple.engine import Interpreter
+        from marple import backend_functions
+
+        original = backend_functions.get_char_dtype()
+        try:
+            Interpreter()
+            assert backend_functions.get_char_dtype() == np.dtype(np.uint32)
+        finally:
+            backend_functions.set_char_dtype(original)
