@@ -8,7 +8,8 @@ from marple.numpy_array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import (
     _DOWNCAST_CT, ignoring_numeric_errstate, is_char_array, is_int_dtype,
-    is_numeric_array, maybe_downcast,
+    is_numeric_array, maybe_downcast, maybe_upcast, np_reshape,
+    numeric_upcast_dtype,
 )
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.errors import DomainError
@@ -112,13 +113,13 @@ def _reduce(
             raise DomainError("Cannot reduce empty array")
         if not result_shape:
             return S(identity)
-        return NumpyAPLArray(result_shape, np.full(result_shape, identity, dtype=np.float64))
+        return NumpyAPLArray(result_shape,
+                             np.full(result_shape, identity, dtype=numeric_upcast_dtype()))
 
     # Move target axis to last position; reduce along rows of length n.
-    moved = np.moveaxis(omega.data, axis, rank - 1)
+    moved = _move_axis_to_last(omega.data, axis, rank)
     flat = moved.flatten() if is_numeric_array(moved) else moved
-    if is_numeric_array(flat) and is_int_dtype(flat):
-        flat = flat.astype(np.float64)
+    flat = maybe_upcast(flat)
 
     if rank == 1:
         result_val = _reduce_row(op, flat, 0, n)
@@ -126,12 +127,31 @@ def _reduce(
             result_val = maybe_downcast(np.array([result_val]), _DOWNCAST_CT)[0]
         return S(result_val)
 
-    rows = flat.reshape(-1, n)
-    result = np.zeros(len(rows), dtype=np.float64)
+    rows = np_reshape(flat, -1, n)
+    result = np.zeros(len(rows), dtype=numeric_upcast_dtype())
     for r, row in enumerate(rows):
         result[r] = _reduce_row(op, row, 0, n)
-    result = maybe_downcast(result.reshape(result_shape), _DOWNCAST_CT)
+    result = maybe_downcast(np_reshape(result, result_shape), _DOWNCAST_CT)
     return NumpyAPLArray(result_shape, result)
+
+
+def _move_axis_to_last(data: NDArray, axis: int, rank: int) -> NDArray:
+    """Bring `axis` to the last position of `data`.
+
+    CPython numpy has `np.moveaxis`; ulab doesn't, so we use the
+    ndarray.T property for the only non-trivial case that fits ulab's
+    2-D cap (rank 2, axis 0). Anything beyond that is a rank-3+ request
+    ulab can't represent anyway.
+    """
+    if axis == rank - 1:
+        return data
+    if hasattr(np, "moveaxis"):
+        return np.moveaxis(data, axis, rank - 1)
+    if rank == 2 and axis == 0:
+        return data.T
+    raise DomainError(
+        "reduction axis move not supported on this backend "
+        "(rank {} axis {})".format(rank, axis))
 
 
 _ACCUMULATE_UFUNCS: dict[str, np.ufunc] = {}

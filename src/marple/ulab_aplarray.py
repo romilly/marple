@@ -97,6 +97,11 @@ class UlabAPLArray(APLArray):
         return arr.dtype in cls._float_dtypes()
 
     @classmethod
+    def numeric_upcast_dtype(cls) -> Any:
+        # ulab has no float64; float is float32 on the Pimoroni build.
+        return np.float
+
+    @classmethod
     def maybe_upcast(cls, data: Any) -> Any:
         """Upcast int data to ulab's widest float (float32) before arithmetic.
 

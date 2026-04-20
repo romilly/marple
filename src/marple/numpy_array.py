@@ -97,6 +97,15 @@ class APLArray(APLValue):
         return data.astype(np.float64)
 
     @classmethod
+    def numeric_upcast_dtype(cls) -> Any:
+        """Widest float dtype the backend supports — used as the `dtype`
+        kwarg for zeros/full arrays in reduce/scan so the accumulator has
+        headroom over int inputs. Desktop returns float64; ulab subclass
+        returns np.float (float32) because float64 doesn't exist there.
+        """
+        return np.float64
+
+    @classmethod
     def maybe_downcast(cls, data: Any, ct: float) -> Any:
         """Convert float arrays to int if all elements are close to whole numbers.
 
