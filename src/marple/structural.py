@@ -9,59 +9,12 @@ from marple.errors import DomainError, IndexError_, LengthError, RankError
 from marple.get_numpy import np
 
 
-# Monadic structural functions
-
-def shape(omega: APLArray) -> APLArray:
-    return NumpyAPLArray.array([len(omega.shape)], list(omega.shape))
-
-
-def iota(omega: APLArray) -> APLArray:
-    if not omega.is_scalar():
-        raise RankError("Monadic ⍳ requires a scalar argument")
-    n = int(omega.scalar_value())
-    return NumpyAPLArray.array([n], list(range(1, n + 1)))
-
-
-def ravel(omega: APLArray) -> APLArray:
-    flat = omega.data.flatten()
-    return NumpyAPLArray([len(flat)], flat)
-
-
-def reverse(omega: APLArray) -> APLArray:
-    """Monadic ⌽: reverse along last axis."""
-    if len(omega.shape) <= 1:
-        return NumpyAPLArray.array(list(omega.shape), list(reversed(to_list(omega.data))))
-    # Matrix: reverse each row
-    rows, cols = omega.shape[0], omega.shape[-1]
-    row_len = cols
-    data = list(omega.data)
-    result: list[object] = []
-    for r in range(len(data) // row_len):
-        start = r * row_len
-        result.extend(reversed(data[start:start + row_len]))
-    return NumpyAPLArray.array(list(omega.shape), result)
-
-
 def _first_axis_chunk_size(shape: list[int]) -> int:
     """Product of all axes except the first."""
     size = 1
     for s in shape[1:]:
         size *= s
     return size
-
-
-def reverse_first(omega: APLArray) -> APLArray:
-    """Monadic ⊖: reverse along first axis."""
-    if len(omega.shape) <= 1:
-        return NumpyAPLArray.array(list(omega.shape), list(reversed(to_list(omega.data))))
-    chunk = _first_axis_chunk_size(omega.shape)
-    n = omega.shape[0]
-    data = list(omega.data)
-    result: list[object] = []
-    for r in range(n - 1, -1, -1):
-        start = r * chunk
-        result.extend(data[start:start + chunk])
-    return NumpyAPLArray.array(list(omega.shape), result)
 
 
 # Dyadic structural functions
