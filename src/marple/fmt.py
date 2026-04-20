@@ -153,7 +153,7 @@ def apply_group(group: FmtGroup, value: APLArray | None,
         if len(value.shape) == 0:
             scalar = value.scalar_value() if row == 0 else None
         elif row < value.shape[0]:
-            scalar = value.data[row]
+            scalar = value.slice_axis(0, row).scalar_value()
         else:
             scalar = None
         if group.code == "G" and group.text:

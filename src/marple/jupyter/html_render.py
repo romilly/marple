@@ -3,7 +3,6 @@
 import html as _html
 
 from marple.ports.array import APLArray
-from marple.numpy_aplarray import NumpyAPLArray
 from marple.formatting import format_num
 
 ARRAY_CSS = """<style>
@@ -68,21 +67,20 @@ def aplarray_to_html(arr: APLArray) -> str:
 
 def _matrix_html(arr: APLArray, is_char: bool) -> str:
     rows, cols = arr.shape
+    nested = arr.to_list()
     html_rows = []
     for r in range(rows):
         cells = ''.join(
-            _cell_html(arr.data[r, c], is_char) for c in range(cols))
+            _cell_html(nested[r][c], is_char) for c in range(cols))
         html_rows.append(f'<tr>{cells}</tr>')
     return f'<table class="apl-array">{"".join(html_rows)}</table>'
 
 
 def _high_rank_html(arr: APLArray, is_char: bool) -> str:
     outer = arr.shape[0]
-    inner_shape = arr.shape[1:]
     slices = []
     for i in range(outer):
-        sub_data = arr.data[i]
-        sub = NumpyAPLArray(list(inner_shape), sub_data)
+        sub = arr.slice_axis(0, i)
         inner_html = aplarray_to_html(sub)
         slices.append(
             f'<div class="apl-slice">'

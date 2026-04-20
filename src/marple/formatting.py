@@ -50,7 +50,8 @@ def _format_matrix(result: APLArray, pp: int) -> str:
     rows, cols = result.shape
     if result.is_char():
         return "\n".join(result.slice_axis(0, r).as_str() for r in range(rows))
-    strs = [[format_num(result.data[r, c], pp) for c in range(cols)]
+    nested = result.to_list()
+    strs = [[format_num(nested[r][c], pp) for c in range(cols)]
             for r in range(rows)]
     col_widths = [max(len(strs[r][c]) for r in range(rows)) for c in range(cols)]
     lines = [" ".join(_rjust(strs[r][c], col_widths[c]) for c in range(cols))
