@@ -232,7 +232,7 @@ def _scan(
 
     n = shape[axis]
     if n == 0:
-        return NumpyAPLArray(shape, omega.data)
+        return omega
 
     moved = _move_axis(omega.data, axis, rank - 1, rank)
     moved_shape = list(moved.shape)
