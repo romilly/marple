@@ -1,4 +1,11 @@
-"""OsFileSystem — real FileSystem adapter using os and open()."""
+"""OsFileSystem — real FileSystem adapter using os and open().
+
+Uses os.stat for existence / type checks because MicroPython has no
+os.path module; the bit masks 0x8000 (regular file) and 0x4000 (dir)
+come from the POSIX st_mode and work on both CPython and MicroPython.
+Similarly makedirs is implemented manually because MicroPython's
+os.mkdir has no `exist_ok` parameter.
+"""
 
 import os
 
@@ -17,19 +24,39 @@ class OsFileSystem(FileSystem):
             f.write(content)
 
     def exists(self, path: str) -> bool:
-        return os.path.exists(path)
+        try:
+            os.stat(path)
+            return True
+        except OSError:
+            return False
 
     def is_file(self, path: str) -> bool:
-        return os.path.isfile(path)
+        try:
+            return (os.stat(path)[0] & 0x8000) != 0
+        except OSError:
+            return False
 
     def is_dir(self, path: str) -> bool:
-        return os.path.isdir(path)
+        try:
+            return (os.stat(path)[0] & 0x4000) != 0
+        except OSError:
+            return False
 
     def delete(self, path: str) -> None:
         os.remove(path)
 
     def makedirs(self, path: str) -> None:
-        os.makedirs(path, exist_ok=True)
+        parts = path.replace("\\", "/").split("/")
+        current = ""
+        for part in parts:
+            if not part:
+                current = "/"
+                continue
+            current = current + part if current.endswith("/") else current + "/" + part
+            try:
+                os.mkdir(current)
+            except OSError:
+                pass
 
     def listdir(self, path: str) -> list[str]:
         return os.listdir(path)
