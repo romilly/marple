@@ -117,7 +117,7 @@ def _reduce(
                              np.full(result_shape, identity, dtype=numeric_upcast_dtype()))
 
     # Move target axis to last position; reduce along rows of length n.
-    moved = _move_axis_to_last(omega.data, axis, rank)
+    moved = _move_axis(omega.data, axis, rank - 1, rank)
     flat = moved.flatten() if is_numeric_array(moved) else moved
     flat = maybe_upcast(flat)
 
@@ -135,23 +135,27 @@ def _reduce(
     return NumpyAPLArray(result_shape, result)
 
 
-def _move_axis_to_last(data: NDArray, axis: int, rank: int) -> NDArray:
-    """Bring `axis` to the last position of `data`.
+def _move_axis(data: NDArray, src: int, dst: int, rank: int) -> NDArray:
+    """Move axis `src` of `data` to position `dst`.
 
-    CPython numpy has `np.moveaxis`; ulab doesn't, so we use the
-    ndarray.T property for the only non-trivial case that fits ulab's
-    2-D cap (rank 2, axis 0). Anything beyond that is a rank-3+ request
-    ulab can't represent anyway.
+    Uses `np.moveaxis` if the active backend exposes it. Falls back to
+    `data.T` for the one non-trivial case that a bare full-reverse
+    transpose solves correctly: rank 2 with a single axis swap. Higher
+    ranks need an axis-permutation primitive that ulab doesn't expose
+    (`.transpose()` takes no args on ulab, only full reverse), so those
+    raise a clear DomainError — the limit is not the rank cap itself
+    but the missing primitive, so a future ulab build that adds
+    `np.moveaxis` will just work.
     """
-    if axis == rank - 1:
+    if src == dst:
         return data
     if hasattr(np, "moveaxis"):
-        return np.moveaxis(data, axis, rank - 1)
-    if rank == 2 and axis == 0:
+        return np.moveaxis(data, src, dst)
+    if rank == 2 and {src, dst} == {0, 1}:
         return data.T
     raise DomainError(
-        "reduction axis move not supported on this backend "
-        "(rank {} axis {})".format(rank, axis))
+        "axis move {}→{} of rank-{} array needs np.moveaxis; not "
+        "available on this backend".format(src, dst, rank))
 
 
 _ACCUMULATE_UFUNCS: dict[str, np.ufunc] = {}
@@ -229,11 +233,10 @@ def _scan(
     if n == 0:
         return NumpyAPLArray(shape, omega.data)
 
-    moved = np.moveaxis(omega.data, axis, rank - 1)
+    moved = _move_axis(omega.data, axis, rank - 1, rank)
     moved_shape = list(moved.shape)
     flat = moved.flatten() if is_numeric_array(moved) else moved
-    if is_numeric_array(flat) and is_int_dtype(flat):
-        flat = flat.astype(np.float64)
+    flat = maybe_upcast(flat)
 
     if glyph is not None:
         ufunc = _ACCUMULATE_UFUNCS.get(glyph)
@@ -253,9 +256,9 @@ def _scan(
             raise DomainError("arithmetic overflow in scan")
         scanned = maybe_downcast(scanned, _DOWNCAST_CT)
 
-    scanned_arr = scanned.reshape(moved_shape)
-    final = np.moveaxis(scanned_arr, rank - 1, axis)
-    return NumpyAPLArray(shape, final.reshape(shape))
+    scanned_arr = np_reshape(scanned, moved_shape)
+    final = _move_axis(scanned_arr, rank - 1, axis, rank)
+    return NumpyAPLArray(shape, np_reshape(final, shape))
 
 
 # Default axis (0-based, relative to the argument's rank) per operator glyph.
