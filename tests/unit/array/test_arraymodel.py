@@ -554,3 +554,68 @@ class TestAsStr:
         from marple.numpy_array import APLArray
         with pytest.raises(NotImplementedError):
             APLArray.as_str(APLArray.array([1], [0]))
+
+
+class TestIsCharIsNumeric:
+    """`arr.is_char()` / `arr.is_numeric()` are the port predicates for
+    char vs numeric arrays. They replace `is_char_array(arr.data)` and
+    `is_numeric_array(arr.data)`. The two predicates are disjoint.
+    """
+
+    def test_char_array_is_char(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple.backend_functions import str_to_char_array
+        a = NumpyAPLArray([3], str_to_char_array("abc"))
+        assert a.is_char() is True
+        assert a.is_numeric() is False
+
+    def test_numeric_array_is_numeric(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        a = NumpyAPLArray([3], [1, 2, 3])
+        assert a.is_char() is False
+        assert a.is_numeric() is True
+
+    def test_float_array_is_numeric(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        a = NumpyAPLArray([3], [1.5, 2.5, 3.5])
+        assert a.is_char() is False
+        assert a.is_numeric() is True
+
+    def test_ulab_char_predicate(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        from marple.get_numpy import np
+        data = np.array([65, 66, 67], dtype=np.uint16)
+        a = UlabAPLArray([3], data)
+        assert a.is_char() is True
+        assert a.is_numeric() is False
+
+
+class TestToList:
+    """`arr.to_list()` returns a Python list of the row-major elements.
+    Replaces `to_list(arr.data)` call sites. Scalar → 1-element list.
+    """
+
+    def test_vector_to_list(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        a = NumpyAPLArray([3], [1, 2, 3])
+        assert a.to_list() == [1, 2, 3]
+
+    def test_scalar_to_list(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        a = NumpyAPLArray([], [7])
+        assert a.to_list() == [7]
+
+    def test_matrix_to_list_row_major(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        a = NumpyAPLArray([2, 3], [1, 2, 3, 4, 5, 6])
+        assert a.to_list() == [[1, 2, 3], [4, 5, 6]]
+
+    def test_empty_to_list(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        a = NumpyAPLArray([0], [])
+        assert a.to_list() == []
+
+    def test_ulab_to_list(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        a = UlabAPLArray.array([3], [10, 20, 30])
+        assert a.to_list() == [10, 20, 30]

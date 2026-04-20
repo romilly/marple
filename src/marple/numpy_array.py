@@ -157,6 +157,22 @@ class APLArray(APLValue):
         """
         raise NotImplementedError("adapter must implement as_str")
 
+    def is_char(self) -> bool:
+        """True iff this array is character-typed (Unicode codepoints)."""
+        raise NotImplementedError("adapter must implement is_char")
+
+    def is_numeric(self) -> bool:
+        """True iff this array is numeric. Disjoint from `is_char()`."""
+        raise NotImplementedError("adapter must implement is_numeric")
+
+    def to_list(self) -> list[Any]:
+        """Return the array as a Python list of native values.
+
+        Scalar arrays return a 1-element list; vectors return a flat
+        list; higher-rank arrays return nested lists (row-major).
+        """
+        raise NotImplementedError("adapter must implement to_list")
+
     def __init__(self, shape: list[int], data: list[Any] | np.ndarray[Any, Any]) -> None:
         self.shape = shape
         # Storage normalisation: data is always an ndarray whose numpy

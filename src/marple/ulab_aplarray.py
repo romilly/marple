@@ -158,6 +158,17 @@ class UlabAPLArray(APLArray):
     def as_str(self) -> str:
         return ''.join(chr(int(x)) for x in self.data.flat)
 
+    def is_char(self) -> bool:
+        return self.data.dtype == self.char_dtype()
+
+    def is_numeric(self) -> bool:
+        return self.data.dtype != self.char_dtype()
+
+    def to_list(self) -> list[Any]:
+        if len(self.data.shape) == 0:
+            return [self.data[0]] if hasattr(self.data, "shape") else [self.data]
+        return self.data.tolist()
+
     # --- ndarray-level structural hooks -------------------------------------
     # ulab's reshape rejects list shapes and multi-arg form; it has no
     # np.repeat and no np.ix_ / fancy indexing. Each method rebuilds via

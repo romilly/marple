@@ -1,8 +1,7 @@
 from typing import Any, Callable
 
 from marple.numpy_array import APLArray, S
-from marple.numpy_aplarray import NumpyAPLArray
-from marple.backend_functions import chars_to_str, is_char_array, str_to_char_array, to_list
+from marple.backend_functions import str_to_char_array
 from marple.ports.filesystem import FileSystem
 
 
@@ -18,21 +17,15 @@ def _format_value(value: object) -> str | None:
     if not isinstance(value, APLArray):
         return None
     if value.is_scalar():
-        # Char scalars must be detected via is_char_array on the
-        # ndarray itself, not by isinstance() on the extracted
-        # .item() value: post-char-migration char data is stored as
-        # uint32 codepoints, so .item() returns an int and the char
-        # nature is only visible at the dtype level.
-        if is_char_array(value.data):
-            return f"'{chars_to_str(value.data)}'"
+        if value.is_char():
+            return f"'{value.as_str()}'"
         v = value.scalar_value()
         if isinstance(v, (int, float)) and v < 0:
             return f"¯{abs(v)}"
         return str(v)
-    data = to_list(value.data)
-    if is_char_array(value.data):
-        char_str = chars_to_str(value.data)
-        quoted = f"'{char_str}'"
+    data = value.to_list()
+    if value.is_char():
+        quoted = f"'{value.as_str()}'"
         if len(value.shape) == 1:
             return quoted
         shape_str = " ".join(str(s) for s in value.shape)
@@ -80,7 +73,7 @@ def save_workspace(env: dict[str, Any], ws_dir: str,
     if wsid_val is None:
         wsid = "CLEAR WS"
     else:
-        wsid = chars_to_str(wsid_val.data)
+        wsid = wsid_val.as_str()
     fs.write_text(ws_dir + "/" + ".ws", wsid + "\n")
 
     # Track which files we write so we can clean up stale ones
@@ -145,7 +138,7 @@ def load_workspace(env: Any, ws_dir: str,
     if fs.is_file(ws_file):
         text = fs.read_text(ws_file)
         wsid = text.split("\n")[0].strip()
-        env["⎕WSID"] = NumpyAPLArray([len(wsid)], str_to_char_array(wsid))
+        env["⎕WSID"] = APLArray([len(wsid)], str_to_char_array(wsid))
 
     # Collect .apl files, system vars first
     files = sorted(fs.listdir(ws_dir))
@@ -163,8 +156,8 @@ def load_workspace(env: Any, ws_dir: str,
 
     # Execute latent expression if present
     lx = env.get("⎕LX") if hasattr(env, 'get') else env.get("⎕LX")
-    if lx is not None and isinstance(lx, APLArray) and len(lx.data) > 0:
-        lx_text = chars_to_str(lx.data)
+    if lx is not None and isinstance(lx, APLArray):
+        lx_text = lx.as_str()
         if lx_text.strip():
             result = evaluate(lx_text)
             if isinstance(result, APLArray):

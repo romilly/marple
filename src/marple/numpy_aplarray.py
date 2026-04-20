@@ -67,6 +67,17 @@ class NumpyAPLArray(APLArray):
     def as_str(self) -> str:
         return ''.join(chr(int(x)) for x in self.data.flat)
 
+    def is_char(self) -> bool:
+        return self.data.dtype == self.char_dtype()
+
+    def is_numeric(self) -> bool:
+        return self.data.dtype != self.char_dtype()
+
+    def to_list(self) -> list[Any]:
+        if len(self.data.shape) == 0:
+            return [self.data.item()]
+        return self.data.tolist()
+
     @classmethod
     def maybe_downcast(cls, data: Any, ct: float) -> Any:
         if not cls.is_float_dtype(data):
