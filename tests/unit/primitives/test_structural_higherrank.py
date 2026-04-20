@@ -1,8 +1,7 @@
 """Structural functions on higher-rank and character arrays."""
 
 from marple.backend_functions import str_to_char_array
-from marple.numpy_array import S
-from marple.numpy_aplarray import NumpyAPLArray
+from marple.numpy_array import APLArray, S
 from marple.engine import Interpreter
 
 
@@ -10,12 +9,12 @@ class TestTakeMultiAxis:
     def test_take_two_axes(self) -> None:
         """2 3↑4 5⍴⍳20 takes 2 rows and 3 columns."""
         result = Interpreter(io=0).run("2 3↑4 5⍴⍳20")
-        assert result == NumpyAPLArray.array([2, 3], [[0, 1, 2], [5, 6, 7]])
+        assert result == APLArray.array([2, 3], [[0, 1, 2], [5, 6, 7]])
 
     def test_take_with_padding(self) -> None:
         """6 3↑4 5⍴⍳20 pads extra rows with zeros."""
         result = Interpreter(io=0).run("6 3↑4 5⍴⍳20")
-        assert result == NumpyAPLArray.array([6, 3], [
+        assert result == APLArray.array([6, 3], [
             [0, 1, 2],
             [5, 6, 7],
             [10, 11, 12],
@@ -27,7 +26,7 @@ class TestTakeMultiAxis:
     def test_take_negative_both(self) -> None:
         """¯2 ¯3↑4 5⍴⍳20 takes last 2 rows, last 3 cols."""
         result = Interpreter(io=0).run("¯2 ¯3↑4 5⍴⍳20")
-        assert result == NumpyAPLArray.array([2, 3], [[12, 13, 14], [17, 18, 19]])
+        assert result == APLArray.array([2, 3], [[12, 13, 14], [17, 18, 19]])
 
     def test_scalar_left_on_matrix(self) -> None:
         """3↑4 5⍴⍳20 takes first 3 rows, all columns."""
@@ -39,7 +38,7 @@ class TestDropMultiAxis:
     def test_drop_two_axes(self) -> None:
         """1 2↓4 5⍴⍳20 drops 1 row and 2 columns."""
         result = Interpreter(io=0).run("1 2↓4 5⍴⍳20")
-        assert result == NumpyAPLArray.array([3, 3],
+        assert result == APLArray.array([3, 3],
             [[7, 8, 9], [12, 13, 14], [17, 18, 19]])
 
     def test_scalar_left_on_matrix(self) -> None:
@@ -52,146 +51,146 @@ class TestCharacterData:
     def test_take_char_with_space_fill(self) -> None:
         """5↑'abc' pads with spaces."""
         result = Interpreter(io=1).run("5↑'abc'")
-        assert result == NumpyAPLArray([5], str_to_char_array("abc  "))
+        assert result == APLArray([5], str_to_char_array("abc  "))
 
     def test_take_char_exact(self) -> None:
         result = Interpreter(io=1).run("3↑'abcde'")
-        assert result == NumpyAPLArray([3], str_to_char_array("abc"))
+        assert result == APLArray([3], str_to_char_array("abc"))
 
     def test_take_char_negative(self) -> None:
         # ¯3↑'abcde' takes the last 3
         result = Interpreter(io=1).run("¯3↑'abcde'")
-        assert result == NumpyAPLArray([3], str_to_char_array("cde"))
+        assert result == APLArray([3], str_to_char_array("cde"))
 
     def test_take_char_negative_with_fill(self) -> None:
         # ¯5↑'abc' takes 5 from the right; fill prepends
         result = Interpreter(io=1).run("¯5↑'abc'")
-        assert result == NumpyAPLArray([5], str_to_char_array("  abc"))
+        assert result == APLArray([5], str_to_char_array("  abc"))
 
     def test_take_char_zero(self) -> None:
         result = Interpreter(io=1).run("0↑'abc'")
-        assert result == NumpyAPLArray([0], str_to_char_array(""))
+        assert result == APLArray([0], str_to_char_array(""))
 
     def test_take_from_empty_char(self) -> None:
         # Take from an empty char vector — fills with spaces.
         result = Interpreter(io=1).run("3↑''")
-        assert result == NumpyAPLArray([3], str_to_char_array("   "))
+        assert result == APLArray([3], str_to_char_array("   "))
 
     def test_take_first_row_of_char_matrix(self) -> None:
         # 1↑2 3⍴'ABCDEF' takes first major cell (row); result is 1×3 matrix
         result = Interpreter(io=1).run("1↑2 3⍴'ABCDEF'")
-        assert result == NumpyAPLArray([1, 3], str_to_char_array("ABC").reshape(1, 3))
+        assert result == APLArray([1, 3], str_to_char_array("ABC").reshape(1, 3))
 
     def test_take_negative_row_of_char_matrix(self) -> None:
         result = Interpreter(io=1).run("¯1↑2 3⍴'ABCDEF'")
-        assert result == NumpyAPLArray([1, 3], str_to_char_array("DEF").reshape(1, 3))
+        assert result == APLArray([1, 3], str_to_char_array("DEF").reshape(1, 3))
 
     def test_take_two_axes_char_matrix(self) -> None:
         # 1 2↑ takes the first row, first 2 cols
         result = Interpreter(io=1).run("1 2↑2 3⍴'ABCDEF'")
-        assert result == NumpyAPLArray([1, 2], str_to_char_array("AB").reshape(1, 2))
+        assert result == APLArray([1, 2], str_to_char_array("AB").reshape(1, 2))
 
     def test_drop_char_vector(self) -> None:
         result = Interpreter(io=1).run("2↓'abcde'")
-        assert result == NumpyAPLArray([3], str_to_char_array("cde"))
+        assert result == APLArray([3], str_to_char_array("cde"))
 
     def test_drop_char_negative(self) -> None:
         result = Interpreter(io=1).run("¯2↓'abcde'")
-        assert result == NumpyAPLArray([3], str_to_char_array("abc"))
+        assert result == APLArray([3], str_to_char_array("abc"))
 
     def test_drop_char_zero(self) -> None:
         result = Interpreter(io=1).run("0↓'abc'")
-        assert result == NumpyAPLArray([3], str_to_char_array("abc"))
+        assert result == APLArray([3], str_to_char_array("abc"))
 
     def test_drop_too_many_chars(self) -> None:
         # Dropping more than length gives empty char vector
         result = Interpreter(io=1).run("5↓'abc'")
-        assert result == NumpyAPLArray([0], str_to_char_array(""))
+        assert result == APLArray([0], str_to_char_array(""))
 
     def test_drop_first_row_of_char_matrix(self) -> None:
         # 1↓ drops the first row, leaving a 1×3 matrix
         result = Interpreter(io=1).run("1↓2 3⍴'ABCDEF'")
-        assert result == NumpyAPLArray([1, 3], str_to_char_array("DEF").reshape(1, 3))
+        assert result == APLArray([1, 3], str_to_char_array("DEF").reshape(1, 3))
 
     def test_rotate_char_vector(self) -> None:
         result = Interpreter(io=1).run("1⌽'hello'")
-        assert result == NumpyAPLArray([5], str_to_char_array("elloh"))
+        assert result == APLArray([5], str_to_char_array("elloh"))
 
     def test_rotate_char_matrix(self) -> None:
         result = Interpreter(io=1).run("1⌽2 3⍴'ABCDEF'")
-        assert result == NumpyAPLArray([2, 3], str_to_char_array("BCAEFD").reshape(2, 3))
+        assert result == APLArray([2, 3], str_to_char_array("BCAEFD").reshape(2, 3))
 
     def test_reverse_char_matrix(self) -> None:
         result = Interpreter(io=1).run("⌽2 3⍴'ABCDEF'")
-        assert result == NumpyAPLArray([2, 3], str_to_char_array("CBAFED").reshape(2, 3))
+        assert result == APLArray([2, 3], str_to_char_array("CBAFED").reshape(2, 3))
 
     def test_rotate_first_char_matrix(self) -> None:
         result = Interpreter(io=1).run("1⊖2 3⍴'ABCDEF'")
-        assert result == NumpyAPLArray([2, 3], str_to_char_array("DEFABC").reshape(2, 3))
+        assert result == APLArray([2, 3], str_to_char_array("DEFABC").reshape(2, 3))
 
     def test_reshape_char(self) -> None:
         result = Interpreter(io=1).run("3⍴'AB'")
-        assert result == NumpyAPLArray([3], str_to_char_array("ABA"))
+        assert result == APLArray([3], str_to_char_array("ABA"))
 
     def test_reshape_char_matrix(self) -> None:
         result = Interpreter(io=1).run("2 3⍴'ABCD'")
-        assert result == NumpyAPLArray([2, 3], str_to_char_array("ABCDAB").reshape(2, 3))
+        assert result == APLArray([2, 3], str_to_char_array("ABCDAB").reshape(2, 3))
 
     def test_reshape_char_scalar_to_vector(self) -> None:
         # Reshape a scalar char to a vector — should fill all positions.
         result = Interpreter(io=1).run("5⍴'X'")
-        assert result == NumpyAPLArray([5], str_to_char_array("XXXXX"))
+        assert result == APLArray([5], str_to_char_array("XXXXX"))
 
     def test_reshape_empty_char_to_vector(self) -> None:
         # Reshape an empty char vector to a non-empty target — APL fills
         # with the prototype element, which for chars is space.
         result = Interpreter(io=1).run("5⍴''")
-        assert result == NumpyAPLArray([5], str_to_char_array("     "))
+        assert result == APLArray([5], str_to_char_array("     "))
 
     def test_reshape_char_to_empty(self) -> None:
         # 0⍴'AB' produces an empty char vector, not an empty numeric one.
         result = Interpreter(io=1).run("0⍴'AB'")
-        assert result == NumpyAPLArray([0], str_to_char_array(""))
+        assert result == APLArray([0], str_to_char_array(""))
 
     def test_reshape_empty_char_to_empty(self) -> None:
         # 0⍴'' is the degenerate case — empty source, empty target.
         result = Interpreter(io=1).run("0⍴''")
-        assert result == NumpyAPLArray([0], str_to_char_array(""))
+        assert result == APLArray([0], str_to_char_array(""))
 
     def test_reshape_char_to_rank3(self) -> None:
         # Reshape into a rank-3 char array.
         result = Interpreter(io=1).run("2 2 3⍴'ABCDEFGHIJKL'")
-        assert result == NumpyAPLArray([2, 2, 3], str_to_char_array("ABCDEFGHIJKL").reshape(2, 2, 3))
+        assert result == APLArray([2, 2, 3], str_to_char_array("ABCDEFGHIJKL").reshape(2, 2, 3))
 
     def test_reshape_char_matrix_to_different_shape(self) -> None:
         # Take a 2x3 char matrix and reshape it to 3x2.
         result = Interpreter(io=1).run("3 2⍴2 3⍴'ABCDEF'")
-        assert result == NumpyAPLArray([3, 2], str_to_char_array("ABCDEF").reshape(3, 2))
+        assert result == APLArray([3, 2], str_to_char_array("ABCDEF").reshape(3, 2))
 
     def test_reshape_char_cycles_when_target_larger(self) -> None:
         # Reshape larger than source cycles the source data.
         result = Interpreter(io=1).run("7⍴'AB'")
-        assert result == NumpyAPLArray([7], str_to_char_array("ABABABA"))
+        assert result == APLArray([7], str_to_char_array("ABABABA"))
 
     def test_ravel_char_matrix(self) -> None:
         result = Interpreter(io=1).run(",2 3⍴'ABCDEF'")
-        assert result == NumpyAPLArray([6], str_to_char_array("ABCDEF"))
+        assert result == APLArray([6], str_to_char_array("ABCDEF"))
 
     def test_reverse_char_vector(self) -> None:
         result = Interpreter(io=1).run("⌽'hello'")
-        assert result == NumpyAPLArray([5], str_to_char_array("olleh"))
+        assert result == APLArray([5], str_to_char_array("olleh"))
 
     def test_transpose_char_matrix(self) -> None:
         result = Interpreter(io=1).run("⍉2 3⍴'ABCDEF'")
-        assert result == NumpyAPLArray([3, 2], str_to_char_array("ADBECF").reshape(3, 2))
+        assert result == APLArray([3, 2], str_to_char_array("ADBECF").reshape(3, 2))
 
     def test_catenate_char(self) -> None:
         result = Interpreter(io=1).run("'hello','world'")
-        assert result == NumpyAPLArray([10], str_to_char_array("helloworld"))
+        assert result == APLArray([10], str_to_char_array("helloworld"))
 
     def test_catenate_char_scalar(self) -> None:
         result = Interpreter(io=1).run("'hello','-'")
-        assert result == NumpyAPLArray([6], str_to_char_array("hello-"))
+        assert result == APLArray([6], str_to_char_array("hello-"))
 
     def test_comparison_char_equal(self) -> None:
         assert Interpreter(io=1).run("'A'='A'") == S(1)
