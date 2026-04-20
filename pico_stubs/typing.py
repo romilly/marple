@@ -11,3 +11,4 @@ Generator = object
 Iterator = object
 Protocol = type('Protocol', (), {})
 TYPE_CHECKING = False
+TypeAlias = object

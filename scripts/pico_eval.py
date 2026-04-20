@@ -27,12 +27,19 @@ try:
 except (ImportError, OSError):
     pass  # No WiFi — RTC will be unset
 
+# Register UlabAPLArray as the active backend BEFORE importing engine. Engine
+# pulls in environment.py which builds _QUAD_DEFAULTS at module load using
+# str_to_char_array(""); on the Pico we need that to resolve via uint16
+# (NumpyAPLArray's default uint32 is not representable in ulab).
+from marple.backend_functions import set_backend_class
+from marple.ulab_aplarray import UlabAPLArray
+set_backend_class(UlabAPLArray)
+
 from marple.adapters.pico_config import PicoConfig
 from marple.adapters.pico_console import PicoConsole
 from marple.adapters.pico_timer import PicoTimer
 from marple.engine import Interpreter
 from marple.repl import run_repl
-from marple.ulab_aplarray import UlabAPLArray
 
 try:
     from marple_config import settings as _pico_settings  # type: ignore[import-not-found]

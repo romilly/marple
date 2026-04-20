@@ -1,17 +1,21 @@
 from contextlib import AbstractContextManager
-from typing import Any, TYPE_CHECKING, TypeAlias
-
-import numpy.typing as npt
+from typing import Any, TYPE_CHECKING
 
 from marple.get_numpy import np
 
 if TYPE_CHECKING:
+    import numpy.typing as npt
     from marple.numpy_array import APLArray
+    NDArray = npt.NDArray[Any]
+else:
+    # MicroPython / ulab has no numpy.typing. Annotations collapse to Any at
+    # runtime; pyright reads the TYPE_CHECKING branch.
+    NDArray = Any
 
-NDArray: TypeAlias = npt.NDArray[Any]
 
-
-_CHAR_DTYPE: np.dtype[Any] = np.dtype(np.uint32)
+# Lazily resolved via `get_char_dtype` — avoids a module-load-time call to
+# `np.dtype(np.uint32)`, which fails on ulab builds that cap at uint16.
+_CHAR_DTYPE: "np.dtype[Any] | None" = None
 
 # Active APLArray subclass — consulted by the module-level errstate helpers
 # so that a UlabAPLArray on the Pico can override overflow trapping without
@@ -32,8 +36,17 @@ def set_char_dtype(dtype: np.dtype[Any]) -> None:
     _CHAR_DTYPE = dtype
 
 
-def get_char_dtype() -> np.dtype[Any]:
-    """Return the currently active char dtype."""
+def get_char_dtype() -> "np.dtype[Any]":
+    """Return the currently active char dtype.
+
+    First call resolves the default via the active backend class, which
+    means a Pico that registers UlabAPLArray before the first character
+    array is constructed gets uint16 rather than the numpy-default uint32
+    (which ulab cannot represent).
+    """
+    global _CHAR_DTYPE
+    if _CHAR_DTYPE is None:
+        _CHAR_DTYPE = get_backend_class().char_dtype()
     return _CHAR_DTYPE
 
 
@@ -75,7 +88,7 @@ def ignoring_numeric_errstate() -> AbstractContextManager[None]:
 
 def is_char_array(data: NDArray) -> bool:
     """Check if data represents character data (ndarray of codepoints)."""
-    return data.dtype == _CHAR_DTYPE
+    return data.dtype == get_char_dtype()
 
 
 def chars_to_str(data: NDArray) -> str:
@@ -85,12 +98,12 @@ def chars_to_str(data: NDArray) -> str:
 
 def str_to_char_array(s: str) -> NDArray:
     """Convert a Python string to a numpy array of codepoints."""
-    return np.array([ord(c) for c in s], dtype=_CHAR_DTYPE)
+    return np.array([ord(c) for c in s], dtype=get_char_dtype())
 
 
 def char_fill() -> Any:
     """Return the fill element for character arrays: space codepoint."""
-    return _CHAR_DTYPE.type(32)
+    return get_char_dtype().type(32)
 
 
 def to_array(data: list[Any]) -> NDArray:
@@ -112,12 +125,12 @@ def to_list(data: NDArray) -> list[Any]:
 def is_numeric_array(data: NDArray) -> bool:
     """Check if data is a numeric ndarray from the active backend.
 
-    uint32 arrays are reserved for character data (Unicode codepoints)
+    Char-dtype arrays are reserved for character data (Unicode codepoints)
     and are NOT numeric — see is_char_array. The two predicates are
     disjoint, which is what allows the dyadic-arithmetic fast paths
     to use is_numeric_array as a safe gate after the char guards run.
     """
-    return data.dtype != _CHAR_DTYPE
+    return data.dtype != get_char_dtype()
 
 
 def is_int_dtype(arr: NDArray) -> bool:
@@ -172,16 +185,31 @@ def maybe_downcast(data: NDArray, ct: float) -> NDArray:
     return int_arr
 
 
-_DR_CODES: dict[np.dtype[Any], int] = {
-    np.dtype(np.uint8): 81,
-    np.dtype(np.int8): 83,
-    np.dtype(np.int16): 163,
-    np.dtype(np.int32): 323,
-    np.dtype(np.int64): 643,
-    np.dtype(np.float32): 325,
-    np.dtype(np.float64): 645,
-    np.dtype(np.uint32): 320,  # character
-}
+_DR_CODES_CACHE: "dict[Any, int] | None" = None
+
+_DR_CODE_SPECS: "list[tuple[str, int]]" = [
+    ("uint8", 81),
+    ("int8", 83),
+    ("int16", 163),
+    ("int32", 323),
+    ("int64", 643),
+    ("float32", 325),
+    ("float64", 645),
+]
+
+
+def _build_dr_codes() -> "dict[Any, int]":
+    codes: "dict[Any, int]" = {}
+    for name, code in _DR_CODE_SPECS:
+        dtype = getattr(np, name, None)
+        if dtype is None:
+            continue
+        try:
+            codes[np.dtype(dtype)] = code
+        except (TypeError, ValueError):
+            pass
+    codes[get_char_dtype()] = 320  # character
+    return codes
 
 
 def data_type_code(data: NDArray) -> int:
@@ -189,10 +217,17 @@ def data_type_code(data: NDArray) -> int:
 
     Encoding: first digits = bit width, last digit = type
     (0=char, 1=boolean, 3=signed int, 5=float, 7=decimal, 9=complex).
+
+    The code table is built lazily on first call so that module load on
+    ulab (which lacks e.g. int64) doesn't fail before the Pico eval loop
+    has even started.
     """
-    return _DR_CODES.get(data.dtype, 323)
+    global _DR_CODES_CACHE
+    if _DR_CODES_CACHE is None:
+        _DR_CODES_CACHE = _build_dr_codes()
+    return _DR_CODES_CACHE.get(data.dtype, 323)
 
 
-def to_bool_array(data: NDArray | list[int]) -> npt.NDArray[np.uint8]:
+def to_bool_array(data: "NDArray | list[int]") -> NDArray:
     """Convert data to a uint8 boolean array (0/1 values)."""
     return np.asarray(data, dtype=np.uint8)
