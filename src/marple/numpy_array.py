@@ -83,11 +83,16 @@ class APLArray(APLValue):
         # based on sys.implementation.name (pattern from pre-drop 03e7c89).
         if isinstance(data, list):
             self.data = to_array(data)
-        elif shape == [] and SCALAR_STORAGE_SHAPE == (1,):
-            # ulab scalar: wrap a bare Python/numpy scalar as length-1.
-            self.data = np.array([data])
         elif isinstance(data, np.ndarray):
+            # Already an ndarray (arithmetic result, upstream construction,
+            # etc.) — keep as-is. The reshape at the bottom adjusts the
+            # shape if needed.
             self.data = data
+        elif shape == [] and SCALAR_STORAGE_SHAPE == (1,):
+            # ulab scalar path: wrap a bare Python/numpy scalar as
+            # length-1. ulab's np.asarray(7) would return the bare int,
+            # so we construct the 1-d array explicitly.
+            self.data = np.array([data])
         else:
             self.data = np.asarray(data)
         if shape == []:
@@ -621,8 +626,10 @@ class APLArray(APLValue):
 
 
 def S(value: Any) -> APLArray:
-    # Phase C of the inheritance refactor: construct the concrete NumpyAPLArray
-    # directly so scalar literals never produce a plain (and soon-to-be-abstract)
-    # APLArray. Lazy import to avoid a cycle with numpy_aplarray.py.
-    from marple.numpy_aplarray import NumpyAPLArray
-    return NumpyAPLArray.scalar(value)
+    # Construct whichever APLArray subclass is active — NumpyAPLArray by
+    # default on desktop, UlabAPLArray on the Pico. Route through the
+    # backend_functions registry so subclass method overrides (e.g.
+    # UlabAPLArray._numeric_dyadic_op) fire on the resulting instance.
+    # Lazy import avoids an import cycle with backend_functions.
+    from marple.backend_functions import get_backend_class
+    return get_backend_class().scalar(value)
