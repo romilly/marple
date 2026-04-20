@@ -5,7 +5,6 @@ import html as _html
 from marple.numpy_array import APLArray
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.formatting import format_num
-from marple.backend_functions import NDArray, chars_to_str, is_char_array
 
 ARRAY_CSS = """<style>
 .apl-array {
@@ -34,10 +33,6 @@ ARRAY_CSS = """<style>
 </style>"""
 
 
-def _is_char_data(data: NDArray) -> bool:
-    return is_char_array(data)
-
-
 def _cell_html(value: object, is_char: bool) -> str:
     if isinstance(value, str):
         return f'<td class="char-cell">{_html.escape(value)}</td>'
@@ -46,21 +41,21 @@ def _cell_html(value: object, is_char: bool) -> str:
 
 def aplarray_to_html(arr: APLArray) -> str:
     """Convert an APLArray to an HTML representation."""
-    is_char = _is_char_data(arr.data)
+    is_char = arr.is_char()
 
     # Scalar
     if arr.shape == []:
-        val = arr.data.item()
+        val = arr.scalar_value()
         text = _html.escape(str(val) if isinstance(val, str) else format_num(val))
         return f'<span class="apl-scalar">{text}</span>'
 
     # Vector
     if len(arr.shape) == 1:
         if is_char:
-            return f'<span class="apl-scalar">{_html.escape(chars_to_str(arr.data))}</span>'
-        if len(arr.data) == 0:
+            return f'<span class="apl-scalar">{_html.escape(arr.as_str())}</span>'
+        if arr.shape[0] == 0:
             return '<table class="apl-array"><tr></tr></table>'
-        cells = ''.join(_cell_html(v, is_char) for v in arr.data)
+        cells = ''.join(_cell_html(v, is_char) for v in arr.to_list())
         return f'<table class="apl-array"><tr>{cells}</tr></table>'
 
     # Matrix
