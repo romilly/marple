@@ -1,5 +1,7 @@
 # MARPLE
 
+The latest release of opus is not working well for me. The project is on hold until the problem is resolved.
+
 MARPLE is an experimental APL interpreter that runs on Linux.
 It already has enough features to be usable, though may more are planned.
 
