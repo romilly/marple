@@ -5,7 +5,7 @@ from typing import Any
 from marple.get_numpy import np
 from marple.numpy_array import APLArray, S
 from marple.backend_functions import (
-    _DOWNCAST_CT, is_numeric_array, maybe_downcast, set_backend_class,
+    _DOWNCAST_CT, maybe_downcast, set_backend_class,
     set_char_dtype,
 )
 from marple.environment import Environment
@@ -92,7 +92,7 @@ class Interpreter(Executor):
             self._track_dfn_source(tree.name, source)
         if isinstance(result, (Function, Operator)):
             return S(0)
-        if isinstance(result, APLArray) and is_numeric_array(result.data):
+        if isinstance(result, APLArray) and result.is_numeric():
             result = self.array_cls.array(list(result.shape), maybe_downcast(result.data, _DOWNCAST_CT))
         return result
 
