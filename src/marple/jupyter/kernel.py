@@ -136,7 +136,8 @@ class MARPLEKernel(Kernel):
             shape_str = ' '.join(str(s) for s in val.shape) if val.shape else 'scalar'
             lines.append(f"Shape: {shape_str}")
             lines.append(f"Rank: {len(val.shape)}")
-            lines.append(f"Elements: {len(val.data)}")
+            from math import prod
+            lines.append(f"Elements: {prod(val.shape)}")
         else:
             source = self.interp.env.get_source(name)
             if source:
