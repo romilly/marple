@@ -567,13 +567,58 @@ class APLArray(APLValue):
         from marple.structural import matrix_divide
         return matrix_divide(self, other)
 
+    @staticmethod
+    def _tolerant_match(a: object, b: object, ct: float) -> bool:
+        """Compare two values with APL tolerance for floats."""
+        if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+            if ct == 0:
+                return a == b
+            return abs(float(a) - float(b)) <= ct * max(abs(float(a)), abs(float(b)))
+        return a == b
+
     def index_of(self, other: APLArray, io: int = 1, ct: float = 0) -> APLArray:
-        from marple.structural import index_of
-        return index_of(self, other, io, ct)
+        """Dyadic ⍳: first position in `self` where each element of `other`
+        is found (tolerant comparison), or len(self)+io if not found.
+        """
+        data = self.to_list()
+        if other.is_scalar():
+            target = other.scalar_value()
+            for i, val in enumerate(data):
+                if APLArray._tolerant_match(val, target, ct):
+                    return S(i + io)
+            return S(len(data) + io)
+        targets = other.to_list()
+        results: list[object] = []
+        for target in targets:
+            found = False
+            for i, val in enumerate(data):
+                if APLArray._tolerant_match(val, target, ct):
+                    results.append(i + io)
+                    found = True
+                    break
+            if not found:
+                results.append(len(data) + io)
+        return type(self).array(list(other.shape), results)
 
     def membership(self, other: APLArray, ct: float = 0) -> APLArray:
-        from marple.structural import membership
-        return membership(self, other, ct)
+        """Dyadic ∈: for each element of `self`, 1 if found in `other`, else 0."""
+        right_data = other.to_list()
+        if self.is_scalar():
+            val = self.scalar_value()
+            for r in right_data:
+                if APLArray._tolerant_match(val, r, ct):
+                    return S(1)
+            return S(0)
+        left_data = self.to_list()
+        results: list[object] = []
+        for val in left_data:
+            found = 0
+            for r in right_data:
+                if APLArray._tolerant_match(val, r, ct):
+                    found = 1
+                    break
+            results.append(found)
+        return type(self).array(list(self.shape), results)
 
     def from_array(self, other: APLArray, io: int = 1) -> APLArray:
         from marple.structural import from_array
