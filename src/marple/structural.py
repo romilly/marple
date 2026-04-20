@@ -139,36 +139,6 @@ def decode(alpha: APLArray, omega: APLArray) -> APLArray:
     return NumpyAPLArray(result_shape, result)
 
 
-def replicate(alpha: APLArray, omega: APLArray) -> APLArray:
-    """Dyadic /: replicate/compress along the last axis.
-
-    Each element of alpha says how many times to repeat the corresponding
-    element along omega's last axis. Scalar alpha extends to match.
-    """
-    counts = [int(x) for x in alpha.to_list()]
-    last_axis_len = omega.shape[-1] if omega.shape else 1
-    if len(counts) == 1 and last_axis_len > 1:
-        counts = counts * last_axis_len
-    if len(counts) != last_axis_len:
-        raise LengthError(f"Length mismatch: {len(counts)} vs {last_axis_len}")
-    result = np_repeat(omega.data, counts, axis=-1)
-    return NumpyAPLArray(list(result.shape), result)
-
-
-def replicate_first(alpha: APLArray, omega: APLArray) -> APLArray:
-    """Dyadic ⌿: replicate/compress along the first axis."""
-    if len(omega.shape) <= 1:
-        return replicate(alpha, omega)
-    counts = [int(x) for x in alpha.to_list()]
-    first_axis_len = omega.shape[0]
-    if len(counts) == 1 and first_axis_len > 1:
-        counts = counts * first_axis_len
-    if len(counts) != first_axis_len:
-        raise LengthError(f"Length mismatch: {len(counts)} vs {first_axis_len}")
-    result = np_repeat(omega.data, counts, axis=0)
-    return NumpyAPLArray(list(result.shape), result)
-
-
 def from_array(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
     """Dyadic ⌷: select major cells of omega at indices in alpha."""
     if omega.is_scalar():

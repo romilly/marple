@@ -291,6 +291,30 @@ class UlabAPLArray(APLArray):
             result_data.extend(row)
         return type(other)._build_like(result_data, new_shape, other)
 
+    def replicate(self, other: APLArray) -> APLArray:
+        from marple.errors import LengthError
+        counts = [int(x) for x in self.to_list()]
+        last_axis_len = other.shape[-1] if other.shape else 1
+        if len(counts) == 1 and last_axis_len > 1:
+            counts = counts * last_axis_len
+        if len(counts) != last_axis_len:
+            raise LengthError(f"Length mismatch: {len(counts)} vs {last_axis_len}")
+        result = self.repeat_ndarray(other.data, counts, axis=-1)
+        return type(other)(list(result.shape), result)
+
+    def replicate_first(self, other: APLArray) -> APLArray:
+        from marple.errors import LengthError
+        if len(other.shape) <= 1:
+            return self.replicate(other)
+        counts = [int(x) for x in self.to_list()]
+        first_axis_len = other.shape[0]
+        if len(counts) == 1 and first_axis_len > 1:
+            counts = counts * first_axis_len
+        if len(counts) != first_axis_len:
+            raise LengthError(f"Length mismatch: {len(counts)} vs {first_axis_len}")
+        result = self.repeat_ndarray(other.data, counts, axis=0)
+        return type(other)(list(result.shape), result)
+
     def expand(self, other: APLArray) -> APLArray:
         from marple.errors import LengthError
         mask = [int(x) for x in self.to_list()]

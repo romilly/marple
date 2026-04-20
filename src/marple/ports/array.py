@@ -573,12 +573,13 @@ class APLArray(APLValue):
         return decode(self, other)
 
     def replicate(self, other: APLArray) -> APLArray:
-        from marple.structural import replicate
-        return replicate(self, other)
+        """Dyadic /: replicate/compress `other` along its last axis, using
+        `self` as counts. Scalar self extends to match the axis length."""
+        raise NotImplementedError("adapter must implement replicate")
 
     def replicate_first(self, other: APLArray) -> APLArray:
-        from marple.structural import replicate_first
-        return replicate_first(self, other)
+        """Dyadic ⌿: replicate/compress `other` along its first axis."""
+        raise NotImplementedError("adapter must implement replicate_first")
 
     def expand(self, other: APLArray) -> APLArray:
         """Dyadic \\: expand `other` along its last axis using `self` as
