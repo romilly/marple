@@ -158,3 +158,34 @@ class TestBackendOverridability:
         a.subtract(b)
         a.multiply(b)
         assert calls == ["dyadic", "dyadic", "dyadic"]
+
+
+class TestCharDtype:
+    """The char dtype is a backend-specific classmethod.
+
+    NumpyAPLArray stores Unicode codepoints as uint32. A future UlabAPLArray
+    will store them as uint16 because ulab has no uint32 support. The dtype
+    is chosen by each subclass via `char_dtype()`.
+    """
+
+    def test_aplarray_default_char_dtype_is_uint32(self) -> None:
+        from marple.numpy_array import APLArray
+        from marple.get_numpy import np
+        assert APLArray.char_dtype() == np.dtype(np.uint32)
+
+    def test_numpy_aplarray_char_dtype_is_uint32(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple.get_numpy import np
+        assert NumpyAPLArray.char_dtype() == np.dtype(np.uint32)
+
+    def test_subclass_can_override_char_dtype(self) -> None:
+        from typing import Any
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple.get_numpy import np
+
+        class SmallCharArray(NumpyAPLArray):
+            @classmethod
+            def char_dtype(cls) -> np.dtype[Any]:
+                return np.dtype(np.uint16)
+
+        assert SmallCharArray.char_dtype() == np.dtype(np.uint16)

@@ -28,6 +28,16 @@ def _gcd_float(a: float, b: float) -> float:
 class APLArray(APLValue):
     """APL array backed by numpy arrays."""
 
+    @classmethod
+    def char_dtype(cls) -> np.dtype[Any]:
+        """Numpy dtype used for character data (Unicode codepoints).
+
+        Backend override hook: a subclass returns a narrower dtype when the
+        underlying array library cannot support uint32 (e.g. ulab caps at
+        uint16). BMP-only codepoints fit in uint16; APL glyphs are in the BMP.
+        """
+        return np.dtype(np.uint32)
+
     def __init__(self, shape: list[int], data: list[Any] | np.ndarray[Any, Any]) -> None:
         self.shape = shape
         # Storage normalisation: data is always an ndarray whose
