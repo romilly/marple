@@ -1,7 +1,14 @@
 import os
-import os.path
 
 from marple.apl_value import APLValue
+
+
+def _is_dir(path: str) -> bool:
+    """Directory test via os.stat (MicroPython has no os.path)."""
+    try:
+        return (os.stat(path)[0] & 0x4000) != 0
+    except OSError:
+        return False
 
 
 class Namespace:
@@ -41,17 +48,17 @@ def load_system_workspace(stdlib_path: str) -> Namespace:
     from marple.engine import Interpreter
 
     root = Namespace("$")
-    if not os.path.isdir(stdlib_path):
+    if not _is_dir(stdlib_path):
         return root
 
     for entry in sorted(os.listdir(stdlib_path)):
-        subdir = os.path.join(stdlib_path, entry)
-        if os.path.isdir(subdir) and not entry.startswith("_"):
+        subdir = stdlib_path + "/" + entry
+        if _is_dir(subdir) and not entry.startswith("_"):
             ns = Namespace(entry)
             for fname in sorted(os.listdir(subdir)):
                 if fname.endswith(".apl"):
                     func_name = fname[:-4]
-                    filepath = os.path.join(subdir, fname)
+                    filepath = subdir + "/" + fname
                     with open(filepath) as f:
                         source = f.read().strip()
                     if source:
