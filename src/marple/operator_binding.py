@@ -28,7 +28,7 @@ _ARITHMETIC_GLYPHS_REJECTING_CHARS: frozenset[str] = frozenset({
 def _reject_chars_for_op(omega: APLArray, glyph: str | None, op_name: str) -> None:
     """Raise DomainError if reducing/scanning an arithmetic operator
     over character data."""
-    if glyph in _ARITHMETIC_GLYPHS_REJECTING_CHARS and is_char_array(omega.data):
+    if glyph in _ARITHMETIC_GLYPHS_REJECTING_CHARS and omega.is_char():
         raise DomainError(f"{glyph} {op_name} is not defined on character data")
 
 
