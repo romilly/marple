@@ -78,6 +78,10 @@ class NumpyAPLArray(APLArray):
             return [self.data.item()]
         return self.data.tolist()
 
+    def dtype_code(self) -> int:
+        from marple.backend_functions import data_type_code
+        return data_type_code(self.data)
+
     @classmethod
     def maybe_downcast(cls, data: Any, ct: float) -> Any:
         if not cls.is_float_dtype(data):

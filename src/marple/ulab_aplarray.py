@@ -169,6 +169,10 @@ class UlabAPLArray(APLArray):
             return [self.data[0]] if hasattr(self.data, "shape") else [self.data]
         return self.data.tolist()
 
+    def dtype_code(self) -> int:
+        from marple.backend_functions import data_type_code
+        return data_type_code(self.data)
+
     # --- ndarray-level structural hooks -------------------------------------
     # ulab's reshape rejects list shapes and multi-arg form; it has no
     # np.repeat and no np.ix_ / fancy indexing. Each method rebuilds via

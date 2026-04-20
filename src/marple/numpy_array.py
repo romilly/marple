@@ -173,6 +173,15 @@ class APLArray(APLValue):
         """
         raise NotImplementedError("adapter must implement to_list")
 
+    def dtype_code(self) -> int:
+        """Return this array's ⎕DR numeric type code.
+
+        Encoding: leading digits = bit width; trailing digit = class
+        (0 = char, 3 = signed int, 5 = float). Used by the ⎕DR
+        system function.
+        """
+        raise NotImplementedError("adapter must implement dtype_code")
+
     def __init__(self, shape: list[int], data: list[Any] | np.ndarray[Any, Any]) -> None:
         self.shape = shape
         # Storage normalisation: data is always an ndarray whose numpy

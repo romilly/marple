@@ -619,3 +619,27 @@ class TestToList:
         from marple.ulab_aplarray import UlabAPLArray
         a = UlabAPLArray.array([3], [10, 20, 30])
         assert a.to_list() == [10, 20, 30]
+
+
+class TestDtypeCode:
+    """`arr.dtype_code()` returns the ⎕DR numeric type code.
+
+    Encoding: leading digits = bit width, trailing digit = type class
+    (0=char, 3=signed int, 5=float). Replaces `data_type_code(arr.data)`.
+    """
+
+    def test_char_vector_dtype_code(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple.backend_functions import str_to_char_array
+        a = NumpyAPLArray([3], str_to_char_array("abc"))
+        assert a.dtype_code() == 320
+
+    def test_int_vector_dtype_code_in_valid_range(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        a = NumpyAPLArray.array([3], [1, 2, 3])
+        assert a.dtype_code() in (83, 163, 323, 643)
+
+    def test_float_vector_dtype_code_in_valid_range(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        a = NumpyAPLArray.array([3], [1.5, 2.5, 3.5])
+        assert a.dtype_code() in (325, 645)

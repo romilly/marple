@@ -23,9 +23,9 @@ def product(*lists: Any) -> Any:
 from marple.numpy_array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import (
-    _DOWNCAST_CT, chars_to_str, get_char_dtype, is_char_array, is_numeric_array,
+    _DOWNCAST_CT, chars_to_str, get_char_dtype,
     maybe_downcast, maybe_upcast, np_gather, str_to_char_array,
-    strict_numeric_errstate, to_list,
+    strict_numeric_errstate,
 )
 from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
 from marple.errors import DomainError, LengthError, SyntaxError_, ValueError_
@@ -81,7 +81,7 @@ def _inner_product(
         raise LengthError(f"Inner product length error: {a_shape} vs {b_shape}")
     # Fast path: +.× uses np.dot (correct when at least one arg is rank ≤ 2)
     if (reduce_glyph == "+" and apply_glyph == "×"
-            and is_numeric_array(alpha.data) and is_numeric_array(omega.data)
+            and alpha.is_numeric() and omega.is_numeric()
             and (len(a_shape) <= 2 or len(b_shape) <= 2)):
         try:
             with strict_numeric_errstate():
@@ -132,7 +132,7 @@ _OUTER_UFUNCS: dict[str, str] = {
 def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
     """Compute outer product: alpha ∘.func omega."""
     # Fast path: use numpy ufunc.outer for numeric operands.
-    if is_numeric_array(alpha.data) and is_numeric_array(omega.data):
+    if alpha.is_numeric() and omega.is_numeric():
         ufunc_name = _OUTER_UFUNCS.get(glyph)
         if ufunc_name is not None:
             ufunc = getattr(np, ufunc_name, None)
@@ -1270,7 +1270,7 @@ class Executor:
 
     def _execute_string(self, operand: APLArray) -> APLArray:
         from marple.parser import parse
-        source = chars_to_str(operand.data)
+        source = operand.as_str()
         tree = parse(source, self.env.class_dict())
         return self.evaluate(tree)
 
@@ -1309,7 +1309,7 @@ class Executor:
             if not isinstance(value, APLArray):
                 raise DomainError(f"Cannot assign a function to {name}")
             return self._io_assign(name, value)
-        if isinstance(value, APLArray) and is_numeric_array(value.data):
+        if isinstance(value, APLArray) and value.is_numeric():
             value = NumpyAPLArray.array(list(value.shape), maybe_downcast(value.data, _DOWNCAST_CT))
         if name.startswith("⎕"):
             if name == "⎕FR" and isinstance(value, APLArray):
@@ -1431,7 +1431,7 @@ class Executor:
         raise DomainError(f"Unknown dyadic system function: {name}")
 
     def _sys_nc(self, operand: APLArray) -> APLArray:
-        name = chars_to_str(operand.data)
+        name = operand.as_str()
         if name.startswith("⎕"):
             return S(-1)
         return S(self.env.name_class(name))
@@ -1439,7 +1439,7 @@ class Executor:
     def _sys_ex(self, operand: APLArray) -> APLArray:
         if len(operand.shape) == 2:
             return self._sys_ex_matrix(operand)
-        return self._expunge_name(chars_to_str(operand.data).rstrip())
+        return self._expunge_name(operand.as_str().rstrip())
 
     def _sys_ex_matrix(self, operand: APLArray) -> APLArray:
         count = 0
@@ -1464,15 +1464,14 @@ class Executor:
         return NumpyAPLArray([len(names), max_len], data)
 
     def _sys_ucs(self, operand: APLArray) -> APLArray:
-        if is_char_array(operand.data):
+        if operand.is_char():
             return NumpyAPLArray(list(operand.shape), operand.data.astype(np.int64))
-        data = to_list(operand.data)
+        data = operand.to_list()
         text = ''.join(chr(int(x)) for x in data)
         return NumpyAPLArray(list(operand.shape), str_to_char_array(text))
 
     def _sys_dr(self, operand: APLArray) -> APLArray:
-        from marple.backend_functions import data_type_code
-        return S(data_type_code(operand.data))
+        return S(operand.dtype_code())
 
     def _sys_signal(self, operand: APLArray) -> APLArray:
         from marple.errors import (
@@ -1490,7 +1489,7 @@ class Executor:
         """⎕EA: error-guarded execution. Try right; on error, execute left."""
         from marple.errors import APLError
         from marple.parser import parse
-        right_str = chars_to_str(right.data)
+        right_str = right.as_str()
         try:
             tree = parse(right_str, self.env.class_dict())
             return self.evaluate(tree)
@@ -1498,7 +1497,7 @@ class Executor:
             self.env["⎕EN"] = S(e.code)
             msg = str(e)
             self.env["⎕DM"] = NumpyAPLArray([len(msg)], str_to_char_array(msg))
-            left_str = chars_to_str(left.data)
+            left_str = left.as_str()
             tree = parse(left_str, self.env.class_dict())
             return self.evaluate(tree)
 
@@ -1506,7 +1505,7 @@ class Executor:
         """Dyadic ⎕DR: convert data representation."""
         from marple.backend_functions import to_bool_array
         target = int(left.scalar_value())
-        vals = to_list(right.data)
+        vals = right.to_list()
         if target == 645:
             new_data = [float(v) for v in vals]
             return NumpyAPLArray.array(list(right.shape), new_data)
@@ -1529,7 +1528,7 @@ class Executor:
         if isinstance(operand_node, FmtArgs):
             values = [self.evaluate(arg) for arg in operand_node.args]
             parts = [self._fmt_value(v) for v in values]
-            joined = " ".join(chars_to_str(p.data) for p in parts)
+            joined = " ".join(p.as_str() for p in parts)
             return NumpyAPLArray([len(joined)], str_to_char_array(joined))
         operand = self.evaluate(operand_node)
         return self._fmt_value(operand)
@@ -1539,10 +1538,10 @@ class Executor:
         if operand.shape == []:
             text = format_num(operand.scalar_value())
         elif len(operand.shape) == 1:
-            if is_char_array(operand.data):
-                text = chars_to_str(operand.data)
+            if operand.is_char():
+                text = operand.as_str()
             else:
-                text = " ".join(format_num(x) for x in operand.data)
+                text = " ".join(format_num(x) for x in operand.to_list())
         else:
             text = str(operand)
         return NumpyAPLArray([len(text)], str_to_char_array(text))
@@ -1551,7 +1550,7 @@ class Executor:
         """Dyadic ⎕FMT — format with specification string."""
         from marple.fmt import dyadic_fmt
         left = self.evaluate(left_node)
-        fmt_str = chars_to_str(left.data)
+        fmt_str = left.as_str()
         if isinstance(right_node, FmtArgs):
             values = [self.evaluate(arg) for arg in right_node.args]
         else:
@@ -1560,7 +1559,7 @@ class Executor:
         return dyadic_fmt(fmt_str, values)
 
     def _sys_cr(self, operand: APLArray) -> APLArray:
-        fn_name = chars_to_str(operand.data)
+        fn_name = operand.as_str()
         source = self.env.get_source(fn_name)
         if source is None:
             raise DomainError("Not a defined function: " + fn_name)
@@ -1586,7 +1585,7 @@ class Executor:
                      for r in range(operand.shape[0])]
             text = "\n".join(lines)
         else:
-            text = chars_to_str(operand.data)
+            text = operand.as_str()
         parts = text.split("←", 1)
         if len(parts) < 2:
             raise DomainError("⎕FX requires an assignment: name←{body}")
@@ -1614,7 +1613,7 @@ class Executor:
     def _sys_csv(self, operand: APLArray) -> APLArray:
         import csv as _csv
         import io as _io
-        path = chars_to_str(operand.data)
+        path = operand.as_str()
         text = self.fs.read_text(path)
         reader = _csv.reader(_io.StringIO(text))
         headers = next(reader)
@@ -1654,16 +1653,16 @@ class Executor:
         return S(row_count)
 
     def _sys_nread(self, operand: APLArray) -> APLArray:
-        path = chars_to_str(operand.data)
+        path = operand.as_str()
         text = self.fs.read_text(path)
         return NumpyAPLArray([len(text)], str_to_char_array(text))
 
     def _sys_nexists(self, operand: APLArray) -> APLArray:
-        path = chars_to_str(operand.data)
+        path = operand.as_str()
         return S(1 if self.fs.exists(path) else 0)
 
     def _sys_ndelete(self, operand: APLArray) -> APLArray:
-        path = chars_to_str(operand.data)
+        path = operand.as_str()
         try:
             self.fs.delete(path)
         except OSError:
@@ -1671,7 +1670,7 @@ class Executor:
         return S(0)
 
     def _sys_nwrite(self, left: APLArray, right: APLArray) -> APLArray:
-        path = chars_to_str(right.data)
-        text = chars_to_str(left.data)
+        path = right.as_str()
+        text = left.as_str()
         self.fs.write_text(path, text)
         return NumpyAPLArray.array([0], [])
