@@ -5,7 +5,8 @@ from typing import Any
 from marple.get_numpy import np
 from marple.numpy_array import APLArray, S
 from marple.backend_functions import (
-    _DOWNCAST_CT, is_numeric_array, maybe_downcast, set_char_dtype,
+    _DOWNCAST_CT, is_numeric_array, maybe_downcast, set_backend_class,
+    set_char_dtype,
 )
 from marple.environment import Environment
 from marple.formatting import format_result
@@ -53,6 +54,7 @@ class Interpreter(Executor):
             array_cls = NumpyAPLArray
         self.array_cls: type[APLArray] = array_cls
         set_char_dtype(array_cls.char_dtype())
+        set_backend_class(array_cls)
         self.config = config
         effective_io = io if io is not None else config.get_default_io()
         self.env = Environment(io=effective_io, fs=fs, console=console, timer=timer)

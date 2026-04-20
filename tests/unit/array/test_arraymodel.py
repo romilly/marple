@@ -297,6 +297,21 @@ class TestInterpreterWiresCharDtype:
         finally:
             backend_functions.set_char_dtype(original)
 
+    def test_interpreter_sets_backend_class_from_array_cls(self) -> None:
+        from marple.engine import Interpreter
+        from marple.numpy_aplarray import NumpyAPLArray
+        from marple import backend_functions
+
+        class PicoLikeArray(NumpyAPLArray):
+            pass
+
+        original_cls = backend_functions.get_backend_class()
+        try:
+            Interpreter(array_cls=PicoLikeArray)
+            assert backend_functions.get_backend_class() is PicoLikeArray
+        finally:
+            backend_functions.set_backend_class(original_cls)
+
 
 class TestNumericErrstateHook:
     """Backend provides the numeric-errstate context managers.
