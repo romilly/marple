@@ -12,16 +12,23 @@ service codes aligned with Dyalog in the future.
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from marple.errors import DomainError
 from marple.numpy_array import APLArray
 
 
-IBeamImpl = Callable[[APLArray, APLArray | None], APLArray]
+if TYPE_CHECKING:
+    # Module-level type alias: PEP 604 `APLArray | None` is evaluated
+    # at `__or__` time, which MicroPython's `type` doesn't implement.
+    # Hidden behind TYPE_CHECKING so the alias exists only for pyright;
+    # runtime uses the broader `Any` alias below.
+    IBeamImpl = Callable[[APLArray, APLArray | None], APLArray]
+else:
+    IBeamImpl = Any
 
 
-_REGISTRY: dict[int, IBeamImpl] = {}
+_REGISTRY: "dict[int, IBeamImpl]" = {}
 
 
 def register(code: int, impl: IBeamImpl) -> None:
