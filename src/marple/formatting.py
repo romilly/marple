@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from marple.backend_functions import chars_to_str, is_char_array, scalar_item
+from marple.backend_functions import chars_to_str, scalar_item
 from marple.numpy_array import APLArray
 from marple.numpy_aplarray import NumpyAPLArray
 
@@ -39,10 +39,6 @@ def format_num(x: Any, pp: int = 10) -> str:
     return str(x)
 
 
-def _is_char_array(arr: APLArray) -> bool:
-    return is_char_array(arr.data)
-
-
 def _rjust(s: str, width: int) -> str:
     if len(s) >= width:
         return s
@@ -52,7 +48,7 @@ def _rjust(s: str, width: int) -> str:
 def _format_matrix(result: APLArray, pp: int) -> str:
     """Format a rank-2 array as right-justified columns."""
     rows, cols = result.shape
-    if _is_char_array(result):
+    if result.is_char():
         return "\n".join(chars_to_str(result.data[r]) for r in range(rows))
     strs = [[format_num(result.data[r, c], pp) for c in range(cols)]
             for r in range(rows)]
@@ -68,15 +64,15 @@ def format_result(result: APLArray, env: 'Environment | None' = None) -> str:
     if env is not None:
         pp_val = env.get("⎕PP")
         if isinstance(pp_val, APLArray):
-            pp = int(scalar_item(pp_val.data))
+            pp = int(pp_val.scalar_value())
     if result.is_scalar():
         raw = result.scalar_value()
-        if _is_char_array(result):
+        if result.is_char():
             return chr(int(raw))
         return format_num(raw, pp)
-    if _is_char_array(result):
+    if result.is_char():
         if len(result.shape) == 1:
-            return chars_to_str(result.data)
+            return result.as_str()
         if len(result.shape) == 2:
             return _format_matrix(result, pp)
     flat = result.data.flatten()
