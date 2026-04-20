@@ -30,7 +30,13 @@ def _gcd_float(a: float, b: float) -> float:
 
 class APLArray(APLValue):
     """APL array — the port. Concrete adapters live in numpy_aplarray.py
-    (desktop) and ulab_aplarray.py (Pico)."""
+    (desktop, numpy) and ulab_aplarray.py (Pico, ulab).
+
+    Interface methods below declare what each adapter must provide;
+    their bodies raise NotImplementedError. Direct `APLArray(shape, data)`
+    construction is supported — `__new__` dispatches to the active
+    adapter — so tests stay backend-neutral.
+    """
 
     def __new__(cls, *args: Any, **kwargs: Any) -> "APLArray":
         """Instantiating the port directly dispatches to the active adapter.
@@ -49,139 +55,96 @@ class APLArray(APLValue):
             return object.__new__(get_backend_class())
         return object.__new__(cls)
 
+    # ---- backend hooks (declared on the port; adapters implement) -----
+
     @classmethod
     def char_dtype(cls) -> Any:
         """Dtype used for character data (Unicode codepoints).
 
-        Returned as a bare dtype token — `np.uint32` on numpy, an int-like
-        constant on ulab (which has no `np.dtype` factory). Compare with
-        `arr.dtype == char_dtype()`; use as the `dtype=` kwarg to
-        `np.array(...)` — both forms work on numpy and ulab.
-
-        Backend override hook: a subclass returns a narrower dtype when the
-        underlying array library cannot support uint32 (e.g. ulab caps at
-        uint16). BMP-only codepoints fit in uint16; APL glyphs are in the BMP.
+        Compare with `arr.dtype == char_dtype()`; pass as `dtype=` kwarg
+        to `np.array(...)`. Each adapter picks the widest unsigned int
+        dtype its backend supports (uint32 on numpy, uint16 on ulab —
+        BMP-only, which is enough for APL glyphs).
         """
-        return np.uint32
+        raise NotImplementedError("adapter must implement char_dtype")
 
     @classmethod
-    @contextmanager
-    def strict_numeric_errstate(cls) -> Iterator[None]:
+    def strict_numeric_errstate(cls) -> Any:
         """Context manager wrapping numeric ops that must trap overflow.
 
-        Backend override hook. NumpyAPLArray uses `np.errstate(over="raise",
-        invalid="raise")` so callers can catch `FloatingPointError` and
-        convert to `DomainError`. A ulab-backed subclass yields a no-op —
-        ulab has no errstate equivalent, so silent overflow is accepted.
+        Callers use the result in a `with` block. On numpy the adapter
+        installs `np.errstate(over="raise", invalid="raise")` so
+        `FloatingPointError` fires; on ulab the adapter yields a no-op
+        (no errstate equivalent; silent overflow is the documented
+        trade-off).
         """
-        with np.errstate(over="raise", invalid="raise"):
-            yield
+        raise NotImplementedError(
+            "adapter must implement strict_numeric_errstate")
 
     @classmethod
-    @contextmanager
-    def ignoring_numeric_errstate(cls) -> Iterator[None]:
-        """Context manager wrapping numeric ops that suppress overflow warnings.
-
-        Backend override hook. NumpyAPLArray uses `np.errstate(over="ignore",
-        invalid="ignore")` so callers can inspect inf/nan without printing
-        numpy RuntimeWarnings. A ulab-backed subclass yields a no-op.
+    def ignoring_numeric_errstate(cls) -> Any:
+        """Context manager wrapping numeric ops that suppress overflow
+        warnings. Same shape as `strict_numeric_errstate`, but configured
+        to ignore rather than raise.
         """
-        with np.errstate(over="ignore", invalid="ignore"):
-            yield
+        raise NotImplementedError(
+            "adapter must implement ignoring_numeric_errstate")
 
     @classmethod
     def is_int_dtype(cls, arr: Any) -> bool:
-        """Backend override hook. Numpy uses `np.issubdtype(…, np.integer)`;
-        ulab has no issubdtype, so its subclass checks against a known set.
-        """
-        return bool(np.issubdtype(arr.dtype, np.integer))
+        """True iff `arr.dtype` is one of the backend's integer dtypes."""
+        raise NotImplementedError("adapter must implement is_int_dtype")
 
     @classmethod
     def is_float_dtype(cls, arr: Any) -> bool:
-        """Backend override hook. See `is_int_dtype`."""
-        return bool(np.issubdtype(arr.dtype, np.floating))
+        """True iff `arr.dtype` is one of the backend's float dtypes."""
+        raise NotImplementedError("adapter must implement is_float_dtype")
 
     @classmethod
     def maybe_upcast(cls, data: Any) -> Any:
-        """Upcast integer arrays to float64 to prevent overflow wrap.
-
-        Backend override hook. A ulab subclass returns data unchanged —
-        ulab has no float64, and accepting silent integer overflow is the
-        documented trade-off on that platform.
+        """Upcast integer arrays to the backend's widest float before
+        overflow-prone arithmetic. Numeric-only (char arrays pass through).
         """
-        from marple.backend_functions import is_numeric_array
-        if not is_numeric_array(data) or not cls.is_int_dtype(data):
-            return data
-        return data.astype(np.float64)
+        raise NotImplementedError("adapter must implement maybe_upcast")
 
     @classmethod
     def numeric_upcast_dtype(cls) -> Any:
         """Widest float dtype the backend supports — used as the `dtype`
-        kwarg for zeros/full arrays in reduce/scan so the accumulator has
-        headroom over int inputs. Desktop returns float64; ulab subclass
-        returns np.float (float32) because float64 doesn't exist there.
+        kwarg for zeros/full arrays in reduce/scan accumulators.
         """
-        return np.float64
-
-    # ---- ndarray-level structural hooks --------------------------------
-    # These take raw ndarray data rather than APLArray instances because
-    # call sites often have intermediate ndarrays (results of flatten,
-    # concatenate, arithmetic ops). Each hook has a numpy-native default;
-    # subclasses override to accommodate a backend whose primitives differ.
+        raise NotImplementedError(
+            "adapter must implement numeric_upcast_dtype")
 
     @classmethod
     def reshape_ndarray(cls, arr: Any, shape: Any) -> Any:
-        """Reshape `arr` to `shape` (tuple / list / int). Default passes
-        through; a subclass may normalise if its reshape is stricter.
+        """Reshape `arr` to `shape`. Adapter normalises arg form as its
+        backend requires.
         """
-        return arr.reshape(shape)
+        raise NotImplementedError("adapter must implement reshape_ndarray")
 
     @classmethod
     def repeat_ndarray(cls, arr: Any, counts: Any, axis: int) -> Any:
-        """Repeat elements of `arr` along `axis` according to `counts`.
-        `counts` is either an int (uniform) or a sequence of ints (one per
-        element along the axis). Matches numpy.repeat's calling convention.
+        """Repeat elements of `arr` along `axis` according to `counts`
+        (an int or a per-element sequence). Matches np.repeat's calling
+        convention.
         """
-        return np.repeat(arr, counts, axis=axis)
+        raise NotImplementedError("adapter must implement repeat_ndarray")
 
     @classmethod
     def gather_ndarray(cls, data: Any, axis_indices: "list[list[int]]") -> Any:
-        """Multi-axis Cartesian-product gather. Returns a flat ndarray of
+        """Multi-axis Cartesian-product gather. Flat ndarray of
         `data[i0, i1, …]` over every combination in the axis_indices.
-        Caller reshape to the desired rank.
+        Caller reshapes to the desired rank.
         """
-        idx_arrays = [np.asarray(ax) for ax in axis_indices]
-        return data[np.ix_(*idx_arrays)].flatten()
+        raise NotImplementedError("adapter must implement gather_ndarray")
 
     @classmethod
     def maybe_downcast(cls, data: Any, ct: float) -> Any:
-        """Convert float arrays to int if all elements are close to whole numbers.
-
-        Uses APL tolerance: |value - round(value)| <= ct * max(|value|, |round(value)|).
-        Backend override hook. ulab subclass returns data unchanged — ulab's
-        int widths are already narrow and the np.iinfo/int64/int32 machinery
-        isn't available anyway.
+        """Convert float arrays to int if all elements are close to whole
+        numbers within APL tolerance `ct`. Adapters choose their widest
+        signed int target.
         """
-        if not cls.is_float_dtype(data):
-            return data
-        if data.size == 0:
-            return data
-        rounded = np.round(data)
-        diff = np.abs(data - rounded)
-        if ct == 0:
-            if not np.all(diff == 0):
-                return data
-        else:
-            mag = np.maximum(np.abs(data), np.abs(rounded))
-            if not np.all(diff <= ct * mag):
-                return data
-        max_val = np.max(np.abs(rounded))
-        if max_val > np.float64(np.iinfo(np.int64).max):
-            return data
-        int_arr = rounded.astype(np.int64)
-        if np.all(np.abs(int_arr) <= np.iinfo(np.int32).max):
-            return int_arr.astype(np.int32)
-        return int_arr
+        raise NotImplementedError("adapter must implement maybe_downcast")
 
     def __init__(self, shape: list[int], data: list[Any] | np.ndarray[Any, Any]) -> None:
         self.shape = shape

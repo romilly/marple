@@ -150,8 +150,71 @@ class UlabAPLArray(APLArray):
                 return data
         if float(np.max(abs(rounded))) > 32767:
             return data
-        from marple.backend_functions import np_reshape
         data_rank = len(data.shape)
         flat = rounded.flatten() if data_rank > 1 else rounded
         int_flat = np.array([int(x) for x in flat], dtype=np.int16)
-        return np_reshape(int_flat, data.shape) if data_rank > 1 else int_flat
+        return cls.reshape_ndarray(int_flat, data.shape) if data_rank > 1 else int_flat
+
+    # --- ndarray-level structural hooks -------------------------------------
+    # ulab's reshape rejects list shapes and multi-arg form; it has no
+    # np.repeat and no np.ix_ / fancy indexing. Each method rebuilds via
+    # Python iteration over ranks 1 and 2 (ulab's Pimoroni build caps at
+    # rank 2). Higher ranks raise on this platform.
+
+    @classmethod
+    def reshape_ndarray(cls, arr: Any, shape: Any) -> Any:
+        if isinstance(shape, int):
+            return arr.reshape((shape,))
+        if isinstance(shape, tuple):
+            return arr.reshape(shape)
+        return arr.reshape(tuple(shape))
+
+    @classmethod
+    def repeat_ndarray(cls, arr: Any, counts: Any, axis: int) -> Any:
+        rank = len(arr.shape)
+        axis_len = arr.shape[axis if axis >= 0 else rank + axis]
+        if isinstance(counts, int):
+            counts_list = [counts] * axis_len
+        else:
+            counts_list = [int(c) for c in counts]
+            if len(counts_list) == 1 and axis_len > 1:
+                counts_list = counts_list * axis_len
+        if rank == 1:
+            values = list(arr)
+            out = [v for v, c in zip(values, counts_list) for _ in range(c)]
+            return np.array(out, dtype=arr.dtype)
+        if rank == 2:
+            rows = [list(r) for r in arr]
+            if axis in (-1, 1):
+                new_rows = [
+                    [v for v, c in zip(row, counts_list) for _ in range(c)]
+                    for row in rows
+                ]
+            elif axis == 0:
+                new_rows = [
+                    list(row) for row, c in zip(rows, counts_list)
+                    for _ in range(c)
+                ]
+            else:
+                raise ValueError("axis {} out of range for rank 2".format(axis))
+            return np.array(new_rows, dtype=arr.dtype)
+        raise NotImplementedError(
+            "repeat_ndarray supports rank \u2264 2 (got {})".format(rank))
+
+    @classmethod
+    def gather_ndarray(cls, data: Any, axis_indices: "list[list[int]]") -> Any:
+        rank = len(data.shape)
+        if rank != len(axis_indices):
+            raise ValueError(
+                "axis_indices count ({}) doesn't match data rank ({})"
+                .format(len(axis_indices), rank))
+        if rank == 1:
+            idx = axis_indices[0]
+            return np.array([data[int(i)] for i in idx], dtype=data.dtype)
+        if rank == 2:
+            row_idx, col_idx = axis_indices
+            rows = [list(r) for r in data]
+            out = [rows[int(r)][int(c)] for r in row_idx for c in col_idx]
+            return np.array(out, dtype=data.dtype)
+        raise NotImplementedError(
+            "gather_ndarray supports rank \u2264 2 (got {})".format(rank))

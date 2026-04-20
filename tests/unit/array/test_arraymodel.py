@@ -238,20 +238,21 @@ class TestBackendOverridability:
 class TestCharDtype:
     """The char dtype is a backend-specific classmethod.
 
-    NumpyAPLArray stores Unicode codepoints as uint32. A future UlabAPLArray
-    will store them as uint16 because ulab has no uint32 support. The dtype
-    is chosen by each subclass via `char_dtype()`.
+    NumpyAPLArray stores Unicode codepoints as uint32. UlabAPLArray stores
+    them as uint16 because ulab has no uint32 support. The port APLArray
+    declares `char_dtype()` but carries no implementation — each adapter
+    supplies its own.
     """
-
-    def test_aplarray_default_char_dtype_is_uint32(self) -> None:
-        from marple.numpy_array import APLArray
-        from marple.get_numpy import np
-        assert APLArray.char_dtype() == np.dtype(np.uint32)
 
     def test_numpy_aplarray_char_dtype_is_uint32(self) -> None:
         from marple.numpy_aplarray import NumpyAPLArray
         from marple.get_numpy import np
         assert NumpyAPLArray.char_dtype() == np.dtype(np.uint32)
+
+    def test_ulab_aplarray_char_dtype_is_uint16(self) -> None:
+        from marple.ulab_aplarray import UlabAPLArray
+        from marple.get_numpy import np
+        assert UlabAPLArray.char_dtype() == np.uint16
 
     def test_subclass_can_override_char_dtype(self) -> None:
         from typing import Any
@@ -407,14 +408,14 @@ class TestNumericErrstateHook:
     managers and accepts silent overflow.
     """
 
-    def test_aplarray_strict_errstate_is_a_context_manager(self) -> None:
-        from marple.numpy_array import APLArray
-        cm = APLArray.strict_numeric_errstate()
+    def test_numpy_aplarray_strict_errstate_is_a_context_manager(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        cm = NumpyAPLArray.strict_numeric_errstate()
         assert hasattr(cm, "__enter__") and hasattr(cm, "__exit__")
 
-    def test_aplarray_ignoring_errstate_is_a_context_manager(self) -> None:
-        from marple.numpy_array import APLArray
-        cm = APLArray.ignoring_numeric_errstate()
+    def test_numpy_aplarray_ignoring_errstate_is_a_context_manager(self) -> None:
+        from marple.numpy_aplarray import NumpyAPLArray
+        cm = NumpyAPLArray.ignoring_numeric_errstate()
         assert hasattr(cm, "__enter__") and hasattr(cm, "__exit__")
 
     def test_subclass_override_of_strict_errstate_is_called(self) -> None:
