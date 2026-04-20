@@ -33,19 +33,23 @@ def _reject_chars_for_op(omega: APLArray, glyph: str | None, op_name: str) -> No
 
 # Glyph-keyed maps for reduce/scan
 
+# Dyalog's identity for empty ⌈/⌊ is ±float64.max. Detect at module load
+# which path we're on: CPython/numpy has np.finfo and gives the exact
+# Dyalog value; ulab has no np.finfo and no float64, so fall back to the
+# widest float its available `np.float` type supports (float32 max).
+if hasattr(np, "finfo"):
+    _FLOAT_MAX: float = float(np.finfo(np.float64).max)
+else:
+    _FLOAT_MAX = 3.4028235e38  # ulab: float32 max
+
+
 _IDENTITY_ELEMENTS: dict[str, int | float] = {
     "+": 0,
     "-": 0,
     "×": 1,
     "÷": 1,
-    # Dyalog's identity for empty ⌈/⌊ is ±float64.max (not ±inf).
-    # Literal avoids a module-load call to np.finfo(np.float64), which
-    # fails on ulab (no np.finfo, no float64). On CPython this is
-    # exactly `np.finfo(np.float64).max`; on narrower-float MicroPython
-    # builds the literal may coerce to ±inf, which is an acceptable
-    # Pico-side fallback until a backend hook replaces it in Phase 6b.
-    "⌈": -1.7976931348623157e308,
-    "⌊": 1.7976931348623157e308,
+    "⌈": -_FLOAT_MAX,
+    "⌊": _FLOAT_MAX,
     "∧": 1,
     "∨": 0,
     "=": 1,
