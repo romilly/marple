@@ -6,8 +6,7 @@ Returns strings instead of printing — usable by REPL, web server, and Jupyter.
 from typing import Callable
 
 from marple.numpy_array import APLArray
-from marple.numpy_aplarray import NumpyAPLArray
-from marple.backend_functions import chars_to_str, str_to_char_array
+from marple.backend_functions import str_to_char_array
 from marple.formatting import format_result
 from marple.engine import Interpreter
 
@@ -16,7 +15,7 @@ def _get_wsid(interp: Interpreter) -> str:
     """Get the workspace ID as a Python string."""
     wsid_val = interp.env["⎕WSID"]
     assert isinstance(wsid_val, APLArray)
-    return chars_to_str(wsid_val.data)
+    return wsid_val.as_str()
 
 
 SystemCommandHandler = Callable[[Interpreter, str], tuple[str, bool]]
@@ -45,7 +44,7 @@ def _cmd_wsid(interp: Interpreter, line: str) -> tuple[str, bool]:
     parts = line.split(None, 1)
     if len(parts) > 1:
         name = parts[1].strip()
-        interp.env["⎕WSID"] = NumpyAPLArray([len(name)], str_to_char_array(name))
+        interp.env["⎕WSID"] = APLArray([len(name)], str_to_char_array(name))
         return name, False
     return _get_wsid(interp), False
 
@@ -92,7 +91,7 @@ def _cmd_save(interp: Interpreter, line: str) -> tuple[str, bool]:
     parts = line.split(None, 1)
     if len(parts) > 1:
         name = parts[1].strip()
-        interp.env["⎕WSID"] = NumpyAPLArray([len(name)], str_to_char_array(name))
+        interp.env["⎕WSID"] = APLArray([len(name)], str_to_char_array(name))
     wsid = _get_wsid(interp)
     if wsid == "CLEAR WS":
         return "ERROR: No workspace ID set. Use )WSID name first.", False
