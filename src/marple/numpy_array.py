@@ -9,9 +9,9 @@ if TYPE_CHECKING:
 
 from marple.backend_functions import (
     SCALAR_STORAGE_SHAPE,
-    is_char_array, is_int_dtype, is_numeric_array, maybe_upcast,
+    is_int_dtype, maybe_upcast,
     scalar_item, str_to_char_array, strict_numeric_errstate,
-    to_array, to_bool_array, to_list,
+    to_array, to_bool_array,
 )
 from marple.errors import DomainError, LengthError, RankError
 from marple.get_numpy import np
@@ -238,7 +238,7 @@ class APLArray(APLValue):
             return False
         # Mixed char/numeric arrays are never equal, even if the
         # numeric values happen to match the character codepoints.
-        if is_char_array(self.data) != is_char_array(other.data):
+        if self.is_char() != other.is_char():
             return False
         if hasattr(np, "array_equal"):
             return bool(np.array_equal(self.data, other.data))
@@ -278,13 +278,13 @@ class APLArray(APLValue):
     def __repr__(self) -> str:
         if self.is_scalar():
             return f"S({self.scalar_value()})"
-        return f"APLArray({self.shape}, {to_list(self.data)})"
+        return f"APLArray({self.shape}, {self.to_list()})"
 
     def _dyadic(self, other: APLArray,
                 f: Callable[[Any, Any], Any], bool_result: bool = False) -> APLArray:
         """Pervade a dyadic function element-wise with scalar extension."""
-        a_data = to_list(self.data)
-        b_data = to_list(other.data)
+        a_data = self.to_list()
+        b_data = other.to_list()
         cls = type(self)
         if self.is_scalar() and other.is_scalar():
             result = [f(a_data[0], b_data[0])]
@@ -343,71 +343,71 @@ class APLArray(APLValue):
         Must be called before any is_numeric_array fast path so that the
         future uint32 character representation is also caught.
         """
-        if is_char_array(self.data) or is_char_array(other.data):
+        if self.is_char() or other.is_char():
             raise DomainError(f"{op_name} is not defined on character data")
 
     def _reject_chars_monadic(self, op_name: str) -> None:
         """Raise DomainError if self is a character array (monadic ops)."""
-        if is_char_array(self.data):
+        if self.is_char():
             raise DomainError(f"{op_name} is not defined on character data")
 
     def add(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "+")
-        if is_numeric_array(self.data) and is_numeric_array(other.data):
+        if self.is_numeric() and other.is_numeric():
             return self._numeric_dyadic_op(other, lambda a, b: a + b, upcast=True)
         return self._dyadic(other, lambda a, b: a + b)
 
     def subtract(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "-")
-        if is_numeric_array(self.data) and is_numeric_array(other.data):
+        if self.is_numeric() and other.is_numeric():
             return self._numeric_dyadic_op(other, lambda a, b: a - b, upcast=True)
         return self._dyadic(other, lambda a, b: a - b)
 
     def multiply(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "×")
-        if is_numeric_array(self.data) and is_numeric_array(other.data):
+        if self.is_numeric() and other.is_numeric():
             return self._numeric_dyadic_op(other, lambda a, b: a * b, upcast=True)
         return self._dyadic(other, lambda a, b: a * b)
 
     def divide(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "÷")
-        if is_numeric_array(other.data):
+        if other.is_numeric():
             if np.any(other.data == 0):
                 raise DomainError("Division by zero")
             return self._numeric_dyadic_op(other, lambda a, b: a / b)
-        b_data = to_list(other.data)
+        b_data = other.to_list()
         if any(x == 0 for x in b_data):
             raise DomainError("Division by zero")
         return self._dyadic(other, lambda a, b: a / b)
 
     def maximum(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "⌈")
-        if is_numeric_array(self.data) and is_numeric_array(other.data):
+        if self.is_numeric() and other.is_numeric():
             return self._numeric_dyadic_op(other, lambda a, b: np.maximum(a, b))
         return self._dyadic(other, lambda a, b: max(a, b))
 
     def minimum(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "⌊")
-        if is_numeric_array(self.data) and is_numeric_array(other.data):
+        if self.is_numeric() and other.is_numeric():
             return self._numeric_dyadic_op(other, lambda a, b: np.minimum(a, b))
         return self._dyadic(other, lambda a, b: min(a, b))
 
     def power(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "*")
-        if is_numeric_array(self.data) and is_numeric_array(other.data):
+        if self.is_numeric() and other.is_numeric():
             return self._numeric_dyadic_op(other, lambda a, b: a ** b, upcast=True)
         return self._dyadic(other, lambda a, b: a ** b)
 
     def logarithm(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "⍟")
-        if is_numeric_array(self.data) and is_numeric_array(other.data):
+        if self.is_numeric() and other.is_numeric():
             return self._numeric_dyadic_op(other, lambda a, b: np.log(b) / np.log(a))
         import math
         return self._dyadic(other, lambda a, b: math.log(b) / math.log(a))
 
     def residue(self, other: APLArray) -> APLArray:
         self._reject_chars(other, "|")
-        if is_numeric_array(self.data) and is_numeric_array(other.data):
+        if self.is_numeric() and other.is_numeric():
             return self._numeric_dyadic_op(other, lambda a, b: b % a)
         return self._dyadic(other, lambda a, b: b % a)
 
@@ -446,9 +446,9 @@ class APLArray(APLValue):
 
     def _compare(self, other: APLArray, op: Callable[[Any, Any, Any], Any], ct: float = 0) -> APLArray:
         """Comparison with numpy fast path and tolerant equality."""
-        if not is_numeric_array(self.data) or not is_numeric_array(other.data):
+        if not self.is_numeric() or not other.is_numeric():
             ct = 0
-        if is_numeric_array(self.data) and is_numeric_array(other.data):
+        if self.is_numeric() and other.is_numeric():
             shape = list(other.shape) if not other.is_scalar() else list(self.shape)
             result = op(self.data, other.data, self._tolerant_eq(self.data, other.data, ct))
             return type(self).array(shape, to_bool_array(result))
@@ -653,7 +653,7 @@ class APLArray(APLValue):
     def signum(self) -> APLArray:
         self._reject_chars_monadic("monadic ×")
         return type(self).array(list(self.shape),
-            [(-1 if x < 0 else 1 if x > 0 else 0) for x in to_list(self.data)])
+            [(-1 if x < 0 else 1 if x > 0 else 0) for x in self.to_list()])
 
     def negate(self) -> APLArray:
         self._reject_chars_monadic("monadic -")
@@ -666,9 +666,9 @@ class APLArray(APLValue):
         backend for the numeric fast path. The list fallback is backend-agnostic.
         """
         cls = type(self)
-        if is_numeric_array(self.data):
+        if self.is_numeric():
             return cls.array(list(self.shape), -self.data)
-        return cls.array(list(self.shape), [-x for x in to_list(self.data)])
+        return cls.array(list(self.shape), [-x for x in self.to_list()])
 
     def reciprocal(self) -> APLArray:
         self._reject_chars_monadic("monadic ÷")
@@ -682,11 +682,11 @@ class APLArray(APLValue):
         numeric fast path. The list fallback is backend-agnostic.
         """
         cls = type(self)
-        if is_numeric_array(self.data):
+        if self.is_numeric():
             if np.any(self.data == 0):
                 raise DomainError("Division by zero")
             return cls.array(list(self.shape), 1.0 / self.data)
-        data = to_list(self.data)
+        data = self.to_list()
         if any(x == 0 for x in data):
             raise DomainError("Division by zero")
         return cls.array(list(self.shape), [1 / x for x in data])
@@ -712,9 +712,9 @@ class APLArray(APLValue):
         return type(self).array(list(self.shape), abs(self.data))
 
     def logical_not(self) -> APLArray:
-        if is_numeric_array(self.data):
+        if self.is_numeric():
             return type(self).array(list(self.shape), to_bool_array(1 - self.data))
-        return type(self).array(list(self.shape), to_bool_array([int(not x) for x in to_list(self.data)]))
+        return type(self).array(list(self.shape), to_bool_array([int(not x) for x in self.to_list()]))
 
     def pi_times(self) -> APLArray:
         self._reject_chars_monadic("monadic ○")
@@ -724,7 +724,7 @@ class APLArray(APLValue):
     def factorial(self) -> APLArray:
         self._reject_chars_monadic("monadic !")
         import math
-        return type(self).array(list(self.shape), [math.gamma(x + 1) for x in to_list(self.data)])
+        return type(self).array(list(self.shape), [math.gamma(x + 1) for x in self.to_list()])
 
     def shape_of(self) -> APLArray:
         return type(self).array([len(self.shape)], list(self.shape))

@@ -7,7 +7,7 @@ from marple.backend_functions import NDArray
 from marple.numpy_array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import (
-    _DOWNCAST_CT, ignoring_numeric_errstate, is_char_array, is_int_dtype,
+    _DOWNCAST_CT, ignoring_numeric_errstate, is_int_dtype,
     is_numeric_array, maybe_downcast, maybe_upcast, np_reshape,
     numeric_upcast_dtype,
 )
