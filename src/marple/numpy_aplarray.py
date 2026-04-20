@@ -82,6 +82,39 @@ class NumpyAPLArray(APLArray):
         from marple.backend_functions import data_type_code
         return data_type_code(self.data)
 
+    def transpose_dyadic(self, other: APLArray, io: int = 1) -> APLArray:
+        from marple.errors import LengthError, RankError
+        if len(self.shape) > 1:
+            raise RankError("⍉ X must be a scalar or vector")
+        x_atleast = np.atleast_1d(self.data)
+        x_values = [int(v) for v in x_atleast]
+        rank_y = len(other.shape)
+        if len(x_values) != rank_y:
+            raise LengthError(
+                f"⍉ length of X ({len(x_values)}) must equal rank of Y ({rank_y})")
+        x_zero = [v - io for v in x_values]
+        if x_zero and (min(x_zero) < 0 or max(x_zero) >= rank_y):
+            raise RankError("⍉ axis index out of range")
+        if x_zero:
+            max_xi = max(x_zero)
+            required = set(range(max_xi + 1))
+            actual = set(x_zero)
+            if not required.issubset(actual):
+                raise RankError("⍉ X is missing axis indices in its range")
+            n_result_axes = max_xi + 1
+        else:
+            n_result_axes = 0
+        result_shape: list[int] = []
+        for k in range(n_result_axes):
+            y_axes_for_k = [i for i, xi in enumerate(x_zero) if xi == k]
+            result_shape.append(min(other.shape[i] for i in y_axes_for_k))
+        if n_result_axes == 0:
+            return type(other)([], other.data.copy())
+        result_coords = np.indices(tuple(result_shape))
+        y_coord_arrays = tuple(result_coords[xi] for xi in x_zero)
+        result_data = other.data[y_coord_arrays]
+        return type(other)(result_shape, result_data)
+
     def matrix_inverse(self) -> APLArray:
         from marple.errors import DomainError, RankError
         if len(self.shape) != 2 or self.shape[0] != self.shape[1]:

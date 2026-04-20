@@ -632,8 +632,11 @@ class APLArray(APLValue):
         return from_array(self, other, io)
 
     def transpose_dyadic(self, other: APLArray, io: int = 1) -> APLArray:
-        from marple.structural import transpose_dyadic
-        return transpose_dyadic(self, other, io)
+        """Dyadic ⍉: transpose `other` by axis permutation `self`. Supports
+        diagonal extraction via repeated indices. Uses np.indices + fancy
+        indexing — ulab adapters raise NotImplementedError.
+        """
+        raise NotImplementedError("adapter must implement transpose_dyadic")
 
     def dyadic_format(self, other: APLArray) -> APLArray:
         # Spec is a scalar (width only) or a 2-element vector

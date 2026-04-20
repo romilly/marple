@@ -173,6 +173,10 @@ class UlabAPLArray(APLArray):
         from marple.backend_functions import data_type_code
         return data_type_code(self.data)
 
+    def transpose_dyadic(self, other: APLArray, io: int = 1) -> APLArray:
+        # Needs np.indices + fancy indexing, neither available on ulab.
+        raise NotImplementedError("transpose_dyadic not available on ulab")
+
     def matrix_inverse(self) -> APLArray:
         # ulab has no np.linalg; matrix inverse requires it.
         raise NotImplementedError("matrix_inverse not available on ulab")
