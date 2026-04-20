@@ -2,14 +2,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-try:
-    from decimal import Decimal
-    _HAS_DECIMAL = True
-except ImportError:
-    # MicroPython has no `decimal` module. The only use site is the
-    # ⎕FR=1287 numeric-literal path, which falls back to float below.
-    Decimal = None  # type: ignore[assignment,misc]
-    _HAS_DECIMAL = False
 import typing as _typing
 if _typing.TYPE_CHECKING:
     from itertools import product
@@ -491,10 +483,7 @@ class Num(Executable):
     def __init__(self, value: int | float) -> None:
         self.value = value
     def execute(self, ctx: Executor) -> APLArray:
-        value = self.value
-        if isinstance(value, float) and ctx.env.fr == 1287 and Decimal is not None:
-            return S(np.asarray(Decimal(str(self.value))))
-        return S(value)
+        return S(self.value)
 
 
 class Str(Executable):
