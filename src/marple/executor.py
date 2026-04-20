@@ -11,7 +11,8 @@ from marple.numpy_array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import (
     _DOWNCAST_CT, chars_to_str, get_char_dtype, is_char_array, is_numeric_array,
-    maybe_downcast, maybe_upcast, str_to_char_array, to_list,
+    maybe_downcast, maybe_upcast, str_to_char_array, strict_numeric_errstate,
+    to_list,
 )
 from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
 from marple.errors import DomainError, LengthError, SyntaxError_, ValueError_
@@ -70,7 +71,7 @@ def _inner_product(
             and is_numeric_array(alpha.data) and is_numeric_array(omega.data)
             and (len(a_shape) <= 2 or len(b_shape) <= 2)):
         try:
-            with np.errstate(over="raise", invalid="raise"):
+            with strict_numeric_errstate():
                 result = np.dot(maybe_upcast(alpha.data), maybe_upcast(omega.data))
         except FloatingPointError:
             raise DomainError("arithmetic overflow in inner product")
@@ -124,7 +125,7 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
             ufunc = getattr(np, ufunc_name, None)
             if ufunc is not None and hasattr(ufunc, 'outer'):
                 try:
-                    with np.errstate(over="raise", invalid="raise"):
+                    with strict_numeric_errstate():
                         result = ufunc.outer(
                             maybe_upcast(alpha.data.flatten()),
                             maybe_upcast(omega.data.flatten()),
@@ -140,7 +141,7 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
     result_shape = alpha.shape + omega.shape
     if not result_shape:
         try:
-            with np.errstate(over="raise", invalid="raise"):
+            with strict_numeric_errstate():
                 return S(op(alpha.data[()], omega.data[()]))
         except FloatingPointError:
             raise DomainError("arithmetic overflow in outer product")
@@ -148,7 +149,7 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
     a_indices = [range(s) for s in alpha.shape]
     b_indices = [range(s) for s in omega.shape]
     try:
-        with np.errstate(over="raise", invalid="raise"):
+        with strict_numeric_errstate():
             for a_idx in product(*a_indices):
                 for b_idx in product(*b_indices):
                     result[a_idx + b_idx] = op(alpha.data[a_idx], omega.data[b_idx])

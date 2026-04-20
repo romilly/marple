@@ -7,7 +7,8 @@ from marple.backend_functions import NDArray
 from marple.numpy_array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import (
-    _DOWNCAST_CT, is_char_array, is_int_dtype, is_numeric_array, maybe_downcast,
+    _DOWNCAST_CT, ignoring_numeric_errstate, is_char_array, is_int_dtype,
+    is_numeric_array, maybe_downcast,
 )
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.errors import DomainError
@@ -60,7 +61,7 @@ def _reduce_row(op: Callable[[Any, Any], Any], data: NDArray, start: int, length
     row = data[start : start + length]
     if is_numeric_array(row) and is_int_dtype(row):
         row = row.astype(np.float64)
-    with np.errstate(over="ignore", invalid="ignore"):
+    with ignoring_numeric_errstate():
         acc = row[-1]
         for i in range(len(row) - 2, -1, -1):
             acc = op(row[i], acc)
@@ -156,7 +157,7 @@ _SCALAR_OPS: dict[str, Callable[[Any, Any], Any]] = {
 def _scan_row_accumulate(ufunc: np.ufunc, data: NDArray, row_len: int) -> NDArray:
     """Apply ufunc.accumulate to each row of length row_len in flat data."""
     rows = data.reshape(-1, row_len)
-    with np.errstate(over="ignore", invalid="ignore"):
+    with ignoring_numeric_errstate():
         result = ufunc.accumulate(rows, axis=1)
     return result.flatten()
 
@@ -165,7 +166,7 @@ def _scan_row_general(op: Callable[[Any, Any], Any], data: NDArray, row_len: int
     """O(n²) right-to-left reduce per prefix, row by row."""
     rows = data.reshape(-1, row_len)
     result = np.zeros_like(rows)
-    with np.errstate(over="ignore", invalid="ignore"):
+    with ignoring_numeric_errstate():
         for r, row in enumerate(rows):
             result[r, 0] = row[0]
             for k in range(1, row_len):

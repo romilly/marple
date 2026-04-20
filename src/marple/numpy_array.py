@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 from marple.backend_functions import (
     is_char_array, is_int_dtype, is_numeric_array, maybe_upcast,
-    str_to_char_array, to_array, to_bool_array, to_list,
+    str_to_char_array, strict_numeric_errstate, to_array, to_bool_array, to_list,
 )
 from marple.errors import DomainError, LengthError, RankError
 from marple.get_numpy import np
@@ -169,7 +169,7 @@ class APLArray(APLValue):
         a = maybe_upcast(self.data) if upcast else self.data
         b = maybe_upcast(other.data) if upcast else other.data
         try:
-            with np.errstate(over="raise", invalid="raise"):
+            with strict_numeric_errstate():
                 result = op(a, b)
         except FloatingPointError:
             raise DomainError("arithmetic overflow")
