@@ -165,7 +165,7 @@ def _build_like(data: list[object], shape: list[int], source: APLArray) -> APLAr
 
 def take(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ↑: take along each axis. Scalar left → first axis only."""
-    counts = [int(x) for x in alpha.data.flatten()]
+    counts = [int(x) for x in alpha.to_list()]
     fill = _fill_element(omega)
     # Pad counts to match rank (fewer counts → keep trailing axes)
     while len(counts) < len(omega.shape):
@@ -211,7 +211,7 @@ def take(alpha: APLArray, omega: APLArray) -> APLArray:
 
 def drop(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ↓: drop along each axis. Scalar left → first axis only."""
-    counts = [int(x) for x in alpha.data.flatten()]
+    counts = [int(x) for x in alpha.to_list()]
     # Pad counts to match rank (fewer counts → keep trailing axes)
     while len(counts) < len(omega.shape):
         counts.append(0)
@@ -259,13 +259,13 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
 
 def rotate(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⌽: rotate along last axis."""
-    n = int(alpha.data.flatten()[0])
+    n = int(alpha.scalar_value()) if alpha.is_scalar() else int(alpha.to_list()[0])
     return NumpyAPLArray(list(omega.shape), np.roll(omega.data, -n, axis=-1))
 
 
 def rotate_first(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⊖: rotate along first axis."""
-    n = int(alpha.data.flatten()[0])
+    n = int(alpha.scalar_value()) if alpha.is_scalar() else int(alpha.to_list()[0])
     if len(omega.shape) <= 1:
         return rotate(alpha, omega)
     return NumpyAPLArray(list(omega.shape), np.roll(omega.data, -n, axis=0))
@@ -491,7 +491,7 @@ def replicate(alpha: APLArray, omega: APLArray) -> APLArray:
     Each element of alpha says how many times to repeat the corresponding
     element along omega's last axis. Scalar alpha extends to match.
     """
-    counts = [int(x) for x in alpha.data.flatten()]
+    counts = [int(x) for x in alpha.to_list()]
     last_axis_len = omega.shape[-1] if omega.shape else 1
     if len(counts) == 1 and last_axis_len > 1:
         counts = counts * last_axis_len
@@ -505,7 +505,7 @@ def replicate_first(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⌿: replicate/compress along the first axis."""
     if len(omega.shape) <= 1:
         return replicate(alpha, omega)
-    counts = [int(x) for x in alpha.data.flatten()]
+    counts = [int(x) for x in alpha.to_list()]
     first_axis_len = omega.shape[0]
     if len(counts) == 1 and first_axis_len > 1:
         counts = counts * first_axis_len
@@ -522,7 +522,7 @@ def expand(alpha: APLArray, omega: APLArray) -> APLArray:
     next element from omega. The number of 1s in alpha must equal the
     length of omega's last axis.
     """
-    mask = [int(x) for x in alpha.data.flatten()]
+    mask = [int(x) for x in alpha.to_list()]
     fill = _fill_element(omega)
     n_ones = sum(1 for m in mask if m)
     last_axis_len = omega.shape[-1] if omega.shape else 1
