@@ -7,27 +7,44 @@ from marple.get_numpy import np
 NDArray: TypeAlias = npt.NDArray[Any]
 
 
-_CHAR_DTYPE = np.dtype(np.uint32)
+_CHAR_DTYPE: np.dtype[Any] = np.dtype(np.uint32)
+
+
+def set_char_dtype(dtype: np.dtype[Any]) -> None:
+    """Select the dtype used for character data.
+
+    The active dtype is process-global — platforms select it once at startup
+    (NumpyAPLArray: uint32; UlabAPLArray: uint16). Callers should save and
+    restore the previous value if they need to temporarily switch, e.g. in
+    tests.
+    """
+    global _CHAR_DTYPE
+    _CHAR_DTYPE = dtype
+
+
+def get_char_dtype() -> np.dtype[Any]:
+    """Return the currently active char dtype."""
+    return _CHAR_DTYPE
 
 
 def is_char_array(data: NDArray) -> bool:
-    """Check if data represents character data (uint32 ndarray of codepoints)."""
+    """Check if data represents character data (ndarray of codepoints)."""
     return data.dtype == _CHAR_DTYPE
 
 
-def chars_to_str(data: npt.NDArray[np.uint32]) -> str:
-    """Convert character array data (uint32 ndarray) to Python string."""
+def chars_to_str(data: NDArray) -> str:
+    """Convert character array data to a Python string."""
     return ''.join(chr(int(x)) for x in data.flat)
 
 
-def str_to_char_array(s: str) -> npt.NDArray[np.uint32]:
-    """Convert a Python string to a uint32 numpy array of codepoints."""
-    return np.array([ord(c) for c in s], dtype=np.uint32)
+def str_to_char_array(s: str) -> NDArray:
+    """Convert a Python string to a numpy array of codepoints."""
+    return np.array([ord(c) for c in s], dtype=_CHAR_DTYPE)
 
 
-def char_fill() -> np.uint32:
-    """Return the fill element for character arrays: space as uint32."""
-    return np.uint32(32)
+def char_fill() -> Any:
+    """Return the fill element for character arrays: space codepoint."""
+    return _CHAR_DTYPE.type(32)
 
 
 def to_array(data: list[Any]) -> NDArray:

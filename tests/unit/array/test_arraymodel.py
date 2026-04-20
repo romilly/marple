@@ -189,3 +189,70 @@ class TestCharDtype:
                 return np.dtype(np.uint16)
 
         assert SmallCharArray.char_dtype() == np.dtype(np.uint16)
+
+
+class TestActiveCharDtype:
+    """`backend_functions` helpers follow whichever char dtype is active.
+
+    The active dtype is a process-global set at Interpreter construction time.
+    Setting it to uint16 flips `is_char_array`, `is_numeric_array`,
+    `str_to_char_array`, and `char_fill` to the narrower encoding.
+    """
+
+    def test_is_char_array_respects_active_dtype(self) -> None:
+        from marple.get_numpy import np
+        from marple import backend_functions
+
+        original = backend_functions.get_char_dtype()
+        try:
+            backend_functions.set_char_dtype(np.dtype(np.uint16))
+            u16 = np.array([65, 66], dtype=np.uint16)
+            u32 = np.array([65, 66], dtype=np.uint32)
+            assert backend_functions.is_char_array(u16)
+            assert not backend_functions.is_char_array(u32)
+        finally:
+            backend_functions.set_char_dtype(original)
+
+    def test_is_numeric_array_respects_active_dtype(self) -> None:
+        from marple.get_numpy import np
+        from marple import backend_functions
+
+        original = backend_functions.get_char_dtype()
+        try:
+            backend_functions.set_char_dtype(np.dtype(np.uint16))
+            u16 = np.array([65, 66], dtype=np.uint16)
+            u32 = np.array([65, 66], dtype=np.uint32)
+            assert not backend_functions.is_numeric_array(u16)
+            assert backend_functions.is_numeric_array(u32)
+        finally:
+            backend_functions.set_char_dtype(original)
+
+    def test_str_to_char_array_uses_active_dtype(self) -> None:
+        from marple.get_numpy import np
+        from marple import backend_functions
+
+        original = backend_functions.get_char_dtype()
+        try:
+            backend_functions.set_char_dtype(np.dtype(np.uint16))
+            result = backend_functions.str_to_char_array("AB")
+            assert result.dtype == np.dtype(np.uint16)
+        finally:
+            backend_functions.set_char_dtype(original)
+
+    def test_char_fill_uses_active_dtype(self) -> None:
+        from marple.get_numpy import np
+        from marple import backend_functions
+
+        original = backend_functions.get_char_dtype()
+        try:
+            backend_functions.set_char_dtype(np.dtype(np.uint16))
+            fill = backend_functions.char_fill()
+            assert fill.dtype == np.dtype(np.uint16)
+            assert int(fill) == 32
+        finally:
+            backend_functions.set_char_dtype(original)
+
+    def test_default_active_dtype_is_uint32(self) -> None:
+        from marple.get_numpy import np
+        from marple import backend_functions
+        assert backend_functions.get_char_dtype() == np.dtype(np.uint32)
