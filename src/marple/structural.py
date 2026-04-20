@@ -257,20 +257,6 @@ def drop(alpha: APLArray, omega: APLArray) -> APLArray:
     return _build_like(result_data, new_shape, omega)
 
 
-def rotate(alpha: APLArray, omega: APLArray) -> APLArray:
-    """Dyadic ⌽: rotate along last axis."""
-    n = int(alpha.scalar_value()) if alpha.is_scalar() else int(alpha.to_list()[0])
-    return NumpyAPLArray(list(omega.shape), np.roll(omega.data, -n, axis=-1))
-
-
-def rotate_first(alpha: APLArray, omega: APLArray) -> APLArray:
-    """Dyadic ⊖: rotate along first axis."""
-    n = int(alpha.scalar_value()) if alpha.is_scalar() else int(alpha.to_list()[0])
-    if len(omega.shape) <= 1:
-        return rotate(alpha, omega)
-    return NumpyAPLArray(list(omega.shape), np.roll(omega.data, -n, axis=0))
-
-
 def transpose_dyadic(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
     """Dyadic ⍉: transpose Y by axis permutation X.
 

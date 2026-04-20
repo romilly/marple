@@ -535,12 +535,13 @@ class APLArray(APLValue):
         return drop(self, other)
 
     def rotate(self, other: APLArray) -> APLArray:
-        from marple.structural import rotate
-        return rotate(self, other)
+        """Dyadic ⌽: rotate `other` along its last axis by `self` (a scalar
+        or 1-element count)."""
+        raise NotImplementedError("adapter must implement rotate")
 
     def rotate_first(self, other: APLArray) -> APLArray:
-        from marple.structural import rotate_first
-        return rotate_first(self, other)
+        """Dyadic ⊖: rotate `other` along its first axis by `self`."""
+        raise NotImplementedError("adapter must implement rotate_first")
 
     def encode(self, other: APLArray) -> APLArray:
         from marple.structural import encode

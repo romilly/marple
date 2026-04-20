@@ -82,6 +82,16 @@ class NumpyAPLArray(APLArray):
         from marple.backend_functions import data_type_code
         return data_type_code(self.data)
 
+    def rotate(self, other: APLArray) -> APLArray:
+        n = int(self.scalar_value()) if self.is_scalar() else int(self.to_list()[0])
+        return type(other)(list(other.shape), np.roll(other.data, -n, axis=-1))
+
+    def rotate_first(self, other: APLArray) -> APLArray:
+        n = int(self.scalar_value()) if self.is_scalar() else int(self.to_list()[0])
+        if len(other.shape) <= 1:
+            return self.rotate(other)
+        return type(other)(list(other.shape), np.roll(other.data, -n, axis=0))
+
     def slice_axis(self, axis: int, index: int) -> APLArray:
         rank = len(self.shape)
         if axis < 0 or axis >= rank:
