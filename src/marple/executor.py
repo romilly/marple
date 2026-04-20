@@ -27,7 +27,7 @@ else:
                 for rest in product(*lists[1:]):
                     yield (item,) + rest
 from marple.numpy_array import _gcd_float
-from typing import Any, Callable, cast
+from typing import Any, Callable, TYPE_CHECKING, cast
 
 from marple.numpy_array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
@@ -461,17 +461,22 @@ class Reference(Executable):
 
 # `Applicable` is the set of things that can be applied as a function:
 # Function values, and Reference nodes that resolve to one. (A pure
-# Executable that computes an APLArray is never applicable.) Runtime
-# union so both type annotations and isinstance checks work
-# (Python 3.10+ supports `isinstance(x, A | B)`).
-Applicable = Function | Reference
-
-# `OperatorOperand` is the broader set of things an operator can
-# accept as an operand: any Applicable, plus a non-applicable
-# Executable for cases like a numeric rank spec in `f⍤2` or a
-# repeat count in `f⍣3`. Per-operator subclasses assert the
-# specific shape they require.
-OperatorOperand = Function | Executable
+# Executable that computes an APLArray is never applicable.)
+# At runtime we store a tuple so `isinstance(x, Applicable)` works on
+# both CPython and MicroPython — MicroPython's `type.__or__` isn't
+# implemented, so the PEP 604 form fails at module load there. Under
+# TYPE_CHECKING pyright still sees the precise union.
+if TYPE_CHECKING:
+    Applicable = Function | Reference
+    OperatorOperand = Function | Executable
+else:
+    Applicable = (Function, Reference)
+    # `OperatorOperand` is the broader set of things an operator can
+    # accept as an operand: any Applicable, plus a non-applicable
+    # Executable for cases like a numeric rank spec in `f⍤2` or a
+    # repeat count in `f⍣3`. Per-operator subclasses assert the
+    # specific shape they require.
+    OperatorOperand = (Function, Executable)
 
 
 class Literal(Executable):
