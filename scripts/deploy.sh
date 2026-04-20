@@ -19,6 +19,7 @@ mpremote rm :main.py 2>/dev/null || true
 mpremote rm :abc.py 2>/dev/null || true
 mpremote rm :typing.py 2>/dev/null || true
 mpremote rm :__future__.py 2>/dev/null || true
+mpremote rm :contextlib.py 2>/dev/null || true
 mpremote rm :marple_config.py 2>/dev/null || true
 
 echo "Deploying marple to Pico 2..."
@@ -78,6 +79,7 @@ mpremote \
     cp pico_stubs/abc.py :abc.py + \
     cp pico_stubs/typing.py :typing.py + \
     cp pico_stubs/__future__.py :__future__.py + \
+    cp pico_stubs/contextlib.py :contextlib.py + \
     cp scripts/pico_eval.py :main.py + \
     cp scripts/marple_config.py :marple_config.py
 
