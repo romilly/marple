@@ -118,8 +118,18 @@ SINGLE_CHAR_TOKENS: dict[str, Node] = {
 
 
 class Tokenizer:
-    _NUM_RE = re.compile(r'\d+(?:\.\d*)?(?:[eE][¯\-+]?\d+)?')
-    _ID_RE = re.compile(r'[a-zA-Z_∆⍙][a-zA-Z0-9_∆⍙]*(?:::[a-zA-Z_∆⍙][a-zA-Z0-9_∆⍙]*)*')
+    # Patterns use \uNNNN escapes (not literal non-ASCII characters) because
+    # MicroPython's re module reports byte-based match offsets when a
+    # compiled pattern contains literal multi-byte chars — m.end() then
+    # steps past `\u2206`'s UTF-8 bytes rather than counting it as one
+    # char, and m.group(0) raises UnicodeError trying to decode partial
+    # UTF-8. The \uNNNN form parses to the same char but keeps the
+    # compiled pattern itself ASCII, which avoids the byte-vs-char bug.
+    _NUM_RE = re.compile(r'\d+(?:\.\d*)?(?:[eE][\u00af\-+]?\d+)?')
+    _ID_RE = re.compile(
+        r'[a-zA-Z_\u2206\u2359][a-zA-Z0-9_\u2206\u2359]*'
+        r'(?:::[a-zA-Z_\u2206\u2359][a-zA-Z0-9_\u2206\u2359]*)*'
+    )
 
     def __init__(self, source: str) -> None:
         # `_text` is the raw source, used for regex matching
