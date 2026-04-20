@@ -535,13 +535,25 @@ class APLArray(APLValue):
         """
         raise NotImplementedError("adapter must implement catenate")
 
+    @classmethod
+    def _build_like(cls, data: list[Any], shape: list[int],
+                    source: "APLArray") -> "APLArray":
+        """Construct an array with the same dtype as `source`. Used by
+        take/drop/expand to keep result dtypes consistent with input
+        (empty or reshaped results preserve char vs numeric typing).
+        """
+        raise NotImplementedError("adapter must implement _build_like")
+
     def take(self, other: APLArray) -> APLArray:
-        from marple.structural import take
-        return take(self, other)
+        """Dyadic ↑: take elements of `other` along each axis, per counts
+        in `self`. Negative counts take from the end. Overtake pads with
+        fill element (0 for numeric, space for char)."""
+        raise NotImplementedError("adapter must implement take")
 
     def drop(self, other: APLArray) -> APLArray:
-        from marple.structural import drop
-        return drop(self, other)
+        """Dyadic ↓: drop elements of `other` along each axis, per counts
+        in `self`. Negative counts drop from the end."""
+        raise NotImplementedError("adapter must implement drop")
 
     def rotate(self, other: APLArray) -> APLArray:
         """Dyadic ⌽: rotate `other` along its last axis by `self` (a scalar
@@ -569,8 +581,10 @@ class APLArray(APLValue):
         return replicate_first(self, other)
 
     def expand(self, other: APLArray) -> APLArray:
-        from marple.structural import expand
-        return expand(self, other)
+        """Dyadic \\: expand `other` along its last axis using `self` as
+        the 0/1 mask. Each 1 consumes the next element of `other`; each
+        0 inserts a fill element."""
+        raise NotImplementedError("adapter must implement expand")
 
     def matrix_divide(self, other: APLArray) -> APLArray:
         """Dyadic ⌹: solve `other x = self` for x. ulab adapters raise

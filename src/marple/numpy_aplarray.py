@@ -82,6 +82,140 @@ class NumpyAPLArray(APLArray):
         from marple.backend_functions import data_type_code
         return data_type_code(self.data)
 
+    @staticmethod
+    def _first_axis_chunk_size(shape: list[int]) -> int:
+        size = 1
+        for s in shape[1:]:
+            size *= s
+        return size
+
+    @staticmethod
+    def _fill_element(source: APLArray) -> Any:
+        from marple.backend_functions import char_fill
+        return char_fill() if source.is_char() else 0
+
+    @staticmethod
+    def _take_axis(data: list[Any], axis_len: int, n: int,
+                   fill: Any) -> tuple[list[Any], int]:
+        abs_n = abs(n)
+        if n >= 0:
+            taken = data[:abs_n]
+            pad = [fill] * max(0, abs_n - axis_len)
+            return taken + pad, abs_n
+        taken = data[max(0, axis_len + n):]
+        pad = [fill] * max(0, abs_n - axis_len)
+        return pad + taken, abs_n
+
+    @classmethod
+    def _build_like(cls, data: list[Any], shape: list[int],
+                    source: APLArray) -> APLArray:
+        dtype = source.data.dtype
+        arr = np.array(data, dtype=dtype) if data else np.array([], dtype=dtype)
+        if shape:
+            arr = arr.reshape(shape)
+        return cls(shape, arr)
+
+    def take(self, other: APLArray) -> APLArray:
+        counts = [int(x) for x in self.to_list()]
+        fill = self._fill_element(other)
+        while len(counts) < len(other.shape):
+            counts.append(other.shape[len(counts)])
+        flat = other.data.flatten()
+        if len(other.shape) <= 1:
+            n = counts[0]
+            data = list(flat)
+            result, new_len = self._take_axis(data, len(data), n, fill)
+            return type(other)._build_like(result, [new_len], other)
+        n = counts[0]
+        abs_n = abs(n)
+        chunk = self._first_axis_chunk_size(other.shape)
+        num_rows = other.shape[0]
+        fill_row = [fill] * chunk
+        rows: list[list[Any]] = []
+        for r in range(abs_n):
+            src = r if n >= 0 else num_rows + n + r
+            if 0 <= src < num_rows:
+                rows.append(list(flat[src * chunk:(src + 1) * chunk]))
+            else:
+                rows.append(list(fill_row))
+        if len(counts) > 1:
+            inner_shape = list(other.shape[1:])
+            inner_counts = counts[1:]
+            processed: list[Any] = []
+            inner_shape_out = inner_shape
+            for row in rows:
+                inner = type(other)._build_like(row, inner_shape, other)
+                taken = type(self).array([len(inner_counts)], inner_counts).take(inner)
+                processed.extend(list(taken.data.flatten()))
+                inner_shape_out = list(taken.shape)
+            return type(other)._build_like(processed, [abs_n] + inner_shape_out, other)
+        new_shape = list(other.shape)
+        new_shape[0] = abs_n
+        result_data: list[Any] = []
+        for row in rows:
+            result_data.extend(row)
+        return type(other)._build_like(result_data, new_shape, other)
+
+    def drop(self, other: APLArray) -> APLArray:
+        counts = [int(x) for x in self.to_list()]
+        while len(counts) < len(other.shape):
+            counts.append(0)
+        flat = other.data.flatten()
+        if len(other.shape) <= 1:
+            n = counts[0]
+            data = list(flat)
+            if n >= 0:
+                result = data[n:]
+            else:
+                result = data[:n] if n != 0 else data
+            return type(other)._build_like(result, [len(result)], other)
+        n = counts[0]
+        chunk = self._first_axis_chunk_size(other.shape)
+        num_rows = other.shape[0]
+        if n >= 0:
+            start = min(n, num_rows)
+            kept_rows = num_rows - start
+        else:
+            start = 0
+            kept_rows = max(num_rows + n, 0)
+        rows: list[list[Any]] = []
+        for r in range(kept_rows):
+            src = start + r if n >= 0 else r
+            rows.append(list(flat[src * chunk:(src + 1) * chunk]))
+        if len(counts) > 1:
+            inner_shape = list(other.shape[1:])
+            inner_counts = counts[1:]
+            processed: list[Any] = []
+            inner_shape_out = inner_shape
+            for row in rows:
+                inner = type(other)._build_like(row, inner_shape, other)
+                dropped = type(self).array([len(inner_counts)], inner_counts).drop(inner)
+                processed.extend(list(dropped.data.flatten()))
+                inner_shape_out = list(dropped.shape)
+            return type(other)._build_like(processed, [kept_rows] + inner_shape_out, other)
+        new_shape = list(other.shape)
+        new_shape[0] = kept_rows
+        result_data: list[Any] = []
+        for row in rows:
+            result_data.extend(row)
+        return type(other)._build_like(result_data, new_shape, other)
+
+    def expand(self, other: APLArray) -> APLArray:
+        from marple.errors import LengthError
+        mask = [int(x) for x in self.to_list()]
+        fill = self._fill_element(other)
+        n_ones = sum(1 for m in mask if m)
+        last_axis_len = other.shape[-1] if other.shape else 1
+        if n_ones != last_axis_len:
+            raise LengthError(
+                f"Expand: mask has {n_ones} ones but argument has {last_axis_len} elements")
+        out_shape = (list(other.shape[:-1]) + [len(mask)]) if other.shape else [len(mask)]
+        result = np.full(out_shape, fill, dtype=other.data.dtype)
+        one_positions = [i for i, m in enumerate(mask) if m]
+        if one_positions:
+            result[..., one_positions] = other.data
+        return type(other)(out_shape, result)
+
     def reshape(self, other: APLArray) -> APLArray:
         from marple.backend_functions import char_fill, get_char_dtype
         if self.is_scalar():
