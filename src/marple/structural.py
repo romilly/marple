@@ -247,18 +247,6 @@ def transpose_dyadic(alpha: APLArray, omega: APLArray, io: int = 1) -> APLArray:
     return NumpyAPLArray(result_shape, result_data)
 
 
-def grade_up(omega: APLArray, io: int = 1) -> APLArray:
-    indexed = list(enumerate(omega.data))
-    indexed.sort(key=lambda pair: pair[1])  # type: ignore[arg-type]
-    return NumpyAPLArray.array([len(omega.data)], [i + io for i, _ in indexed])
-
-
-def grade_down(omega: APLArray, io: int = 1) -> APLArray:
-    indexed = list(enumerate(omega.data))
-    indexed.sort(key=lambda pair: pair[1], reverse=True)  # type: ignore[arg-type]
-    return NumpyAPLArray.array([len(omega.data)], [i + io for i, _ in indexed])
-
-
 def encode(alpha: APLArray, omega: APLArray) -> APLArray:
     """Dyadic ⊤: represent ω in the number system given by α.
 

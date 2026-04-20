@@ -685,16 +685,16 @@ class APLArray(APLValue):
     def grade_up(self, io: int = 1) -> APLArray:
         if len(self.shape) != 1:
             raise RankError("⍋ requires a vector argument")
-        indexed = list(enumerate(self.data))
-        indexed.sort(key=lambda pair: pair[1])  # type: ignore[arg-type]
-        return type(self).array([len(self.data)], [i + io for i, _ in indexed])
+        vals = self.to_list()
+        indexed = sorted(enumerate(vals), key=lambda pair: pair[1])  # type: ignore[arg-type,return-value]
+        return type(self).array([len(vals)], [i + io for i, _ in indexed])
 
     def grade_down(self, io: int = 1) -> APLArray:
         if len(self.shape) != 1:
             raise RankError("⍒ requires a vector argument")
-        indexed = list(enumerate(self.data))
-        indexed.sort(key=lambda pair: pair[1], reverse=True)  # type: ignore[arg-type]
-        return type(self).array([len(self.data)], [i + io for i, _ in indexed])
+        vals = self.to_list()
+        indexed = sorted(enumerate(vals), key=lambda pair: pair[1], reverse=True)  # type: ignore[arg-type,return-value]
+        return type(self).array([len(vals)], [i + io for i, _ in indexed])
 
     def iota(self, io: int = 1) -> APLArray:
         n = int(self.scalar_value())
