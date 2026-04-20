@@ -3,7 +3,7 @@ from typing import Any
 from marple.numpy_array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import (
-    char_fill, get_char_dtype, is_char_array, np_reshape, to_list,
+    char_fill, get_char_dtype, is_char_array, np_repeat, np_reshape, to_list,
 )
 from marple.errors import DomainError, IndexError_, LengthError, RankError
 from marple.get_numpy import np
@@ -544,7 +544,7 @@ def replicate(alpha: APLArray, omega: APLArray) -> APLArray:
         counts = counts * last_axis_len
     if len(counts) != last_axis_len:
         raise LengthError(f"Length mismatch: {len(counts)} vs {last_axis_len}")
-    result = np.repeat(omega.data, counts, axis=-1)
+    result = np_repeat(omega.data, counts, axis=-1)
     return NumpyAPLArray(list(result.shape), result)
 
 
@@ -558,7 +558,7 @@ def replicate_first(alpha: APLArray, omega: APLArray) -> APLArray:
         counts = counts * first_axis_len
     if len(counts) != first_axis_len:
         raise LengthError(f"Length mismatch: {len(counts)} vs {first_axis_len}")
-    result = np.repeat(omega.data, counts, axis=0)
+    result = np_repeat(omega.data, counts, axis=0)
     return NumpyAPLArray(list(result.shape), result)
 
 

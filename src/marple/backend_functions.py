@@ -36,6 +36,8 @@ _CHAR_DTYPE: "np.dtype[Any] | None" = None
 _ACTIVE_BACKEND_CLASS: "type[APLArray] | None" = None
 
 
+# TODO: The design of this module appears to fly in the face of the plan:
+# we want (at least) two different backends, one for mainstream numpy, one for the pico2.
 def set_char_dtype(dtype: np.dtype[Any]) -> None:
     """Select the dtype used for character data.
 
@@ -150,6 +152,79 @@ def is_numeric_array(data: NDArray) -> bool:
     to use is_numeric_array as a safe gate after the char guards run.
     """
     return data.dtype != get_char_dtype()
+
+
+def np_gather(data: Any, axis_indices: "list[list[int]]") -> Any:
+    """Multi-axis gather: return the flat sequence of
+    `data[axis_indices[0][i0], axis_indices[1][i1], ...]` as (i0,i1,...)
+    ranges over the Cartesian product of `axis_indices`.
+
+    Used for APL bracket indexing. On CPython routes through
+    `data[np.ix_(*axis_indices)].flatten()`; on ulab (no np.ix_, no
+    fancy indexing) iterates in Python for ranks 1 and 2. Caller
+    reshapes via `np_reshape` or APLArray.__init__.
+    """
+    if hasattr(np, "ix_"):
+        idx_arrays = [np.asarray(ax) for ax in axis_indices]
+        return data[np.ix_(*idx_arrays)].flatten()
+    rank = len(data.shape)
+    if rank != len(axis_indices):
+        raise ValueError("axis_indices count ({}) doesn't match data rank ({})"
+                         .format(len(axis_indices), rank))
+    if rank == 1:
+        idx = axis_indices[0]
+        return np.array([data[int(i)] for i in idx], dtype=data.dtype)
+    if rank == 2:
+        row_idx, col_idx = axis_indices
+        rows = [list(r) for r in data]
+        out = [rows[int(r)][int(c)] for r in row_idx for c in col_idx]
+        return np.array(out, dtype=data.dtype)
+    raise NotImplementedError(
+        "np_gather fallback supports rank \u2264 2 (got {})".format(rank))
+
+
+def np_repeat(arr: Any, counts: Any, axis: int) -> Any:
+    """Platform-agnostic ndarray.repeat along a single axis.
+
+    Delegates to `np.repeat` when available (CPython numpy). On ulab
+    (no np.repeat, no fancy indexing, no `.astype`) rebuilds the result
+    via Python-list iteration for rank 1 and rank 2 — the shapes marple
+    actually hits.
+
+    `counts` is a sequence of ints (one per element along `axis`) or a
+    scalar (applied to every element) — both forms match np.repeat.
+    """
+    if hasattr(np, "repeat"):
+        return np.repeat(arr, counts, axis=axis)
+    rank = len(arr.shape)
+    axis_len = arr.shape[axis if axis >= 0 else rank + axis]
+    if isinstance(counts, int):
+        counts_list = [counts] * axis_len
+    else:
+        counts_list = [int(c) for c in counts]
+        if len(counts_list) == 1 and axis_len > 1:
+            counts_list = counts_list * axis_len
+    if rank == 1:
+        values = list(arr)
+        out = [v for v, c in zip(values, counts_list) for _ in range(c)]
+        return np.array(out, dtype=arr.dtype)
+    if rank == 2:
+        rows = [list(r) for r in arr]
+        if axis in (-1, 1):
+            new_rows = [
+                [v for v, c in zip(row, counts_list) for _ in range(c)]
+                for row in rows
+            ]
+        elif axis == 0:
+            new_rows = [
+                list(row) for row, c in zip(rows, counts_list)
+                for _ in range(c)
+            ]
+        else:
+            raise ValueError("axis {} out of range for rank 2".format(axis))
+        return np.array(new_rows, dtype=arr.dtype)
+    raise NotImplementedError(
+        "np_repeat fallback supports rank \u2264 2 (got {})".format(rank))
 
 
 def np_reshape(arr: Any, *shape: Any) -> Any:

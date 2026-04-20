@@ -33,8 +33,8 @@ from marple.numpy_array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import (
     _DOWNCAST_CT, chars_to_str, get_char_dtype, is_char_array, is_numeric_array,
-    maybe_downcast, maybe_upcast, str_to_char_array, strict_numeric_errstate,
-    to_list,
+    maybe_downcast, maybe_upcast, np_gather, str_to_char_array,
+    strict_numeric_errstate, to_list,
 )
 from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
 from marple.errors import DomainError, LengthError, SyntaxError_, ValueError_
@@ -1018,23 +1018,31 @@ class Index(Executable):
     def execute(self, ctx: Executor) -> APLArray:
         array = ctx.evaluate(self.array)
         io = ctx.env.io
-        axis_indices: list[np.ndarray[Any, Any]] = []
+        # Build one int-list per axis (0-based). np_gather handles the
+        # Cartesian-product lookup on both numpy (np.ix_) and ulab (Python
+        # loop) so we don't need np.atleast_1d / np.intp / fancy indexing
+        # here.
+        axis_indices: list[list[int]] = []
         idx_shapes: list[list[int]] = []
         for axis, idx_node in enumerate(self.indices):
             if idx_node is None:
-                axis_indices.append(np.arange(array.shape[axis]))
+                axis_indices.append(list(range(array.shape[axis])))
                 idx_shapes.append([array.shape[axis]])
             else:
                 idx = ctx.evaluate(idx_node)
-                vals = np.atleast_1d(idx.data).astype(np.intp) - io
-                axis_indices.append(vals.ravel())
-                idx_shapes.append(idx.shape if not idx.is_scalar() else [])
+                if idx.is_scalar():
+                    axis_indices.append([int(idx.scalar_value()) - io])
+                    idx_shapes.append([])
+                else:
+                    axis_indices.append(
+                        [int(x) - io for x in idx.data.flatten()])
+                    idx_shapes.append(list(idx.shape))
         for axis in range(len(self.indices), len(array.shape)):
-            axis_indices.append(np.arange(array.shape[axis]))
+            axis_indices.append(list(range(array.shape[axis])))
             idx_shapes.append([array.shape[axis]])
-        result_data = array.data[np.ix_(*axis_indices)]
+        result_flat = np_gather(array.data, axis_indices)
         result_shape = [d for s in idx_shapes for d in s]
-        return NumpyAPLArray(result_shape, result_data.reshape(result_shape or ()))
+        return NumpyAPLArray(result_shape, result_flat)
 
 
 class Omega(Executable):
