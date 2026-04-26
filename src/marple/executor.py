@@ -1265,57 +1265,7 @@ class Executor:
         """Evaluate an AST node by calling its execute method."""
         return node.execute(self)
     
-    def _inner_product(self, 
-        reduce_glyph: str, apply_glyph: str, alpha: APLArray, omega: APLArray,
-    ) -> APLArray:
-        """Compute inner product: alpha reduce_fn.apply_fn omega.
-
-        Result shape is (¯1↓⍴alpha),(1↓⍴omega).
-        Last axis of alpha must match first axis of omega.
-        """
-        reduce_op = _INNER_SCALAR_OPS.get(reduce_glyph)
-        apply_op = _INNER_SCALAR_OPS.get(apply_glyph)
-        if reduce_op is None:
-            raise DomainError(f"Unknown function for inner product: {reduce_glyph}")
-        if apply_op is None:
-            raise DomainError(f"Unknown function for inner product: {apply_glyph}")
-        a_shape = alpha.shape if alpha.shape else [1]
-        b_shape = omega.shape if omega.shape else [1]
-        k = a_shape[-1]
-        if k != b_shape[0]:
-            raise LengthError(f"Inner product length error: {a_shape} vs {b_shape}")
-        # Fast path: +.× uses np.dot (correct when at least one arg is rank ≤ 2)
-        if (reduce_glyph == "+" and apply_glyph == "×"
-                and alpha.is_numeric() and omega.is_numeric()
-                and (len(a_shape) <= 2 or len(b_shape) <= 2)):
-            try:
-                with strict_numeric_errstate():
-                    result = np.dot(maybe_upcast(alpha.data), maybe_upcast(omega.data))
-            except FloatingPointError:
-                raise DomainError("arithmetic overflow in inner product")
-            if not hasattr(result, 'shape') or result.shape == ():
-                return S(int(result) if float(result) == int(result) else float(result))
-            return BUILDER.apl_array(list(result.shape), result)
-        result_shape = a_shape[:-1] + b_shape[1:]
-        if not result_shape:
-            paired = [apply_op(alpha.data[(p,)], omega.data[(p,)]) for p in range(k)]
-            acc = paired[-1]
-            for i in range(len(paired) - 2, -1, -1):
-                acc = reduce_op(paired[i], acc)
-            return S(acc)
-        result = np.zeros(tuple(result_shape))
-        a_outer = [range(s) for s in a_shape[:-1]]
-        b_outer = [range(s) for s in b_shape[1:]]
-        for a_idx in product(*a_outer):
-            for b_idx in product(*b_outer):
-                paired = [apply_op(alpha.data[a_idx + (p,)], omega.data[(p,) + b_idx])
-                        for p in range(k)]
-                acc = paired[-1]
-                for i in range(len(paired) - 2, -1, -1):
-                    acc = reduce_op(paired[i], acc)
-                result[a_idx + b_idx] = acc
-        return BUILDER.apl_array(result_shape, result)
-
+    
     # ── Callback methods for node execute() ──
 
     def dispatch_monadic(self, glyph: str, operand: APLArray) -> APLArray:
