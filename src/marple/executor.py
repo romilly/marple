@@ -26,7 +26,6 @@ def product(*lists: Any) -> Any:
             yield (item,) + rest
 
 from marple.ports.array import APLArray, S
-from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import (
     _DOWNCAST_CT, get_char_dtype,
     maybe_downcast, maybe_upcast, np_gather, str_to_char_array,
