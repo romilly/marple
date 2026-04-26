@@ -1315,7 +1315,7 @@ class Executor:
                 raise DomainError(f"Cannot assign a function to {name}")
             return self._io_assign(name, value)
         if isinstance(value, APLArray) and value.is_numeric():
-            value = NumpyAPLArray.array(list(value.shape), maybe_downcast(value.data, _DOWNCAST_CT))
+            value = BUILDER.apl_array(list(value.shape), maybe_downcast(value.data, _DOWNCAST_CT))
         if name.startswith("⎕"):
             if name == "⎕FR" and isinstance(value, APLArray):
                 fr_val = int(value.scalar_value())
@@ -1384,7 +1384,7 @@ class Executor:
 
     def _sysvar_wa(self) -> APLArray:
         """⎕WA — workspace available (free memory in bytes)."""
-        return NumpyAPLArray.array([], [2**31 - 1])
+        return BUILDER.apl_array([], [2**31 - 1])
 
     def _sysvar_quad(self) -> APLArray:
         """⎕ — prompt, read, parse, and evaluate input as APL."""
@@ -1513,7 +1513,7 @@ class Executor:
         vals = right.to_list()
         if target == 645:
             new_data = [float(v) for v in vals]
-            return NumpyAPLArray.array(list(right.shape), new_data)
+            return BUILDER.apl_array(list(right.shape), new_data)
         if target in (643, 323, 163, 83):
             new_data = [int(round(v)) for v in vals]
             return BUILDER.apl_array((right.shape), new_data)
@@ -1678,4 +1678,4 @@ class Executor:
         path = right.as_str()
         text = left.as_str()
         self.fs.write_text(path, text)
-        return NumpyAPLArray.array([0], [])
+        return BUILDER.apl_array([0], [])
