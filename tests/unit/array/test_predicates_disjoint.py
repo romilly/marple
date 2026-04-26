@@ -5,7 +5,6 @@ using `if arr.is_numeric()` as a fast path would silently apply
 arithmetic to character codepoints if these predicates overlapped.
 """
 
-from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import str_to_char_array
 
 from marple.adapters.numpy_array_builder import BUILDER
