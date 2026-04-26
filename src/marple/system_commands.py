@@ -3,7 +3,7 @@
 Returns strings instead of printing — usable by REPL, web server, and Jupyter.
 """
 
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 from marple.ports.array import APLArray
 from marple.backend_functions import str_to_char_array
@@ -18,7 +18,8 @@ def _get_wsid(interp: Interpreter) -> str:
     return wsid_val.as_str()
 
 
-SystemCommandHandler = Callable[[Interpreter, str], tuple[str, bool]]
+if TYPE_CHECKING:
+    SystemCommandHandler = Callable[[Interpreter, str], tuple[str, bool]]
 
 
 def run_system_command(interp: Interpreter, line: str) -> tuple[str, bool]:
@@ -145,7 +146,7 @@ def _cmd_drop(interp: Interpreter, line: str) -> tuple[str, bool]:
         return f"ERROR: {e}", False
 
 
-_COMMANDS: dict[str, SystemCommandHandler] = {
+_COMMANDS: "dict[str, SystemCommandHandler]" = {
     "off": _cmd_off,
     "clear": _cmd_clear,
     "wsid": _cmd_wsid,
