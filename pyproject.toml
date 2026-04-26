@@ -60,3 +60,6 @@ markers = [
     "hardware: tests requiring connected hardware (Pico) — run with pytest -m hardware",
 ]
 asyncio_mode = "auto"
+[tool.pyright]
+include = ["src", "tests"]
+exclude = ["**/node_modules", "**/__pycache__", "src/experimental"]
