@@ -478,7 +478,8 @@ class Literal(Executable):
     """Wrapper: an already-evaluated APLArray as a Node."""
     def __init__(self, value: APLArray) -> None:
         self.value = value
-    def execute(self, ctx: Executor) -> APLArray:
+
+    def execute(self, ctx: Any) -> APLArray:
         return self.value
 
 
