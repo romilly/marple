@@ -135,3 +135,13 @@ class TestPicoTransposeDyadic:
         # 2x3 matrix: diagonal is min(2,3)=2 elements.
         pico.eval_silent("M\u21902 3\u2374\u23736")
         assert pico.eval("1 1 \u2349 M") == "1 5"
+
+
+class TestPicoEncode:
+    """Dyadic \u22a4 (encode) \u2014 represent \u03c9 in radix \u03b1.
+    Result shape per spec is (\u2374\u03b1),\u2374\u03c9; on ulab this
+    must be rank \u2264 2.
+    """
+
+    def test_canonical_seconds_to_hms(self, pico: PicoConnection) -> None:
+        assert pico.eval("24 60 60 \u22a4 3725") == "1 2 5"
