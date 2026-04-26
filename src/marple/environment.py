@@ -7,12 +7,12 @@ if TYPE_CHECKING:
 
 from marple.backend_functions import str_to_char_array
 from marple.ports.array import APLArray, S
-from marple.numpy_aplarray import NumpyAPLArray
 from marple.ports.console import Console
 from marple.ports.filesystem import FileSystem
 from marple.ports.timer import Timer
 from marple.apl_value import APLValue, NC_ARRAY, NC_FUNCTION, NC_OPERATOR
 from marple.symbol_table import SymbolTable
+from marple.adapters.numpy_array_builder import BUILDER
 
 
 _QUAD_DEFAULTS: dict[str, APLArray] = {
@@ -20,13 +20,13 @@ _QUAD_DEFAULTS: dict[str, APLArray] = {
     "⎕CT": S(1e-14),
     "⎕PP": S(10),
     "⎕EN": S(0),
-    "⎕DM": NumpyAPLArray([0], str_to_char_array("")),
-    "⎕A": NumpyAPLArray([26], str_to_char_array("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
-    "⎕D": NumpyAPLArray([10], str_to_char_array("0123456789")),
-    "⎕WSID": NumpyAPLArray([8], str_to_char_array("CLEAR WS")),
+    "⎕DM": BUILDER.apl_array([0], str_to_char_array("")),
+    "⎕A": BUILDER.apl_array([26], str_to_char_array("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
+    "⎕D": BUILDER.apl_array([10], str_to_char_array("0123456789")),
+    "⎕WSID": BUILDER.apl_array([8], str_to_char_array("CLEAR WS")),
     "⎕RL": S(1),
     "⎕FR": S(645),
-    "⎕LX": NumpyAPLArray([0], str_to_char_array("")),
+    "⎕LX": BUILDER.apl_array([0], str_to_char_array("")),
 }
 
 

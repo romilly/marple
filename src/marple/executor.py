@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from marple.adapters.numpy_array_builder import NumpyArrayBuilder
+
+#TODO: Get rid of the global BUILDER
+from marple.adapters.numpy_array_builder import NumpyArrayBuilder, BUILDER
 from marple.ports.array import _gcd_float
 from typing import Any, Callable, TYPE_CHECKING, cast
 
-#TODO: Get rid of the global BUILDER
 
-BUILDER = NumpyArrayBuilder()
+
 
 def product(*lists: Any) -> Any:
     """Cartesian product generator over one or more sequences.

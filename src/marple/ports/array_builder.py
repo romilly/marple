@@ -7,3 +7,4 @@ class ArrayBuilder(ABC):
     @abstractmethod
     def apl_array(cls, shape, data) -> APLArray:
         pass
+
