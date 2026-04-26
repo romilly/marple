@@ -4,6 +4,7 @@ from typing import Any
 
 from marple.ports.array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
+from marple.adapters.numpy_array_builder import BUILDER
 from marple.formatting import format_num
 from marple.backend_functions import get_char_dtype, str_to_char_array
 from marple.get_numpy import np
@@ -210,8 +211,8 @@ def dyadic_fmt(fmt_str: str, values: list[APLArray]) -> APLArray:
         rows.append("".join(parts))
     max_width = max(len(r) for r in rows) if rows else 0
     if not rows or max_width == 0:
-        return NumpyAPLArray([len(rows), max_width],
+        return BUILDER.apl_array([len(rows), max_width],
                              np.array([], dtype=get_char_dtype()).reshape(len(rows), max_width))
     text = "".join(_ljust(r, max_width) for r in rows)
     data = str_to_char_array(text).reshape(len(rows), max_width)
-    return NumpyAPLArray([len(rows), max_width], data)
+    return BUILDER.apl_array([len(rows), max_width], data)
