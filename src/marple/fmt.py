@@ -2,8 +2,7 @@
 
 from typing import Any
 
-from marple.ports.array import APLArray, S
-from marple.numpy_aplarray import NumpyAPLArray
+from marple.ports.array import APLArray
 from marple.adapters.numpy_array_builder import BUILDER
 from marple.formatting import format_num
 from marple.backend_functions import get_char_dtype, str_to_char_array
