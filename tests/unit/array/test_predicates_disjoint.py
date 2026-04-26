@@ -6,7 +6,6 @@ arithmetic to character codepoints if these predicates overlapped.
 """
 
 from marple.backend_functions import str_to_char_array
-
 from marple.adapters.numpy_array_builder import BUILDER
 
 
