@@ -5,5 +5,5 @@ from marple.ports.array import APLArray
 
 class ArrayBuilder(ABC):
     @abstractmethod
-    def apl_array(cls, shape, data, dtype) -> APLArray:
+    def apl_array(cls, shape, data) -> APLArray:
         pass

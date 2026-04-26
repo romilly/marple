@@ -2,9 +2,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from marple.adapters.numpy_array_builder import NumpyArrayBuilder
 from marple.ports.array import _gcd_float
 from typing import Any, Callable, TYPE_CHECKING, cast
 
+#TODO: Get rid of the global BUILDER
+
+BUILDER = NumpyArrayBuilder()
 
 def product(*lists: Any) -> Any:
     """Cartesian product generator over one or more sequences.
@@ -90,7 +94,7 @@ def _inner_product(
             raise DomainError("arithmetic overflow in inner product")
         if not hasattr(result, 'shape') or result.shape == ():
             return S(int(result) if float(result) == int(result) else float(result))
-        return NumpyAPLArray(list(result.shape), result)
+        return BUILDER.apl_array(list(result.shape), result)
     result_shape = a_shape[:-1] + b_shape[1:]
     if not result_shape:
         paired = [apply_op(alpha.data[(p,)], omega.data[(p,)]) for p in range(k)]
@@ -109,7 +113,7 @@ def _inner_product(
             for i in range(len(paired) - 2, -1, -1):
                 acc = reduce_op(paired[i], acc)
             result[a_idx + b_idx] = acc
-    return NumpyAPLArray(result_shape, result)
+    return BUILDER.apl_array(result_shape, result)
 
 
 _OUTER_UFUNCS: dict[str, str] = {
@@ -146,7 +150,7 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
                 except FloatingPointError:
                     raise DomainError("arithmetic overflow in outer product")
                 result_shape = alpha.shape + omega.shape
-                return NumpyAPLArray(result_shape, result.reshape(result_shape))
+                return BUILDER.apl_array(result_shape, result.reshape(result_shape))
     # General path
     op = _INNER_SCALAR_OPS.get(glyph)
     if op is None:
@@ -168,7 +172,7 @@ def _outer_product(glyph: str, alpha: APLArray, omega: APLArray) -> APLArray:
                     result[a_idx + b_idx] = op(alpha.data[a_idx], omega.data[b_idx])
     except FloatingPointError:
         raise DomainError("arithmetic overflow in outer product")
-    return NumpyAPLArray(result_shape, result)
+    return BUILDER.apl_array(result_shape, result)
 
 
 
@@ -495,7 +499,7 @@ class Str(Executable):
         # matches numeric scalars.
         if len(self.value) == 1:
             return S(self.value)
-        return NumpyAPLArray([len(self.value)], str_to_char_array(self.value))
+        return BUILDER.apl_array([len(self.value)], str_to_char_array(self.value))
 
 
 class Vector(Executable):
@@ -503,13 +507,13 @@ class Vector(Executable):
         self.elements = elements
     def execute(self, ctx: Executor) -> APLArray:
         values = [el.value for el in self.elements]
-        return NumpyAPLArray.array([len(values)], list(values))
+        return BUILDER.apl_array([len(values)], list(values))
 
 
 class Zilde(Executable):
     """⍬ — the empty numeric vector literal (equivalent to ⍳0)."""
     def execute(self, ctx: Executor) -> APLArray:
-        return NumpyAPLArray.array([0], [])
+        return BUILDER.apl_array([0], [])
 
 
 class MonadicFunc(Executable):
@@ -1030,7 +1034,7 @@ class Index(Executable):
             idx_shapes.append([array.shape[axis]])
         result_flat = np_gather(array.data, axis_indices)
         result_shape = [d for s in idx_shapes for d in s]
-        return NumpyAPLArray(result_shape, result_flat)
+        return BUILDER.apl_array(result_shape, result_flat)
 
 
 class Omega(Executable):
@@ -1341,7 +1345,7 @@ class Executor:
         if line is None:
             raise DomainError("⍞ input not available — use the terminal REPL for interactive input")
         self.env.console.writeln(text + line)
-        return NumpyAPLArray([len(line)], str_to_char_array(line))
+        return BUILDER.apl_array([len(line)], str_to_char_array(line))
 
     def create_binding(self, dfn_node: Dfn) -> APLValue:
         from marple.dfn_binding import DfnBinding, DopBinding
@@ -1365,17 +1369,17 @@ class Executor:
 
     def _sysvar_ts(self) -> APLArray:
         ts = self.env.timer.timestamp()
-        return NumpyAPLArray.array([7], ts)
+        return BUILDER.apl_array([7], ts)
 
     def _sysvar_ai(self) -> APLArray:
         timer = self.env.timer
-        return NumpyAPLArray.array([4], [timer.user_id(), timer.cpu_ms(), timer.elapsed_ms(), 0])
+        return BUILDER.apl_array([4], [timer.user_id(), timer.cpu_ms(), timer.elapsed_ms(), 0])
 
     def _sysvar_ver(self) -> APLArray:
         from marple import __version__
         import sys
         s = "MARPLE v" + __version__ + " on " + sys.platform
-        return NumpyAPLArray([len(s)], str_to_char_array(s))
+        return BUILDER.apl_array([len(s)], str_to_char_array(s))
 
     def _sysvar_wa(self) -> APLArray:
         """⎕WA — workspace available (free memory in bytes)."""
@@ -1401,7 +1405,7 @@ class Executor:
         if line is None:
             raise DomainError("⍞ input not available — use the terminal REPL for interactive input")
         self.env.console.writeln(line)
-        return NumpyAPLArray([len(line)], str_to_char_array(line))
+        return BUILDER.apl_array([len(line)], str_to_char_array(line))
 
     # ── System functions ──
 
@@ -1457,18 +1461,18 @@ class Executor:
         nc = int(operand.scalar_value())
         names = self.env.names_of_class(nc)
         if not names:
-            return NumpyAPLArray([0, 0], np.array([], dtype=get_char_dtype()).reshape(0, 0))
+            return BUILDER.apl_array([0, 0], np.array([], dtype=get_char_dtype()).reshape(0, 0))
         max_len = max(len(n) for n in names)
         text = "".join(_ljust(n, max_len) for n in names)
         data = str_to_char_array(text).reshape(len(names), max_len)
-        return NumpyAPLArray([len(names), max_len], data)
+        return BUILDER.apl_array([len(names), max_len], data)
 
     def _sys_ucs(self, operand: APLArray) -> APLArray:
         if operand.is_char():
-            return NumpyAPLArray(list(operand.shape), operand.data.astype(np.int64))
+            return BUILDER.apl_array(list(operand.shape), operand.data.astype(np.int64))
         data = operand.to_list()
         text = ''.join(chr(int(x)) for x in data)
-        return NumpyAPLArray(list(operand.shape), str_to_char_array(text))
+        return BUILDER.apl_array(list(operand.shape), str_to_char_array(text))
 
     def _sys_dr(self, operand: APLArray) -> APLArray:
         return S(operand.dtype_code())
@@ -1496,7 +1500,7 @@ class Executor:
         except APLError as e:
             self.env["⎕EN"] = S(e.code)
             msg = str(e)
-            self.env["⎕DM"] = NumpyAPLArray([len(msg)], str_to_char_array(msg))
+            self.env["⎕DM"] = BUILDER.apl_array([len(msg)], str_to_char_array(msg))
             left_str = left.as_str()
             tree = parse(left_str, self.env.class_dict())
             return self.evaluate(tree)
@@ -1511,16 +1515,16 @@ class Executor:
             return NumpyAPLArray.array(list(right.shape), new_data)
         if target in (643, 323, 163, 83):
             new_data = [int(round(v)) for v in vals]
-            return NumpyAPLArray.array(list(right.shape), new_data)
+            return BUILDER.apl_array((right.shape), new_data)
         if target == 81:
             new_data = to_bool_array([int(bool(v)) for v in vals])
-            return NumpyAPLArray.array(list(right.shape), new_data)
+            return BUILDER.apl_array(list(right.shape), new_data)
         if target == 320:
             text = "".join(chr(int(v)) for v in vals)
             data = str_to_char_array(text)
             if len(right.shape) > 1:
                 data = data.reshape(right.shape)
-            return NumpyAPLArray(list(right.shape), data)
+            return BUILDER.apl_array(list(right.shape), data)
         raise DomainError("Invalid ⎕DR type code: " + str(target))
 
     def _sys_fmt_monadic(self, operand_node: Executable | FmtArgs) -> APLArray:
@@ -1529,7 +1533,7 @@ class Executor:
             values = [self.evaluate(arg) for arg in operand_node.args]
             parts = [self._fmt_value(v) for v in values]
             joined = " ".join(p.as_str() for p in parts)
-            return NumpyAPLArray([len(joined)], str_to_char_array(joined))
+            return BUILDER.apl_array([len(joined)], str_to_char_array(joined))
         operand = self.evaluate(operand_node)
         return self._fmt_value(operand)
 
@@ -1544,7 +1548,7 @@ class Executor:
                 text = " ".join(format_num(x) for x in operand.to_list())
         else:
             text = str(operand)
-        return NumpyAPLArray([len(text)], str_to_char_array(text))
+        return BUILDER.apl_array([len(text)], str_to_char_array(text))
 
     def _sys_fmt_dyadic(self, left_node: Executable, right_node: Executable | FmtArgs) -> APLArray:
         """Dyadic ⎕FMT — format with specification string."""
@@ -1571,11 +1575,11 @@ class Executor:
             lines = [source]
         max_len = max(len(l) for l in lines) if lines else 0
         if not lines or max_len == 0:
-            return NumpyAPLArray([len(lines), max_len],
+            return BUILDER.apl_array([len(lines), max_len],
                             np.array([], dtype=get_char_dtype()).reshape(len(lines), max_len))
         text = "".join(_ljust(line, max_len) for line in lines)
         data = str_to_char_array(text).reshape(len(lines), max_len)
-        return NumpyAPLArray([len(lines), max_len], data)
+        return BUILDER.apl_array([len(lines), max_len], data)
 
     def _sys_fx(self, operand: APLArray) -> APLArray:
         from marple.errors import APLError
@@ -1603,7 +1607,7 @@ class Executor:
         if isinstance(val, Operator):
             self.env.classify(fn_name, NC_OPERATOR)
             self.env.set_operator_arity(fn_name, 2 if "⍵⍵" in text else 1)
-        return NumpyAPLArray([len(fn_name)], str_to_char_array(fn_name))
+        return BUILDER.apl_array([len(fn_name)], str_to_char_array(fn_name))
 
     def _sys_dl(self, operand: APLArray) -> APLArray:
         secs = float(operand.scalar_value())
@@ -1637,7 +1641,7 @@ class Executor:
                         nums.append(float(v))
                     else:
                         nums.append(int(v))
-                self.env.bind_name(col_name, NumpyAPLArray.array([len(nums)], nums), NC_ARRAY)
+                self.env.bind_name(col_name, BUILDER.apl_array([len(nums)], nums), NC_ARRAY)
             except (ValueError, TypeError):
                 max_len = max((len(v) for v in col_data), default=0)
                 if max_len == 0:
@@ -1647,7 +1651,7 @@ class Executor:
                     data = str_to_char_array(text).reshape(len(col_data), max_len)
                 self.env.bind_name(
                     col_name,
-                    NumpyAPLArray([len(col_data), max_len], data),
+                    BUILDER.apl_array([len(col_data), max_len], data),
                     NC_ARRAY,
                 )
         return S(row_count)
@@ -1655,7 +1659,7 @@ class Executor:
     def _sys_nread(self, operand: APLArray) -> APLArray:
         path = operand.as_str()
         text = self.fs.read_text(path)
-        return NumpyAPLArray([len(text)], str_to_char_array(text))
+        return BUILDER.apl_array([len(text)], str_to_char_array(text))
 
     def _sys_nexists(self, operand: APLArray) -> APLArray:
         path = operand.as_str()
