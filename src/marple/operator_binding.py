@@ -6,7 +6,6 @@ from marple.backend_functions import NDArray
 from marple.adapters.numpy_array_builder import BUILDER
 
 from marple.ports.array import APLArray, S
-from marple.numpy_aplarray import NumpyAPLArray
 from marple.backend_functions import (
     _DOWNCAST_CT, ignoring_numeric_errstate, is_int_dtype,
     is_numeric_array, maybe_downcast, maybe_upcast, np_reshape,
