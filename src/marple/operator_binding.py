@@ -3,6 +3,7 @@
 from typing import Any, Callable
 
 from marple.backend_functions import NDArray
+from marple.adapters.numpy_array_builder import BUILDER
 
 from marple.ports.array import APLArray, S
 from marple.numpy_aplarray import NumpyAPLArray
@@ -113,7 +114,8 @@ def _reduce(
             raise DomainError("Cannot reduce empty array")
         if not result_shape:
             return S(identity)
-        return NumpyAPLArray(result_shape,
+        # TODO: np reference below must go
+        return BUILDER.apl_array(result_shape,
                              np.full(result_shape, identity, dtype=numeric_upcast_dtype()))
 
     # Move target axis to last position; reduce along rows of length n.
@@ -132,7 +134,7 @@ def _reduce(
     for r, row in enumerate(rows):
         result[r] = _reduce_row(op, row, 0, n)
     result = maybe_downcast(np_reshape(result, result_shape), _DOWNCAST_CT)
-    return NumpyAPLArray(result_shape, result)
+    return BUILDER.apl_array(result_shape, result)
 
 
 def _move_axis(data: NDArray, src: int, dst: int, rank: int) -> NDArray:
@@ -259,7 +261,7 @@ def _scan(
 
     scanned_arr = np_reshape(scanned, moved_shape)
     final = _move_axis(scanned_arr, rank - 1, axis, rank)
-    return NumpyAPLArray(shape, np_reshape(final, shape))
+    return BUILDER.apl_array(shape, np_reshape(final, shape))
 
 
 # Default axis (0-based, relative to the argument's rank) per operator glyph.
