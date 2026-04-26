@@ -4,7 +4,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 #TODO: Get rid of the global BUILDER
-from marple.adapters.numpy_array_builder import NumpyArrayBuilder, BUILDER
+from marple.adapters.numpy_array_builder import BUILDER
 from marple.ports.array import _gcd_float
 from typing import Any, Callable, TYPE_CHECKING, cast
 
