@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from marple.adapters.numpy_array_builder import BUILDER
 
-from marple.backend_functions import scalar_item
 from marple.ports.array import APLArray
 
 
@@ -15,7 +14,6 @@ if TYPE_CHECKING:
 
 def format_num(x: Any, pp: int = 10) -> str:
     """Format a number for display, using pp significant digits for floats."""
-    x = scalar_item(x)
     if isinstance(x, bool):
         return str(int(x))
     if isinstance(x, float):
