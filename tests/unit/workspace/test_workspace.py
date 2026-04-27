@@ -3,10 +3,11 @@
 import os
 import tempfile
 
-from marple.ports.array import APLArray, S
 from marple.backend_functions import str_to_char_array
 from marple.engine import Interpreter
 from marple.workspace import save_workspace, load_workspace, list_workspaces
+from marple.adapters.numpy_array_builder import BUILDER
+S = BUILDER.S
 
 
 def _save_env_as_dict(interp: Interpreter) -> dict[str, object]:
@@ -71,7 +72,7 @@ class TestLoadWorkspace:
             save_workspace(env_dict, ws_dir)
             i2 = Interpreter(io=1)
             load_workspace(i2.env, ws_dir, evaluate=i2.run)
-            assert i2.run("v") == APLArray.array([3], [1, 2, 3])
+            assert i2.run("v") == BUILDER.apl_array([3], [1, 2, 3])
 
     def test_load_restores_dfn(self) -> None:
         with tempfile.TemporaryDirectory() as root:
@@ -106,7 +107,7 @@ class TestLoadWorkspace:
             i2 = Interpreter(io=1)
             load_workspace(i2.env, ws_dir, evaluate=i2.run)
             # ⎕IO should be restored to 0, so x should be 0 1 2
-            assert i2.run("x") == APLArray.array([3], [0, 1, 2])
+            assert i2.run("x") == BUILDER.apl_array([3], [0, 1, 2])
 
 
 class TestLoadWorkspaceChars:
@@ -157,7 +158,7 @@ class TestListWorkspaces:
         with tempfile.TemporaryDirectory() as root:
             for name in ("alpha", "beta"):
                 ws_dir = os.path.join(root, name)
-                env: dict[str, object] = {"⎕WSID": APLArray([len(name)], str_to_char_array(name)), "⎕IO": S(1)}
+                env: dict[str, object] = {"⎕WSID": BUILDER.apl_array([len(name)], str_to_char_array(name)), "⎕IO": S(1)}
                 save_workspace(env, ws_dir)
             os.makedirs(os.path.join(root, "notaws"))
             assert sorted(list_workspaces(root)) == ["alpha", "beta"]
