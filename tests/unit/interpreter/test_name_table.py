@@ -5,6 +5,7 @@ import pytest
 from marple.ports.array import APLArray, S
 from marple.engine import Interpreter
 from marple.errors import ClassError, ValueError_
+from marple.adapters.numpy_array_builder import BUILDER
 
 
 class TestNameTableFundamentals:
@@ -47,7 +48,7 @@ class TestFunctionCalls:
     def test_named_fn_with_iota(self) -> None:
         i = Interpreter(io=1)
         i.run("double←{⍵+⍵}")
-        assert i.run("double ⍳5") == APLArray.array([5], [2, 4, 6, 8, 10])
+        assert i.run("double ⍳5") == BUILDER.apl_array([5], [2, 4, 6, 8, 10])
 
     def test_named_fn_with_scalar(self) -> None:
         i = Interpreter(io=1)
@@ -62,7 +63,7 @@ class TestFunctionCalls:
     def test_named_fn_with_reverse(self) -> None:
         i = Interpreter(io=1)
         i.run("f←{⍵+1}")
-        assert i.run("f ⌽⍳5") == APLArray.array([5], [6, 5, 4, 3, 2])
+        assert i.run("f ⌽⍳5") == BUILDER.apl_array([5], [6, 5, 4, 3, 2])
 
 
 class TestArraysInDyadicContext:
@@ -79,7 +80,7 @@ class TestArraysInDyadicContext:
     def test_array_dyadic_rotate(self) -> None:
         i = Interpreter(io=1)
         i.run("v←1 2 3")
-        assert i.run("2⌽v") == APLArray.array([3], [3, 1, 2])
+        assert i.run("2⌽v") == BUILDER.apl_array([3], [3, 1, 2])
 
 
 class TestFunctionsInsideDfns:
@@ -91,7 +92,7 @@ class TestFunctionsInsideDfns:
     def test_call_outer_fn_with_iota(self) -> None:
         i = Interpreter(io=1)
         i.run("double←{⍵+⍵}")
-        assert i.run("{double ⍳⍵} 5") == APLArray.array([5], [2, 4, 6, 8, 10])
+        assert i.run("{double ⍳⍵} 5") == BUILDER.apl_array([5], [2, 4, 6, 8, 10])
 
     def test_nested_fn_calls(self) -> None:
         i = Interpreter(io=1)
@@ -135,7 +136,7 @@ class TestWithProducts:
         i = Interpreter(io=1)
         i.run("double←{⍵+⍵}")
         result = i.run("double (⍳3)∘.×⍳3")
-        assert result == APLArray.array([3, 3], [[2, 4, 6], [4, 8, 12], [6, 12, 18]])
+        assert result == BUILDER.apl_array([3, 3], [[2, 4, 6], [4, 8, 12], [6, 12, 18]])
 
 
 class TestWithRank:
@@ -143,14 +144,14 @@ class TestWithRank:
         i = Interpreter(io=1)
         i.run("double←{⍵+⍵}")
         result = i.run("(double⍤1) 2 3⍴⍳6")
-        assert result == APLArray.array([2, 3], [[2, 4, 6], [8, 10, 12]])
+        assert result == BUILDER.apl_array([2, 3], [[2, 4, 6], [8, 10, 12]])
 
     def test_sort_with_rank(self) -> None:
         i = Interpreter(io=1)
         i.run("sort←{⍵[⍋⍵]}")
         i.run("M←3 4⍴12 1 8 3 5 9 2 7 11 4 6 10")
         result = i.run("(sort⍤1) M")
-        assert result == APLArray.array([3, 4], [[1, 3, 8, 12], [2, 5, 7, 9], [4, 6, 10, 11]])
+        assert result == BUILDER.apl_array([3, 4], [[1, 3, 8, 12], [2, 5, 7, 9], [4, 6, 10, 11]])
 
 
 class TestImport:

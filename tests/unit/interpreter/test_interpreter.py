@@ -1,8 +1,8 @@
 """Core interpreter tests — new engine."""
 
-from marple.ports.array import APLArray, S
 from marple.engine import Interpreter
 from marple.adapters.numpy_array_builder import BUILDER
+S = BUILDER.S
 
 
 class TestComments:
