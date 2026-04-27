@@ -9,7 +9,7 @@ from marple.ports.array import APLArray
 from marple.backend_functions import str_to_char_array
 from marple.formatting import format_result
 from marple.engine import Interpreter
-
+from marple.adapters.numpy_array_builder import BUILDER
 
 def _get_wsid(interp: Interpreter) -> str:
     """Get the workspace ID as a Python string."""
@@ -45,7 +45,7 @@ def _cmd_wsid(interp: Interpreter, line: str) -> tuple[str, bool]:
     parts = line.split(None, 1)
     if len(parts) > 1:
         name = parts[1].strip()
-        interp.env["⎕WSID"] = APLArray([len(name)], str_to_char_array(name))
+        interp.env["⎕WSID"] = BUILDER.apl_array([len(name)], str_to_char_array(name))
         return name, False
     return _get_wsid(interp), False
 
@@ -92,7 +92,7 @@ def _cmd_save(interp: Interpreter, line: str) -> tuple[str, bool]:
     parts = line.split(None, 1)
     if len(parts) > 1:
         name = parts[1].strip()
-        interp.env["⎕WSID"] = APLArray([len(name)], str_to_char_array(name))
+        interp.env["⎕WSID"] = BUILDER.apl_array([len(name)], str_to_char_array(name))
     wsid = _get_wsid(interp)
     if wsid == "CLEAR WS":
         return "ERROR: No workspace ID set. Use )WSID name first.", False
