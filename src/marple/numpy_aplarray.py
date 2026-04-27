@@ -12,9 +12,28 @@ from typing import Any, Iterator
 from marple.get_numpy import np
 from marple.ports.array import APLArray
 
+from marple.backend_functions import (
+    is_int_dtype, maybe_upcast,
+    scalar_item, str_to_char_array, strict_numeric_errstate,
+    to_bool_array,
+)
+
 
 class NumpyAPLArray(APLArray):
     """APLArray backed by numpy. Adapter for the desktop platform."""
+    
+    @classmethod
+    def scalar(cls, value: Any) -> APLArray:
+        """Factory method for creating scalars.
+
+        APL shape is `[]`. Underlying storage is 0-d on desktop numpy
+        and 1-d length-1 on ulab — see __init__ for the invariant.
+        On the port itself (`APLArray.scalar(...)`) dispatches to the
+        active adapter.
+        """
+        if isinstance(value, str):
+            return cls([], str_to_char_array(value))
+        return cls([], value)
 
     @classmethod
     def char_dtype(cls) -> Any:
