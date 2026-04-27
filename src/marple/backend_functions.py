@@ -227,16 +227,11 @@ def scalar_item(x: Any) -> Any:
       - Python int / float / str — returned unchanged
       - desktop numpy ndarray (0-d or 1-d length-1) — via `.item()`
       - numpy scalar object (np.float64 etc.) — via `.item()`
-      - ulab ndarray (1-d length-1) — via `data[0]`, because ulab's
-        ndarray has no `.item()` method (verified on-device)
-
     Platform-agnostic replacement for bare `.item()` on APL scalar
     storage. Pattern taken from pre-drop commit 4e441e0.
     """
     if hasattr(x, "item"):
         return x.item()
-    if hasattr(x, "shape"):
-        return x[0]
     return x
 
 
