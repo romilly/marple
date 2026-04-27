@@ -4,17 +4,6 @@ from typing import Any, TYPE_CHECKING
 
 from marple.get_numpy import np
 
-# ulab has no 0-dimensional arrays: np.asarray(7) returns the bare int,
-# and reshape(()) silently produces an empty 1-d array rather than a
-# rank-0 scalar (verified on-device via mpremote). On MicroPython we
-# therefore store APL scalars as 1-d length-1 ndarrays while keeping
-# the APL shape []. Non-scalar shapes are identical on both platforms.
-# Pattern taken from pre-drop commit 03e7c89.
-if sys.implementation.name == "micropython":
-    SCALAR_STORAGE_SHAPE: tuple[int, ...] = (1,)
-else:
-    SCALAR_STORAGE_SHAPE = ()
-
 if TYPE_CHECKING:
     import numpy.typing as npt
     from marple.ports.array import APLArray

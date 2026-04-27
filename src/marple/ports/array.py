@@ -8,7 +8,6 @@ if TYPE_CHECKING:
     from marple.executor import Executor
 
 from marple.backend_functions import (
-    SCALAR_STORAGE_SHAPE,
     is_int_dtype, maybe_upcast,
     scalar_item, str_to_char_array, strict_numeric_errstate,
     to_array, to_bool_array,
@@ -193,10 +192,6 @@ class APLArray(APLValue):
 
     def __init__(self, shape: list[int], data: list[Any] | np.ndarray[Any, Any]) -> None:
         self.shape = shape
-        if isinstance(data, list):
-            self.data = to_array(data)
-        elif isinstance(data, np.ndarray):
-            self.data = data  
         self.data = np.asarray(data)
         if self.data.shape != shape:
             self.data = self.data.reshape(shape)
