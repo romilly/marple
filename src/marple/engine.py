@@ -17,6 +17,7 @@ from marple.ports.timer import Timer
 from marple.executor import Executor, _newlines_to_diamonds
 from marple.parser import Assignment, Program, parse
 from marple.apl_value import NC_FUNCTION, NC_OPERATOR, Function, Operator
+from marple.adapters.numpy_array_builder import BUILDER
 
 
 class EvalResult:
@@ -62,14 +63,6 @@ class Interpreter(Executor):
         effective_io = io if io is not None else config.get_default_io()
         self.env = Environment(io=effective_io, fs=fs, console=console, timer=timer)
 
-    def make_array(self, shape: list[int], data: list[Any] | np.ndarray[Any, Any]) -> APLArray:
-        """Construct an APLArray of the configured subclass.
-
-        Entry point for sites that create APLArrays from external data (literals,
-        parsed values). Returns an instance of `self.array_cls` — `NumpyAPLArray`
-        by default.
-        """
-        return self.array_cls(shape, data)
 
     def run(self, source: str) -> APLArray:
         """Parse and evaluate APL source code."""
@@ -85,7 +78,7 @@ class Interpreter(Executor):
         if isinstance(result, (Function, Operator)):
             return S(0)
         if isinstance(result, APLArray) and result.is_numeric():
-            result = self.array_cls.array(list(result.shape), maybe_downcast(result.data, _DOWNCAST_CT))
+            result = BUILDER.apl_array(list(result.shape), maybe_downcast(result.data, _DOWNCAST_CT))
         return result
 
     def execute(self, source: str) -> EvalResult:
