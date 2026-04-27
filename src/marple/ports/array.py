@@ -208,20 +208,10 @@ class APLArray(APLValue):
             # Already an ndarray (arithmetic result, upstream construction,
             # etc.) — keep as-is. The reshape at the bottom adjusts the
             # shape if needed.
-            self.data = data
-        # elif shape == [] and SCALAR_STORAGE_SHAPE == (1,):
-        #     # ulab scalar path: wrap a bare Python/numpy scalar as
-        #     # length-1. ulab's np.asarray(7) would return the bare int,
-        #     # so we construct the 1-d array explicitly.
-        #     self.data = np.array([data])
-        else:
-            self.data = np.asarray(data)
-        if shape == []:
-            expected = SCALAR_STORAGE_SHAPE
-        else:
-            expected = tuple(shape)
-        if self.data.shape != expected:
-            self.data = self.data.reshape(expected)
+            self.data = data  
+        self.data = np.asarray(data)
+        if self.data.shape != shape:
+            self.data = self.data.reshape(shape)
 
     def is_scalar(self) -> bool:
         return self.shape == []
