@@ -2,6 +2,7 @@
 
 from marple.ports.array import APLArray, S
 from marple.engine import Interpreter
+from marple.adapters.numpy_array_builder import BUILDER
 
 
 class TestComments:
@@ -78,16 +79,16 @@ class TestParens:
 
 class TestVectors:
     def test_vector_literal(self) -> None:
-        assert Interpreter(io=1).run("1 2 3") == APLArray.array([3], [1, 2, 3])
+        assert Interpreter(io=1).run("1 2 3") == BUILDER.apl_array([3], [1, 2, 3])
 
     def test_vector_addition(self) -> None:
-        assert Interpreter(io=1).run("1 2 3+4 5 6") == APLArray.array([3], [5, 7, 9])
+        assert Interpreter(io=1).run("1 2 3+4 5 6") == BUILDER.apl_array([3], [5, 7, 9])
 
     def test_scalar_plus_vector(self) -> None:
-        assert Interpreter(io=1).run("10+1 2 3") == APLArray.array([3], [11, 12, 13])
+        assert Interpreter(io=1).run("10+1 2 3") == BUILDER.apl_array([3], [11, 12, 13])
 
     def test_negate_vector(self) -> None:
-        assert Interpreter(io=1).run("-1 2 3") == APLArray.array([3], [-1, -2, -3])
+        assert Interpreter(io=1).run("-1 2 3") == BUILDER.apl_array([3], [-1, -2, -3])
 
 
 class TestAssignment:
@@ -102,8 +103,8 @@ class TestAssignment:
     def test_chained_assign(self) -> None:
         i = Interpreter(io=1)
         i.run("y←1+x←⍳4")
-        assert i.run("x") == APLArray.array([4], [1, 2, 3, 4])
-        assert i.run("y") == APLArray.array([4], [2, 3, 4, 5])
+        assert i.run("x") == BUILDER.apl_array([4], [1, 2, 3, 4])
+        assert i.run("y") == BUILDER.apl_array([4], [2, 3, 4, 5])
 
 
 class TestStatementSeparator:
