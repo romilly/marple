@@ -231,9 +231,6 @@ class APLArray(APLValue):
         On the port itself (`APLArray.array(...)`) dispatches to the
         active adapter. On a concrete subclass constructs that subclass.
         """
-        if cls is APLArray:
-            from marple.backend_functions import get_backend_class
-            return get_backend_class()(shape, data)
         return cls(shape, data)
 
     @classmethod
@@ -245,9 +242,6 @@ class APLArray(APLValue):
         On the port itself (`APLArray.scalar(...)`) dispatches to the
         active adapter.
         """
-        if cls is APLArray:
-            from marple.backend_functions import get_backend_class
-            return get_backend_class().scalar(value)
         if isinstance(value, str):
             return cls([], str_to_char_array(value))
         return cls([], value)
