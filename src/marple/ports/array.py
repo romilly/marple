@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 from marple.backend_functions import (
     is_int_dtype, maybe_upcast,
-    scalar_item, str_to_char_array, strict_numeric_errstate,
+    str_to_char_array, strict_numeric_errstate,
     to_bool_array,
 )
 from marple.errors import DomainError, LengthError, RankError

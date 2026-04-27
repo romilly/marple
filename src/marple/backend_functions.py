@@ -220,20 +220,6 @@ def np_reshape(arr: Any, *shape: Any) -> Any:
     return arr.reshape(tuple(shape))
 
 
-def scalar_item(x: Any) -> Any:
-    """Extract a native Python value from a scalar-like input.
-
-    Handles every flavour of "single value" MARPLE passes around:
-      - Python int / float / str — returned unchanged
-      - desktop numpy ndarray (0-d or 1-d length-1) — via `.item()`
-      - numpy scalar object (np.float64 etc.) — via `.item()`
-    Platform-agnostic replacement for bare `.item()` on APL scalar
-    storage. Pattern taken from pre-drop commit 4e441e0.
-    """
-    if hasattr(x, "item"):
-        return x.item()
-    return x
-
 
 def is_int_dtype(arr: NDArray) -> bool:
     """Check if an ndarray has an integer dtype.
