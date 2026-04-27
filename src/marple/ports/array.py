@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from contextlib import contextmanager
+
 from typing import Any, Callable, TYPE_CHECKING
 
 if TYPE_CHECKING:
