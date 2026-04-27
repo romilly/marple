@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-from typing import Any, Callable, TYPE_CHECKING
+from typing import Any, Callable, TYPE_CHECKING, Self, cast
 
 if TYPE_CHECKING:
     from marple.apl_value import PowerStrategy
@@ -37,7 +37,7 @@ class APLArray(APLValue):
     adapter — so tests stay backend-neutral.
     """
 
-    def __new__(cls, *args: Any, **kwargs: Any) -> "APLArray":
+    def __new__(cls, *args: Any, **kwargs: Any) -> Self:
         """Instantiating the port directly dispatches to the active adapter.
 
         Callers that write `APLArray(shape, data)` (common in tests that
@@ -51,7 +51,7 @@ class APLArray(APLValue):
         """
         if cls is APLArray:
             from marple.backend_functions import get_backend_class
-            return object.__new__(get_backend_class())
+            return cast(Self, object.__new__(get_backend_class()))
         return object.__new__(cls)
 
     # ---- backend hooks (declared on the port; adapters implement) -----
