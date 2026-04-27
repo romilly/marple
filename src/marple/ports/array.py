@@ -222,12 +222,7 @@ class APLArray(APLValue):
         # numeric values happen to match the character codepoints.
         if self.is_char() != other.is_char():
             return False
-        if hasattr(np, "array_equal"):
-            return bool(np.array_equal(self.data, other.data))
-        # ulab fallback: element-wise compare then reduce via np.all.
-        # Shapes already match (checked above), so dtypes differing
-        # in ways that break broadcasting won't arise in practice.
-        return bool(np.all(self.data == other.data))
+        return bool(np.array_equal(self.data, other.data))
 
     @classmethod
     def array(cls, shape: list[int], data: Any) -> APLArray:
