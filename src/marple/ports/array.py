@@ -193,21 +193,9 @@ class APLArray(APLValue):
 
     def __init__(self, shape: list[int], data: list[Any] | np.ndarray[Any, Any]) -> None:
         self.shape = shape
-        # Storage normalisation: data is always an ndarray whose numpy
-        # shape matches the platform's scalar-storage convention after init.
-        #
-        # Desktop numpy: APL scalars stored as rank-0 ndarrays; data.shape
-        # mirrors APL shape exactly (v0.7.40 invariant).
-        #
-        # ulab: no 0-d arrays, so APL scalars are stored as 1-d length-1
-        # while APL shape stays []. SCALAR_STORAGE_SHAPE is set at import
-        # based on sys.implementation.name (pattern from pre-drop 03e7c89).
         if isinstance(data, list):
             self.data = to_array(data)
         elif isinstance(data, np.ndarray):
-            # Already an ndarray (arithmetic result, upstream construction,
-            # etc.) — keep as-is. The reshape at the bottom adjusts the
-            # shape if needed.
             self.data = data  
         self.data = np.asarray(data)
         if self.data.shape != shape:
