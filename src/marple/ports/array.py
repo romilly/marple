@@ -208,7 +208,7 @@ class APLArray(APLValue):
         backend_functions handles both; this method is just sugar so call
         sites don't need to see the shim.
         """
-        return scalar_item(self.data)
+        return self.data.item()
 
     def name_class(self) -> int:
         return NC_ARRAY
