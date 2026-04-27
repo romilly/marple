@@ -475,13 +475,3 @@ class NumpyAPLArray(APLArray):
             return int_arr.astype(np.int32)
         return int_arr
     
-    def scalar_value(self) -> Any:
-        """Return the native Python value for scalar storage.
-
-        Platform-agnostic replacement for bare `self.data.item()` calls —
-        desktop numpy 0-d arrays have `.item()`; ulab 1-d length-1 arrays
-        don't and have to be unwrapped via `data[0]`. `scalar_item` in
-        backend_functions handles both; this method is just sugar so call
-        sites don't need to see the shim.
-        """
-        return self.data.item()
