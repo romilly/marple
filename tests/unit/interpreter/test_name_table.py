@@ -2,10 +2,11 @@
 
 import pytest
 
-from marple.ports.array import APLArray, S
+#from marple.ports.array import APLArray, S
 from marple.engine import Interpreter
 from marple.errors import ClassError, ValueError_
 from marple.adapters.numpy_array_builder import BUILDER
+S = BUILDER.S
 
 
 class TestNameTableFundamentals:
