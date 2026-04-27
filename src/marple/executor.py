@@ -366,12 +366,12 @@ class Executable(Node):
     `execute()` is the array-producing operation: every Executable
     subclass computes (or narrows to) an `APLArray`. Callers that
     might receive a non-array value (e.g. a Function bound to a
-    name) should call `value()` instead — it returns the broad
+    name) should call `as_value()` instead — it returns the broad
     `APLValue` and is dispatched per subclass.
 
     `as_power_strategy` lives here because the right operand of
     power (`f⍣N` or `f⍣g`) can be either a numeric Executable or
-    an applicable, and the resolved value's own `as_power_strategy`
+    an Applicable, and the resolved value's own `as_power_strategy`
     picks the appropriate strategy.
     """
     @abstractmethod
@@ -486,14 +486,16 @@ class Literal(Executable):
 class Num(Executable):
     def __init__(self, value: int | float) -> None:
         self.value = value
-    def execute(self, ctx: Executor) -> APLArray:
+
+    def execute(self, ctx: Any) -> APLArray:
         return S(self.value)
 
 
 class Str(Executable):
     def __init__(self, value: str) -> None:
         self.value = value
-    def execute(self, ctx: Executor) -> APLArray:
+
+    def execute(self, ctx: Any) -> APLArray:
         # All string literals are uint32 character arrays.
         # Single-char literals are scalars (shape []) backed by 0-d
         # uint32 data, constructed via S() so the storage convention
@@ -513,7 +515,7 @@ class Vector(Executable):
 
 class Zilde(Executable):
     """⍬ — the empty numeric vector literal (equivalent to ⍳0)."""
-    def execute(self, ctx: Executor) -> APLArray:
+    def execute(self, ctx: Any) -> APLArray:
         return BUILDER.apl_array([0], [])
 
 
@@ -521,7 +523,8 @@ class MonadicFunc(Executable):
     def __init__(self, function: str, operand: Executable) -> None:
         self.function = function
         self.operand = operand
-    def execute(self, ctx: Executor) -> APLArray:
+
+    def execute(self, ctx: Any) -> APLArray:
         operand = ctx.evaluate(self.operand)
         return ctx.dispatch_monadic(self.function, operand)
 
@@ -531,9 +534,10 @@ class DyadicFunc(Executable):
         self.function = function
         self.left = left
         self.right = right
+
     def execute(self, ctx: Executor) -> APLArray:
-        right = ctx.evaluate(self.right)
-        left = ctx.evaluate(self.left)
+        right = self.right.execute(ctx)
+        left = self.left.execute(ctx)
         return ctx.dispatch_dyadic(self.function, left, right)
 
 
