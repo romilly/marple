@@ -1,4 +1,4 @@
-"""Core interpreter tests — new engine."""
+"""Core interpreter tests."""
 
 from marple.engine import Interpreter
 from marple.adapters.numpy_array_builder import BUILDER
