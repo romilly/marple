@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 from marple.backend_functions import (
     is_int_dtype, maybe_upcast,
     scalar_item, str_to_char_array, strict_numeric_errstate,
-    to_array, to_bool_array,
+    to_bool_array,
 )
 from marple.errors import DomainError, LengthError, RankError
 from marple.get_numpy import np
