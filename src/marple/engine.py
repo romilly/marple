@@ -58,8 +58,6 @@ class Interpreter(Executor):
                 timer = DesktopTimer()
         array_cls = get_backend_class()
         self.array_cls: type[APLArray] = array_cls
-        set_char_dtype(array_cls.char_dtype())
-        # set_backend_class(array_cls)
         self.config = config
         effective_io = io if io is not None else config.get_default_io()
         self.env = Environment(io=effective_io, fs=fs, console=console, timer=timer)
