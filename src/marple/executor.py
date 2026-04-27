@@ -39,7 +39,7 @@ from marple.dyadic_functions import DyadicFunctionBinding
 from marple.ibeam_registry import lookup as ibeam_lookup
 from marple.monadic_functions import MonadicFunctionBinding
 from marple.operator_binding import _default_axis, _reduce, _scan
-from marple.apl_value import NC_ARRAY, NC_FUNCTION, NC_OPERATOR, NC_UNKNOWN, APLValue, Function, Operator, PowerByConvergence, PowerByCount, PowerStrategy
+from marple.apl_value import NC_ARRAY, NC_OPERATOR, APLValue, Function, Operator, PowerStrategy
 from marple.environment import Environment
 from marple.ports.filesystem import FileSystem
 
