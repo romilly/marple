@@ -44,7 +44,8 @@ class Interpreter(Executor):
                  console: 'Console | None' = None,
                  config: 'Config | None' = None,
                  timer: 'Timer | None' = None,
-                 array_cls: type[APLArray] | None = None) -> None:
+                #  array_cls: type[APLArray] | None = None
+                ) -> None:
         if config is None:
             from marple.adapters.default_config import DefaultConfig
             config = DefaultConfig()
