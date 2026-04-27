@@ -209,11 +209,11 @@ class APLArray(APLValue):
             # etc.) — keep as-is. The reshape at the bottom adjusts the
             # shape if needed.
             self.data = data
-        elif shape == [] and SCALAR_STORAGE_SHAPE == (1,):
-            # ulab scalar path: wrap a bare Python/numpy scalar as
-            # length-1. ulab's np.asarray(7) would return the bare int,
-            # so we construct the 1-d array explicitly.
-            self.data = np.array([data])
+        # elif shape == [] and SCALAR_STORAGE_SHAPE == (1,):
+        #     # ulab scalar path: wrap a bare Python/numpy scalar as
+        #     # length-1. ulab's np.asarray(7) would return the bare int,
+        #     # so we construct the 1-d array explicitly.
+        #     self.data = np.array([data])
         else:
             self.data = np.asarray(data)
         if shape == []:
