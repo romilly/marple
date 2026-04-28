@@ -33,17 +33,6 @@ def get_backend_class() -> "type[APLArray]":
 _DOWNCAST_CT: float = 1e-14
 
 
-
-def maybe_downcast(data: NDArray, ct: float) -> NDArray:
-    """Convert float arrays to int if all elements are close to whole numbers.
-
-    Delegates to the active backend class so UlabAPLArray can return data
-    unchanged — ulab lacks np.iinfo / np.int64 / np.int32 entirely and its
-    int widths are already narrow.
-    """
-    return get_backend_class().maybe_downcast(data, ct)
-
-
 def to_bool_array(data: "NDArray | list[int]") -> NDArray:
     """Convert data to a uint8 boolean array (0/1 values)."""
     return np.asarray(data, dtype=np.uint8)
