@@ -72,10 +72,10 @@ def np_reshape(arr: Any, *shape: Any) -> Any:
         s = shape[0]
         if isinstance(s, int):
             return arr.reshape((s,))
-        if isinstance(s, tuple):
-            return arr.reshape(s)
-        return arr.reshape(tuple(s))
-    return arr.reshape(tuple(shape))
+        # if isinstance(s, tuple):
+        #     return arr.reshape(s)
+        return arr.reshape(s)
+    return arr.reshape(shape)
 
 
 
