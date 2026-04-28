@@ -1,7 +1,6 @@
 from typing import Any, Callable
 
-from marple.ports.array import APLArray, S
-from marple.backend_functions import str_to_char_array
+from marple.ports.array import APLArray, str_to_char_array
 from marple.ports.filesystem import FileSystem
 from marple.adapters.numpy_array_builder import BUILDER
 
