@@ -21,6 +21,25 @@ import numpy.typing as npt
 NDArray = npt.NDArray[Any]
 _CT = 1e-10  # comparison tolerance for GCD
 
+DR_CODE_SPECS: "dict[str, int]" = {
+    "uint8": 81,
+    "int8": 83,
+    "int16": 163,
+    "uint32": 320,
+    "int32": 323,
+    "int64": 643,
+    "float32": 325,
+    "float64": 645,
+}
+
+
+def data_type_code(data: NDArray) -> int:
+    """Return the ⎕DR type code for the given data.
+
+    Encoding: first digits = bit width, last digit = type
+    (0=char, 1=boolean, 3=signed int, 5=float, 7=decimal, 9=complex).
+    """
+    return DR_CODE_SPECS[data.dtype.name]
 
 def _gcd_float(a: float, b: float) -> float:
     """GCD via Euclidean algorithm, tolerant of floating-point values."""
