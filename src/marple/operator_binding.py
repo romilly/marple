@@ -15,7 +15,7 @@ from marple.backend_functions import (
 )
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.errors import DomainError
-from marple.get_numpy import np
+import numpy as np
 
 
 # Glyphs whose meaning on character data is undefined: arithmetic and

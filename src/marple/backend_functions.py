@@ -2,7 +2,7 @@ import sys
 from contextlib import AbstractContextManager
 from typing import Any, TYPE_CHECKING
 
-from marple.get_numpy import np
+import numpy as np
 
 if TYPE_CHECKING:
     import numpy.typing as npt

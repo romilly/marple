@@ -5,7 +5,7 @@ from typing import Any
 from marple.ports.array import APLArray, get_char_dtype, str_to_char_array
 from marple.adapters.numpy_array_builder import BUILDER
 from marple.formatting import format_num
-from marple.get_numpy import np
+import numpy as np
 from marple.errors import DomainError
 
 

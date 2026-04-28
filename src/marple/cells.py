@@ -2,6 +2,7 @@
 from marple.ports.array import APLArray, S
 from marple.errors import LengthError
 from marple.executor import BUILDER
+import numpy as np
 
 def resolve_rank_spec(spec: APLArray) -> tuple[int, int, int]:
     """Resolve rank spec to (monadic, left_dyadic, right_dyadic).
@@ -60,13 +61,13 @@ def decompose(array: APLArray, cell_rank: int) -> tuple[list[int], list[APLArray
     return (list(frame_shape), cells)
 
 #TODO: can't we use numpy code here
+
 def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
     """Reassemble cells into a single array.
 
     If all cells have the same shape, result shape is frame_shape + cell_shape.
     If shapes differ, pad with fill elements to max shape.
     """
-    from marple.get_numpy import np
     if len(cells) == 0:
         return BUILDER.apl_array(frame_shape + [0], np.array([]))
     if len(cells) == 1 and frame_shape == []:

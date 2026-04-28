@@ -33,7 +33,7 @@ from marple.backend_functions import (
 from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
 from marple.errors import DomainError, LengthError, SyntaxError_, ValueError_
 from marple.formatting import format_num, format_result
-from marple.get_numpy import np
+import numpy as np
 from marple.dyadic_functions import DyadicFunctionBinding
 from marple.ibeam_registry import lookup as ibeam_lookup
 from marple.monadic_functions import MonadicFunctionBinding

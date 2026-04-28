@@ -9,7 +9,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import Any, Iterator
 
-from marple.get_numpy import np
+import numpy as np
 from marple.ports.array import APLArray, str_to_char_array
 
 

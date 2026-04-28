@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from marple.get_numpy import np
+import numpy as np
 from marple.ports.array import APLArray, S
 from marple.backend_functions import (
     _DOWNCAST_CT, maybe_downcast, 

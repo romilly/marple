@@ -14,7 +14,7 @@ from marple.backend_functions import (
     to_bool_array,
 )
 from marple.errors import DomainError, LengthError, RankError
-from marple.get_numpy import np
+import numpy as np
 from marple.apl_value import NC_ARRAY, APLValue
 import numpy.typing as npt
 
