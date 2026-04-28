@@ -29,11 +29,6 @@ def get_backend_class() -> "type[APLArray]":
     #return _ACTIVE_BACKEND_CLASS
 
 
-def is_float_dtype(arr: NDArray) -> bool:
-    """Check if an ndarray has a float dtype. Delegates per is_int_dtype."""
-    return get_backend_class().is_float_dtype(arr)
-
-
 def maybe_upcast(data: NDArray) -> NDArray:
     """Convert integer arrays to float to prevent overflow.
 
