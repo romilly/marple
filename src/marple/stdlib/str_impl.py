@@ -1,6 +1,5 @@
 
-from marple.ports.array import APLArray
-from marple.backend_functions import str_to_char_array
+from marple.ports.array import APLArray, str_to_char_array
 
 
 def upper(right: APLArray) -> APLArray:
