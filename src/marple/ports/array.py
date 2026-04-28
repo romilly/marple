@@ -65,6 +65,9 @@ def maybe_upcast(data: Any) -> Any:
         return data
     return data.astype(np.float64)
 
+def numeric_upcast_dtype() -> Any:
+    return np.float64
+
 def np_gather(data: Any, axis_indices: "list[list[int]]") -> Any:
     """Multi-axis gather: return the flat sequence of
     `data[axis_indices[0][i0], axis_indices[1][i1], ...]` as (i0,i1,...)
