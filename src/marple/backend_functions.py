@@ -102,7 +102,7 @@ _DR_CODE_SPECS: "list[tuple[str, int]]" = [
     ("uint8", 81),
     ("int8", 83),
     ("int16", 163),
-    ("unit32", 320),
+    ("uint32", 320),
     ("int32", 323),
     ("int64", 643),
     ("float32", 325),
@@ -131,7 +131,7 @@ def _build_dr_codes() -> "dict[Any, int]":
         if dtype is None:
             continue
         codes[_key(dtype)] = code
-    codes[_key(get_char_dtype())] = 320  # character
+    # codes[_key(get_char_dtype())] = 320  # character
     return codes
 
 
