@@ -32,6 +32,12 @@ def strict_numeric_errstate() -> Iterator[None]:
         with np.errstate(over="raise", invalid="raise"):
             yield
 
+
+@contextmanager
+def ignoring_numeric_errstate() -> Iterator[None]:
+    with np.errstate(over="ignore", invalid="ignore"):
+        yield
+
 class APLArray(APLValue):
     """APL array — the port. Concrete adapters live in numpy_aplarray.py
     (desktop, numpy) and ulab_aplarray.py (Pico, ulab).
