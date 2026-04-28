@@ -127,10 +127,8 @@ def _build_dr_codes() -> "dict[Any, int]":
         return np.dtype(dtype)
 
     for name, code in _DR_CODE_SPECS:
-        dtype = getattr(np, name, None)
-        if dtype is None:
-            continue
-        codes[_key(dtype)] = code
+        dtype_name = getattr(np, name, None)
+        codes[_key(dtype_name)] = code
     return codes
 
 
