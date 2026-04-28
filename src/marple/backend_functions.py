@@ -54,14 +54,6 @@ def get_backend_class() -> "type[APLArray]":
     return _ACTIVE_BACKEND_CLASS
 
 
-def strict_numeric_errstate() -> AbstractContextManager[None]:
-    """Context manager for numeric ops that must trap overflow.
-
-    Dispatches to the active backend class's `strict_numeric_errstate` hook.
-    """
-    return get_backend_class().strict_numeric_errstate()
-
-
 def ignoring_numeric_errstate() -> AbstractContextManager[None]:
     """Context manager for numeric ops that suppress overflow warnings.
 
