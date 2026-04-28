@@ -232,6 +232,7 @@ _DR_CODE_SPECS: "list[tuple[str, int]]" = [
     ("uint8", 81),
     ("int8", 83),
     ("int16", 163),
+    ("unit32", 320),
     ("int32", 323),
     ("int64", 643),
     ("float32", 325),
