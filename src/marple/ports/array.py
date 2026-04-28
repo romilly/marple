@@ -29,6 +29,16 @@ def _gcd_float(a: float, b: float) -> float:
         a, b = b, a % b
     return a
 
+def is_numeric_array(data: NDArray) -> bool:
+    """Check if data is a numeric ndarray from the active backend.
+
+    Char-dtype arrays are reserved for character data (Unicode codepoints)
+    and are NOT numeric — see is_char_array. The two predicates are
+    disjoint, which is what allows the dyadic-arithmetic fast paths
+    to use is_numeric_array as a safe gate after the char guards run.
+    """
+    return data.dtype != np.uint32
+
 @contextmanager
 def strict_numeric_errstate() -> Iterator[None]:
         with np.errstate(over="raise", invalid="raise"):
