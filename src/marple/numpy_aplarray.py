@@ -23,8 +23,6 @@ def char_fill() -> Any:
     """
     return 32
 
-
-
 class NumpyAPLArray(APLArray):
     """APLArray backed by numpy. Adapter for the desktop platform."""
 
