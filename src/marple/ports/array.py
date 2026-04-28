@@ -68,6 +68,11 @@ def maybe_upcast(data: Any) -> Any:
 def is_float_dtype(arr: Any) -> bool:
         return bool(np.issubdtype(arr.dtype, np.floating))
 
+def to_bool_array(data: "NDArray | list[int]") -> NDArray:
+    """Convert data to a uint8 boolean array (0/1 values)."""
+    return np.asarray(data, dtype=np.uint8)
+
+
 def maybe_downcast(data: Any, ct: float) -> Any:
         if not is_float_dtype(data):
             return data

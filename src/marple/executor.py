@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 
 #TODO: Get rid of the global BUILDER
 from marple.adapters.numpy_array_builder import BUILDER
-from marple.ports.array import _gcd_float
+from marple.ports.array import _gcd_float, to_bool_array
 from typing import Any, Callable, TYPE_CHECKING, cast
 
 
@@ -1511,7 +1511,7 @@ class Executor:
 
     def _sys_dr_dyadic(self, left: APLArray, right: APLArray) -> APLArray:
         """Dyadic ⎕DR: convert data representation."""
-        from marple.backend_functions import to_bool_array
+        #from marple.backend_functions import to_bool_array
         target = int(left.scalar_value())
         vals = right.to_list()
         if target == 645:
