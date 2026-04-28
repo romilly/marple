@@ -24,9 +24,6 @@ else:
 #     restore the previous value if they need to temporarily switch, e.g. in
 #     tests.
 #     """
-#     # global _CHAR_DTYPE
-#     # _CHAR_DTYPE = dtype
-
 
 def get_char_dtype() -> "np.dtype[Any]":
     """Return the currently active char dtype.
