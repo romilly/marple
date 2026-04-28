@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from typing import Any, Iterator
 
 import numpy as np
-from marple.ports.array import APLArray, str_to_char_array, is_numeric_array, data_type_code, is_int_dtype
+from marple.ports.array import APLArray, str_to_char_array, data_type_code
 
 def char_fill() -> Any:
     """Return the fill element for character arrays: the space codepoint.
