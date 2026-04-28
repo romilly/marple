@@ -19,11 +19,6 @@ if TYPE_CHECKING:
 #     tests.
 #     """
 
-def get_char_dtype():
-    """Return the currently active char dtype.
-    """
-    return np.uint32
-
 
 def get_backend_class() -> "type[APLArray]":
     """Return the currently active APLArray subclass (defaults to NumpyAPLArray)."""
