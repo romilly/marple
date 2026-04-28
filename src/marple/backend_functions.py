@@ -29,15 +29,6 @@ def get_backend_class() -> "type[APLArray]":
     #return _ACTIVE_BACKEND_CLASS
 
 
-def maybe_upcast(data: NDArray) -> NDArray:
-    """Convert integer arrays to float to prevent overflow.
-
-    Delegates to the active backend class so UlabAPLArray can skip the
-    float64 upcast (ulab has no float64; silent int overflow is accepted).
-    """
-    return get_backend_class().maybe_upcast(data)
-
-
 # Module-level comparison tolerance for downcast
 _DOWNCAST_CT: float = 1e-14
 

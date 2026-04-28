@@ -9,7 +9,6 @@ if TYPE_CHECKING:
     from marple.executor import Executor
 
 from marple.backend_functions import (
-    maybe_upcast,
     to_bool_array,
 )
 from marple.errors import DomainError, LengthError, RankError
