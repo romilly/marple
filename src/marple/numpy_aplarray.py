@@ -49,30 +49,11 @@ class NumpyAPLArray(APLArray):
         with np.errstate(over="raise", invalid="raise"):
             yield
 
-    @classmethod
-    @contextmanager
-    def ignoring_numeric_errstate(cls) -> Iterator[None]:
-        with np.errstate(over="ignore", invalid="ignore"):
-            yield
-
-    @classmethod
-    def is_int_dtype(cls, arr: Any) -> bool:
-        return bool(np.issubdtype(arr.dtype, np.integer))
 
     @classmethod
     def is_float_dtype(cls, arr: Any) -> bool:
         return bool(np.issubdtype(arr.dtype, np.floating))
 
-    @classmethod
-    def maybe_upcast(cls, data: Any) -> Any:
-        #from marple.backend_functions import is_numeric_array
-        if not is_numeric_array(data) or not is_int_dtype(data):
-            return data
-        return data.astype(np.float64)
-
-    @classmethod
-    def numeric_upcast_dtype(cls) -> Any:
-        return np.float64
 
     @classmethod
     def reshape_ndarray(cls, arr: Any, shape: Any) -> Any:

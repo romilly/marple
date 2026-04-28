@@ -33,12 +33,6 @@ def get_backend_class() -> "type[APLArray]":
 _DOWNCAST_CT: float = 1e-14
 
 
-# def numeric_upcast_dtype() -> Any:
-#     """Widest float dtype the active backend supports. Delegates to the
-#     backend class's classmethod — see APLArray.numeric_upcast_dtype.
-#     """
-#     return get_backend_class().numeric_upcast_dtype()
-
 
 def maybe_downcast(data: NDArray, ct: float) -> NDArray:
     """Convert float arrays to int if all elements are close to whole numbers.
