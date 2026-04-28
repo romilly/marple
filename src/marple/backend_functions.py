@@ -32,7 +32,3 @@ def get_backend_class() -> "type[APLArray]":
 # Module-level comparison tolerance for downcast
 _DOWNCAST_CT: float = 1e-14
 
-
-def to_bool_array(data: "NDArray | list[int]") -> NDArray:
-    """Convert data to a uint8 boolean array (0/1 values)."""
-    return np.asarray(data, dtype=np.uint8)

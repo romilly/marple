@@ -7,10 +7,7 @@ from typing import Any, Callable, TYPE_CHECKING, Iterator, Self, cast
 if TYPE_CHECKING:
     from marple.apl_value import PowerStrategy
     from marple.executor import Executor
-
-from marple.backend_functions import (
-    to_bool_array,
-)
+    
 from marple.errors import DomainError, LengthError, RankError
 import numpy as np
 from marple.apl_value import NC_ARRAY, APLValue
