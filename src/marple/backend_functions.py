@@ -1,29 +1,17 @@
-import sys
-from contextlib import AbstractContextManager
 from typing import Any, TYPE_CHECKING
 
 import numpy as np
+import numpy.typing as npt
+NDArray = npt.NDArray[Any]
 
 if TYPE_CHECKING:
-    import numpy.typing as npt
     from marple.ports.array import APLArray
-    NDArray = npt.NDArray[Any]
 else:
     # MicroPython / ulab has no numpy.typing. Annotations collapse to Any at
     # runtime; pyright reads the TYPE_CHECKING branch.
     NDArray = Any
 
 
-
-# Lazily resolved via `get_char_dtype` — avoids a module-load-time call to
-# `np.dtype(np.uint32)`, which fails on ulab builds that cap at uint16.
-_CHAR_DTYPE: "np.dtype[Any] | None" = None
-
-# Active APLArray subclass — consulted by the module-level errstate helpers
-# so that a UlabAPLArray on the Pico can override overflow trapping without
-# the callers needing an instance reference. Interpreter sets this on
-# construction via `set_backend_class`.
-#_ACTIVE_BACKEND_CLASS: "type[APLArray] | None" = None
 
 
 # TODO: The design of this module appears to fly in the face of the plan:
