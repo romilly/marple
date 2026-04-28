@@ -153,8 +153,9 @@ class APLArray(APLValue):
         the named subclass as normal.
         """
         if cls is APLArray:
-            from marple.backend_functions import get_backend_class
-            return cast(Self, object.__new__(get_backend_class()))
+            # from marple.backend_functions import get_backend_class
+            from marple.numpy_aplarray import NumpyAPLArray
+            return cast(Self, object.__new__(NumpyAPLArray))
         return object.__new__(cls)
 
     # ---- backend hooks (declared on the port; adapters implement) -----
@@ -919,6 +920,6 @@ def S(value: Any) -> APLArray:
     # backend_functions registry so subclass method overrides (e.g.
     # UlabAPLArray._numeric_dyadic_op) fire on the resulting instance.
     # Lazy import avoids an import cycle with backend_functions.
-    from marple.backend_functions import get_backend_class
-    return get_backend_class().scalar(value)
+    from marple.numpy_aplarray import NumpyAPLArray
+    return NumpyAPLArray.scalar(value)
 

@@ -20,15 +20,6 @@ if TYPE_CHECKING:
 #     """
 
 
-def get_backend_class() -> "type[APLArray]":
-    """Return the currently active APLArray subclass (defaults to NumpyAPLArray)."""
-    global _ACTIVE_BACKEND_CLASS
-   # if _ACTIVE_BACKEND_CLASS is None:
-    from marple.numpy_aplarray import NumpyAPLArray
-    return NumpyAPLArray
-    #return _ACTIVE_BACKEND_CLASS
-
-
 # Module-level comparison tolerance for downcast
 _DOWNCAST_CT: float = 1e-14
 
