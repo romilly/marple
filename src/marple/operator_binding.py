@@ -5,13 +5,8 @@ from typing import Any, Callable
 from marple.backend_functions import NDArray
 from marple.adapters.numpy_array_builder import BUILDER
 
-from marple.ports.array import APLArray, S, ignoring_numeric_errstate, is_numeric_array, np_reshape, is_int_dtype, maybe_upcast, numeric_upcast_dtype
-from marple.backend_functions import (
-    _DOWNCAST_CT, 
-    maybe_downcast,
-    # numeric_upcast_dtype,
-)
-from marple.dyadic_functions import DyadicFunctionBinding
+from marple.ports.array import APLArray, S, ignoring_numeric_errstate, is_numeric_array, np_reshape, is_int_dtype, maybe_upcast, numeric_upcast_dtype, maybe_downcast
+from marple.backend_functions import _DOWNCAST_CT
 from marple.errors import DomainError
 import numpy as np
 
