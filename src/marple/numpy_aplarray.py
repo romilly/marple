@@ -10,9 +10,8 @@ from contextlib import contextmanager
 from typing import Any, Iterator
 
 from marple.get_numpy import np
-from marple.ports.array import APLArray
+from marple.ports.array import APLArray, str_to_char_array
 
-from marple.backend_functions import str_to_char_array
 
 
 
