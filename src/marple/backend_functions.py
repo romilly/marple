@@ -52,40 +52,7 @@ def char_fill() -> Any:
     """
     return 32
 
-
-# def to_array(data: list[Any]) -> NDArray:
-#     """Convert a Python list to a numpy ndarray."""
-#     return np.array(data)
-
-
-
-def np_gather(data: Any, axis_indices: "list[list[int]]") -> Any:
-    """Multi-axis gather: return the flat sequence of
-    `data[axis_indices[0][i0], axis_indices[1][i1], ...]` as (i0,i1,...)
-    ranges over the Cartesian product of `axis_indices`.
-
-    Used for APL bracket indexing. On CPython routes through
-    `data[np.ix_(*axis_indices)].flatten()`; on ulab (no np.ix_, no
-    fancy indexing) iterates in Python for ranks 1 and 2. Caller
-    reshapes via `np_reshape` or APLArray.__init__.
-    """
-    if hasattr(np, "ix_"):
-        idx_arrays = [np.asarray(ax) for ax in axis_indices]
-        return data[np.ix_(*idx_arrays)].flatten()
-    rank = len(data.shape)
-    if rank != len(axis_indices):
-        raise ValueError("axis_indices count ({}) doesn't match data rank ({})"
-                         .format(len(axis_indices), rank))
-    if rank == 1:
-        idx = axis_indices[0]
-        return np.array([data[int(i)] for i in idx], dtype=data.dtype)
-    if rank == 2:
-        row_idx, col_idx = axis_indices
-        rows = [list(r) for r in data]
-        out = [rows[int(r)][int(c)] for r in row_idx for c in col_idx]
-        return np.array(out, dtype=data.dtype)
-    raise NotImplementedError(
-        "np_gather fallback supports rank \u2264 2 (got {})".format(rank))
+ 
 
 
 def np_repeat(arr: Any, counts: Any, axis: int) -> Any:

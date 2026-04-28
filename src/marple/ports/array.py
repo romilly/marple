@@ -39,6 +39,15 @@ def is_numeric_array(data: NDArray) -> bool:
     """
     return data.dtype != np.uint32
 
+def np_gather(data: Any, axis_indices: "list[list[int]]") -> Any:
+    """Multi-axis gather: return the flat sequence of
+    `data[axis_indices[0][i0], axis_indices[1][i1], ...]` as (i0,i1,...)
+    ranges over the Cartesian product of `axis_indices`.
+    """
+    idx_arrays = [np.asarray(ax) for ax in axis_indices]
+    return data[np.ix_(*idx_arrays)].flatten()
+ 
+
 @contextmanager
 def strict_numeric_errstate() -> Iterator[None]:
         with np.errstate(over="raise", invalid="raise"):
