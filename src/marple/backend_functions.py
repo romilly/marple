@@ -28,14 +28,6 @@ def get_backend_class() -> "type[APLArray]":
     return NumpyAPLArray
     #return _ACTIVE_BACKEND_CLASS
 
-def is_int_dtype(arr: NDArray) -> bool:
-    """Check if an ndarray has an integer dtype.
-
-    Delegates to the active backend class — ulab subclass uses a dtype-
-    constant set check since ulab has no `np.issubdtype`.
-    """
-    return get_backend_class().is_int_dtype(arr)
-
 
 def is_float_dtype(arr: NDArray) -> bool:
     """Check if an ndarray has a float dtype. Delegates per is_int_dtype."""
