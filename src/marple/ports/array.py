@@ -32,6 +32,10 @@ def strict_numeric_errstate() -> Iterator[None]:
         with np.errstate(over="raise", invalid="raise"):
             yield
 
+def get_char_dtype() -> "np.dtype[Any]":
+    """Return the currently active char dtype.
+    """
+    return np.uint32
 
 @contextmanager
 def ignoring_numeric_errstate() -> Iterator[None]:
