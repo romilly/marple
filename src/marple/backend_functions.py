@@ -14,6 +14,7 @@ else:
     NDArray = Any
 
 
+
 # Lazily resolved via `get_char_dtype` — avoids a module-load-time call to
 # `np.dtype(np.uint32)`, which fails on ulab builds that cap at uint16.
 _CHAR_DTYPE: "np.dtype[Any] | None" = None
@@ -22,7 +23,7 @@ _CHAR_DTYPE: "np.dtype[Any] | None" = None
 # so that a UlabAPLArray on the Pico can override overflow trapping without
 # the callers needing an instance reference. Interpreter sets this on
 # construction via `set_backend_class`.
-_ACTIVE_BACKEND_CLASS: "type[APLArray] | None" = None
+#_ACTIVE_BACKEND_CLASS: "type[APLArray] | None" = None
 
 
 # TODO: The design of this module appears to fly in the face of the plan:
@@ -48,10 +49,10 @@ def get_char_dtype() -> "np.dtype[Any]":
 def get_backend_class() -> "type[APLArray]":
     """Return the currently active APLArray subclass (defaults to NumpyAPLArray)."""
     global _ACTIVE_BACKEND_CLASS
-    if _ACTIVE_BACKEND_CLASS is None:
-        from marple.numpy_aplarray import NumpyAPLArray
-        _ACTIVE_BACKEND_CLASS = NumpyAPLArray
-    return _ACTIVE_BACKEND_CLASS
+   # if _ACTIVE_BACKEND_CLASS is None:
+    from marple.numpy_aplarray import NumpyAPLArray
+    return NumpyAPLArray
+    #return _ACTIVE_BACKEND_CLASS
 
 
 
