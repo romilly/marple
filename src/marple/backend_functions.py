@@ -52,17 +52,6 @@ def char_fill() -> Any:
     """
     return 32
 
-
-def np_reshape(arr: Any, *shape: Any) -> Any:
-    """ndarray.reshape.
-    """
-    if len(shape) == 1:
-        s = shape[0]
-        return arr.reshape(s)
-    return arr.reshape(shape)
-
-
-
 def is_int_dtype(arr: NDArray) -> bool:
     """Check if an ndarray has an integer dtype.
 
