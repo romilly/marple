@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 
-from typing import Any, Callable, TYPE_CHECKING, Self, cast
+from contextlib import contextmanager
+from typing import Any, Callable, TYPE_CHECKING, Iterator, Self, cast
 
 if TYPE_CHECKING:
     from marple.apl_value import PowerStrategy
@@ -68,17 +69,10 @@ class APLArray(APLValue):
         raise NotImplementedError("adapter must implement char_dtype")
 
     @classmethod
-    def strict_numeric_errstate(cls) -> Any:
-        """Context manager wrapping numeric ops that must trap overflow.
-
-        Callers use the result in a `with` block. On numpy the adapter
-        installs `np.errstate(over="raise", invalid="raise")` so
-        `FloatingPointError` fires; on ulab the adapter yields a no-op
-        (no errstate equivalent; silent overflow is the documented
-        trade-off).
-        """
-        raise NotImplementedError(
-            "adapter must implement strict_numeric_errstate")
+    @contextmanager
+    def strict_numeric_errstate(cls) -> Iterator[None]:
+        with np.errstate(over="raise", invalid="raise"):
+            yield
 
     @classmethod
     def ignoring_numeric_errstate(cls) -> Any:
