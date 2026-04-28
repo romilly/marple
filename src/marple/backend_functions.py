@@ -6,12 +6,6 @@ NDArray = npt.NDArray[Any]
 
 if TYPE_CHECKING:
     from marple.ports.array import APLArray
-else:
-    # MicroPython / ulab has no numpy.typing. Annotations collapse to Any at
-    # runtime; pyright reads the TYPE_CHECKING branch.
-    NDArray = Any
-
-
 
 
 # TODO: The design of this module appears to fly in the face of the plan:
@@ -94,27 +88,6 @@ def maybe_downcast(data: NDArray, ct: float) -> NDArray:
     int widths are already narrow.
     """
     return get_backend_class().maybe_downcast(data, ct)
-
-
-DR_CODE_SPECS: "dict[str, int]" = {
-    "uint8": 81,
-    "int8": 83,
-    "int16": 163,
-    "uint32": 320,
-    "int32": 323,
-    "int64": 643,
-    "float32": 325,
-    "float64": 645,
-}
-
-
-def data_type_code(data: NDArray) -> int:
-    """Return the ⎕DR type code for the given data.
-
-    Encoding: first digits = bit width, last digit = type
-    (0=char, 1=boolean, 3=signed int, 5=float, 7=decimal, 9=complex).
-    """
-    return DR_CODE_SPECS[data.dtype.name]
 
 
 def to_bool_array(data: "NDArray | list[int]") -> NDArray:
