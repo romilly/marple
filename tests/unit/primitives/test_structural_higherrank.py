@@ -1,7 +1,6 @@
 """Structural functions on higher-rank and character arrays."""
 
-from marple.backend_functions import str_to_char_array
-from marple.ports.array import APLArray, S
+from marple.ports.array import APLArray, S, str_to_char_array
 from marple.engine import Interpreter
 from marple.adapters.numpy_array_builder import BUILDER
 
