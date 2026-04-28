@@ -106,9 +106,9 @@ def char_fill() -> Any:
     return 32
 
 
-def to_array(data: list[Any]) -> NDArray:
-    """Convert a Python list to a numpy ndarray."""
-    return np.array(data)
+# def to_array(data: list[Any]) -> NDArray:
+#     """Convert a Python list to a numpy ndarray."""
+#     return np.array(data)
 
 
 def is_numeric_array(data: NDArray) -> bool:
