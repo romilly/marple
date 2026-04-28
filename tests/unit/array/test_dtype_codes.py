@@ -3,6 +3,7 @@
 import numpy
 
 from marple.backend_functions import data_type_code
+from marple.ports.array import str_to_char_array
 
 
 class TestDataTypeCode:
@@ -31,6 +32,5 @@ class TestDataTypeCode:
         assert data_type_code(data) == 645
 
     def test_character(self) -> None:
-        from marple.backend_functions import str_to_char_array
         data = str_to_char_array("hello")
         assert data_type_code(data) == 320
