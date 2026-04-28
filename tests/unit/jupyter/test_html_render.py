@@ -1,6 +1,6 @@
 """HTML rendering tests for Jupyter output."""
 
-from marple.ports.array import APLArray, S
+from marple.ports.array import APLArray, S, str_to_char_array
 from marple.jupyter.html_render import aplarray_to_html
 
 
@@ -23,7 +23,6 @@ class TestVector:
         assert html.count('<td>') == 3
 
     def test_char(self) -> None:
-        from marple.backend_functions import str_to_char_array
         html = aplarray_to_html(APLArray([5], str_to_char_array('hello')))
         assert 'hello' in html
         assert 'apl-scalar' in html
