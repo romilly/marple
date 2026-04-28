@@ -2,7 +2,7 @@
 
 import pytest
 
-from marple.ports.array import APLArray, S
+from marple.ports.array import APLArray, S, str_to_char_array
 from marple.engine import Interpreter
 from marple.errors import DomainError
 
@@ -265,7 +265,7 @@ class TestCR:
         assert "⋄" in text
 
     def test_cr_multi_line_via_fx(self) -> None:
-        from marple.backend_functions import str_to_char_array
+        # from marple.backend_functions import str_to_char_array
         i = Interpreter(io=1)
         lines = ["abs←{", "  ⍵<0:-⍵", "  ⍵}"]
         max_len = max(len(l) for l in lines)
