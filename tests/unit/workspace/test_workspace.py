@@ -3,7 +3,7 @@
 import os
 import tempfile
 
-from marple.backend_functions import str_to_char_array
+from marple.ports.array import str_to_char_array
 from marple.engine import Interpreter
 from marple.workspace import save_workspace, load_workspace, list_workspaces
 from marple.adapters.numpy_array_builder import BUILDER
