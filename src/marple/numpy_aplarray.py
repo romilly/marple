@@ -12,6 +12,17 @@ from typing import Any, Iterator
 import numpy as np
 from marple.ports.array import APLArray, str_to_char_array, is_numeric_array, data_type_code
 
+def char_fill() -> Any:
+    """Return the fill element for character arrays: the space codepoint.
+
+    Returns a plain int; callers pass it to `np.array([char_fill()],
+    dtype=get_char_dtype())` which produces a typed scalar. ulab's
+    `np.uint16` is not callable (it's an int constant), so the old
+    `CHAR_DTYPE(32)` path that worked on CPython fails there — this
+    neutral form works on both.
+    """
+    return 32
+
 
 
 class NumpyAPLArray(APLArray):
@@ -104,7 +115,6 @@ class NumpyAPLArray(APLArray):
 
     @staticmethod
     def _fill_element(source: APLArray) -> Any:
-        from marple.backend_functions import char_fill
         return char_fill() if source.is_char() else 0
 
     @staticmethod
@@ -338,7 +348,6 @@ class NumpyAPLArray(APLArray):
         return type(other)(out_shape, result)
 
     def reshape(self, other: APLArray) -> APLArray:
-        from marple.backend_functions import char_fill
         if self.is_scalar():
             new_shape = [int(self.scalar_value())]
         else:
