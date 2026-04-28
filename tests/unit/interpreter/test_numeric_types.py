@@ -6,8 +6,8 @@ overflow, and cross-dtype operations.
 
 import pytest
 
-from marple.ports.array import APLArray, S
-from marple.backend_functions import maybe_downcast, maybe_upcast
+from marple.ports.array import APLArray, S, maybe_upcast
+from marple.backend_functions import maybe_downcast
 import numpy as np
 from marple.engine import Interpreter
 
