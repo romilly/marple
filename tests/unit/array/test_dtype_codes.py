@@ -2,8 +2,7 @@
 
 import numpy
 
-from marple.backend_functions import data_type_code
-from marple.ports.array import str_to_char_array
+from marple.ports.array import str_to_char_array, data_type_code
 
 
 class TestDataTypeCode:
