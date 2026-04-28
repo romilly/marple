@@ -54,10 +54,6 @@ def get_backend_class() -> "type[APLArray]":
     return _ACTIVE_BACKEND_CLASS
 
 
-def str_to_char_array(s: str) -> NDArray:
-    """Convert a Python string to a numpy array of codepoints."""
-    return np.array([ord(c) for c in s], dtype=get_char_dtype())
-
 
 def char_fill() -> Any:
     """Return the fill element for character arrays: the space codepoint.

@@ -10,13 +10,15 @@ if TYPE_CHECKING:
 
 from marple.backend_functions import (
     is_int_dtype, maybe_upcast,
-    str_to_char_array, 
+    # str_to_char_array, 
     to_bool_array,
 )
 from marple.errors import DomainError, LengthError, RankError
 from marple.get_numpy import np
 from marple.apl_value import NC_ARRAY, APLValue
+import numpy.typing as npt
 
+NDArray = npt.NDArray[Any]
 _CT = 1e-10  # comparison tolerance for GCD
 
 
@@ -32,15 +34,19 @@ def strict_numeric_errstate() -> Iterator[None]:
         with np.errstate(over="raise", invalid="raise"):
             yield
 
-def get_char_dtype() -> "np.dtype[Any]":
-    """Return the currently active char dtype.
-    """
-    return np.uint32
+def str_to_char_array(s: str) -> NDArray:
+    """Convert a Python string to a numpy array of codepoints."""
+    return np.array([ord(c) for c in s], dtype=get_char_dtype())
 
 @contextmanager
 def ignoring_numeric_errstate() -> Iterator[None]:
     with np.errstate(over="ignore", invalid="ignore"):
         yield
+
+def get_char_dtype() -> "np.dtype[Any]":
+    """Return the currently active char dtype.
+    """
+    return np.uint32
 
 class APLArray(APLValue):
     """APL array — the port. Concrete adapters live in numpy_aplarray.py
