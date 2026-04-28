@@ -5,8 +5,9 @@ from typing import Any
 from marple.get_numpy import np
 from marple.ports.array import APLArray, S
 from marple.backend_functions import (
-    _DOWNCAST_CT, maybe_downcast, set_backend_class,
-    #set_char_dtype,
+    _DOWNCAST_CT, maybe_downcast, 
+    # set_backend_class,
+    # set_char_dtype,
 )
 from marple.environment import Environment
 from marple.formatting import format_result
