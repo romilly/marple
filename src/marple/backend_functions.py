@@ -28,19 +28,6 @@ def get_backend_class() -> "type[APLArray]":
     return NumpyAPLArray
     #return _ACTIVE_BACKEND_CLASS
 
-
-
-# def char_fill() -> Any:
-#     """Return the fill element for character arrays: the space codepoint.
-
-#     Returns a plain int; callers pass it to `np.array([char_fill()],
-#     dtype=get_char_dtype())` which produces a typed scalar. ulab's
-#     `np.uint16` is not callable (it's an int constant), so the old
-#     `CHAR_DTYPE(32)` path that worked on CPython fails there — this
-#     neutral form works on both.
-#     """
-#     return 32
-
 def is_int_dtype(arr: NDArray) -> bool:
     """Check if an ndarray has an integer dtype.
 
