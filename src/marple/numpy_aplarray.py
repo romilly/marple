@@ -15,6 +15,7 @@ from marple.ports.array import APLArray
 from marple.backend_functions import str_to_char_array
 
 
+
 class NumpyAPLArray(APLArray):
     """APLArray backed by numpy. Adapter for the desktop platform."""
 
@@ -340,7 +341,7 @@ class NumpyAPLArray(APLArray):
         return type(other)(out_shape, result)
 
     def reshape(self, other: APLArray) -> APLArray:
-        from marple.backend_functions import char_fill, get_char_dtype
+        from marple.backend_functions import char_fill
         if self.is_scalar():
             new_shape = [int(self.scalar_value())]
         else:
@@ -350,8 +351,8 @@ class NumpyAPLArray(APLArray):
             total *= s
         flat = other.data.flatten()
         if len(flat) == 0:
-            if other.data.dtype == get_char_dtype():
-                flat = np.array([char_fill()], dtype=get_char_dtype())
+            if other.data.dtype == self.char_dtype():
+                flat = np.array([char_fill()], dtype=self.char_dtype())
             else:
                 flat = np.array([0])
         n = len(flat)
