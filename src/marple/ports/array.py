@@ -47,6 +47,13 @@ def np_gather(data: Any, axis_indices: "list[list[int]]") -> Any:
     idx_arrays = [np.asarray(ax) for ax in axis_indices]
     return data[np.ix_(*idx_arrays)].flatten()
  
+def np_reshape(arr: Any, *shape: Any) -> Any:
+    """ndarray.reshape.
+    """
+    if len(shape) == 1:
+        s = shape[0]
+        return arr.reshape(s)
+    return arr.reshape(shape)
 
 @contextmanager
 def strict_numeric_errstate() -> Iterator[None]:

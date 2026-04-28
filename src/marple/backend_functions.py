@@ -54,24 +54,10 @@ def char_fill() -> Any:
 
 
 def np_reshape(arr: Any, *shape: Any) -> Any:
-    """Platform-agnostic ndarray.reshape.
-
-    ulab's reshape rejects list shapes (`TypeError: shape must be integer
-    or tuple of integers`) and rejects the multi-arg form
-    (`.reshape(2, 3)` raises "takes 2 positional arguments"). CPython
-    numpy accepts all three. This helper accepts any of:
-      - single int:      np_reshape(arr, 5)
-      - single list:     np_reshape(arr, [2, 3])
-      - single tuple:    np_reshape(arr, (2, 3))
-      - multi-arg ints:  np_reshape(arr, 2, 3)
-    and always passes a tuple to the underlying .reshape.
-
-    Pattern from pre-drop commit f49195e~ which re-adopts here.
+    """ndarray.reshape.
     """
     if len(shape) == 1:
         s = shape[0]
-        if isinstance(s, int):
-            return arr.reshape((s,))
         return arr.reshape(s)
     return arr.reshape(shape)
 
