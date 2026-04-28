@@ -131,7 +131,6 @@ def _build_dr_codes() -> "dict[Any, int]":
         if dtype is None:
             continue
         codes[_key(dtype)] = code
-    # codes[_key(get_char_dtype())] = 320  # character
     return codes
 
 
