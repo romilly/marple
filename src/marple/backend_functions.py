@@ -112,18 +112,12 @@ _DR_CODE_SPECS: "list[tuple[str, int]]" = [
 
 def _build_dr_codes() -> "dict[Any, int]":
     codes: "dict[Any, int]" = {}
-    has_dtype_factory = hasattr(np, "dtype")
 
     def _key(dtype: Any) -> Any:
         # Normalise keys so `codes.get(arr.dtype)` hits: numpy compares
         # np.dtype('uint32') to np.dtype('uint32'), not to the bare
         # np.uint32 type. ulab has no np.dtype factory — bare dtype
         # values there already match `arr.dtype` which is an int.
-        # if has_dtype_factory:
-        #     try:
-        #     except (TypeError, ValueError):
-        #         return dtype
-        # return dtype
         return np.dtype(dtype)
 
     for name, code in _DR_CODE_SPECS:
