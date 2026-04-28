@@ -54,14 +54,6 @@ def get_backend_class() -> "type[APLArray]":
     return _ACTIVE_BACKEND_CLASS
 
 
-def ignoring_numeric_errstate() -> AbstractContextManager[None]:
-    """Context manager for numeric ops that suppress overflow warnings.
-
-    Dispatches to the active backend class's `ignoring_numeric_errstate` hook.
-    """
-    return get_backend_class().ignoring_numeric_errstate()
-
-
 def str_to_char_array(s: str) -> NDArray:
     """Convert a Python string to a numpy array of codepoints."""
     return np.array([ord(c) for c in s], dtype=get_char_dtype())
