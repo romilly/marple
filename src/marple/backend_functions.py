@@ -47,10 +47,10 @@ def get_char_dtype() -> "np.dtype[Any]":
     array is constructed gets uint16 rather than the numpy-default uint32
     (which ulab cannot represent).
     """
-    global _CHAR_DTYPE
-    if _CHAR_DTYPE is None:
-        _CHAR_DTYPE = get_backend_class().char_dtype()
-    return _CHAR_DTYPE
+    # global _CHAR_DTYPE
+    # if _CHAR_DTYPE is None:
+    #     _CHAR_DTYPE = get_backend_class().char_dtype()
+    return np.uint32
 
 
 def set_backend_class(cls: "type[APLArray]") -> None:
