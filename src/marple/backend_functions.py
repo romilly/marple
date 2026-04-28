@@ -96,34 +96,16 @@ def maybe_downcast(data: NDArray, ct: float) -> NDArray:
     return get_backend_class().maybe_downcast(data, ct)
 
 
-_DR_CODES_CACHE: "dict[Any, int] | None" = None
-
-_DR_CODE_SPECS: "list[tuple[str, int]]" = [
-    ("uint8", 81),
-    ("int8", 83),
-    ("int16", 163),
-    ("uint32", 320),
-    ("int32", 323),
-    ("int64", 643),
-    ("float32", 325),
-    ("float64", 645),
-]
-
-
-def _build_dr_codes() -> "dict[Any, int]":
-    codes: "dict[Any, int]" = {}
-
-    def _key(dtype: Any) -> Any:
-        # Normalise keys so `codes.get(arr.dtype)` hits: numpy compares
-        # np.dtype('uint32') to np.dtype('uint32'), not to the bare
-        # np.uint32 type. ulab has no np.dtype factory — bare dtype
-        # values there already match `arr.dtype` which is an int.
-        return np.dtype(dtype)
-
-    for name, code in _DR_CODE_SPECS:
-        dtype_name = getattr(np, name, None)
-        codes[_key(dtype_name)] = code
-    return codes
+DR_CODE_SPECS: "dict[str, int]" = {
+    "uint8": 81,
+    "int8": 83,
+    "int16": 163,
+    "uint32": 320,
+    "int32": 323,
+    "int64": 643,
+    "float32": 325,
+    "float64": 645,
+}
 
 
 def data_type_code(data: NDArray) -> int:
@@ -132,8 +114,7 @@ def data_type_code(data: NDArray) -> int:
     Encoding: first digits = bit width, last digit = type
     (0=char, 1=boolean, 3=signed int, 5=float, 7=decimal, 9=complex).
     """
-    codes = _build_dr_codes()
-    return codes[data.dtype] 
+    return DR_CODE_SPECS[data.dtype.name]
 
 
 def to_bool_array(data: "NDArray | list[int]") -> NDArray:
