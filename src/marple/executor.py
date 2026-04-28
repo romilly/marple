@@ -25,10 +25,11 @@ def product(*lists: Any) -> Any:
         for rest in product(*lists[1:]):
             yield (item,) + rest
 
-from marple.ports.array import APLArray, S, strict_numeric_errstate, get_char_dtype, str_to_char_array, np_gather, maybe_upcast, maybe_downcast
-from marple.backend_functions import (
-    _DOWNCAST_CT, 
-)
+from marple.ports.array import APLArray, S, strict_numeric_errstate, get_char_dtype, str_to_char_array, np_gather, maybe_upcast, maybe_downcast, _DOWNCAST_CT
+
+# from marple.backend_functions import (
+#     _DOWNCAST_CT, 
+# )
 from marple.cells import clamp_rank, decompose, reassemble, resolve_rank_spec
 from marple.errors import DomainError, LengthError, SyntaxError_, ValueError_
 from marple.formatting import format_num, format_result

@@ -913,6 +913,7 @@ class APLArray(APLValue):
             raise DomainError("⍣ right operand must be scalar integer or function")
         return PowerByCount(int(self.scalar_value()))
 
+_DOWNCAST_CT: float = 1e-14
 
 def S(value: Any) -> APLArray:
     # Construct whichever APLArray subclass is active — NumpyAPLArray by
