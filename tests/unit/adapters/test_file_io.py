@@ -2,8 +2,7 @@
 
 import pytest
 
-from marple.ports.array import APLArray, S
-from marple.backend_functions import str_to_char_array
+from marple.ports.array import APLArray, S, str_to_char_array
 from marple.engine import Interpreter
 from marple.errors import DomainError
 from tests.adapters.fake_filesystem import FakeFileSystem
