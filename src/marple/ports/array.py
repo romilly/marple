@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 from marple.backend_functions import (
     is_int_dtype, maybe_upcast,
-    str_to_char_array, strict_numeric_errstate,
+    str_to_char_array, 
     to_bool_array,
 )
 from marple.errors import DomainError, LengthError, RankError
@@ -27,6 +27,10 @@ def _gcd_float(a: float, b: float) -> float:
         a, b = b, a % b
     return a
 
+@contextmanager
+def strict_numeric_errstate() -> Iterator[None]:
+        with np.errstate(over="raise", invalid="raise"):
+            yield
 
 class APLArray(APLValue):
     """APL array — the port. Concrete adapters live in numpy_aplarray.py
