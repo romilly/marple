@@ -119,12 +119,12 @@ def _build_dr_codes() -> "dict[Any, int]":
         # np.dtype('uint32') to np.dtype('uint32'), not to the bare
         # np.uint32 type. ulab has no np.dtype factory — bare dtype
         # values there already match `arr.dtype` which is an int.
-        if has_dtype_factory:
-            try:
-                return np.dtype(dtype)
-            except (TypeError, ValueError):
-                return dtype
-        return dtype
+        # if has_dtype_factory:
+        #     try:
+        #     except (TypeError, ValueError):
+        #         return dtype
+        # return dtype
+        return np.dtype(dtype)
 
     for name, code in _DR_CODE_SPECS:
         dtype = getattr(np, name, None)
@@ -140,15 +140,9 @@ def data_type_code(data: NDArray) -> int:
 
     Encoding: first digits = bit width, last digit = type
     (0=char, 1=boolean, 3=signed int, 5=float, 7=decimal, 9=complex).
-
-    The code table is built lazily on first call so that module load on
-    ulab (which lacks e.g. int64) doesn't fail before the Pico eval loop
-    has even started.
     """
-    global _DR_CODES_CACHE
-    if _DR_CODES_CACHE is None:
-        _DR_CODES_CACHE = _build_dr_codes()
-    return _DR_CODES_CACHE.get(data.dtype, 323)
+    codes = _build_dr_codes()
+    return codes[data.dtype] 
 
 
 def to_bool_array(data: "NDArray | list[int]") -> NDArray:
