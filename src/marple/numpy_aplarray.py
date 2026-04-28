@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from typing import Any, Iterator
 
 import numpy as np
-from marple.ports.array import APLArray, str_to_char_array, is_numeric_array, data_type_code
+from marple.ports.array import APLArray, str_to_char_array, is_numeric_array, data_type_code, is_int_dtype
 
 def char_fill() -> Any:
     """Return the fill element for character arrays: the space codepoint.
@@ -68,7 +68,7 @@ class NumpyAPLArray(APLArray):
     @classmethod
     def maybe_upcast(cls, data: Any) -> Any:
         #from marple.backend_functions import is_numeric_array
-        if not is_numeric_array(data) or not cls.is_int_dtype(data):
+        if not is_numeric_array(data) or not is_int_dtype(data):
             return data
         return data.astype(np.float64)
 
