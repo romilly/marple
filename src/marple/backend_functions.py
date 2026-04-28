@@ -25,7 +25,7 @@ else:
 #     tests.
 #     """
 
-def get_char_dtype() -> "np.dtype[Any]":
+def get_char_dtype():
     """Return the currently active char dtype.
     """
     return np.uint32
