@@ -45,17 +45,6 @@ def get_char_dtype() -> "np.dtype[Any]":
     return np.uint32
 
 
-def set_backend_class(cls: "type[APLArray]") -> None:
-    """Select the active APLArray subclass for module-level errstate helpers.
-
-    Interpreter calls this at construction so that `strict_numeric_errstate`
-    and `ignoring_numeric_errstate` below dispatch to the subclass's hooks
-    (e.g. UlabAPLArray's no-op context managers).
-    """
-    global _ACTIVE_BACKEND_CLASS
-    _ACTIVE_BACKEND_CLASS = cls
-
-
 def get_backend_class() -> "type[APLArray]":
     """Return the currently active APLArray subclass (defaults to NumpyAPLArray)."""
     global _ACTIVE_BACKEND_CLASS
