@@ -20,8 +20,6 @@ import numpy.typing as npt
 NDArray = npt.NDArray[Any]
 _CT = 1e-10  # comparison tolerance for GCD
 
-def is_int_dtype(arr: Any) -> bool:
-    return bool(np.issubdtype(arr.dtype, np.integer))
 
 DR_CODE_SPECS: "dict[str, int]" = {
     "uint8": 81,
