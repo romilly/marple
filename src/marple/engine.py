@@ -35,7 +35,6 @@ _SYS_FUNCTION_NAMES = (
     "⎕CR", "⎕FX", "⎕CSV",
 )
 
-from marple.backend_functions import get_backend_class
 
 class Interpreter(Executor):
 
