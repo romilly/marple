@@ -5,8 +5,7 @@ Returns strings instead of printing — usable by REPL, web server, and Jupyter.
 
 from typing import TYPE_CHECKING, Callable
 
-from marple.ports.array import APLArray
-from marple.backend_functions import str_to_char_array
+from marple.ports.array import APLArray, str_to_char_array
 from marple.formatting import format_result
 from marple.engine import Interpreter
 from marple.adapters.numpy_array_builder import BUILDER
