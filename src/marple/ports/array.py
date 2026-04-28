@@ -65,6 +65,31 @@ def maybe_upcast(data: Any) -> Any:
         return data
     return data.astype(np.float64)
 
+def is_float_dtype(arr: Any) -> bool:
+        return bool(np.issubdtype(arr.dtype, np.floating))
+
+def maybe_downcast(data: Any, ct: float) -> Any:
+        if not is_float_dtype(data):
+            return data
+        if data.size == 0:
+            return data
+        rounded = np.round(data)
+        diff = np.abs(data - rounded)
+        if ct == 0:
+            if not np.all(diff == 0):
+                return data
+        else:
+            mag = np.maximum(np.abs(data), np.abs(rounded))
+            if not np.all(diff <= ct * mag):
+                return data
+        max_val = np.max(np.abs(rounded))
+        if max_val > np.float64(np.iinfo(np.int64).max):
+            return data
+        int_arr = rounded.astype(np.int64)
+        if np.all(np.abs(int_arr) <= np.iinfo(np.int32).max):
+            return int_arr.astype(np.int32)
+        return int_arr
+
 def numeric_upcast_dtype() -> Any:
     return np.float64
 

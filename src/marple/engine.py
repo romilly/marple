@@ -3,10 +3,9 @@
 from typing import Any
 
 import numpy as np
-from marple.ports.array import APLArray, S
+from marple.ports.array import APLArray, S, maybe_downcast
 from marple.backend_functions import (
     _DOWNCAST_CT, 
-    maybe_downcast, 
 )
 from marple.environment import Environment
 from marple.formatting import format_result
