@@ -2,7 +2,6 @@ from typing import Any, Callable
 
 from marple.ports.array import APLArray, str_to_char_array
 from marple.ports.filesystem import FileSystem
-from marple.adapters.numpy_array_builder import BUILDER
 
 
 def _is_dfn_binding(value: object) -> bool:
@@ -138,7 +137,7 @@ def load_workspace(env: Any, ws_dir: str,
     if fs.is_file(ws_file):
         text = fs.read_text(ws_file)
         wsid = text.split("\n")[0].strip()
-        env["⎕WSID"] = BUILDER.apl_array([len(wsid)], str_to_char_array(wsid))
+        env["⎕WSID"] = APLArray([len(wsid)], str_to_char_array(wsid))
 
     # Collect .apl files, system vars first
     files = sorted(fs.listdir(ws_dir))
