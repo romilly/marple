@@ -806,20 +806,41 @@ class APLArray(APLValue):
         return type(other)(list(result.shape), result)
 
     def replicate_first(self, other: APLArray) -> APLArray:
-        """Dyadic ⌿: replicate/compress `other` along its first axis."""
-        raise NotImplementedError("adapter must implement replicate_first")
+        from marple.errors import LengthError
+        if len(other.shape) <= 1:
+            return self.replicate(other)
+        counts = [int(x) for x in self.to_list()]
+        first_axis_len = other.shape[0]
+        if len(counts) == 1 and first_axis_len > 1:
+            counts = counts * first_axis_len
+        if len(counts) != first_axis_len:
+            raise LengthError(f"Length mismatch: {len(counts)} vs {first_axis_len}")
+        result = np.repeat(other.data, counts, axis=0)
+        return type(other)(list(result.shape), result)
 
     def expand(self, other: APLArray) -> APLArray:
-        """Dyadic \\: expand `other` along its last axis using `self` as
-        the 0/1 mask. Each 1 consumes the next element of `other`; each
-        0 inserts a fill element."""
-        raise NotImplementedError("adapter must implement expand")
+        from marple.errors import LengthError
+        mask = [int(x) for x in self.to_list()]
+        fill = self._fill_element(other)
+        n_ones = sum(1 for m in mask if m)
+        last_axis_len = other.shape[-1] if other.shape else 1
+        if n_ones != last_axis_len:
+            raise LengthError(
+                f"Expand: mask has {n_ones} ones but argument has {last_axis_len} elements")
+        out_shape = (list(other.shape[:-1]) + [len(mask)]) if other.shape else [len(mask)]
+        result = np.full(out_shape, fill, dtype=other.data.dtype)
+        one_positions = [i for i, m in enumerate(mask) if m]
+        if one_positions:
+            result[..., one_positions] = other.data
+        return type(other)(out_shape, result)
 
     def matrix_divide(self, other: APLArray) -> APLArray:
-        """Dyadic ⌹: solve `other x = self` for x. ulab adapters raise
-        NotImplementedError (no np.linalg).
-        """
-        raise NotImplementedError("adapter must implement matrix_divide")
+        from marple.errors import DomainError
+        try:
+            result = np.linalg.solve(other.data.astype(float), self.data.astype(float))
+        except np.linalg.LinAlgError:
+            raise DomainError("Singular matrix")
+        return type(self)(list(result.shape), result)
 
     @staticmethod
     def _tolerant_match(a: object, b: object, ct: float) -> bool:
@@ -1103,10 +1124,14 @@ class APLArray(APLValue):
         return type(self)(list(reversed(self.shape)), transposed.copy())
 
     def matrix_inverse(self) -> APLArray:
-        """Monadic ⌹: matrix inverse. Requires a square matrix. ulab
-        adapters raise NotImplementedError (no np.linalg).
-        """
-        raise NotImplementedError("adapter must implement matrix_inverse")
+        from marple.errors import DomainError, RankError
+        if len(self.shape) != 2 or self.shape[0] != self.shape[1]:
+            raise RankError("Matrix inverse requires a square matrix")
+        try:
+            result = np.linalg.inv(self.data.astype(float))
+        except np.linalg.LinAlgError:
+            raise DomainError("Singular matrix")
+        return type(self)(list(self.shape), result)
 
     def reverse(self) -> APLArray:
         # Scalar reverse is identity; np.flip needs at least one axis.
