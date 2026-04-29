@@ -1,7 +1,6 @@
 
 from marple.ports.array import APLArray, S
 from marple.errors import LengthError
-from marple.executor import BUILDER
 import numpy as np
 
 def resolve_rank_spec(spec: APLArray) -> tuple[int, int, int]:
@@ -57,7 +56,7 @@ def decompose(array: APLArray, cell_rank: int) -> tuple[list[int], list[APLArray
         cell_data = flat[i * cell_size : (i + 1) * cell_size]
         if cell_shape:
             cell_data = cell_data.reshape(cell_shape)
-        cells.append(BUILDER.apl_array(list(cell_shape), cell_data))
+        cells.append(APLArray(list(cell_shape), cell_data))
     return (list(frame_shape), cells)
 
 #TODO: can't we use numpy code here
@@ -69,7 +68,7 @@ def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
     If shapes differ, pad with fill elements to max shape.
     """
     if len(cells) == 0:
-        return BUILDER.apl_array(frame_shape + [0], np.array([]))
+        return APLArray(frame_shape + [0], np.array([]))
     if len(cells) == 1 and frame_shape == []:
         return cells[0]
     # Determine max cell shape
@@ -86,12 +85,12 @@ def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
     if all_uniform and all_numeric:
         flat_cells = [c.data.flatten() for c in cells]
         result = np.concatenate(tuple(flat_cells))
-        return BUILDER.apl_array(result_shape, result.reshape(result_shape))
+        return APLArray(result_shape, result.reshape(result_shape))
     if all_uniform:
         all_data: list[object] = []
         for c in cells:
             all_data.extend(c.to_list())
-        return BUILDER.apl_array(result_shape, all_data)
+        return APLArray(result_shape, all_data)
     # Padding needed
     max_size = 1
     for s in max_shape:
@@ -103,7 +102,7 @@ def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
         for i, c in enumerate(cells):
             flat = c.data.flatten() if c.is_numeric() else c.data
             result[i * max_size : i * max_size + len(flat)] = flat
-        return BUILDER.apl_array(result_shape, result.reshape(result_shape))
+        return APLArray(result_shape, result.reshape(result_shape))
     all_data = []
     for c in cells:
         cell_data = c.to_list()
@@ -114,4 +113,4 @@ def reassemble(frame_shape: list[int], cells: list[APLArray]) -> APLArray:
             for j, val in enumerate(cell_data):
                 padded_cell[j] = val
             all_data.extend(padded_cell)
-    return BUILDER.apl_array(result_shape, all_data)
+    return APLArray(result_shape, all_data)
