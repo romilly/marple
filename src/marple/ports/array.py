@@ -1158,11 +1158,5 @@ class APLArray(APLValue):
 _DOWNCAST_CT: float = 1e-14
 
 def S(value: Any) -> APLArray:
-    # Construct whichever APLArray subclass is active — NumpyAPLArray by
-    # default on desktop, UlabAPLArray on the Pico. Route through the
-    # backend_functions registry so subclass method overrides (e.g.
-    # UlabAPLArray._numeric_dyadic_op) fire on the resulting instance.
-    # Lazy import avoids an import cycle with backend_functions.
-    from marple.numpy_aplarray import NumpyAPLArray
     return APLArray.scalar(value)
 
