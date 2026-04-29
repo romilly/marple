@@ -125,7 +125,7 @@ def ignoring_numeric_errstate() -> Iterator[None]:
     with np.errstate(over="ignore", invalid="ignore"):
         yield
 
-def get_char_dtype() -> "np.dtype[Any]":
+def get_char_dtype() -> Any:
     """Return the currently active char dtype.
     """
     return np.uint32
@@ -140,37 +140,30 @@ class APLArray(APLValue):
     adapter — so tests stay backend-neutral.
     """
 
-    def __new__(cls, *args: Any, **kwargs: Any) -> Self:
-        """Instantiating the port directly dispatches to the active adapter.
+    # def __new__(cls, *args: Any, **kwargs: Any) -> Self:
+    #     """Instantiating the port directly dispatches to the active adapter.
 
-        Callers that write `APLArray(shape, data)` (common in tests that
-        want to stay backend-neutral) get a `NumpyAPLArray` on CPython or
-        a `UlabAPLArray` on MicroPython, whichever `backend_functions.
-        get_backend_class()` returns at the time of the call.
+    #     Callers that write `APLArray(shape, data)` (common in tests that
+    #     want to stay backend-neutral) get a `NumpyAPLArray` on CPython or
+    #     a `UlabAPLArray` on MicroPython, whichever `backend_functions.
+    #     get_backend_class()` returns at the time of the call.
 
-        Calling a concrete subclass directly — `NumpyAPLArray(shape, data)`,
-        `UlabAPLArray(shape, data)` — bypasses this dispatch and creates
-        the named subclass as normal.
-        """
-        if cls is APLArray:
-            # from marple.backend_functions import get_backend_class
-            from marple.numpy_aplarray import NumpyAPLArray
-            return cast(Self, object.__new__(NumpyAPLArray))
-        return object.__new__(cls)
+    #     Calling a concrete subclass directly — `NumpyAPLArray(shape, data)`,
+    #     `UlabAPLArray(shape, data)` — bypasses this dispatch and creates
+    #     the named subclass as normal.
+    #     """
+    #     if cls is APLArray:
+    #         # from marple.backend_functions import get_backend_class
+    #         from marple.numpy_aplarray import NumpyAPLArray
+    #         return cast(Self, object.__new__(NumpyAPLArray))
+    #     return object.__new__(cls)
 
     # ---- backend hooks (declared on the port; adapters implement) -----
 
     @classmethod
     def char_dtype(cls) -> Any:
-        """Dtype used for character data (Unicode codepoints).
-
-        Compare with `arr.dtype == char_dtype()`; pass as `dtype=` kwarg
-        to `np.array(...)`. Each adapter picks the widest unsigned int
-        dtype its backend supports (uint32 on numpy, uint16 on ulab —
-        BMP-only, which is enough for APL glyphs).
-        """
-        raise NotImplementedError("adapter must implement char_dtype")
-
+        return np.uint32
+    
     @classmethod
     @contextmanager
     def strict_numeric_errstate(cls) -> Iterator[None]:
@@ -195,6 +188,7 @@ class APLArray(APLValue):
     def is_float_dtype(cls, arr: Any) -> bool:
         """True iff `arr.dtype` is one of the backend's float dtypes."""
         raise NotImplementedError("adapter must implement is_float_dtype")
+
 
     @classmethod
     def maybe_upcast(cls, data: Any) -> Any:
@@ -245,29 +239,18 @@ class APLArray(APLValue):
     # ---- array-level port methods (declared here; adapters implement) ----
 
     def as_str(self) -> str:
-        """Return this char array as a Python string, row-major.
-
-        The array must be character-typed — callers check via `is_char()`
-        first. Works on any rank (scalar, vector, matrix): elements are
-        joined flat, without separators.
-        """
-        raise NotImplementedError("adapter must implement as_str")
+        return ''.join(chr(int(x)) for x in self.data.flat)
 
     def is_char(self) -> bool:
-        """True iff this array is character-typed (Unicode codepoints)."""
-        raise NotImplementedError("adapter must implement is_char")
+        return self.data.dtype == self.char_dtype()
 
     def is_numeric(self) -> bool:
-        """True iff this array is numeric. Disjoint from `is_char()`."""
-        raise NotImplementedError("adapter must implement is_numeric")
+        return self.data.dtype != self.char_dtype()
 
     def to_list(self) -> list[Any]:
-        """Return the array as a Python list of native values.
-
-        Scalar arrays return a 1-element list; vectors return a flat
-        list; higher-rank arrays return nested lists (row-major).
-        """
-        raise NotImplementedError("adapter must implement to_list")
+        if len(self.data.shape) == 0:
+            return [self.data.item()]
+        return self.data.tolist()
 
     def dtype_code(self) -> int:
         """Return this array's ⎕DR numeric type code.
@@ -278,14 +261,15 @@ class APLArray(APLValue):
         """
         raise NotImplementedError("adapter must implement dtype_code")
 
-    def slice_axis(self, axis: int, index: int) -> "APLArray":
-        """Return the sub-array where `axis` is fixed at `index`.
-
-        Result shape drops the given axis. On a vector (axis 0) the
-        result is a scalar; on a matrix sliced along axis 0 the result
-        is a row vector; sliced along axis 1 it is a column vector.
-        """
-        raise NotImplementedError("adapter must implement slice_axis")
+    def slice_axis(self, axis: int, index: int) -> APLArray:
+        rank = len(self.shape)
+        if axis < 0 or axis >= rank:
+            raise ValueError(
+                "axis {} out of range for rank-{} array".format(axis, rank))
+        idx = tuple(index if i == axis else slice(None) for i in range(rank))
+        sliced = self.data[idx]
+        new_shape = [s for i, s in enumerate(self.shape) if i != axis]
+        return type(self)(new_shape, sliced)
 
     def __init__(self, shape: list[int], data: list[Any] | np.ndarray[Any, Any]) -> None:
         self.shape = shape
