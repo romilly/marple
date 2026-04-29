@@ -13,7 +13,6 @@ from marple.ports.timer import Timer
 from marple.executor import Executor, _newlines_to_diamonds
 from marple.parser import Assignment, Program, parse
 from marple.apl_value import NC_FUNCTION, NC_OPERATOR, Function, Operator
-from marple.adapters.numpy_array_builder import BUILDER
 
 
 class EvalResult:
@@ -71,7 +70,7 @@ class Interpreter(Executor):
         if isinstance(result, (Function, Operator)):
             return S(0)
         if isinstance(result, APLArray) and result.is_numeric():
-            result = BUILDER.apl_array(list(result.shape), maybe_downcast(result.data, _DOWNCAST_CT))
+            result = APLArray(list(result.shape), maybe_downcast(result.data, _DOWNCAST_CT))
         return result
 
     def execute(self, source: str) -> EvalResult:
