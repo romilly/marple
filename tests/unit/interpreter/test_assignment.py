@@ -3,7 +3,6 @@
 from marple.ports.array import APLArray, S
 from marple.engine import Interpreter
 from marple.parser import Assignment, parse
-from marple.adapters.numpy_array_builder import BUILDER
 
 
 class TestSimpleAssignment:
@@ -16,7 +15,7 @@ class TestSimpleAssignment:
     def test_vector_assignment_stores_value(self) -> None:
         i = Interpreter(io=1)
         i.run("x←1 2 3")
-        assert i.run("x") == BUILDER.apl_array([3], [1, 2, 3])
+        assert i.run("x") == APLArray([3], [1, 2, 3])
 
     def test_char_assignment_stores_value(self) -> None:
         i = Interpreter(io=1)
@@ -30,8 +29,8 @@ class TestChainedAssignment:
     def test_chained_assign(self) -> None:
         i = Interpreter(io=1)
         i.run("y←1+x←⍳4")
-        assert i.run("x") == BUILDER.apl_array([4], [1, 2, 3, 4])
-        assert i.run("y") == BUILDER.apl_array([4], [2, 3, 4, 5])
+        assert i.run("x") == APLArray([4], [1, 2, 3, 4])
+        assert i.run("y") == APLArray([4], [2, 3, 4, 5])
 
     def test_assignment_returns_value(self) -> None:
         assert Interpreter(io=1).run("x←5") == S(5)
