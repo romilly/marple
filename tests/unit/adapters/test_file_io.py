@@ -6,7 +6,6 @@ from marple.ports.array import APLArray, S, str_to_char_array
 from marple.engine import Interpreter
 from marple.errors import DomainError
 from tests.adapters.fake_filesystem import FakeFileSystem
-from marple.adapters.numpy_array_builder import BUILDER
 
 
 class TestNReadNWrite:
@@ -93,7 +92,7 @@ class TestWorkspaceWithFakeFS:
         from marple.workspace import save_workspace, list_workspaces
         fs = FakeFileSystem()
         for name in ("alpha", "beta"):
-            env: dict[str, object] = {"⎕WSID": BUILDER.apl_array([len(name)], str_to_char_array(name)), "⎕IO": S(1)}
+            env: dict[str, object] = {"⎕WSID": APLArray([len(name)], str_to_char_array(name)), "⎕IO": S(1)}
             save_workspace(env, f"/ws/{name}", fs=fs)
         assert sorted(list_workspaces("/ws", fs=fs)) == ["alpha", "beta"]
 
